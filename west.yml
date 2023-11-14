@@ -1,0 +1,67 @@
+# The west manifest file (west.yml) for the Alif SDK.
+#
+# The per-installation west configuration file, .west/config, sets the
+# path to the project containing this file in the [manifest] section's
+# "path" variable.
+#
+# See the west documentation for more information:
+# https://docs.zephyrproject.org/latest/develop/west/index.html
+
+manifest:
+  version: "0.13"
+
+  defaults:
+    remote: alif
+
+  remotes:
+    - name: alif
+      url-base: org-115832732@github.com:AlifSemiDev
+    # Other repository sources:
+    - name: zephyrproject
+      url-base: https://github.com/zephyrproject-rtos
+    - name: armmbed
+      url-base: https://github.com/ARMmbed
+  
+  #
+  # Please add items below based on alphabetical order
+  projects:
+
+    - name: zephyr
+      repo-path: zephyr_alif
+      revision: main
+      import:
+        # In addition to the zephyr repository itself, 
+        # Alif SDK fetches the needed projects 
+        #
+        # Please keep this list sorted alphabetically.
+        name-allowlist:
+          - canopennode
+          - chre
+          - cmsis
+          - edtt
+          - fatfs
+          - hal_alif.git
+          - liblc3
+          - libmetal
+          - littlefs
+          - lvgl
+          - lz4
+          - mbedtls
+          - mipi-sys-t
+          - nanopb
+          - net-tools
+          - openthread
+          - picolibc
+          - psa-arch-tests
+          - segger
+          - tinycrypt
+          - tf-m-tests
+          - TraceRecorderSource
+          - uoscore-uedhoc
+          - zcbor
+          - zscilib
+
+  self:
+    path: alif
+    west-commands: scripts/west-commands.yml
+
