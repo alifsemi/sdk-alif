@@ -1,0 +1,8 @@
+---
+sample:
+  name: MHUv2 driver sample for the APSS
+tests:
+  sample.drivers.ipm:
+    tags: MHUv2
+    platform_allow:
+      alif_e7_ak_apss alif_e7_dk_apss
