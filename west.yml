@@ -28,7 +28,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr_alif
-      revision: main
+      revision: b0-v3.3-branch
       import:
         # In addition to the zephyr repository itself, 
         # Alif SDK fetches the needed projects 
@@ -56,6 +56,7 @@ manifest:
           - segger
           - tinycrypt
           - tf-m-tests
+          - tflite-micro
           - TraceRecorderSource
           - uoscore-uedhoc
           - zcbor

@@ -1,0 +1,8 @@
+sample:
+  name: I2S echo hello sample
+tests:
+  sample.drivers.i2s.echo_hello:
+    tags: i2s
+    filter: (dt_nodelabel_enabled("i2s_rx") and dt_nodelabel_enabled("i2s_tx"))
+    integration_platforms:
+      - ensemble
