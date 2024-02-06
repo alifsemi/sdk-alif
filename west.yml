@@ -28,7 +28,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr_alif
-      revision: b0-v3.3-branch
+      revision: b0-sdk-v3.3-branch
       import:
         # In addition to the zephyr repository itself, 
         # Alif SDK fetches the needed projects 
@@ -61,6 +61,11 @@ manifest:
           - uoscore-uedhoc
           - zcbor
           - zscilib
+
+    - name: hal_alif
+      repo-path: hal_alif
+      path: modules/hal/alif
+      revision: main
 
   self:
     path: alif
