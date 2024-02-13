@@ -8,17 +8,12 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-if("${BOARD}" STREQUAL "alif_e3_ak_rtss_he" OR
-   "${BOARD}" STREQUAL "alif_e3_dk_rtss_he" OR
-   "${BOARD}" STREQUAL "alif_e7_ak_rtss_he" OR
+if("${BOARD}" STREQUAL "alif_e3_dk_rtss_he" OR
    "${BOARD}" STREQUAL "alif_e7_dk_rtss_he")
         add_subdirectory(rtss_he)
-elseif("${BOARD}" STREQUAL "alif_e7_ak_rtss_hp" OR "${BOARD}" STREQUAL "alif_e7_dk_rtss_hp" OR
-       "${BOARD}" STREQUAL "alif_e3_ak_rtss_hp" OR "${BOARD}" STREQUAL "alif_e3_dk_rtss_hp")
+elseif("${BOARD}" STREQUAL "alif_e7_dk_rtss_hp" OR
+       "${BOARD}" STREQUAL "alif_e3_dk_rtss_hp")
         add_subdirectory(rtss_hp)
-elseif("${BOARD}" STREQUAL "alif_e7_ak_apss" OR
-       "${BOARD}" STREQUAL "alif_e7_dk_apss")
-        add_subdirectory(apss)
 endif()
 
 project(mhuv2)
