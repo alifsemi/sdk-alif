@@ -96,7 +96,7 @@ void test_spi_receive(const struct device *dev,
 	struct spi_config cnfg;
 
 	cnfg.frequency = 1 * Mhz;
-	cnfg.operation = SPI_OP_MODE_SLAVE | SPI_WORD_SET(32);
+	cnfg.operation = SPI_OP_MODE_SLAVE | SPI_WORD_SET(16);
 	cnfg.slave = 0;
 	cnfg.cs = NULL;
 
