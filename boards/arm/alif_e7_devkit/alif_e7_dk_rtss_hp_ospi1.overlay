@@ -1,0 +1,91 @@
+&itcm {
+	compatible = "alif,itcm";
+	/* The following line sets the size of OSPI1 flash to 2MB */
+	/* though the actual size is 16MB as the OSPI1 flash */
+	/* is shared by RTSS_HP and RTSS_HE each 2MB using */
+	/* overlay. */
+	reg = <0xc0000000 DT_SIZE_M(2)>;
+	itcm_global_base = <0xc0000000>;
+	zephyr,memory-region = "ITCM";
+};
+&dtcm {
+	compatible = "alif,dtcm";
+	reg = <0x20000000 DT_SIZE_K(1024)>;
+	dtcm_global_base = <0x50800000>;
+	zephyr,memory-region = "DTCM";
+};
+
+/* Redefine pinmux for below GPIO ports so that pins used for */
+/* the OSPI1 NOR flash are not modified. */
+&pinctrl_gpio5 {
+	group0 {
+		pinmux = < PIN_P5_0__GPIO >,
+			 < PIN_P5_1__GPIO >,
+			 < PIN_P5_2__GPIO >,
+			 < PIN_P5_3__GPIO >,
+			 < PIN_P5_4__GPIO >;
+	};
+};
+
+&pinctrl_gpio8 {
+	group0 {
+		pinmux = < PIN_P8_1__GPIO >,
+			 < PIN_P8_2__GPIO >,
+			 < PIN_P8_3__GPIO >,
+			 < PIN_P8_4__GPIO >,
+			 < PIN_P8_5__GPIO >,
+			 < PIN_P8_6__GPIO >,
+			 < PIN_P8_7__GPIO >;
+	};
+};
+&pinctrl_gpio9 {
+	group0 {
+		pinmux = < PIN_P9_0__GPIO >,
+			 < PIN_P9_1__GPIO >,
+			 < PIN_P9_2__GPIO >,
+			 < PIN_P9_3__GPIO >,
+			 < PIN_P9_4__GPIO >;
+	};
+};
+&pinctrl_gpio10 {
+	group0 {
+		pinmux = < PIN_P10_5__GPIO >,
+			 < PIN_P10_6__GPIO >,
+			 < PIN_P10_7__GPIO >;
+	};
+};
+/* The samples/drivers/i2c_dw application overlay is overridden by */
+/* this overlay, so add the contents of the samples/drivers/i2c_dw */
+/* application overlay here. */
+/* setting i2c0 as master and i2c1 instance as slave. */
+
+/ {
+	aliases {
+		master-i2c = &i2c0;
+		slave-i2c = &i2c1;
+	};
+};
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
+
+/* The samples/drivers/spi_dw application overlay is overridden by */
+/* this overlay, so add the contents of the samples/drivers/spi_dw */
+/* application overlay here. */
+/ {
+	aliases {
+		master-spi = &spi1;
+		slave-spi = &spi0;
+	};
+};
+&spi1 {
+	status = "okay";
+};
+
+&spi0 {
+	status = "okay";
+};
