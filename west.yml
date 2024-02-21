@@ -21,7 +21,7 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: armmbed
       url-base: https://github.com/ARMmbed
-  
+
   #
   # Please add items below based on alphabetical order
   projects:
@@ -30,8 +30,8 @@ manifest:
       repo-path: zephyr_alif
       revision: main
       import:
-        # In addition to the zephyr repository itself, 
-        # Alif SDK fetches the needed projects 
+        # In addition to the zephyr repository itself,
+        # Alif SDK fetches the needed projects
         #
         # Please keep this list sorted alphabetically.
         name-allowlist:
