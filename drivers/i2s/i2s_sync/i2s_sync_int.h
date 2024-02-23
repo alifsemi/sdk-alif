@@ -445,7 +445,19 @@ static inline void i2s_rx_fifo_interrupt_disable(struct i2s_t *i2s)
 	i2s->IMR |= I2S_IMR_RXDAM_Msk;
 }
 
-static inline void i2s_interrupt_disable_all(struct i2s_t *i2s)
+static inline void i2s_tx_interrupt_disable(i2s_t *i2s)
+{
+	i2s_tx_overrun_interrupt_disable(i2s);
+	i2s_tx_fifo_interrupt_disable(i2s);
+}
+
+static inline void i2s_rx_interrupt_disable(i2s_t *i2s)
+{
+	i2s_rx_overrun_interrupt_disable(i2s);
+	i2s_rx_fifo_interrupt_disable(i2s);
+}
+
+static inline void i2s_interrupt_disable_all(i2s_t *i2s)
 {
 	i2s->IMR = UINT32_MAX;
 }
@@ -493,12 +505,14 @@ static inline bool i2s_interrupt_status_rx_fifo(struct i2s_t *i2s)
 static inline void i2s_interrupt_clear_tx_overrun(struct i2s_t *i2s)
 {
 	uint32_t tmp = i2s->TOR;
+
 	(void)tmp;
 }
 
 static inline void i2s_interrupt_clear_rx_overrun(struct i2s_t *i2s)
 {
 	uint32_t tmp = i2s->ROR;
+
 	(void)tmp;
 }
 

@@ -6,7 +6,12 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-zephyr_include_directories(.)
+cmake_minimum_required(VERSION 3.20.0)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(le_audio_broadcast_sink)
 
-add_subdirectory(ieee802154)
-add_subdirectory(bluetooth)
+target_sources(app PRIVATE
+    src/main.c
+    src/broadcast_sink.c
+    src/audio_datapath.c
+)

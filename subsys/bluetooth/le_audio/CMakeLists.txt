@@ -6,7 +6,17 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-zephyr_include_directories(.)
+zephyr_library()
 
-add_subdirectory(ieee802154)
-add_subdirectory(bluetooth)
+zephyr_library_sources(
+    audio_encoder.c
+    audio_decoder.c
+    sdu_queue.c
+    audio_queue.c
+    audio_source_i2s.c
+    audio_sink_i2s.c
+    audio_i2s_common.c
+    iso_datapath_htoc.c
+    iso_datapath_ctoh.c
+    presentation_compensation.c
+)

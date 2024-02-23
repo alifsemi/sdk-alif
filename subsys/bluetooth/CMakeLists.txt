@@ -6,7 +6,4 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-zephyr_include_directories(.)
-
-add_subdirectory(ieee802154)
-add_subdirectory(bluetooth)
+add_subdirectory_ifdef(CONFIG_ALIF_BLE_AUDIO le_audio)

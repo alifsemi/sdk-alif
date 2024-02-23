@@ -143,10 +143,6 @@ module = BROADCAST_SOURCE
 module-str = broadcast_source
 source "subsys/logging/Kconfig.template.log_config"
 
-module = AUDIO_SOURCE_SIMULATED
-module-str = audio_source_simulated
-source "subsys/logging/Kconfig.template.log_config"
-
 endmenu # "Logging"
 
 endmenu # "Alif Bluetooth LE Audio Broadcast Source"

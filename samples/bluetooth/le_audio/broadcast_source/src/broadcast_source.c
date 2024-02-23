@@ -8,20 +8,104 @@
  */
 
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/random/rand32.h>
+#include "bluetooth/le_audio/audio_source_i2s.h"
+#include "bluetooth/le_audio/audio_queue.h"
+#include "bluetooth/le_audio/audio_encoder.h"
+#include "bluetooth/le_audio/sdu_queue.h"
+#include "bluetooth/le_audio/iso_datapath_htoc.h"
+#include "bluetooth/le_audio/presentation_compensation.h"
+#include "alif_lc3.h"
 #include "bap.h"
 #include "bap_bc.h"
 #include "bap_bc_src.h"
-#include "audio_source_simulated.h"
 #include "broadcast_source.h"
 
 LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 
 #define PRESENTATION_DELAY_US (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000)
 
+#define SDU_QUEUE_LENGTH        4
+#define AUDIO_QUEUE_LENGTH      4
+#define MICROSECONDS_PER_SECOND 1000000
+#define FRAMES_PER_SECOND       100
+
+#define I2S_NODE      DT_ALIAS(i2s_bus)
+#define CODEC_NODE    DT_ALIAS(audio_codec)
+#define MCLK_GEN_NODE DT_ALIAS(mclk_gen)
+
+BUILD_ASSERT(DT_PROP(I2S_NODE, mono_mode), "Stereo audio is not supported by the sample");
+
+const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
+const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
+const struct device *mclk_gen_dev = DEVICE_DT_GET(MCLK_GEN_NODE);
+
+K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
+
 /* Local ID of the broadcast group */
 static uint8_t bcast_grp_lid;
+
+/* Audio datapath handles */
+static struct sdu_queue *sdu_queue;
+static struct audio_queue *audio_queue;
+static struct audio_encoder *audio_encoder;
+static struct iso_datapath_htoc *iso_dp;
+
+static void on_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
+{
+	if ((sdu_seq % 128) == 0) {
+		LOG_INF("SDU sequence number: %u", sdu_seq);
+	}
+}
+
+static int audio_datapath_init(const struct device *dev)
+{
+	(void)dev;
+	int ret;
+
+	__ASSERT(device_is_ready(i2s_dev), "I2S device is not ready");
+	__ASSERT(device_is_ready(codec_dev), "Audio codec device is not ready");
+	__ASSERT(device_is_ready(mclk_gen_dev), "MCLK generator device is not ready");
+
+	ret = alif_lc3_init();
+	__ASSERT(ret == 0, "Failed to initialise LC3 codec");
+
+	sdu_queue = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
+	__ASSERT(sdu_queue, "Failed to create SDU queue");
+
+	audio_queue = audio_queue_create(AUDIO_QUEUE_LENGTH,
+					 CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ / FRAMES_PER_SECOND);
+	__ASSERT(audio_queue, "Failed to create audio queue");
+
+	audio_encoder =
+		audio_encoder_create(true, CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ, encoder_stack,
+				     CONFIG_LC3_ENCODER_STACK_SIZE, sdu_queue, NULL, audio_queue);
+	__ASSERT(audio_encoder, "Failed to create audio encoder");
+
+	ret = audio_source_i2s_configure(i2s_dev, audio_queue,
+					 MICROSECONDS_PER_SECOND / FRAMES_PER_SECOND);
+	__ASSERT(ret == 0, "Failed to configure audio source I2S");
+
+	ret = audio_encoder_register_cb(audio_encoder, on_frame_complete, NULL);
+	__ASSERT(ret == 0, "Failed to register encoder cb for stats");
+
+	ret = audio_encoder_register_cb(audio_encoder, audio_source_i2s_notify_buffer_available,
+					NULL);
+	__ASSERT(ret == 0, "Failed to register encoder cb for audio source");
+
+	ret = presentation_compensation_configure(mclk_gen_dev,
+						  (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000));
+	__ASSERT(ret == 0, "Failed to configure presentation compensation");
+
+	ret = presentation_compensation_register_cb(audio_source_i2s_apply_timing_correction);
+	__ASSERT(ret == 0, "Failed to register presentation compensation callback");
+
+	return 0;
+}
+SYS_INIT(audio_datapath_init, APPLICATION, 0);
 
 static int bap_sampling_freq_from_hz(uint32_t sampling_freq_hz)
 {
@@ -39,6 +123,25 @@ static int bap_sampling_freq_from_hz(uint32_t sampling_freq_hz)
 	default:
 		return BAP_SAMPLING_FREQ_UNKNOWN;
 	}
+}
+
+static void audio_datapath_start(uint8_t sgrp_lid)
+{
+	iso_dp = iso_datapath_htoc_create(sgrp_lid, sdu_queue, true);
+	if (iso_dp == NULL) {
+		LOG_ERR("Failed to create ISO datapath");
+		return;
+	}
+
+	int ret = audio_encoder_register_cb(audio_encoder, iso_datapath_htoc_notify_sdu_available,
+					    iso_dp);
+	if (ret) {
+		LOG_ERR("Failed to register encoder cb for ISO datapath, err %d", ret);
+		return;
+	}
+
+	/* Start audio stream from I2S */
+	audio_source_i2s_notify_buffer_available(NULL, 0, 0);
 }
 
 static void on_bap_bc_src_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t grp_lid,
@@ -148,8 +251,8 @@ static int broadcast_source_configure_group(void)
 				.frame_octet = CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME,
 				.frame_dur = BAP_FRAME_DUR_10MS,
 				.frames_sdu =
-				0, /* 0 is unspecified, data will not be placed in BASE */
-			},
+					0, /* 0 is unspecified, data will not be placed in BASE */
+			 },
 		.add_cfg.len = 0,
 	};
 
@@ -186,7 +289,7 @@ static int broadcast_source_configure_group(void)
 				.frames_sdu = 0,                    /* Inherited from subgroup */
 				.frame_octet = 0,                   /* Inherited from subgroup */
 				.location_bf = GAF_LOC_FRONT_LEFT_BIT,
-			},
+			 },
 		.add_cfg.len = 0};
 
 	err = bap_bc_src_set_stream(bcast_grp_lid, 0, 0, dp_id, 0, &stream_cfg);

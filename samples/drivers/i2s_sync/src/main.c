@@ -87,17 +87,22 @@ static void send_next_block(const struct device *dev)
 	i2s_sync_send(dev, tx_block, I2S_BLOCK_SIZE_BYTES);
 }
 
-static void on_i2s_complete(const struct device *dev, enum i2s_dir dir, enum i2s_sync_status status)
+static void on_i2s_rx_complete(const struct device *dev, enum i2s_sync_status status)
 {
-	if (dir == I2S_DIR_TX) {
-		finish_tx();
-		send_next_block(dev);
-		tx_ctr++;
-	} else {
-		finish_rx();
-		recv_next_block(dev);
-		rx_ctr++;
+	finish_rx();
+	recv_next_block(dev);
+	rx_ctr++;
+
+	if (status != I2S_SYNC_STATUS_OK) {
+		err_ctr++;
 	}
+}
+
+static void on_i2s_tx_complete(const struct device *dev, enum i2s_sync_status status)
+{
+	finish_tx();
+	send_next_block(dev);
+	tx_ctr++;
 
 	if (status != I2S_SYNC_STATUS_OK) {
 		err_ctr++;
@@ -118,7 +123,8 @@ int main(void)
 		return -1;
 	}
 
-	i2s_sync_register_cb(i2s_dev, on_i2s_complete);
+	i2s_sync_register_cb(i2s_dev, I2S_DIR_RX, on_i2s_rx_complete);
+	i2s_sync_register_cb(i2s_dev, I2S_DIR_TX, on_i2s_tx_complete);
 
 	while (1) {
 		/* Clear msgq and reset mem slab ready to start */

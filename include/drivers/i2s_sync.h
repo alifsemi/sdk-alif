@@ -28,10 +28,10 @@ enum i2s_sync_status {
 	I2S_SYNC_STATUS_OVERRUN,
 };
 
-typedef void (*i2s_sync_cb_t)(const struct device *dev, enum i2s_dir dir,
-			     enum i2s_sync_status status);
+typedef void (*i2s_sync_cb_t)(const struct device *dev, enum i2s_sync_status status);
 
-typedef int (*i2s_sync_api_register_cb_t)(const struct device *dev, i2s_sync_cb_t cb);
+typedef int (*i2s_sync_api_register_cb_t)(const struct device *dev, enum i2s_dir dir,
+					  i2s_sync_cb_t cb);
 typedef int (*i2s_sync_api_send_t)(const struct device *dev, void *buf, size_t len);
 typedef int (*i2s_sync_api_recv_t)(const struct device *dev, void *buf, size_t len);
 typedef int (*i2s_sync_api_disable_t)(const struct device *dev, enum i2s_dir dir);
@@ -52,13 +52,14 @@ __subsystem struct i2s_sync_driver_api {
  *
  * @retval 0 if successful
  */
-__syscall int i2s_sync_register_cb(const struct device *dev, i2s_sync_cb_t cb);
+__syscall int i2s_sync_register_cb(const struct device *dev, enum i2s_dir dir, i2s_sync_cb_t cb);
 
-static inline int z_impl_i2s_sync_register_cb(const struct device *dev, i2s_sync_cb_t cb)
+static inline int z_impl_i2s_sync_register_cb(const struct device *dev, enum i2s_dir dir,
+					      i2s_sync_cb_t cb)
 {
 	const struct i2s_sync_driver_api *api = (const struct i2s_sync_driver_api *)dev->api;
 
-	return api->register_cb(dev, cb);
+	return api->register_cb(dev, dir, cb);
 }
 
 /**

@@ -6,4 +6,9 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
+menu "Alif SDK subsystems"
+
 rsource "ieee802154/Kconfig"
+rsource "bluetooth/Kconfig"
+
+endmenu

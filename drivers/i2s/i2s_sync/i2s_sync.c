@@ -25,6 +25,7 @@ LOG_MODULE_REGISTER(i2s_sync, CONFIG_I2S_SYNC_LOG_LEVEL);
 #define I2S_CLK_DIVISOR_MIN 2
 
 struct i2s_sync_channel {
+	i2s_sync_cb_t cb;
 	void *buf;
 	size_t samples;
 	size_t count;
@@ -34,7 +35,6 @@ struct i2s_sync_channel {
 };
 
 struct i2s_sync_data {
-	i2s_sync_cb_t cb;
 	struct i2s_sync_channel tx;
 	struct i2s_sync_channel rx;
 };
@@ -50,12 +50,22 @@ struct i2s_sync_config {
 	uint8_t channel_count;
 };
 
-static int i2s_register_cb(const struct device *dev, i2s_sync_cb_t cb)
+static int i2s_register_cb(const struct device *dev, enum i2s_dir dir, i2s_sync_cb_t cb)
 {
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 
-	LOG_DBG("Registered I2S callback: %p", cb);
-	dev_data->cb = cb;
+	if (dir == I2S_DIR_TX) {
+		dev_data->tx.cb = cb;
+	} else if (dir == I2S_DIR_RX) {
+		dev_data->rx.cb = cb;
+	} else {
+		/* Not possible to register the same callback for both directions, as it would be
+		 * impossible to determine within the callback which direction is triggered
+		 */
+		return -EINVAL;
+	}
+
+	LOG_DBG("Registered I2S callback %p for direction %d", cb, dir);
 
 	return 0;
 }
@@ -78,6 +88,7 @@ static int i2s_send(const struct device *dev, void *buf, size_t len)
 
 	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
+	i2s_t *i2s = dev_cfg->paddr;
 
 	if (dev_data->tx.buf) {
 		return -EINPROGRESS;
@@ -98,6 +109,8 @@ static int i2s_send(const struct device *dev, void *buf, size_t len)
 	if (!dev_data->tx.running) {
 		i2s_transmitter_start(dev_cfg);
 		dev_data->tx.running = true;
+	} else {
+		i2s_tx_interrupt_enable(i2s);
 	}
 
 	return 0;
@@ -120,6 +133,7 @@ static int i2s_recv(const struct device *dev, void *buf, size_t len)
 
 	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
+	i2s_t *i2s = dev_cfg->paddr;
 
 	if (dev_data->rx.buf) {
 		return -EINPROGRESS;
@@ -140,6 +154,8 @@ static int i2s_recv(const struct device *dev, void *buf, size_t len)
 	if (!dev_data->rx.running) {
 		i2s_receiver_start(dev_cfg);
 		dev_data->rx.running = true;
+	} else {
+		i2s_rx_interrupt_enable(i2s);
 	}
 
 	return 0;
@@ -314,7 +330,7 @@ static void i2s_sync_tx_isr_handler(const struct device *dev)
 	int16_t *buf = (int16_t *)dev_data->tx.buf;
 	uint32_t tx_free = I2S_FIFO_TRG_LEVEL;
 
-	while (tx_free && (dev_data->tx.count < dev_data->tx.samples)) {
+	while (buf && tx_free && (dev_data->tx.count < dev_data->tx.samples)) {
 		/* Left channel is always output from first buffer position */
 		i2s_write_left_tx(i2s, (uint32_t)buf[dev_data->tx.idx]);
 
@@ -351,14 +367,16 @@ static void i2s_sync_tx_isr_handler(const struct device *dev)
 	}
 
 	if (dev_data->tx.count == dev_data->tx.samples) {
+		i2s_tx_interrupt_disable(i2s);
 		dev_data->tx.buf = NULL;
 		dev_data->tx.samples = 0;
 		dev_data->tx.idx = 0;
 
-		if (dev_data->cb) {
+		if (dev_data->tx.cb) {
 			enum i2s_sync_status status =
 				dev_data->tx.overrun ? I2S_SYNC_STATUS_OVERRUN : I2S_SYNC_STATUS_OK;
-			dev_data->cb(dev, I2S_DIR_TX, status);
+
+			dev_data->tx.cb(dev, status);
 		}
 
 		dev_data->tx.overrun = false;
@@ -373,7 +391,7 @@ static void i2s_sync_rx_isr_handler(const struct device *dev)
 	int16_t *buf = (int16_t *)dev_data->rx.buf;
 	uint32_t rx_avail = I2S_FIFO_TRG_LEVEL;
 
-	while (rx_avail && (dev_data->rx.count < dev_data->rx.samples)) {
+	while (buf && rx_avail && (dev_data->rx.count < dev_data->rx.samples)) {
 		/* Left channel is always placed in first buffer position */
 		buf[dev_data->rx.idx] = (int16_t)i2s_read_left_rx(i2s);
 
@@ -410,14 +428,16 @@ static void i2s_sync_rx_isr_handler(const struct device *dev)
 	}
 
 	if (dev_data->rx.count == dev_data->rx.samples) {
+		i2s_rx_interrupt_disable(i2s);
 		dev_data->rx.buf = NULL;
 		dev_data->rx.samples = 0;
 		dev_data->rx.idx = 0;
 
-		if (dev_data->cb) {
+		if (dev_data->rx.cb) {
 			enum i2s_sync_status status =
 				dev_data->rx.overrun ? I2S_SYNC_STATUS_OVERRUN : I2S_SYNC_STATUS_OK;
-			dev_data->cb(dev, I2S_DIR_RX, status);
+
+			dev_data->rx.cb(dev, status);
 		}
 
 		dev_data->rx.overrun = false;
@@ -430,15 +450,13 @@ static void i2s_sync_isr(const struct device *dev)
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
-	/* Call TX ISR handler if interrupt is for TX direction AND TX is in progress */
 	if ((i2s_interrupt_status_tx_fifo(i2s) || i2s_interrupt_status_tx_overrun(i2s)) &&
-	    (dev_data->tx.buf != NULL)) {
+	    dev_data->tx.running) {
 		i2s_sync_tx_isr_handler(dev);
 	}
 
-	/* Call RX ISR handler if interrupt is for RX direction AND RX is in progress */
 	if ((i2s_interrupt_status_rx_fifo(i2s) || i2s_interrupt_status_rx_overrun(i2s)) &&
-	    (dev_data->rx.buf != NULL)) {
+	    dev_data->rx.running) {
 		i2s_sync_rx_isr_handler(dev);
 	}
 }
@@ -459,10 +477,10 @@ static const struct i2s_sync_driver_api i2s_sync_api = {
 		.paddr = (struct i2s_t *)DT_INST_REG_ADDR(inst),                                   \
 		.irq_config = i2s_sync_irq_config_func_##inst,                                     \
 		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, pinctrl_0),                                 \
-			   (.pincfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),))                      \
+			   (.pincfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),))                     \
 			.sample_rate = DT_INST_PROP(inst, sample_rate),                            \
 		.bit_depth = DT_INST_PROP(inst, bit_depth),                                        \
-		.channel_count = DT_INST_NODE_HAS_PROP(inst, mono_mode) ? 1 : 2,                   \
+		.channel_count = DT_INST_PROP(inst, mono_mode) ? 1 : 2,                            \
 	};                                                                                         \
 	DEVICE_DT_INST_DEFINE(inst, i2s_sync_init, NULL, &i2s_sync_data_##inst,                    \
 			      &i2s_sync_config_##inst, POST_KERNEL, CONFIG_I2S_INIT_PRIORITY,      \

@@ -8,11 +8,15 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-#ifndef _AUDIO_SOURCE_SIMULATED_H
-#define _AUDIO_SOURCE_SIMULATED_H
+#ifndef _BROADCAST_SINK_H
+#define _BROADCAST_SINK_H
 
-#include <stdint.h>
+/**
+ * @brief Start the LE audio broadcast sink
+ *
+ * @retval 0 on success
+ * @retval Negative error code on failure
+ */
+int broadcast_sink_start(void);
 
-int audio_source_simulated_start(uint8_t stream_lid);
-
-#endif /* _AUDIO_SOURCE_SIMULATED_H */
+#endif /* _BROADCAST_SINK_H */
