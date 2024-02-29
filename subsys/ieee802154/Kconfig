@@ -6,12 +6,15 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-set(SDK_ALIF_DIR ${CMAKE_CURRENT_LIST_DIR})
+config IEEE802154_ALIF_AHI_MSG_LIB
+	bool "Build AHI MSG library from sources"
+	depends on IEEE802154_ALIF_SUPPORT
+	default n
 
-add_subdirectory(drivers)
-add_subdirectory(subsys)
-
-# Our drivers directory contains syscalls, so must be added to this list
-list(APPEND SYSCALL_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include/drivers)
-set(SYSCALL_INCLUDE_DIRS ${SYSCALL_INCLUDE_DIRS} PARENT_SCOPE)
-zephyr_include_directories(include)
+config IEEE802154_ALIF_SHELL
+	bool "IEEE 802.15.4 HAL test commands"
+	default y
+	depends on SHELL
+	depends on IEEE802154_ALIF_SUPPORT
+	help
+	  Enable RF driver testing related shell commands.

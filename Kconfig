@@ -7,3 +7,4 @@
 #contact @alifsemi.com, or visit : https: // alifsemi.com/license
 
 rsource "drivers/Kconfig"
+rsource "subsys/Kconfig"
