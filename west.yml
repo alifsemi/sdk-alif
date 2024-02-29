@@ -62,6 +62,10 @@ manifest:
           - uoscore-uedhoc
           - zcbor
           - zscilib
+    - name: matter
+      repo-path: alif_matter
+      revision: main
+      path: modules/lib/matter
 
     - name: mcuboot_alif
       repo-path: mcuboot_alif
