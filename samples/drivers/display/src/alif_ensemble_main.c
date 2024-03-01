@@ -15,7 +15,9 @@ LOG_MODULE_REGISTER(ensemble_disp, LOG_LEVEL_INF);
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
 #include <zephyr/drivers/display/cdc200.h>
+#ifdef CONFIG_MIPI_DSI
 #include <zephyr/drivers/mipi_dsi/ensemble_dsi.h>
+#endif /* CONFIG_MIPI_DSI */
 #include "alif_logo.h"
 
 #define RED_ARGB8888	0x00ff0000
