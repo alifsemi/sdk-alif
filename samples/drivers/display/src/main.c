@@ -1,28 +1,38 @@
-/*
- * Copyright (c) 2019 Jan Van Winkel <jan.van_winkel@dxplore.eu>
+/* Copyright (c) 2019 Jan Van Winkel <jan.van_winkel@dxplore.eu>
  *
  * Based on ST7789V sample:
  * Copyright (c) 2019 Marc Reilly
+ *
+ * Copyright 2024 Alif Semiconductor
  *
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(sample, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(ensemble_disp, LOG_LEVEL_INF);
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/drivers/display/cdc200.h>
+#ifdef CONFIG_MIPI_DSI
+#include <zephyr/drivers/mipi_dsi/ensemble_dsi.h>
+#endif /* CONFIG_MIPI_DSI */
+#include "alif_logo.h"
 
-#ifdef CONFIG_ARCH_POSIX
-#include "posix_board_if.h"
-#endif
+#define RED_ARGB8888	0x00ff0000
+#define GREEN_ARGB8888	0x0000ff00
+#define BLUE_ARGB8888	0x000000ff
+#define RED_RGB888	0x00ff0000
+#define GREEN_RGB888	0x0000ff00
+#define BLUE_RGB888	0x000000ff
+#define RED_RGB565	0xf800
+#define GREEN_RGB565	0x07e0
+#define BLUE_RGB565	0x001f
 
-#ifdef CONFIG_ARCH_POSIX
-#define RETURN_FROM_MAIN(exit_code) posix_exit_main(exit_code)
-#else
-#define RETURN_FROM_MAIN(exit_code) return
-#endif
+#define CDC200_PIXEL_SIZE_ARGB8888	4
+#define CDC200_PIXEL_SIZE_RGB888	3
+#define CDC200_PIXEL_SIZE_RGB565	2
 
 enum corner {
 	TOP_LEFT,
@@ -34,21 +44,8 @@ enum corner {
 typedef void (*fill_buffer)(enum corner corner, uint8_t grey, uint8_t *buf,
 			    size_t buf_size);
 
-
-#ifdef CONFIG_ARCH_POSIX
-static void posix_exit_main(int exit_code)
-{
-#if CONFIG_TEST
-	if (exit_code == 0) {
-		LOG_INF("PROJECT EXECUTION SUCCESSFUL");
-	} else {
-		LOG_INF("PROJECT EXECUTION FAILED");
-	}
-#endif
-	posix_exit(exit_code);
-}
-#endif
-
+#if (!defined(CONFIG_MIPI_DSI) || \
+	!DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
 static void fill_buffer_argb8888(enum corner corner, uint8_t grey, uint8_t *buf,
 				 size_t buf_size)
 {
@@ -56,13 +53,13 @@ static void fill_buffer_argb8888(enum corner corner, uint8_t grey, uint8_t *buf,
 
 	switch (corner) {
 	case TOP_LEFT:
-		color = 0x00FF0000u;
+		color = RED_ARGB8888;
 		break;
 	case TOP_RIGHT:
-		color = 0x0000FF00u;
+		color = GREEN_ARGB8888;
 		break;
 	case BOTTOM_RIGHT:
-		color = 0x000000FFu;
+		color = BLUE_ARGB8888;
 		break;
 	case BOTTOM_LEFT:
 		color = grey << 16 | grey << 8 | grey;
@@ -81,13 +78,13 @@ static void fill_buffer_rgb888(enum corner corner, uint8_t grey, uint8_t *buf,
 
 	switch (corner) {
 	case TOP_LEFT:
-		color = 0x00FF0000u;
+		color = RED_RGB888;
 		break;
 	case TOP_RIGHT:
-		color = 0x0000FF00u;
+		color = GREEN_RGB888;
 		break;
 	case BOTTOM_RIGHT:
-		color = 0x000000FFu;
+		color = BLUE_RGB888;
 		break;
 	case BOTTOM_LEFT:
 		color = grey << 16 | grey << 8 | grey;
@@ -104,22 +101,20 @@ static void fill_buffer_rgb888(enum corner corner, uint8_t grey, uint8_t *buf,
 static uint16_t get_rgb565_color(enum corner corner, uint8_t grey)
 {
 	uint16_t color = 0;
-	uint16_t grey_5bit;
 
 	switch (corner) {
 	case TOP_LEFT:
-		color = 0xF800u;
+		color = RED_RGB565;
 		break;
 	case TOP_RIGHT:
-		color = 0x07E0u;
+		color = GREEN_RGB565;
 		break;
 	case BOTTOM_RIGHT:
-		color = 0x001Fu;
+		color = BLUE_RGB565;
 		break;
 	case BOTTOM_LEFT:
-		grey_5bit = grey & 0x1Fu;
-		/* shift the green an extra bit, it has 6 bits */
-		color = grey_5bit << 11 | grey_5bit << (5 + 1) | grey_5bit;
+		color = (grey & 0x1f) << 11 |
+			(grey & 0x3f) << 5 | (grey & 0x1F);
 		break;
 	}
 	return color;
@@ -136,167 +131,208 @@ static void fill_buffer_rgb565(enum corner corner, uint8_t grey, uint8_t *buf,
 	}
 }
 
-static void fill_buffer_bgr565(enum corner corner, uint8_t grey, uint8_t *buf,
-			       size_t buf_size)
+int get_pixel_size(enum display_pixel_format fmt)
 {
-	uint16_t color = get_rgb565_color(corner, grey);
-
-	for (size_t idx = 0; idx < buf_size; idx += 2) {
-		*(uint16_t *)(buf + idx) = color;
-	}
+	if (fmt == PIXEL_FORMAT_RGB_888)
+		return CDC200_PIXEL_SIZE_RGB888;
+	else if (fmt == PIXEL_FORMAT_ARGB_8888)
+		return CDC200_PIXEL_SIZE_ARGB8888;
+	else if (fmt == PIXEL_FORMAT_RGB_565)
+		return CDC200_PIXEL_SIZE_RGB565;
+	else
+		return 0;
 }
-
-static void fill_buffer_mono(enum corner corner, uint8_t grey, uint8_t *buf,
-			     size_t buf_size)
-{
-	uint16_t color;
-
-	switch (corner) {
-	case BOTTOM_LEFT:
-		color = (grey & 0x01u) ? 0xFFu : 0x00u;
-		break;
-	default:
-		color = 0;
-		break;
-	}
-
-	memset(buf, color, buf_size);
-}
+#endif /* (!defined(CONFIG_MIPI_DSI) || \
+	* !DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
+	*/
 
 void main(void)
 {
+#if (!defined(CONFIG_MIPI_DSI) || \
+	!DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
+	struct display_buffer_descriptor buf_desc;
+	struct cdc200_display_caps capabilities;
+	struct cdc200_fb_desc fb_l2 = { 0 };
+	fill_buffer fill_buffer_fnc = NULL;
+	const struct device *display_dev;
+	size_t pixel_size = 0;
+	size_t buf_size = 0;
+	uint8_t grey_count;
+	size_t rect_w = 2;
+	size_t rect_h = 1;
+	uint8_t *buf;
+	size_t scale;
 	size_t x;
 	size_t y;
-	size_t rect_w;
-	size_t rect_h;
-	size_t h_step;
-	size_t scale;
-	size_t grey_count;
-	uint8_t *buf;
-	int32_t grey_scale_sleep;
-	const struct device *display_dev;
-	struct display_capabilities capabilities;
-	struct display_buffer_descriptor buf_desc;
-	size_t buf_size = 0;
-	fill_buffer fill_buffer_fnc = NULL;
+#endif /* (!defined(CONFIG_MIPI_DSI) || \
+	* !DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
+	*/
+
+#if defined(CONFIG_MIPI_DSI)
+	struct display_capabilities panel_caps;
+	const struct device *panel;
+	const struct device *dsi;
+	int ret;
+
+	panel = DEVICE_DT_GET(DT_ALIAS(panel));
+	if (!device_is_ready(panel)) {
+		LOG_ERR("Device %s not found. Aborting sample.",
+			panel->name);
+		return;
+	}
+
+	dsi = DEVICE_DT_GET(DT_ALIAS(mipi_dsi));
+	if (!device_is_ready(dsi)) {
+		LOG_ERR("Device %s not found. Aborting sample.",
+			dsi->name);
+		return;
+	}
+
+	LOG_INF("Rotating the display by 180 degrees");
+	ret = display_set_orientation(panel, DISPLAY_ORIENTATION_ROTATED_180);
+	if (ret == -ENOTSUP)
+		LOG_INF("Un-supported Display Rotation.");
+
+	LOG_INF("Enable Ensemble-DSI Device video mode.");
+	ret = ensemble_dsi_set_mode(dsi, ENSEMBLE_DSI_VIDEO_MODE);
+	if (ret) {
+		LOG_ERR("DSI Host controller set to video mode.");
+		return;
+	}
+
+	display_get_capabilities(panel, &panel_caps);
+	LOG_INF("Panel Orientation - %d", panel_caps.current_orientation);
+#endif /* defined(CONFIG_MIPI_DSI) */
+
+#if (!defined(CONFIG_MIPI_DSI) || \
+	!DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
 
 	display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
 	if (!device_is_ready(display_dev)) {
 		LOG_ERR("Device %s not found. Aborting sample.",
 			display_dev->name);
-		RETURN_FROM_MAIN(1);
+		return;
 	}
 
 	LOG_INF("Display sample for %s", display_dev->name);
-	display_get_capabilities(display_dev, &capabilities);
+	LOG_INF("Enabling CDC200 Device.");
+	cdc200_set_enable(display_dev, true);
+	cdc200_get_capabilities(display_dev, &capabilities);
 
-	if (capabilities.screen_info & SCREEN_INFO_MONO_VTILED) {
-		rect_w = 16;
-		rect_h = 8;
-	} else {
-		rect_w = 2;
-		rect_h = 1;
+	LOG_INF("Display Capabilities");
+	LOG_INF("Panel resolution, supported formats - (%d, %d), %d",
+			capabilities.x_panel_resolution,
+			capabilities.y_panel_resolution,
+			capabilities.supported_pixel_formats);
+	LOG_INF("CDC200 orientation - %d",
+			capabilities.current_orientation);
+
+	for (int i = 0; i <= 1; i++) {
+		LOG_INF("Display Capabilities layer %d:", i + 1);
+		LOG_INF("\tlayer_enabled - %d",
+				capabilities.layer[i].layer_en);
+		LOG_INF("\t(x_res, y_res) - (%d, %d)",
+				capabilities.layer[i].x_resolution,
+				capabilities.layer[i].y_resolution);
+		LOG_INF("\tcurr_pix_fmt - %d",
+				capabilities.layer[i].current_pixel_format);
 	}
 
-	h_step = rect_h;
-	scale = (capabilities.x_resolution / 8) / rect_h;
-
+	scale = (capabilities.layer[0].x_resolution / 8);
 	rect_w *= scale;
 	rect_h *= scale;
-
-	if (capabilities.screen_info & SCREEN_INFO_EPD) {
-		grey_scale_sleep = 10000;
-	} else {
-		grey_scale_sleep = 100;
-	}
-
 	buf_size = rect_w * rect_h;
 
-	if (buf_size < (capabilities.x_resolution * h_step)) {
-		buf_size = capabilities.x_resolution * h_step;
+	if (buf_size < (capabilities.layer[0].x_resolution)) {
+		buf_size = capabilities.layer[0].x_resolution;
 	}
 
-	switch (capabilities.current_pixel_format) {
+	pixel_size =
+		MAX(get_pixel_size(capabilities.layer[0].current_pixel_format),
+		get_pixel_size(capabilities.layer[1].current_pixel_format));
+	buf_size *= pixel_size;
+
+	switch (capabilities.layer[0].current_pixel_format) {
 	case PIXEL_FORMAT_ARGB_8888:
 		fill_buffer_fnc = fill_buffer_argb8888;
-		buf_size *= 4;
 		break;
 	case PIXEL_FORMAT_RGB_888:
 		fill_buffer_fnc = fill_buffer_rgb888;
-		buf_size *= 3;
 		break;
 	case PIXEL_FORMAT_RGB_565:
 		fill_buffer_fnc = fill_buffer_rgb565;
-		buf_size *= 2;
-		break;
-	case PIXEL_FORMAT_BGR_565:
-		fill_buffer_fnc = fill_buffer_bgr565;
-		buf_size *= 2;
-		break;
-	case PIXEL_FORMAT_MONO01:
-	case PIXEL_FORMAT_MONO10:
-		fill_buffer_fnc = fill_buffer_mono;
-		buf_size /= 8;
 		break;
 	default:
 		LOG_ERR("Unsupported pixel format. Aborting sample.");
-		RETURN_FROM_MAIN(1);
+		return;
 	}
 
 	buf = k_malloc(buf_size);
-
 	if (buf == NULL) {
-		LOG_ERR("Could not allocate memory. Aborting sample.");
-		RETURN_FROM_MAIN(1);
+		LOG_ERR("Could not allocate memory."
+			"Aborting sample. Required Heap Size - %d", buf_size);
+		return;
 	}
 
-	(void)memset(buf, 0xFFu, buf_size);
-
-	buf_desc.buf_size = buf_size;
-	buf_desc.pitch = capabilities.x_resolution;
-	buf_desc.width = capabilities.x_resolution;
-	buf_desc.height = h_step;
-
-	for (int idx = 0; idx < capabilities.y_resolution; idx += h_step) {
-		display_write(display_dev, 0, idx, &buf_desc, buf);
+	if (capabilities.layer[1].layer_en) {
+		cdc200_get_framebuffer(display_dev, 1, &fb_l2);
+		memset((uint8_t *) fb_l2.fb_addr, 0, fb_l2.fb_size);
+		memcpy((uint8_t *) fb_l2.fb_addr, logo, sizeof(logo));
 	}
 
-	buf_desc.pitch = rect_w;
-	buf_desc.width = rect_w;
-	buf_desc.height = rect_h;
+	if (capabilities.layer[0].layer_en) {
+		cdc200_get_framebuffer(display_dev, 0, &fb_l2);
+		LOG_INF("FB0 - 0x%08x, size - %d",
+		(uint32_t)fb_l2.fb_addr, fb_l2.fb_size);
+		(void)memset(buf, 0xFFu, buf_size);
 
-	fill_buffer_fnc(TOP_LEFT, 0, buf, buf_size);
-	x = 0;
-	y = 0;
-	display_write(display_dev, x, y, &buf_desc, buf);
+		buf_desc.buf_size = buf_size;
+		buf_desc.pitch = capabilities.layer[0].x_resolution;
+		buf_desc.width = capabilities.layer[0].x_resolution;
+		buf_desc.height = 1;
 
-	fill_buffer_fnc(TOP_RIGHT, 0, buf, buf_size);
-	x = capabilities.x_resolution - rect_w;
-	y = 0;
-	display_write(display_dev, x, y, &buf_desc, buf);
-
-	fill_buffer_fnc(BOTTOM_RIGHT, 0, buf, buf_size);
-	x = capabilities.x_resolution - rect_w;
-	y = capabilities.y_resolution - rect_h;
-	display_write(display_dev, x, y, &buf_desc, buf);
-
-	display_blanking_off(display_dev);
-
-	grey_count = 0;
-	x = 0;
-	y = capabilities.y_resolution - rect_h;
-
-	while (1) {
-		fill_buffer_fnc(BOTTOM_LEFT, grey_count, buf, buf_size);
-		display_write(display_dev, x, y, &buf_desc, buf);
-		++grey_count;
-		k_msleep(grey_scale_sleep);
-#if CONFIG_TEST
-		if (grey_count >= 1024) {
-			break;
+		for (int idx = 0;
+		idx < capabilities.layer[0].y_resolution; idx += 1) {
+			cdc200_display_write(display_dev, 0, 0,
+					idx, &buf_desc, buf);
 		}
-#endif
-	}
 
-	RETURN_FROM_MAIN(0);
+		buf_desc.pitch = rect_w;
+		buf_desc.width = rect_w;
+		buf_desc.height = rect_h;
+
+		fill_buffer_fnc(TOP_LEFT, 0, buf, buf_size);
+		x = 0;
+		y = 0;
+		cdc200_display_write(display_dev, 0, x, y, &buf_desc, buf);
+
+		fill_buffer_fnc(TOP_RIGHT, 0, buf, buf_size);
+		x = capabilities.layer[0].x_resolution - rect_w;
+		y = 0;
+		cdc200_display_write(display_dev, 0, x, y, &buf_desc, buf);
+
+		fill_buffer_fnc(BOTTOM_RIGHT, 0, buf, buf_size);
+		x = capabilities.layer[0].x_resolution - rect_w;
+		y = capabilities.layer[0].y_resolution - rect_h;
+		cdc200_display_write(display_dev, 0, x, y, &buf_desc, buf);
+
+		display_blanking_off(display_dev);
+
+		grey_count = 0;
+		x = 0;
+		y = capabilities.layer[0].y_resolution - rect_h;
+
+		while (1) {
+			fill_buffer_fnc(BOTTOM_LEFT, grey_count,
+					buf, buf_size);
+			cdc200_display_write(display_dev, 0, x,
+					     y, &buf_desc, buf);
+			++grey_count;
+			k_msleep(100);
+		}
+	}
+#endif /* (!defined(CONFIG_MIPI_DSI) || \
+	* !DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
+	*/
+	return;
 }
