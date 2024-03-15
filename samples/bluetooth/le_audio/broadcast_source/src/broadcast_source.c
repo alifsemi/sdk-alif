@@ -37,7 +37,13 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 #define CODEC_NODE    DT_ALIAS(audio_codec)
 #define MCLK_GEN_NODE DT_ALIAS(mclk_gen)
 
-BUILD_ASSERT(DT_PROP(I2S_NODE, mono_mode), "Stereo audio is not supported by the sample");
+#ifdef CONFIG_BROADCAST_SOURCE_MONO
+BUILD_ASSERT(DT_PROP(I2S_NODE, mono_mode), "Mono mode is selected for broadcast source, I2S driver "
+					   "must also be configured in mono mode");
+#else
+BUILD_ASSERT(!DT_PROP(I2S_NODE, mono_mode), "Stereo mode is selected for broadcast source, I2S "
+					    "driver must also be configured in stereo mode");
+#endif
 
 const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
 const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
@@ -49,10 +55,12 @@ K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
 static uint8_t bcast_grp_lid;
 
 /* Audio datapath handles */
-static struct sdu_queue *sdu_queue;
+static struct sdu_queue *sdu_queue_l;
+static struct sdu_queue *sdu_queue_r;
+static struct iso_datapath_htoc *iso_dp_l;
+static struct iso_datapath_htoc *iso_dp_r;
 static struct audio_queue *audio_queue;
 static struct audio_encoder *audio_encoder;
-static struct iso_datapath_htoc *iso_dp;
 
 static void on_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
 {
@@ -60,6 +68,13 @@ static void on_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
 		LOG_INF("SDU sequence number: %u", sdu_seq);
 	}
 }
+
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
+{
+	LOG_INF("Presentation compensation debug data is ready");
+}
+#endif
 
 static int audio_datapath_init(const struct device *dev)
 {
@@ -73,16 +88,21 @@ static int audio_datapath_init(const struct device *dev)
 	ret = alif_lc3_init();
 	__ASSERT(ret == 0, "Failed to initialise LC3 codec");
 
-	sdu_queue = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
-	__ASSERT(sdu_queue, "Failed to create SDU queue");
+	sdu_queue_l = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
+	__ASSERT(sdu_queue_l, "Failed to create left SDU queue");
+
+	sdu_queue_r = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
+	__ASSERT(sdu_queue_r, "Failed to create right SDU queue");
 
 	audio_queue = audio_queue_create(AUDIO_QUEUE_LENGTH,
 					 CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ / FRAMES_PER_SECOND);
 	__ASSERT(audio_queue, "Failed to create audio queue");
 
-	audio_encoder =
-		audio_encoder_create(true, CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ, encoder_stack,
-				     CONFIG_LC3_ENCODER_STACK_SIZE, sdu_queue, NULL, audio_queue);
+	bool mono_mode = IS_ENABLED(CONFIG_BROADCAST_SOURCE_MONO);
+
+	audio_encoder = audio_encoder_create(mono_mode, CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ,
+					     encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE,
+					     sdu_queue_l, sdu_queue_r, audio_queue);
 	__ASSERT(audio_encoder, "Failed to create audio encoder");
 
 	ret = audio_source_i2s_configure(i2s_dev, audio_queue,
@@ -102,6 +122,11 @@ static int audio_datapath_init(const struct device *dev)
 
 	ret = presentation_compensation_register_cb(audio_source_i2s_apply_timing_correction);
 	__ASSERT(ret == 0, "Failed to register presentation compensation callback");
+
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+	ret = presentation_compensation_register_debug_cb(on_timing_debug_info_ready);
+	__ASSERT(ret == 0, "Failed to register presentation compensation debug callback");
+#endif
 
 	return 0;
 }
@@ -127,16 +152,29 @@ static int bap_sampling_freq_from_hz(uint32_t sampling_freq_hz)
 
 static void audio_datapath_start(uint8_t sgrp_lid)
 {
-	iso_dp = iso_datapath_htoc_create(sgrp_lid, sdu_queue, true);
-	if (iso_dp == NULL) {
-		LOG_ERR("Failed to create ISO datapath");
+	iso_dp_l = iso_datapath_htoc_create(sgrp_lid, sdu_queue_l, true);
+	if (iso_dp_l == NULL) {
+		LOG_ERR("Failed to create left ISO datapath");
+		return;
+	}
+
+	iso_dp_r = iso_datapath_htoc_create(sgrp_lid + 1, sdu_queue_r, false);
+	if (iso_dp_r == NULL) {
+		LOG_ERR("Failed to create right ISO datapath");
 		return;
 	}
 
 	int ret = audio_encoder_register_cb(audio_encoder, iso_datapath_htoc_notify_sdu_available,
-					    iso_dp);
+					    iso_dp_l);
 	if (ret) {
-		LOG_ERR("Failed to register encoder cb for ISO datapath, err %d", ret);
+		LOG_ERR("Failed to register encoder cb for left ISO datapath, err %d", ret);
+		return;
+	}
+
+	ret = audio_encoder_register_cb(audio_encoder, iso_datapath_htoc_notify_sdu_available,
+					iso_dp_r);
+	if (ret) {
+		LOG_ERR("Failed to register encoder cb for right ISO datapath, err %d", ret);
 		return;
 	}
 
@@ -252,7 +290,7 @@ static int broadcast_source_configure_group(void)
 				.frame_dur = BAP_FRAME_DUR_10MS,
 				.frames_sdu =
 					0, /* 0 is unspecified, data will not be placed in BASE */
-			 },
+			},
 		.add_cfg.len = 0,
 	};
 
@@ -273,6 +311,43 @@ static int broadcast_source_configure_group(void)
 		LOG_ERR("Failed to set subgroup, err %u", err);
 		return -1;
 	}
+	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
+	 * statically allocated
+	 */
+	static const bap_cfg_t stream_cfg_l = {
+		.param = {
+				.sampling_freq =
+					BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
+				.frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
+				.frames_sdu = 0,                    /* Inherited from subgroup */
+				.frame_octet = 0,                   /* Inherited from subgroup */
+				.location_bf = GAF_LOC_FRONT_LEFT_BIT,
+			},
+		.add_cfg.len = 0};
+
+	static const bap_cfg_t stream_cfg_r = {
+		.param = {
+				.sampling_freq =
+					BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
+				.frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
+				.frames_sdu = 0,                    /* Inherited from subgroup */
+				.frame_octet = 0,                   /* Inherited from subgroup */
+				.location_bf = GAF_LOC_FRONT_RIGHT_BIT,
+			},
+		.add_cfg.len = 0};
+
+	err = bap_bc_src_set_stream(bcast_grp_lid, 0, 0, dp_id, 0, &stream_cfg_l);
+
+	if (err) {
+		LOG_ERR("Failed to set left stream, err %u", err);
+		return -1;
+	}
+
+	err = bap_bc_src_set_stream(bcast_grp_lid, 1, 0, dp_id, 0, &stream_cfg_r);
+	if (err) {
+		LOG_ERR("Failed to set right stream, err %u", err);
+		return -1;
+	}
 
 	LOG_DBG("Broadcast subgroup added");
 
@@ -289,7 +364,7 @@ static int broadcast_source_configure_group(void)
 				.frames_sdu = 0,                    /* Inherited from subgroup */
 				.frame_octet = 0,                   /* Inherited from subgroup */
 				.location_bf = GAF_LOC_FRONT_LEFT_BIT,
-			 },
+			},
 		.add_cfg.len = 0};
 
 	err = bap_bc_src_set_stream(bcast_grp_lid, 0, 0, dp_id, 0, &stream_cfg);

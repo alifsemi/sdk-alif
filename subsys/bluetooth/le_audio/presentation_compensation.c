@@ -45,6 +45,13 @@ struct presentation_compensation_env {
 
 static struct presentation_compensation_env env;
 
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+static presentation_comp_debug_cb_t dbg_cb;
+static struct presentation_comp_debug_data
+	debug_data[CONFIG_PRESENTATION_COMPENSATION_DEBUG_SAMPLES];
+static uint32_t debug_index;
+#endif
+
 #ifdef CONFIG_PRESENTATION_COMPENSATION_PRINT_STATS
 static void reset_stats(void)
 {
@@ -135,7 +142,7 @@ static void adjust_clock(int32_t delta_f)
 	env.last_freq = freq;
 }
 
-static void run_clock_pi_controller(int32_t err)
+static float run_clock_pi_controller(int32_t err)
 {
 	float output;
 	float output_saturated;
@@ -151,7 +158,7 @@ static void run_clock_pi_controller(int32_t err)
 	/* Error value is already correct, no inversion needed */
 #elif defined(CONFIG_PRESENTATION_COMPENSATION_DIRECTION_SINK)
 	/* Error value must be inverted, a positive error means clock should go slower */
-	err = -1.0f * err;
+	err = -1 * err;
 #else
 #error "Either sink or source direction must be defined"
 #endif
@@ -181,23 +188,44 @@ static void run_clock_pi_controller(int32_t err)
 	}
 
 	adjust_clock(output_saturated);
+	return output_saturated;
 }
 
 static int32_t calculate_correction(int32_t presentation_error_us)
 {
-	int32_t ret;
+	int32_t correction_us = 0;
+	float pi_output = 0.0F;
 
 	if ((presentation_error_us + CONFIG_PRESENTATION_COMPENSATION_THRESHOLD_US < 0) ||
 	    (presentation_error_us > CONFIG_PRESENTATION_COMPENSATION_THRESHOLD_US)) {
 		/* Samples must be dropped or inserted to correct the error */
 
-		ret = presentation_error_us / CONFIG_PRESENTATION_COMPENSATION_CORRECTION_FACTOR;
+		correction_us =
+			presentation_error_us / CONFIG_PRESENTATION_COMPENSATION_CORRECTION_FACTOR;
 	} else {
 		/* No samples need to be dropped or inserted, but the clock may need adjustment */
-		run_clock_pi_controller(presentation_error_us);
-		ret = 0;
+		pi_output = run_clock_pi_controller(presentation_error_us);
 	}
-	return ret;
+
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+	if (debug_index < CONFIG_PRESENTATION_COMPENSATION_DEBUG_SAMPLES) {
+		struct presentation_comp_debug_data *dbg_pt = &debug_data[debug_index];
+
+		dbg_pt->err_us = presentation_error_us;
+		dbg_pt->correction_us = correction_us;
+		dbg_pt->clock_freq = env.last_freq;
+		dbg_pt->pi_output = pi_output;
+		dbg_pt->pi_integrator = env.integrator;
+
+		debug_index++;
+
+		if ((debug_index == CONFIG_PRESENTATION_COMPENSATION_DEBUG_SAMPLES) && dbg_cb) {
+			dbg_cb(debug_data);
+		}
+	}
+#endif
+
+	return correction_us;
 }
 
 #ifdef CONFIG_PRESENTATION_COMPENSATION_PRINT_STATS
@@ -263,3 +291,16 @@ int presentation_compensation_register_cb(presentation_compensation_cb_t cb)
 
 	return 0;
 }
+
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+int presentation_compensation_register_debug_cb(presentation_comp_debug_cb_t cb)
+{
+	if (cb == NULL) {
+		return -EINVAL;
+	}
+
+	dbg_cb = cb;
+
+	return 0;
+}
+#endif

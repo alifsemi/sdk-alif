@@ -120,6 +120,22 @@ config PRESENTATION_COMPENSATION_CORRECTION_FACTOR
 	  correction factor greater than 1 causes any presentation error to be removed gradually over
 	  several SDUs rather than all in one go.
 
+config PRESENTATION_COMPENSATION_DEBUG
+	bool "Enable debug data to be recorded by presentation compensation module"
+	help
+		The PI controller coefficients of the presentation compensation module may need tuning for
+		some use-cases. Enabling this causes presentation compensation data to be logged into a
+		buffer for later analysis. When the buffer is full, a callback can be triggered to notify
+		the application.
+
+if PRESENTATION_COMPENSATION_DEBUG
+
+config PRESENTATION_COMPENSATION_DEBUG_SAMPLES
+	int "Number of data points to log for presentation compensation debug"
+	default 1000
+
+endif
+
 config AUDIO_CLOCK_DIVIDER
 	int "Audio clock divider ratio"
 	default 1

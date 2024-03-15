@@ -55,7 +55,7 @@ struct audio_encoder {
 
 static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 {
-	struct audio_encoder *enc = (struct audio_encoder *)p1;
+	audio_encoder_t *enc = (audio_encoder_t *)p1;
 	(void)p2;
 	(void)p3;
 
@@ -75,32 +75,55 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 			continue;
 		}
 
-		/* For each channel, allocate an SDU, encode the audio into it, then send to queue
-		 */
-		int num_channels = enc->mono ? 1 : 2;
+		/* Allocate left SDU (always present) and encode audio into it */
+		gapi_isooshm_sdu_buf_t *p_sdu_l;
 
-		for (int i = 0; i < num_channels; i++) {
-			int16_t *audio_data =
-				(i == 0) ? audio->buf
-					 : (audio->buf + enc->audio_queue->audio_block_samples / 2);
+		ret = k_mem_slab_alloc(&enc->sdu_queue[0]->slab, (void *)&p_sdu_l, K_FOREVER);
+		__ASSERT(ret == 0, "Failed to get memory from slab");
 
-			gapi_isooshm_sdu_buf_t *p_sdu;
+		ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[0], audio->buf,
+					   p_sdu_l->data, enc->sdu_queue[0]->payload_size,
+					   enc->lc3_scratch);
+		__ASSERT(ret == 0, "LC3 encoding failed");
 
-			ret = k_mem_slab_alloc(&enc->sdu_queue[i]->slab, (void *)&p_sdu, K_FOREVER);
+		p_sdu_l->sdu_len = enc->sdu_queue[0]->payload_size;
+		p_sdu_l->has_timestamp = false;
+		p_sdu_l->seq_num = enc->sdu_seq;
+
+		/* If a right ISO stream exists, allocate an SDU, fill with data and send */
+		if (enc->sdu_queue[1]) {
+			gapi_isooshm_sdu_buf_t *p_sdu_r;
+
+			ret = k_mem_slab_alloc(&enc->sdu_queue[1]->slab, (void *)&p_sdu_r,
+					       K_FOREVER);
 			__ASSERT(ret == 0, "Failed to get memory from slab");
 
-			ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[i], audio_data,
-						   p_sdu->data, enc->sdu_queue[i]->payload_size,
-						   enc->lc3_scratch);
-			__ASSERT(ret == 0, "LC3 encoding failed");
+			if (enc->mono) {
+				/* In mono mode, copy the data from the left channel */
+				memcpy(p_sdu_r->data, p_sdu_l->data,
+				       enc->sdu_queue[1]->payload_size);
+			} else {
+				/* In stereo mode, encode the right channel */
+				int16_t *audio_data =
+					audio->buf + enc->audio_queue->audio_block_samples / 2;
+				ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[1],
+							   audio_data, p_sdu_r->data,
+							   enc->sdu_queue[1]->payload_size,
+							   enc->lc3_scratch);
+				__ASSERT(ret == 0, "LC3 encoding failed");
+			}
 
-			p_sdu->sdu_len = enc->sdu_queue[i]->payload_size;
-			p_sdu->has_timestamp = false;
-			p_sdu->seq_num = enc->sdu_seq;
+			p_sdu_r->sdu_len = enc->sdu_queue[1]->payload_size;
+			p_sdu_r->has_timestamp = false;
+			p_sdu_r->seq_num = enc->sdu_seq;
 
-			ret = k_msgq_put(&enc->sdu_queue[i]->msgq, &p_sdu, K_FOREVER);
+			ret = k_msgq_put(&enc->sdu_queue[1]->msgq, &p_sdu_r, K_FOREVER);
 			__ASSERT(ret == 0, "msgq put failed");
 		}
+
+		/* Send left SDU now that it is no longer needed */
+		ret = k_msgq_put(&enc->sdu_queue[0]->msgq, &p_sdu_l, K_FOREVER);
+		__ASSERT(ret == 0, "msgq put failed");
 
 		/* Temporarily store capture timestamp for callbacks */
 		uint32_t capture_timestamp = audio->timestamp;
@@ -110,7 +133,6 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 
 		/* Notify listeners that a block is completed */
 		struct cb_list *cb_item = enc->cb_list;
-
 		while (cb_item != NULL) {
 			if (cb_item->cb) {
 				cb_item->cb(cb_item->context, capture_timestamp, enc->sdu_seq);

@@ -46,6 +46,13 @@ static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 	}
 }
 
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
+{
+	LOG_INF("Presentation compensation debug data is ready");
+}
+#endif
+
 int audio_datapath_create(struct audio_datapath_config *cfg)
 {
 	if (cfg == NULL) {
@@ -135,6 +142,14 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		LOG_ERR("Failed to register decoder cb, err %d", ret);
 		return ret;
 	}
+
+#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
+	ret = presentation_compensation_register_debug_cb(on_timing_debug_info_ready);
+	if (ret != 0) {
+		LOG_ERR("Failed to register presentation compensation debug callback, err %d", ret);
+		return ret;
+	}
+#endif
 
 	/* Add callback(s) to notify ISO datapath(s) */
 	ret = audio_decoder_register_cb(env.decoder, iso_datapath_ctoh_notify_sdu_done,

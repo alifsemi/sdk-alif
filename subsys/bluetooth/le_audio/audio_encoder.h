@@ -39,12 +39,16 @@ typedef void (*audio_encoder_sdu_cb_t)(void *context, uint32_t capture_timestamp
  * module should be update to use dynamically allocated stacks at the point where the targeted
  * Zephyr version is updated to include this feature.
  *
- * @param mono Flag set to true if only a single channel is required
+ * @param mono Flag set to true if the audio input data contains only a single channel. In this
+ * case, only a single channel is encoded but it may be sent out on either one or two channels,
+ * depending on how many non-NULL SDU queues were provided. Providing two SDU queues may be
+ * necessary for compatibility with sink devices which only support stereo audio.
  * @param stack Stack memory area for encoder thread. Must be statically allocated using
  * K_THREAD_STACK_DEFINE.
  * @param stacksize Size in bytes of stack memory area
  * @param sdu_queue_l SDU queue for left channel (or only channel in case of mono mode)
- * @param sdu_queue_r SDU queue for right channel (can be NULL in case of mono mode)
+ * @param sdu_queue_r SDU queue for right channel (in case of mono mode, may be NULL, or if it is
+ * provided then the data sent will be a duplicate of the left channel)
  * @param audio_queue Audio queue to take audio blocks from
  *
  * @retval Created audio encoder instance if successful

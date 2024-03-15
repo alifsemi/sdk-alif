@@ -18,6 +18,20 @@ config BROADCAST_NAME
 	string "LE audio broadcast name"
 	default "ALIF_LE_AUDIO"
 
+config BROADCAST_SOURCE_MONO
+	bool "Broadcast source mono mode"
+	help
+		In mono mode the application will only record a single (left) channel from the I2S, encode
+		this channel once, but send out the encoded SDUs on both left and right broadcast
+		isochronous streams.
+
+		This means that to a sink device it appears as though both left and right channels are
+		present, which is sometimes required for compatibility.
+
+		But only one LC3 encoder is needed which saves on memory and runtime, plus this could also
+		be useful in a case where the source of the audio data (e.g. microphone) only outputs a
+		single channel.
+
 config LE_AUDIO_PRESENTATION_DELAY_MS
 	int "Presentation delay in ms"
 	default 40
