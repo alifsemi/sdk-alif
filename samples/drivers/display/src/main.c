@@ -92,9 +92,9 @@ static void fill_buffer_rgb888(enum corner corner, uint8_t grey, uint8_t *buf,
 	}
 
 	for (size_t idx = 0; idx < buf_size; idx += 3) {
-		*(buf + idx + 0) = color >> 16;
-		*(buf + idx + 1) = color >> 8;
-		*(buf + idx + 2) = color >> 0;
+		*(buf + idx + 2) = (color >> 16) & 0xff;
+		*(buf + idx + 1) = (color >> 8) & 0xff;
+		*(buf + idx + 0) = (color >> 0) & 0xff;
 	}
 }
 
@@ -126,8 +126,8 @@ static void fill_buffer_rgb565(enum corner corner, uint8_t grey, uint8_t *buf,
 	uint16_t color = get_rgb565_color(corner, grey);
 
 	for (size_t idx = 0; idx < buf_size; idx += 2) {
-		*(buf + idx + 0) = (color >> 8) & 0xFFu;
-		*(buf + idx + 1) = (color >> 0) & 0xFFu;
+		*(buf + idx + 1) = (color >> 8) & 0xFFu;
+		*(buf + idx + 0) = (color >> 0) & 0xFFu;
 	}
 }
 
