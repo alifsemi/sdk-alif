@@ -1,0 +1,47 @@
+def BRANCH = "b0-v3.3-branch"
+
+pipeline {
+    agent any
+    options {
+        skipDefaultCheckout(true)
+    }
+    stages {
+        stage('checkout') {
+            steps {
+               cleanWs()
+               script {
+                  sh '''#!/bin/bash -xe
+                     printenv
+                     echo "====> ${CHANGE_BRANCH} ${BRANCH_NAME}"
+                     if [ "${BRANCH_NAME}" = "b0-v3.3-branch" ] ; then
+                        BRANCH="b0-v3.3-branch"
+                     elif [ "${CHANGE_BRANCH}" != "null" ] ; then
+                        BRANCH="${CHANGE_BRANCH}"
+                     else
+                        BRANCH="b0-v3.3-branch"
+                     fi
+                     export DOCKER_CMDS="source /opt/*/environment* ; \
+west init -m 'org-115832732@github.com:AlifSemiDev/sdk-alif.git' \
+--mr ${BRANCH} --mf west.yml ; west update ; cd alif ; \
+if [ \"x${BRANCH}\" = \"xb0-v3.3-branch\" ] ; then cd ../zephyr ; \
+rm -rf build ; \
+west build -b alif_e3_dk_rtss_hp samples/hello_world ; \
+else if ../zephyr/scripts/checkpatch.pl \
+--ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,\
+COMMIT_LOG_LONG_LINE -g \
+origin/${BRANCH}...origin/b0-v3.3-branch ; then cd ../zephyr ; \
+rm -rf build ; \
+west build -b alif_e3_dk_rtss_hp samples/hello_world ; \
+else echo 'ERROR:./zephyr/scripts/checkpatch.pl detected errors/warnings.'; \
+echo 'CMD:Run git diff --cached | ./zephyr/scripts/checkpatch.pl - before \
+committing' ; exit 1 ; fi ; fi"
+                     git clone http://10.10.10.22/zephyr-build-scripts.git -b devkit-b0-v3.3
+                     cd zephyr-build-scripts/docker
+                     ./build-ubuntu-image.sh
+                     ./ubuntu-builder
+                  '''
+               }
+            }
+        }
+    }
+}
