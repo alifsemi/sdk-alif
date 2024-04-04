@@ -15,7 +15,7 @@ manifest:
 
   remotes:
     - name: alif
-      url-base: org-115832732@github.com:AlifSemiDev
+      url-base: https://github.com/alifsemi
     # Other repository sources:
     - name: zephyrproject
       url-base: https://github.com/zephyrproject-rtos
@@ -27,8 +27,8 @@ manifest:
   projects:
 
     - name: zephyr
-      repo-path: zephyr_alif
-      revision: b0-sdk-v3.3-branch
+      repo-path: alif_zephyr
+      revision: main
       import:
         # In addition to the zephyr repository itself, 
         # Alif SDK fetches the needed projects 
@@ -65,7 +65,7 @@ manifest:
     - name: hal_alif
       repo-path: hal_alif
       path: modules/hal/alif
-      revision: b0-v3.3-branch
+      revision: main
 
     - name: hal_ethos_u
       revision: 90ada2ea5681b2a2722a10d2898eac34c2510791
