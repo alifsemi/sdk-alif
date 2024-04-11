@@ -1,3 +1,4 @@
 # CODEOWNERS for autoreview assigning in github
 #
 /automation/                       @HemanthKumar-AlifSemi @jkrishnanjanappa
+/samples/drivers/ipm/              @HemanthKumar-AlifSemi
