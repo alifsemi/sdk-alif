@@ -65,7 +65,7 @@ manifest:
     - name: hal_alif
       repo-path: hal_alif
       path: modules/hal/alif
-      revision: b0-v3.3-branch
+      revision: main
 
     - name: hal_ethos_u
       revision: 90ada2ea5681b2a2722a10d2898eac34c2510791
