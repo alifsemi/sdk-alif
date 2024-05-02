@@ -40,7 +40,8 @@ manifest:
           - cmsis
           - edtt
           - fatfs
-          - hal_alif.git
+          - hal_alif
+          - hal_ethos_u
           - liblc3
           - libmetal
           - littlefs
@@ -62,19 +63,6 @@ manifest:
           - zcbor
           - zscilib
 
-    - name: hal_alif
-      repo-path: hal_alif
-      path: modules/hal/alif
-      revision: main
-
-    - name: hal_ethos_u
-      revision: 90ada2ea5681b2a2722a10d2898eac34c2510791
-      path: modules/hal/ethos_u
-      remote: zephyrproject
-      groups:
-        - hal
-
   self:
     path: alif
     west-commands: scripts/west-commands.yml
-
