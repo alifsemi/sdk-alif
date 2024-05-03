@@ -3,3 +3,4 @@
 /automation/                       @HemanthKumar-AlifSemi @jkrishnanjanappa
 /samples/drivers/ipm/              @HemanthKumar-AlifSemi
 /.checkpatch.conf/                 @HemanthKumar-AlifSemi
+/samples/drivers/spi_flash/        @HemanthKumar-AlifSemi @jkrishnanjanappa
