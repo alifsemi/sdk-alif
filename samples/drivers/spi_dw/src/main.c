@@ -198,7 +198,7 @@ static void slave_spi(void *p1, void *p2, void *p3)
 	}
 }
 
-void main(void)
+int main(void)
 {
 
 	k_tid_t tids = k_thread_create(&SlaveT_data, SlaveT_stack, STACKSIZE,
@@ -216,4 +216,6 @@ void main(void)
 
 	k_thread_start(&SlaveT_data);
 	k_thread_start(&MasterT_data);
+
+	return 0;
 }

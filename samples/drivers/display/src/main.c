@@ -146,7 +146,7 @@ int get_pixel_size(enum display_pixel_format fmt)
 	* !DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
 	*/
 
-void main(void)
+int main(void)
 {
 #if (!defined(CONFIG_MIPI_DSI) || \
 	!DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
@@ -178,14 +178,14 @@ void main(void)
 	if (!device_is_ready(panel)) {
 		LOG_ERR("Device %s not found. Aborting sample.",
 			panel->name);
-		return;
+		return -1;
 	}
 
 	dsi = DEVICE_DT_GET(DT_ALIAS(mipi_dsi));
 	if (!device_is_ready(dsi)) {
 		LOG_ERR("Device %s not found. Aborting sample.",
 			dsi->name);
-		return;
+		return -1;
 	}
 
 	LOG_INF("Rotating the display by 180 degrees");
@@ -197,7 +197,7 @@ void main(void)
 	ret = ensemble_dsi_set_mode(dsi, ENSEMBLE_DSI_VIDEO_MODE);
 	if (ret) {
 		LOG_ERR("DSI Host controller set to video mode.");
-		return;
+		return -1;
 	}
 
 	display_get_capabilities(panel, &panel_caps);
@@ -211,7 +211,7 @@ void main(void)
 	if (!device_is_ready(display_dev)) {
 		LOG_ERR("Device %s not found. Aborting sample.",
 			display_dev->name);
-		return;
+		return -1;
 	}
 
 	LOG_INF("Display sample for %s", display_dev->name);
@@ -264,14 +264,14 @@ void main(void)
 		break;
 	default:
 		LOG_ERR("Unsupported pixel format. Aborting sample.");
-		return;
+		return -1;
 	}
 
 	buf = k_malloc(buf_size);
 	if (buf == NULL) {
 		LOG_ERR("Could not allocate memory."
 			"Aborting sample. Required Heap Size - %d", buf_size);
-		return;
+		return -1;
 	}
 
 	if (capabilities.layer[1].layer_en) {
@@ -334,5 +334,5 @@ void main(void)
 #endif /* (!defined(CONFIG_MIPI_DSI) || \
 	* !DT_NODE_HAS_PROP(DT_ALIAS(mipi_dsi), dpi_video_pattern_gen))
 	*/
-	return;
+	return 0;
 }

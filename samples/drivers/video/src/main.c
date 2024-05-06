@@ -13,7 +13,7 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #define N_FRAMES		10
 #define N_VID_BUFF		2
 
-void main(void)
+int main(void)
 {
 	struct video_buffer *buffers[N_VID_BUFF], *vbuf;
 	struct video_format fmt = { 0 };
@@ -27,14 +27,14 @@ void main(void)
 	video = DEVICE_DT_GET_ONE(alif_ensemble_cam);
 	if (!device_is_ready(video)) {
 		LOG_ERR("%s: device not ready.", video->name);
-		return;
+		return -1;
 	}
 	printk("- Device name: %s\n", video->name);
 
 	/* Get capabilities */
 	if (video_get_caps(video, VIDEO_EP_OUT, &caps)) {
 		LOG_ERR("Unable to retrieve video capabilities");
-		return;
+		return -1;
 	}
 
 	printk("- Capabilities:\n");
@@ -61,13 +61,13 @@ void main(void)
 
 	if (fmt.pixelformat == 0) {
 		LOG_ERR("Desired Pixel format is not supported.");
-		return;
+		return -1;
 	}
 
 	ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
 	if (ret) {
 		LOG_ERR("Failed to set video format. ret - %d", ret);
-		return;
+		return -1;
 	}
 
 	printk("- format: %c%c%c%c %ux%u\n", (char)fmt.pixelformat,
@@ -87,7 +87,7 @@ void main(void)
 		buffers[i] = video_buffer_alloc(bsize);
 		if (buffers[i] == NULL) {
 			LOG_ERR("Unable to alloc video buffer");
-			return;
+			return -1;
 		}
 
 		/* Allocated Buffer Information */
@@ -110,7 +110,7 @@ void main(void)
 	ret = video_stream_start(video);
 	if (ret) {
 		LOG_ERR("Unable to start capture (interface). ret - %d", ret);
-		return;
+		return -1;
 	}
 
 	printk("Capture started\n");
@@ -119,7 +119,7 @@ void main(void)
 		ret = video_dequeue(video, VIDEO_EP_OUT, &vbuf, K_FOREVER);
 		if (ret) {
 			LOG_ERR("Unable to dequeue video buf");
-			return;
+			return -1;
 		}
 
 		printk("\rGot frame %u! size: %u; timestamp %u ms\n",
@@ -129,14 +129,14 @@ void main(void)
 			ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
 			if (ret) {
 				LOG_ERR("Unable to requeue video buf");
-				return;
+				return -1;
 			}
 
 			ret = video_stream_start(video);
 			if (ret) {
 				printk("Unable to start capture (interface). ret - %d\n",
 						ret);
-				return;
+				return -1;
 			}
 		}
 	}
@@ -148,6 +148,8 @@ void main(void)
 	ret = video_stream_stop(video);
 	if (ret) {
 		LOG_ERR("Unable to stop capture (interface). ret - %d", ret);
-		return;
+		return -1;
 	}
+
+	return 0;
 }

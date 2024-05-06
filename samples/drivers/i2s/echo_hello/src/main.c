@@ -132,7 +132,7 @@ static bool trigger_command(const struct device *i2s_dev_rx,
 	return true;
 }
 
-void main(void)
+int main(void)
 {
 	const struct device *const i2s_dev_rx = DEVICE_DT_GET(I2S_RX_NODE);
 	const struct device *const i2s_dev_tx = DEVICE_DT_GET(I2S_TX_NODE);
@@ -140,12 +140,12 @@ void main(void)
 
 	if (!device_is_ready(i2s_dev_rx)) {
 		printk("%s is not ready\n", i2s_dev_rx->name);
-		return;
+		return -1;
 	}
 
 	if (i2s_dev_rx != i2s_dev_tx && !device_is_ready(i2s_dev_tx)) {
 		printk("%s is not ready\n", i2s_dev_tx->name);
-		return;
+		return -1;
 	}
 
 	config.word_size = SAMPLE_BIT_WIDTH;
@@ -158,16 +158,16 @@ void main(void)
 	config.timeout = TIMEOUT;
 
 	if (!config_streams(i2s_dev_rx, i2s_dev_tx, &config)) {
-		return;
+		return -1;
 	}
 
 	if (!tx_init(i2s_dev_rx, i2s_dev_tx)) {
-		return;
+		return -1;
 	}
 
 	if (!trigger_command(i2s_dev_rx, i2s_dev_tx,
 				I2S_TRIGGER_START)) {
-		return;
+		return -1;
 	}
 
 	printk("Streams started\n");
@@ -194,8 +194,10 @@ void main(void)
 
 	if (!trigger_command(i2s_dev_rx, i2s_dev_tx,
 				I2S_TRIGGER_DROP)) {
-		return;
+		return -1;
 	}
 
 	printk("Streams stopped\n");
+
+	return 0;
 }

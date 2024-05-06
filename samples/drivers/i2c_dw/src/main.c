@@ -118,7 +118,7 @@ void register_slave_i2c(struct i2c_target_config *cfg)
 	ret = i2c_target_register(i2c_slave_dev, cfg);
 }
 
-void main(void)
+int main(void)
 {
 	int ret = 0;
 	struct i2c_target_callbacks i2c_t_cb = {
@@ -135,4 +135,5 @@ void main(void)
 	if (ret) {
 		printk("Transmission stopped due to error in transfer\n");
 	}
+	return 0;
 }

@@ -176,8 +176,10 @@ void init_pdm(void)
 
 }
 
-void main(void *b1, void *b2, void *b3)
+int main(void *b1, void *b2, void *b3)
 {
 	init_pdm();
 	print_data();
+
+	return 0;
 }
