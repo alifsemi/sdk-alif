@@ -7,6 +7,11 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+/*
+ * This example will start an instance of a peripheral Heart Rate and send
+ * periodic notification updates to the first device that connects to it.
+ */
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "alif_ble.h"
@@ -18,12 +23,9 @@
 #include "gapm_le_adv.h"
 #include "co_buf.h"
 
-/*  Profile definitions */
 #include "prf.h"
 #include "hrp_common.h"
 #include "hrps.h"
-
-typedef void (*component_cb_event)(uint16_t type, uint16_t status, const void *p_params);
 
 enum hrps_feat_bf {
 	/* Body Sensor Location Feature Supported */
@@ -40,8 +42,16 @@ enum hrps_feat_bf {
 };
 
 #define BODY_SENSOR_LOCATION_CHEST 0x01
+#define BT_CONN_STATE_CONNECTED	   0x00
+#define BT_CONN_STATE_DISCONNECTED 0x01
 
-uint8_t measurement = 70;
+static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
+
+/* Variable to check if peer device is ready to receive data"*/
+static bool READY_TO_SEND;
+
+K_SEM_DEFINE(init_sem, 0, 1);
+K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -51,9 +61,9 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
-	.privacy_cfg = 0,
+	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
 	.renew_dur = 1500,
-	.private_identity.addr = {0, 0, 0, 0, 0, 0},
+	.private_identity.addr = {0xCA, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
 	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
@@ -68,22 +78,22 @@ static const gapm_config_t gapm_cfg = {
 	.dflt_link_policy = 0, /* BT Classic only */
 };
 
-static const char *device_name = "ALIF_ZEPHYR_HR";
-static uint8_t adv_actv_idx =
-	0; /* Store advertising activity index for re-starting after disconnection */
+static const char device_name[] = "ALIF_HR";
+/* Store advertising activity index for re-starting after disconnection */
+static uint8_t adv_actv_idx;
 
 static uint16_t start_le_adv(uint8_t actv_idx)
 {
+	uint16_t err;
+
 	gapm_le_adv_param_t adv_params = {
 		.duration = 0, /* Advertise indefinitely */
 	};
 
-	uint16_t err = gapm_le_start_adv(actv_idx, &adv_params);
-
+	err = gapm_le_start_adv(actv_idx, &adv_params);
 	if (err) {
 		LOG_ERR("Failed to start LE advertising with error %u", err);
 	}
-
 	return err;
 }
 
@@ -101,6 +111,12 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
 
 	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
+
+	conn_status = BT_CONN_STATE_CONNECTED;
+
+	k_sem_give(&conn_sem);
+
+	LOG_DBG("Please enable notifications on peer device..");
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -110,20 +126,24 @@ static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairin
 
 static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 {
-	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
-	uint16_t err = start_le_adv(adv_actv_idx);
+	uint16_t err;
 
+	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
+
+	err = start_le_adv(adv_actv_idx);
 	if (err) {
 		LOG_ERR("Error restarting advertising: %u", err);
 	} else {
 		LOG_DBG("Restarting advertising");
 	}
+
+	conn_status = BT_CONN_STATE_DISCONNECTED;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
 			uint16_t max_len)
 {
-	const size_t device_name_len = strlen(device_name);
+	const size_t device_name_len = sizeof(device_name) - 1;
 	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
 
 	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
@@ -139,6 +159,34 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 static void on_gapm_err(enum co_error err)
 {
 	LOG_ERR("gapm error %d", err);
+}
+
+/* HRPS callbacks */
+
+static void on_hrps_meas_send_complete(uint16_t status)
+{
+	LOG_DBG("Send meas completed!\n");
+	READY_TO_SEND = true;
+}
+
+static void on_bond_data_upd(uint8_t conidx, uint16_t cfg_val)
+{
+	switch (cfg_val) {
+	case PRF_CLI_STOP_NTFIND: {
+		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND = false;
+	} break;
+
+	case PRF_CLI_START_NTF:
+	case PRF_CLI_START_IND: {
+		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND = true;
+	}
+	}
+}
+
+static void on_energy_exp_reset(uint8_t conidx)
+{
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -158,7 +206,7 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 };
 
 /* All callbacks in this struct are optional */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs = {0};
+static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
@@ -173,9 +221,20 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
 
+static const hrps_cb_t hrps_cb = {
+	.cb_bond_data_upd = on_bond_data_upd,
+	.cb_meas_send_cmp = on_hrps_meas_send_complete,
+	.cb_energy_exp_reset = on_energy_exp_reset,
+};
+
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
-	const size_t device_name_len = strlen(device_name);
+	uint16_t err;
+
+	/* gatt service identifier */
+	uint16_t svc = GATT_SVC_HEART_RATE;
+
+	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
 	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_16_LEN;
 
@@ -183,8 +242,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
 
 	co_buf_t *p_buf;
-	uint16_t err = co_buf_alloc(&p_buf, 0, adv_len, 0);
 
+	err = co_buf_alloc(&p_buf, 0, adv_len, 0);
 	__ASSERT(err == 0, "Buffer allocation failed");
 
 	uint8_t *p_data = co_buf_data(p_buf);
@@ -198,14 +257,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	p_data[0] = GATT_UUID_16_LEN + 1;
 	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 
-	/* gatt service identifier */
-	uint16_t svc = GATT_SVC_HEART_RATE;
-
-	/* gatt service length */
-	uint16_t svc_name_length = sizeof(svc);
-
 	/* Copy identifier */
-	memcpy(p_data + 2, (void *)&svc, svc_name_length);
+	memcpy(p_data + 2, (void *)&svc, sizeof(svc));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf);
@@ -218,11 +271,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 
 static uint16_t set_scan_data(uint8_t actv_idx)
 {
-	/* We must set scan response data, even if it is empty */
-	const uint16_t scan_len = 0;
-
 	co_buf_t *p_buf;
-	uint16_t err = co_buf_alloc(&p_buf, 0, scan_len, 0);
+	uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
 
 	__ASSERT(err == 0, "Buffer allocation failed");
 
@@ -270,6 +320,7 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
+		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -315,19 +366,21 @@ static uint16_t create_advertising(void)
 }
 
 /* Add heart rate profile to the stack */
-static void hr_server_configure(const void *p_params, component_cb_event cb_event)
+static void server_configure(void)
 {
-	(void)p_params;
-	(void)cb_event;
-
-	struct hrps_db_cfg hrps_cfg;
+	uint16_t err;
 	uint16_t start_hdl = 0;
+	struct hrps_db_cfg hrps_cfg;
 
 	/* Add the heart rate server profile and register our callbacks */
 	hrps_cfg.features = HRPS_BODY_SENSOR_LOC_CHAR_SUP_BIT | HRPS_HR_MEAS_NTF_CFG_BIT;
 	hrps_cfg.body_sensor_loc = BODY_SENSOR_LOCATION_CHEST;
 
-	prf_add_profile(TASK_ID_HRPS, 0, 0, &hrps_cfg, NULL, &start_hdl);
+	err = prf_add_profile(TASK_ID_HRPS, 0, 0, &hrps_cfg, &hrps_cb, &start_hdl);
+
+	if (err) {
+		LOG_ERR("Error %u adding profile", err);
+	}
 }
 
 void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
@@ -337,55 +390,90 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		return;
 	}
 
-	hr_server_configure(NULL, NULL);
+	server_configure();
 
 	LOG_DBG("gapm process completed successfully");
 
 	create_advertising();
 }
 
-static void send_measurement(void)
+static void send_measurement(int16_t current_value)
 {
-	printk("sending measurement\n");
-
-	if (measurement >= 99) {
-		measurement = 70;
-	}
-
+	uint16_t err;
 	hrs_hr_meas_t hr_meas = {
 		.flags = HRS_FLAG_HR_VALUE_FORMAT_POS,
-		.heart_rate = measurement,
+		.heart_rate = current_value,
 		.nb_rr_interval = 0,
 	};
 
-	printk("measurement = %u\n", measurement);
-	measurement++;
+	LOG_DBG("measurement = %u\n", current_value);
 
 	/* Set bit field to all 1's to send notification
 	 * on all connections that are subscribed
 	 */
 	uint32_t conidx_bf = UINT32_MAX;
+	err = hrps_meas_send(conidx_bf, &hr_meas);
 
-	hrps_meas_send(conidx_bf, &hr_meas);
+	if (err) {
+		LOG_ERR("Error %u sending measurement", err);
+	}
+}
+
+uint16_t read_sensor_value(uint16_t current_value)
+{
+	/* Generating dummy values between 70 and 130 */
+	if (current_value >= 130) {
+		current_value = 70;
+	} else {
+		current_value++;
+	}
+	return current_value;
+}
+
+void hrps_process(uint16_t measurement)
+{
+	switch (conn_status) {
+	case BT_CONN_STATE_CONNECTED:
+		if (READY_TO_SEND) {
+
+			send_measurement(measurement);
+			READY_TO_SEND = false;
+		}
+
+		break;
+	case BT_CONN_STATE_DISCONNECTED:
+		LOG_DBG("Waiting for peer connection...\n");
+		k_sem_take(&conn_sem, K_FOREVER);
+
+	default:
+		break;
+	}
 }
 
 int main(void)
 {
+	uint16_t err;
+	uint16_t current_value = 70;
+
+	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
-	uint16_t err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
-
+	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 	if (err) {
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;
 	}
 
-	/* After gapm_configure returns successfully,
-	 * all other operations will be started from callbacks
-	 */
+	LOG_DBG("Waiting for init...\n");
+	k_sem_take(&init_sem, K_FOREVER);
+
+	LOG_DBG("Init complete!\n");
 
 	while (1) {
 		k_sleep(K_SECONDS(1));
-		send_measurement();
+
+		current_value = read_sensor_value(current_value);
+
+		hrps_process(current_value);
 	}
 }
