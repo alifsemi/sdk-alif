@@ -63,6 +63,11 @@ manifest:
           - zcbor
           - zscilib
 
+    - name: mcuboot_alif
+      repo-path: mcuboot_alif
+      path: bootloader/mcuboot
+      revision: main
+
   self:
     path: alif
     west-commands: scripts/west-commands.yml
