@@ -62,12 +62,6 @@ manifest:
           - uoscore-uedhoc
           - zcbor
           - zscilib
-    - name: hal_alif_ble
-      revision: main
-      path: modules/hal/alif_ble
-      remote: alif
-      groups:
-        - hal
 
   self:
     path: alif
