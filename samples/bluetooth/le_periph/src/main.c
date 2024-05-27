@@ -35,8 +35,8 @@ static const gapm_config_t gapm_cfg = {
 };
 
 static const char *device_name = "ALIF_ZEPHYR";
-static uint8_t adv_actv_idx =
-	0; /* Store advertising activity index for re-starting after disconnection */
+/* Store advertising activity index for re-starting after disconnection */
+static uint8_t adv_actv_idx;
 
 static uint16_t start_le_adv(uint8_t actv_idx)
 {

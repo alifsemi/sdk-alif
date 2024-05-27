@@ -349,31 +349,6 @@ static int broadcast_source_configure_group(void)
 		return -1;
 	}
 
-	LOG_DBG("Broadcast subgroup added");
-
-	const uint16_t dp_id = GAPI_DP_ISOOSHM;
-
-	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
-	 * statically allocated
-	 */
-	static const bap_cfg_t stream_cfg = {
-		.param = {
-				.sampling_freq =
-					BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
-				.frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
-				.frames_sdu = 0,                    /* Inherited from subgroup */
-				.frame_octet = 0,                   /* Inherited from subgroup */
-				.location_bf = GAF_LOC_FRONT_LEFT_BIT,
-			},
-		.add_cfg.len = 0};
-
-	err = bap_bc_src_set_stream(bcast_grp_lid, 0, 0, dp_id, 0, &stream_cfg);
-
-	if (err) {
-		LOG_ERR("Failed to set stream, err %u", err);
-		return -1;
-	}
-
 	LOG_DBG("Broadcast stream added");
 
 	return 0;

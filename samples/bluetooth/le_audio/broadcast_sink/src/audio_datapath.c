@@ -136,13 +136,6 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		return ret;
 	}
 
-	/* Add a callback to print SDU count */
-	ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
-	if (ret != 0) {
-		LOG_ERR("Failed to register decoder cb, err %d", ret);
-		return ret;
-	}
-
 #ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
 	ret = presentation_compensation_register_debug_cb(on_timing_debug_info_ready);
 	if (ret != 0) {
@@ -151,6 +144,11 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	}
 #endif
 
+	ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
+	if (ret != 0) {
+		LOG_ERR("Failed to register decoder cb, err %d", ret);
+		return ret;
+	}
 	/* Add callback(s) to notify ISO datapath(s) */
 	ret = audio_decoder_register_cb(env.decoder, iso_datapath_ctoh_notify_sdu_done,
 					env.iso_dp_l);
