@@ -24,7 +24,7 @@ int main(void)
 	int i = 0;
 	int ret;
 
-	video = DEVICE_DT_GET_ONE(alif_ensemble_cam);
+	video = DEVICE_DT_GET_ONE(alif_cam);
 	if (!device_is_ready(video)) {
 		LOG_ERR("%s: device not ready.", video->name);
 		return -1;
