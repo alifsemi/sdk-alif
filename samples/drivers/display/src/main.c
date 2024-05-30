@@ -9,14 +9,14 @@
  */
 
 #include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(ensemble_disp, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(disp, LOG_LEVEL_INF);
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
 #include <zephyr/drivers/display/cdc200.h>
 #ifdef CONFIG_MIPI_DSI
-#include <zephyr/drivers/mipi_dsi/ensemble_dsi.h>
+#include <zephyr/drivers/mipi_dsi/dsi_dw.h>
 #endif /* CONFIG_MIPI_DSI */
 #include "alif_logo.h"
 
@@ -194,7 +194,7 @@ int main(void)
 		LOG_INF("Un-supported Display Rotation.");
 
 	LOG_INF("Enable Ensemble-DSI Device video mode.");
-	ret = ensemble_dsi_set_mode(dsi, ENSEMBLE_DSI_VIDEO_MODE);
+	ret = dsi_dw_set_mode(dsi, DSI_DW_VIDEO_MODE);
 	if (ret) {
 		LOG_ERR("DSI Host controller set to video mode.");
 		return -1;
