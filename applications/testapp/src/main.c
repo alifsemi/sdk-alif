@@ -25,11 +25,12 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/services/hrs.h>
 
-void main(void)
+int main(void)
 {
 	printk("Type \"help\" for supported commands.");
 
 	while (1) {
 		k_sleep(K_SECONDS(1));
 	}
+	return 0;
 }
