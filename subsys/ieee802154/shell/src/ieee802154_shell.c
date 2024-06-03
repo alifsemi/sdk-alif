@@ -19,12 +19,17 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
+void rx_frame_handler(struct k_work *work);
+
 static const struct device *const radio_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_ieee802154));
 static struct ieee802154_radio_api *radio_api;
 static uint8_t cca_mode;
 static uint8_t cca_threshold = 80;
 static int16_t power;
 static uint8_t channel = 11;
+K_WORK_DEFINE(frame_handler, rx_frame_handler);
+static struct alif_rx_frame_received received_frame;
+static uint32_t reply_delay;
 
 /* PAN ID 0x1234
  * dest:0xffff
@@ -283,11 +288,38 @@ static int cmd_rx_stop(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+void rx_frame_handler(struct k_work *work)
+{
+	LOG_INF("RX frame received size:%d, rssi:%d, fpb %d time:%" PRId64, received_frame.len,
+		received_frame.rssi, received_frame.frame_pending, received_frame.timestamp);
+
+	if (reply_delay) {
+		struct alif_tx_req transmit_req = {0};
+		struct alif_tx_ack_resp transmit_resp = {0};
+		int ret;
+
+		transmit_req.channel = channel;
+		transmit_req.cca_requested = true;
+		transmit_req.acknowledgment_asked = false;
+		transmit_req.timestamp =
+			received_frame.timestamp + reply_delay;
+		transmit_req.msg_id = 0;
+		transmit_req.length = sizeof(packet_unicast);
+		transmit_req.p_payload = packet_unicast;
+		ret = alif_mac154_transmit(&transmit_req, &transmit_resp);
+	}
+}
+
 static void cmd_rx_frame_callback(struct alif_rx_frame_received *p_frame_recv)
 
 {
 	LOG_INF("RX frame received size:%d, rssi:%d, fpb %d", p_frame_recv->len, p_frame_recv->rssi,
 		p_frame_recv->frame_pending);
+	received_frame.len = p_frame_recv->len;
+	received_frame.timestamp = p_frame_recv->timestamp;
+	received_frame.frame_pending = p_frame_recv->frame_pending;
+	received_frame.rssi = p_frame_recv->rssi;
+	k_work_submit(&frame_handler);
 }
 
 static void cmd_rx_status_callback(enum alif_mac154_status_code status)
@@ -298,6 +330,8 @@ static void cmd_rx_status_callback(enum alif_mac154_status_code status)
 static int cmd_sniffer(const struct shell *shell, size_t argc, char **argv)
 {
 	struct alif_mac154_api_cb api_cb = {0};
+
+	reply_delay = param_get_int(argc, argv, "--reply", 0);
 
 	api_cb.rx_frame_recv_cb = cmd_rx_frame_callback;
 	api_cb.rx_status_cb = cmd_rx_status_callback;
@@ -312,6 +346,7 @@ static int cmd_transmit(const struct shell *shell, size_t argc, char **argv)
 	struct alif_tx_ack_resp transmit_resp = {0};
 	int ret;
 	int count;
+	int delay;
 
 	transmit_req.channel = param_get_int(argc, argv, "--ch", channel);
 	transmit_req.cca_requested = param_get_flag(argc, argv, "--cca");
@@ -331,6 +366,7 @@ static int cmd_transmit(const struct shell *shell, size_t argc, char **argv)
 		transmit_req.p_payload = packet_multicast;
 	}
 	count = param_get_int(argc, argv, "--count", 1);
+	delay = param_get_int(argc, argv, "--delay", 50);
 
 	for (int n = 0; n < count; n++) {
 		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT,
@@ -351,6 +387,7 @@ static int cmd_transmit(const struct shell *shell, size_t argc, char **argv)
 				      transmit_resp.ack_rssi, transmit_resp.ack_msg[0],
 				      transmit_resp.ack_msg[1], transmit_resp.ack_msg[2]);
 		}
+		k_sleep(K_MSEC(delay));
 	}
 
 	return 0;
@@ -427,13 +464,13 @@ static int cmd_cca_config(const struct shell *shell, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_cmds, SHELL_CMD_ARG(info, NULL, "RF driver info", cmd_info, 1, 10),
-	SHELL_CMD_ARG(
-		transmit, NULL,
-		"Transmit packet --ch <channel> --count <amount> --pkt <byte array> --cca --ack ",
-		cmd_transmit, 1, 10),
-	SHELL_CMD_ARG(rx - start, NULL, "start receiver --ch <channel> --count <amount>",
+	SHELL_CMD_ARG(transmit, NULL,
+		      "Transmit packet --ch <channel> --count <amount> --pkt <byte array> --cca "
+		      "--ack -delay <millisec>",
+		      cmd_transmit, 1, 10),
+	SHELL_CMD_ARG(rx-start, NULL, "start receiver --ch <channel> --count <amount>",
 		      cmd_rx_start, 1, 10),
-	SHELL_CMD_ARG(rx - stop, NULL, "stop receiver", cmd_rx_stop, 1, 10),
+	SHELL_CMD_ARG(rx-stop, NULL, "stop receiver", cmd_rx_stop, 1, 10),
 	SHELL_CMD_ARG(filter, NULL,
 		      "set filters --panid <panid> --short <Short Address> --ext <8 byte array "
 		      "long address>",
@@ -446,7 +483,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      cmd_energy_detect, 1, 10),
 	SHELL_CMD_ARG(reset, NULL, "Reset Radio", cmd_reset, 1, 10),
 	SHELL_CMD_ARG(power, NULL, "power <level>", cmd_power, 2, 3),
-	SHELL_CMD_ARG(sniffer, NULL, "start the sniffer mode.", cmd_sniffer, 1, 10),
+	SHELL_CMD_ARG(sniffer, NULL, "start the sniffer mode. --reply <delay in ms>", cmd_sniffer,
+		      1, 10),
 	SHELL_CMD_ARG(config, NULL, "config RF --key <id> --write <value>", cmd_config, 1, 10),
 	SHELL_CMD_ARG(promiscious, NULL, "promiscious <on/off>", cmd_promiscious, 2, 3),
 	SHELL_CMD_ARG(cca, NULL,

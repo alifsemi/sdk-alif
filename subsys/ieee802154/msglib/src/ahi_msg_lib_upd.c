@@ -102,6 +102,42 @@ static void *alif_ahi_msg_header_write(struct msg_buf *p_msg, uint16_t cmd_lengt
 	return &p_msg->msg[9];
 }
 
+bool alif_ahi_msg_recv_ind_recv(struct msg_buf *p_msg, uint16_t *p_ctx, int8_t *p_rssi,
+				bool *p_frame_pending, uint64_t *p_timestamp, uint8_t *p_len,
+				uint8_t **p_data)
+{
+	if (p_msg->msg_len < TL_HEADER_LEN + sizeof(mac154app_rx_frame_ind_t)) {
+		return false;
+	}
+	if (MSG_TYPE(p_msg->msg) != AHI_KE_MSG_TYPE || MSG_COMMAND(p_msg->msg) != MAC154APP_IND) {
+		return false;
+	}
+	mac154app_rx_frame_ind_t *p_ind = (mac154app_rx_frame_ind_t *)(p_msg->msg + TL_HEADER_LEN);
+
+	if (p_ind->ind_code != MAC154APP_RX_FRAME) {
+		return false;
+	}
+	if (p_ctx) {
+		*p_ctx = p_ind->dummy;
+	}
+	if (p_rssi) {
+		*p_rssi = p_ind->rssi;
+	}
+	if (p_frame_pending) {
+		*p_frame_pending = p_ind->frame_pending;
+	}
+	if (p_timestamp) {
+		*p_timestamp = ((uint64_t)p_ind->timestamp_h << 32) + p_ind->timestamp_l;
+	}
+	if (p_len) {
+		*p_len = p_ind->len;
+	}
+	if (p_data) {
+		*p_data = p_ind->data;
+	}
+	return true;
+}
+
 enum alif_mac154_status_code alif_ahi_msg_tx_start_resp_1_1_0(struct msg_buf *p_msg, uint8_t *p_ctx,
 							      int8_t *p_rssi, uint64_t *p_timestamp,
 							      uint8_t *p_ack, uint8_t *p_ack_len)

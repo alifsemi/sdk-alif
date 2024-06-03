@@ -97,7 +97,8 @@ bool alif_ahi_msg_resp_event_recv(struct msg_buf *p_dest_msg, struct msg_buf *p_
 	p_dest_msg->msg_len = p_src_msg->msg_len;
 	return true;
 }
-
+#if 0
+// This function has bug which is fixed in update library. Leaving this here if we need to rebuild ROM image
 bool alif_ahi_msg_recv_ind_recv(struct msg_buf *p_msg, uint16_t *p_ctx, int8_t *p_rssi,
 				bool *p_frame_pending, uint64_t *p_timestamp, uint8_t *p_len,
 				uint8_t **p_data)
@@ -133,6 +134,7 @@ bool alif_ahi_msg_recv_ind_recv(struct msg_buf *p_msg, uint16_t *p_ctx, int8_t *
 	}
 	return true;
 }
+#endif
 
 bool alif_ahi_msg_rx_start_end_recv(struct msg_buf *p_msg, uint16_t *p_dummy,
 				    enum alif_mac154_status_code *p_status)
@@ -702,7 +704,7 @@ void alif_ahi_msg_tx_start(struct msg_buf *p_msg, uint16_t ctx, uint8_t channel,
 	p_cmd->dummy = ctx;
 	p_cmd->channel = channel;
 	p_cmd->cca_requested = cca_requested;
-	p_cmd->acknowledgment_asked = acknowledgment_asked;
+	p_cmd->acknowledgement_asked = acknowledgment_asked;
 	p_cmd->timestamp = timestamp;
 	p_cmd->len = data_len;
 	memcpy(p_cmd->data, p_data, data_len);
@@ -850,8 +852,7 @@ enum alif_mac154_status_code alif_ahi_msg_dbm(struct msg_buf *p_msg, uint8_t *p_
 {
 	mac154app_dbm_get_cmp_evt_t *p_cmd_resp;
 	/*  used for MAC154APP_TXPOWER_GET, MAC154APP_MINTXPOWER_GET, MAC154APP_MAXTXPOWER_GET &
-	 *  MAC154APP_LAST_RSSI_GET
-	 */
+	    MAC154APP_LAST_RSSI_GET */
 
 	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
 						  sizeof(mac154app_dbm_get_cmp_evt_t));
@@ -1198,7 +1199,7 @@ enum alif_mac154_status_code alif_ahi_msg_energy_detect_resp(struct msg_buf *p_m
 	return ALIF_MAC154_STATUS_OK;
 }
 
-/*Older version message structure for backward compatibility*/
+/*Older version message structure for backward compability*/
 typedef struct mac154app_tx_single_1_0_cmp_evt {
 	uint16_t cmd_code;
 	uint16_t dummy;
