@@ -82,9 +82,6 @@
 		slave-spi = &spi0;
 	};
 };
-&spi1 {
-	status = "okay";
-};
 
 &spi0 {
 	status = "okay";
