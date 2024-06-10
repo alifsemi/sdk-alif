@@ -18,7 +18,7 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #include <zephyr/drivers/spi.h>
 
 #define Mhz		1000000
-#define khz		1000
+#define Khz		1000
 #define BUFF_SIZE	5
 
 /* master_spi and slave_spi aliases are defined in
@@ -53,7 +53,7 @@ void test_spi_transceive(const struct device *dev,
 	cnfg.operation = SPI_OP_MODE_MASTER | SPI_WORD_SET(32) | SPI_MODE_LOOP;
 	printk("transceive operation %x\n", cnfg.operation);
 	cnfg.slave = 0;
-	cnfg.cs = cs;
+	cnfg.cs = *cs;
 
 	uint32_t txdata[BUFF_SIZE] = {0xFFFFFFFF, 0xFFFFFFFE,
 					 0xFFFFFFFD, 0xFFFFFFFC, 0xFFFFFFFB};
@@ -98,10 +98,11 @@ void test_spi_receive(const struct device *dev,
 	cnfg.frequency = 1 * Mhz;
 	cnfg.operation = SPI_OP_MODE_SLAVE | SPI_WORD_SET(16);
 	cnfg.slave = 0;
-	cnfg.cs = NULL;
 
 	uint32_t rxdata[BUFF_SIZE];
 	int length = BUFF_SIZE * sizeof(rxdata[0]);
+
+	memset(&cnfg.cs, 0, sizeof(cnfg.cs));
 
 	struct spi_buf rx_buf = {
 		.buf = rxdata,
@@ -124,7 +125,7 @@ void test_spi_receive(const struct device *dev,
  * Passing only tx buffer, Output needs to be verified with a logic analyzer.
  */
 void test_spi_transmit(const struct device *dev,
-				 struct spi_cs_control *cs)
+				 struct spi_cs_control cs)
 {
 	struct spi_config cnfg;
 
@@ -171,7 +172,7 @@ static void master_spi(void *p1, void *p2, void *p3)
 	};
 	while (1) {
 		printk("Master Transmit\n");
-		test_spi_transmit(dev, &cs_ctrl);
+		test_spi_transmit(dev, cs_ctrl);
 		k_msleep(SLEEPTIME);
 	}
 }

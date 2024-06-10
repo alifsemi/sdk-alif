@@ -8,7 +8,7 @@
  *
  */
 
-/* spi4 for is LPSPI. setting LPSPI as master and SPI0 instance as slave.
+/* setting SPI4 as master and SPI0 instance as slave.
  *
  */
 
@@ -24,4 +24,5 @@
 
 &spi0 {
 	status = "okay";
+        serial-target;
 };

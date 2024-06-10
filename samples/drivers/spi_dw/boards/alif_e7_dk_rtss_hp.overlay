@@ -24,4 +24,5 @@
 
 &spi0 {
 	status = "okay";
+        serial-target;
 };
