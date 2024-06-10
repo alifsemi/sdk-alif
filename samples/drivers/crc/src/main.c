@@ -18,7 +18,7 @@ uint8_t arr[] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80};
 uint32_t polynomial = 0x2CEEA6C8;
 uint32_t seed_value;
 
-void main(void)
+int main(void)
 {
 	const struct device *const crc_dev = DEVICE_DT_GET(DT_NODELABEL(crc));
 
@@ -35,12 +35,12 @@ void main(void)
 
 	if (!crc_dev) {
 		printk("crc_dev not found\n");
-		return;
+		return -1;
 	}
 
 	if (!device_is_ready(crc_dev)) {
 		printk("device not ready\n");
-		return;
+		return -1;
 	}
 
 	/* Add seed value */
@@ -50,4 +50,6 @@ void main(void)
 	crc_compute(crc_dev, &params);
 
 	printk("CRC output: 0x%X\n", *params.data_out);
+
+	return 0;
 }
