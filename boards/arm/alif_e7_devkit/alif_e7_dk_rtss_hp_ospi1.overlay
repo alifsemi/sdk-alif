@@ -54,38 +54,3 @@
 			 < PIN_P10_7__GPIO >;
 	};
 };
-/* The samples/drivers/i2c_dw application overlay is overridden by */
-/* this overlay, so add the contents of the samples/drivers/i2c_dw */
-/* application overlay here. */
-/* setting i2c0 as master and i2c1 instance as slave. */
-
-/ {
-	aliases {
-		master-i2c = &i2c0;
-		slave-i2c = &i2c1;
-	};
-};
-&i2c0 {
-	status = "okay";
-};
-
-&i2c1 {
-	status = "okay";
-};
-
-/* The samples/drivers/spi_dw application overlay is overridden by */
-/* this overlay, so add the contents of the samples/drivers/spi_dw */
-/* application overlay here. */
-/ {
-	aliases {
-		master-spi = &spi1;
-		slave-spi = &spi0;
-	};
-};
-&spi1 {
-	status = "okay";
-};
-
-&spi0 {
-	status = "okay";
-};
