@@ -88,7 +88,7 @@ static int i2s_send(const struct device *dev, void *buf, size_t len)
 
 	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
-	i2s_t *i2s = dev_cfg->paddr;
+	struct i2s_t *i2s = dev_cfg->paddr;
 
 	if (dev_data->tx.buf) {
 		return -EINPROGRESS;
@@ -133,7 +133,7 @@ static int i2s_recv(const struct device *dev, void *buf, size_t len)
 
 	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
-	i2s_t *i2s = dev_cfg->paddr;
+	struct i2s_t *i2s = dev_cfg->paddr;
 
 	if (dev_data->rx.buf) {
 		return -EINPROGRESS;
