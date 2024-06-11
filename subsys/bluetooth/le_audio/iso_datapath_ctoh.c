@@ -57,7 +57,7 @@ static void recv_next_sdu(struct iso_datapath_ctoh *datapath)
 	if (err) {
 		LOG_ERR("Failed to set next ISO buffer, err %u", err);
 		datapath->awaiting_buffer = true;
-		k_mem_slab_free(&datapath->sdu_queue->slab, (void **)&datapath->current_sdu);
+		k_mem_slab_free(&datapath->sdu_queue->slab, datapath->current_sdu);
 	}
 }
 

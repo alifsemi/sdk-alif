@@ -103,7 +103,7 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 				last_sdu_seq = p_sdu->seq_num;
 
 				/* SDU is no longer needed, free it */
-				k_mem_slab_free(&dec->sdu_queue[i]->slab, (void **)&p_sdu);
+				k_mem_slab_free(&dec->sdu_queue[i]->slab, p_sdu);
 			}
 		}
 

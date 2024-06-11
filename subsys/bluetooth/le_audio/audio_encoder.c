@@ -55,7 +55,7 @@ struct audio_encoder {
 
 static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 {
-	audio_encoder_t *enc = (audio_encoder_t *)p1;
+	struct audio_encoder *enc = (struct audio_encoder *)p1;
 	(void)p2;
 	(void)p3;
 
@@ -129,7 +129,7 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 		uint32_t capture_timestamp = audio->timestamp;
 
 		/* Free the completed audio block */
-		k_mem_slab_free(&enc->audio_queue->slab, (void **)&audio);
+		k_mem_slab_free(&enc->audio_queue->slab, audio);
 
 		/* Notify listeners that a block is completed */
 		struct cb_list *cb_item = enc->cb_list;
@@ -171,7 +171,7 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 		return NULL;
 	}
 
-	audio_encodstruct audio_encoderer_t *enc =
+	struct audio_encoder *enc =
 		(struct audio_encoder *)calloc(sizeof(struct audio_encoder), 1);
 
 	if (enc == NULL) {

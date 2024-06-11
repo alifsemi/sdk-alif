@@ -36,7 +36,7 @@ struct sdu_timing_info {
 static void finish_last_sdu(struct iso_datapath_htoc *datapath)
 {
 	if (datapath->current_sdu != NULL) {
-		k_mem_slab_free(&datapath->sdu_queue->slab, (void **)&datapath->current_sdu);
+		k_mem_slab_free(&datapath->sdu_queue->slab, datapath->current_sdu);
 		datapath->current_sdu = NULL;
 	}
 }

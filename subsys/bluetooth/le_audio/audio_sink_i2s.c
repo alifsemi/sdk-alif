@@ -46,7 +46,7 @@ static void finish_last_block(void)
 		return;
 	}
 
-	k_mem_slab_free(&audio_sink.audio_queue->slab, (void **)&audio_sink.current_block);
+	k_mem_slab_free(&audio_sink.audio_queue->slab, audio_sink.current_block);
 	audio_sink.current_block = NULL;
 }
 

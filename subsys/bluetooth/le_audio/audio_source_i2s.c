@@ -41,7 +41,7 @@ static void finish_last_block(void)
 	if (audio_source.drop_next_audio_block) {
 		audio_source.drop_next_audio_block = false;
 		k_mem_slab_free(&audio_source.audio_queue->slab,
-				(void **)&audio_source.current_block);
+				audio_source.current_block);
 		audio_source.current_block = NULL;
 		return;
 	}
