@@ -76,7 +76,7 @@
 /* application overlay here. */
 
 /* spi4 for is LPSPI. setting LPSPI as master and SPI0 instance as slave. */
-/*
+
 / {
 	aliases {
 		master-spi = &spi4;
@@ -90,4 +90,3 @@
 &spi0 {
 	status = "okay";
 };
-*/
