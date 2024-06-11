@@ -11,7 +11,7 @@
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/random/rand32.h>
+#include <zephyr/random/random.h>
 #include "bluetooth/le_audio/audio_source_i2s.h"
 #include "bluetooth/le_audio/audio_queue.h"
 #include "bluetooth/le_audio/audio_encoder.h"
@@ -76,9 +76,8 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 }
 #endif
 
-static int audio_datapath_init(const struct device *dev)
+static int audio_datapath_init(void)
 {
-	(void)dev;
 	int ret;
 
 	__ASSERT(device_is_ready(i2s_dev), "I2S device is not ready");
@@ -214,11 +213,8 @@ static void on_bap_bc_src_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t grp
 	case BAP_BC_SRC_CMD_TYPE_START_STREAMING: {
 		LOG_INF("Started streaming");
 
-		int ret = audio_source_simulated_start(sgrp_lid);
+		audio_datapath_start(sgrp_lid);
 
-		if (ret) {
-			LOG_ERR("Failed to start simulated audio source, err %d", ret);
-		}
 		break;
 	}
 
@@ -270,7 +266,7 @@ static int broadcast_source_configure_group(void)
 
 	sys_rand_get(bcast_id.id, sizeof(bcast_id.id));
 
-	uint16_t err = bap_bc_src_add_group(&bcast_id, NULL, 1, 1, &grp_param, &adv_param,
+	uint16_t err = bap_bc_src_add_group(&bcast_id, NULL, 2, 1, &grp_param, &adv_param,
 					    &per_adv_param, PRESENTATION_DELAY_US, &bcast_grp_lid);
 
 	if (err) {
@@ -311,6 +307,9 @@ static int broadcast_source_configure_group(void)
 		LOG_ERR("Failed to set subgroup, err %u", err);
 		return -1;
 	}
+	LOG_DBG("Broadcast subgroup added");
+	const uint16_t dp_id = GAPI_DP_ISOOSHM;
+
 	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
 	 * statically allocated
 	 */

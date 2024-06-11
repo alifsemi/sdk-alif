@@ -73,7 +73,7 @@ static bool public_broadcast_found;
 static struct broadcast_sink_env sink_env;
 
 /* Initialisation to perform pre-main */
-static int broadcast_sink_init(const struct device *dev)
+static int broadcast_sink_init(void)
 {
 	int ret = alif_lc3_init();
 

@@ -33,7 +33,7 @@ static volatile uint32_t err_ctr;
 static void *rx_block;
 static void *tx_block;
 static struct k_mem_slab i2s_mem;
-static uint8_t i2s_mem_buffer[I2S_BLOCK_SIZE_BYTES * I2S_BLOCK_COUNT];
+static uint8_t __aligned(4) i2s_mem_buffer[I2S_BLOCK_SIZE_BYTES * I2S_BLOCK_COUNT];
 
 K_MSGQ_DEFINE(i2s_msgq, sizeof(void *), I2S_BLOCK_COUNT, 1);
 
@@ -72,7 +72,7 @@ static void finish_tx(void)
 	}
 
 	/* Free the completed TX block so it is available for RX */
-	k_mem_slab_free(&i2s_mem, &tx_block);
+	k_mem_slab_free(&i2s_mem, tx_block);
 }
 
 static void send_next_block(const struct device *dev)
