@@ -4,7 +4,7 @@
  *
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
  *
  */
 
@@ -26,7 +26,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x49011000 0x1000>;
-			pinctrl-0 = < &pinctrl_i2c1 >;
+			pinctrl-0 = <&pinctrl_i2c1>;
 			pinctrl-names = "default";
 			interrupt-parent = <&nvic>;
 			interrupts = <133 3>;
@@ -47,6 +47,7 @@
 			interrupts = <141 3>;
 			bit-depth = <16>;
 			sample-rate = <48000>;
+			mono-mode;
 			status = "okay";
 		};
 
@@ -56,7 +57,7 @@
 			#address-cells = <1>;
 			#size-cells = <0>;
 			reg = <0x49010000 0x1000>;
-			pinctrl-0 = < &pinctrl_i2c0 >;
+			pinctrl-0 = <&pinctrl_i2c0>;
 			pinctrl-names = "default";
 			interrupt-parent = <&nvic>;
 			interrupts = <132 3>;
@@ -93,27 +94,27 @@
 	pinctrl_i2c1: pinctrl_i2c1 {
 		group0 {
 			/* Note: defined pinmux names are wrong so just setting numbers directly */
-			pinmux = < PINMUX_PIN(PIN_P2_6, 3) >, /* I2C1 SCL */
-				 	 < PINMUX_PIN(PIN_P2_7, 3) >; /* I2C1 SDA */
-			read_enable = < 0x1 >;
+			pinmux = <PINMUX_PIN(PIN_P2_6, 3)>, /* I2C1 SCL */
+				<PINMUX_PIN(PIN_P2_7, 3)>; /* I2C1 SDA */
+			read_enable = <0x1>;
 		};
 	};
 
-	pinctrl_i2s0:pinctrl_i2s0 {
+	pinctrl_i2s0: pinctrl_i2s0 {
 		group0 {
 			/* Note: defined pinmux names are wrong so just setting numbers directly */
-			pinmux = < PINMUX_PIN(PIN_P1_4, 2) >, /* I2S0 SDI A  */
-				 	 < PINMUX_PIN(PIN_P1_5, 2) >, /* I2S0 SDO A  */
-				 	 < PINMUX_PIN(PIN_P1_7, 3) >, /* I2S0 WS A   */
-				 	 < PINMUX_PIN(PIN_P1_6, 3) >; /* I2S0 SCLK A */
+			pinmux = <PINMUX_PIN(PIN_P1_4, 2)>, /* I2S0 SDI A  */
+				<PINMUX_PIN(PIN_P1_5, 2)>, /* I2S0 SDO A  */
+				<PINMUX_PIN(PIN_P1_7, 3)>, /* I2S0 WS A   */
+				<PINMUX_PIN(PIN_P1_6, 3)>; /* I2S0 SCLK A */
 		};
 	};
 
 	pinctrl_i2c0: pinctrl_i2c0 {
 		group0 {
-			pinmux = < PIN_P2_4__I2C0_SCL_B >,
-				 	 < PIN_P2_5__I2C0_SDA_B >;
-			read_enable = < 0x1 >;
+			pinmux = <PIN_P2_4__I2C0_SCL_B>,
+				<PIN_P2_5__I2C0_SDA_B>;
+			read_enable = <0x1>;
 		};
 	};
 };
