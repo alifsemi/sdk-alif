@@ -75,4 +75,19 @@
 /* this overlay, so add the contents of the samples/drivers/spi_dw */
 /* application overlay here. */
 
+/* spi4 for is LPSPI. setting LPSPI as master and SPI0 instance as slave. */
+/*
+/ {
+	aliases {
+		master-spi = &spi4;
+		slave-spi = &spi0;
+	};
+};
+&spi4 {
+	status = "okay";
+};
 
+&spi0 {
+	status = "okay";
+};
+*/
