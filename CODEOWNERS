@@ -1,6 +1,11 @@
 # CODEOWNERS for autoreview assigning in github
 #
-/automation/                       @HemanthKumar-AlifSemi @jkrishnanjanappa
+/automation/                       @HemanthKumar-AlifSemi
 /samples/drivers/ipm/              @HemanthKumar-AlifSemi
 /.checkpatch.conf/                 @HemanthKumar-AlifSemi
-/samples/drivers/spi_flash/        @HemanthKumar-AlifSemi @jkrishnanjanappa
+/samples/drivers/spi_flash/        @HemanthKumar-AlifSemi
+/samples/bluetooth/                @AnttiKauppila-AlifSemi @VeijoPesonen
+/samples/lc3/                      @AnttiKauppila-AlifSemi @VeijoPesonen
+/subsys/bluetooth/                 @AnttiKauppila-AlifSemi @VeijoPesonen
+/subsys/ieee802154/                @mikter @jheiskan81
+/applications/testapp/             @mikter @jheiskan81
