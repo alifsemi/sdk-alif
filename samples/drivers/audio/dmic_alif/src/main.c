@@ -53,8 +53,7 @@ uint32_t ch5_fir[18] = {0x00000000, 0x000007FF, 0x00000000, 0x00000004,
 #define PCMJ_BLOCK_SIZE		50000
 
 /* Number of blocks in the slab */
-#define MEM_SLAB_NUM_BLOCKS		1
-#define DATA_BLOCK_COUNT		1
+#define MEM_SLAB_NUM_BLOCKS		3
 
 /* size of buffer where the whole data is stored */
 #define DATA_SIZE	(PCMJ_BLOCK_SIZE * MEM_SLAB_NUM_BLOCKS)
@@ -113,10 +112,11 @@ void pdm_ch_config(void)
 }
 
 static int config_channel(const struct device *dmic_dev,
-				struct dmic_cfg *cfg)
+				struct dmic_cfg *cfg, uint8_t block_count)
 {
 	int rc;
 	int k = 0;
+	int i = 0;
 	uint32_t data;
 
 	if (dmic_dev == NULL || cfg == NULL) {
@@ -139,19 +139,22 @@ static int config_channel(const struct device *dmic_dev,
 	void *buffer;
 
 	k = 0;
-	rc = dmic_read(dmic_dev, 0, &buffer, &data, TIMEOUT);
-	if (rc < 0) {
-		dmic_trigger(dmic_dev, DMIC_TRIGGER_STOP);
-		return rc;
-	}
 
-	/* copy the data from the buffer to the pcmj data */
-	if (k + data <= DATA_SIZE) {
-		memcpy(pcmj_data + k, buffer, data);
-		k += data;
-	}
+	for (i = 0; i < block_count; ++i) {
+		rc = dmic_read(dmic_dev, 0, &buffer, &data, TIMEOUT);
+		if (rc < 0) {
+			dmic_trigger(dmic_dev, DMIC_TRIGGER_STOP);
+			return rc;
+		}
 
-	k_mem_slab_free(&mem_slab, buffer);
+		/* copy the data from the buffer to the pcmj data */
+		if (k + data <= DATA_SIZE) {
+			memcpy(pcmj_data + k, buffer, data);
+			k += data;
+		}
+
+		k_mem_slab_free(&mem_slab, buffer);
+	}
 
 	printk("Stop recording\n");
 	LOG_INF("PCM samples will be stored in %p address and size of "
@@ -218,7 +221,7 @@ void init_pdm(void)
 
 	set_config(&cfg, &stream);
 
-	config_channel(pcmj_device, &cfg);
+	config_channel(pcmj_device, &cfg, MEM_SLAB_NUM_BLOCKS);
 
 	print_data();
 }
