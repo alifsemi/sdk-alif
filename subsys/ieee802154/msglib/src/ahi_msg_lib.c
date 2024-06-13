@@ -97,8 +97,7 @@ bool alif_ahi_msg_resp_event_recv(struct msg_buf *p_dest_msg, struct msg_buf *p_
 	p_dest_msg->msg_len = p_src_msg->msg_len;
 	return true;
 }
-#if 0
-// This function has bug which is fixed in update library. Leaving this here if we need to rebuild ROM image
+
 bool alif_ahi_msg_recv_ind_recv(struct msg_buf *p_msg, uint16_t *p_ctx, int8_t *p_rssi,
 				bool *p_frame_pending, uint64_t *p_timestamp, uint8_t *p_len,
 				uint8_t **p_data)
@@ -124,7 +123,7 @@ bool alif_ahi_msg_recv_ind_recv(struct msg_buf *p_msg, uint16_t *p_ctx, int8_t *
 		*p_frame_pending = p_ind->frame_pending;
 	}
 	if (p_timestamp) {
-		*p_ctx = ((uint64_t)p_ind->timestamp_h << 32) + p_ind->timestamp_l;
+		*p_timestamp = ((uint64_t)p_ind->timestamp_h << 32) + p_ind->timestamp_l;
 	}
 	if (p_len) {
 		*p_len = p_ind->len;
@@ -134,7 +133,6 @@ bool alif_ahi_msg_recv_ind_recv(struct msg_buf *p_msg, uint16_t *p_ctx, int8_t *
 	}
 	return true;
 }
-#endif
 
 bool alif_ahi_msg_rx_start_end_recv(struct msg_buf *p_msg, uint16_t *p_dummy,
 				    enum alif_mac154_status_code *p_status)
@@ -1318,3 +1316,423 @@ enum alif_mac154_status_code alif_ahi_msg_rf_dbg_resp(struct msg_buf *p_msg, uin
 	}
 	return ALIF_MAC154_STATUS_OK;
 }
+
+enum alif_mac154_status_code alif_ahi_msg_tx_start_resp_1_1_0(struct msg_buf *p_msg, uint8_t *p_ctx,
+							      int8_t *p_rssi, uint64_t *p_timestamp,
+							      uint8_t *p_ack, uint8_t *p_ack_len)
+{
+	mac154app_tx_single_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
+						  sizeof(mac154app_tx_single_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->cmd_code != MAC154APP_TX_SINGLE) {
+		return ALIF_MAC154_STATUS_INVALID_MESSAGE;
+	}
+	if (p_cmd_resp->status != MAC154_ERR_NO_ERROR) {
+		return alif_ahi_msg_status_convert(p_cmd_resp->status);
+	}
+	if (p_rssi) {
+		*p_rssi = p_cmd_resp->ack_rssi;
+	}
+	if (p_timestamp) {
+		*p_timestamp = ((uint64_t)UNALIGNED_GET(&p_cmd_resp->ack_timestamp_h) << 32) +
+			       UNALIGNED_GET(&p_cmd_resp->ack_timestamp_l);
+	}
+	if (p_ack_len) {
+		*p_ack_len = p_cmd_resp->length;
+	}
+	if (p_ack) {
+		memcpy(p_ack, p_cmd_resp->ack_msg_begin, p_cmd_resp->length);
+	}
+
+	return ALIF_MAC154_STATUS_OK;
+}
+
+enum alif_mac154_status_code alif_ahi_msg_mem_dbg_resp(struct msg_buf *p_msg, uint8_t *p_ctx,
+						       uint32_t *p_value)
+{
+	mac154app_dbg_rw_mem_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
+						  sizeof(mac154app_dbg_rw_mem_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->status != MAC154_ERR_NO_ERROR) {
+		return alif_ahi_msg_status_convert(p_cmd_resp->status);
+	}
+	if (p_value) {
+		*p_value = p_cmd_resp->data;
+	}
+	return ALIF_MAC154_STATUS_OK;
+}
+
+enum alif_mac154_status_code alif_ahi_msg_mem_reg_resp(struct msg_buf *p_msg, uint8_t *p_ctx,
+						       uint32_t *p_value)
+{
+	mac154app_dbg_rw_reg_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
+						  sizeof(mac154app_dbg_rw_reg_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->status != MAC154_ERR_NO_ERROR) {
+		return alif_ahi_msg_status_convert(p_cmd_resp->status);
+	}
+	if (p_value) {
+		*p_value = p_cmd_resp->data;
+	}
+	return ALIF_MAC154_STATUS_OK;
+}
+
+void alif_ahi_msg_dbg_mem(struct msg_buf *p_msg, uint16_t ctx, uint8_t write, uint32_t address,
+			  uint32_t value)
+{
+	struct mac154app_dbg_rw_mem_cmd *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_DBG_RW_MEM;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(struct mac154app_dbg_rw_mem_cmd), 0);
+
+	p_cmd->cmd_code = MAC154APP_DBG_RW_MEM;
+	p_cmd->dummy = ctx;
+	p_cmd->write = write;
+	p_cmd->addr = address;
+	p_cmd->data = value;
+}
+
+void alif_ahi_msg_dbg_reg(struct msg_buf *p_msg, uint16_t ctx, uint8_t write, uint32_t address,
+			  uint32_t value)
+{
+	struct mac154app_dbg_rw_reg_cmd *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_DBG_RW_REG;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(struct mac154app_dbg_rw_reg_cmd), 0);
+
+	p_cmd->cmd_code = MAC154APP_DBG_RW_REG;
+	p_cmd->dummy = ctx;
+	p_cmd->write = write;
+	p_cmd->addr = address;
+	p_cmd->data = value;
+}
+
+void alif_ahi_msg_csl_long_id_find(struct msg_buf *p_msg, uint16_t ctx, uint8_t *p_extended_address)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_LONG_ID_FIND;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_LONG_ID_FIND;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = (p_extended_address[7] << 24) + (p_extended_address[6] << 16) +
+			 (p_extended_address[5] << 8) + p_extended_address[4];
+	p_cmd->value_l = (p_extended_address[3] << 24) + (p_extended_address[2] << 16) +
+			 (p_extended_address[1] << 8) + p_extended_address[0];
+}
+
+void alif_ahi_msg_csl_long_id_insert(struct msg_buf *p_msg, uint16_t ctx,
+				     uint8_t *p_extended_address)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_LONG_ID_INSERT;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_LONG_ID_INSERT;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = (p_extended_address[7] << 24) + (p_extended_address[6] << 16) +
+			 (p_extended_address[5] << 8) + p_extended_address[4];
+	p_cmd->value_l = (p_extended_address[3] << 24) + (p_extended_address[2] << 16) +
+			 (p_extended_address[1] << 8) + p_extended_address[0];
+}
+
+void alif_ahi_msg_csl_long_id_remove(struct msg_buf *p_msg, uint16_t ctx,
+				     uint8_t *p_extended_address)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_LONG_ID_REMOVE;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_LONG_ID_REMOVE;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = (p_extended_address[7] << 24) + (p_extended_address[6] << 16) +
+			 (p_extended_address[5] << 8) + p_extended_address[4];
+	p_cmd->value_l = (p_extended_address[3] << 24) + (p_extended_address[2] << 16) +
+			 (p_extended_address[1] << 8) + p_extended_address[0];
+}
+
+void alif_ahi_msg_csl_short_id_find(struct msg_buf *p_msg, uint16_t ctx, uint16_t short_id)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_SHORT_ID_FIND;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_SHORT_ID_FIND;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = 0;
+	p_cmd->value_l = short_id;
+}
+
+void alif_ahi_msg_csl_short_id_insert(struct msg_buf *p_msg, uint16_t ctx, uint16_t short_id)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_SHORT_ID_INSERT;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_SHORT_ID_INSERT;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = 0;
+	p_cmd->value_l = short_id;
+}
+
+void alif_ahi_msg_csl_short_id_remove(struct msg_buf *p_msg, uint16_t ctx, uint16_t short_id)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_LONG_ID_REMOVE;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_LONG_ID_REMOVE;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = 0;
+	p_cmd->value_l = short_id;
+}
+
+void alif_ahi_msg_csl_period_set(struct msg_buf *p_msg, uint16_t ctx, uint16_t period)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_PERIOD_SET;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_PERIOD_SET;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = 0;
+	p_cmd->value_l = period;
+}
+
+void alif_ahi_msg_csl_period_get(struct msg_buf *p_msg, uint16_t ctx)
+{
+	mac154app_id_get_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_PERIOD_GET;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_get_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_PERIOD_GET;
+	p_cmd->dummy = ctx;
+}
+
+void alif_ahi_msg_config_header_ie_csl_reduced(struct msg_buf *p_msg, uint16_t ctx,
+					       uint16_t csl_period, uint16_t csl_phase)
+{
+	mac154app_config_header_ie_csl_reduced_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CONF_CSL_IE_HEADER_REDUCED;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg,
+					  sizeof(mac154app_config_header_ie_csl_reduced_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CONF_CSL_IE_HEADER_REDUCED;
+	p_cmd->dummy = ctx;
+	p_cmd->csl_period = csl_period;
+	p_cmd->csl_phase = csl_phase;
+}
+
+void alif_ahi_msg_config_header_ie_csl_full(struct msg_buf *p_msg, uint16_t ctx,
+					    uint16_t csl_period, uint16_t csl_phase,
+					    uint16_t csl_rendezvous_time)
+{
+	mac154app_config_header_ie_csl_full_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CONF_CSL_IE_HEADER_FULL;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_config_header_ie_csl_full_cmd_t),
+					  0);
+
+	p_cmd->cmd_code = MAC154APP_CONF_CSL_IE_HEADER_FULL;
+	p_cmd->dummy = ctx;
+	p_cmd->csl_period = csl_period;
+	p_cmd->csl_phase = csl_phase;
+	p_cmd->csl_rendezvous_time = csl_rendezvous_time;
+}
+
+void alif_ahi_msg_config_rx_slot(struct msg_buf *p_msg, uint16_t ctx, uint32_t start,
+				 uint16_t duration, uint8_t channel)
+{
+	mac154app_config_rx_slot_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CONF_RX_SLOT;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_config_rx_slot_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CONF_RX_SLOT;
+	p_cmd->dummy = ctx;
+	p_cmd->start = start;
+	p_cmd->duration = duration;
+	p_cmd->channel = channel;
+}
+
+void alif_ahi_msg_frame_counter_update(struct msg_buf *p_msg, uint16_t ctx, uint32_t frame_counter)
+{
+	mac154app_id_set_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_FRAME_COUNTER_UPDATE;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_set_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_FRAME_COUNTER_UPDATE;
+	p_cmd->dummy = ctx;
+	p_cmd->value_h = 0;
+	p_cmd->value_l = frame_counter;
+}
+
+void alif_ahi_msg_csl_phase_get(struct msg_buf *p_msg, uint16_t ctx)
+{
+	mac154app_id_get_cmd_t *p_cmd;
+
+	p_msg->rsp_event = MAC154APP_CMP_EVT;
+	p_msg->rsp_msg = MAC154APP_CSL_PHASE_GET;
+
+	p_cmd = alif_ahi_msg_header_write(p_msg, sizeof(mac154app_id_get_cmd_t), 0);
+
+	p_cmd->cmd_code = MAC154APP_CSL_PHASE_GET;
+	p_cmd->dummy = ctx;
+}
+
+enum alif_mac154_status_code alif_ahi_msg_csl_phase_get_resp(struct msg_buf *p_msg, uint8_t *p_ctx,
+							 uint64_t *p_timestamp,
+							 uint16_t *p_csl_phase)
+{
+	mac154app_get_csl_phase_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
+						  sizeof(mac154app_get_csl_phase_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->cmd_code != MAC154APP_CSL_PHASE_GET) {
+		return ALIF_MAC154_STATUS_INVALID_MESSAGE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->status != MAC154_ERR_NO_ERROR) {
+		return alif_ahi_msg_status_convert(p_cmd_resp->status);
+	}
+	if (p_csl_phase) {
+		*p_csl_phase = p_cmd_resp->csl_phase;
+	}
+	if (p_timestamp) {
+		*p_timestamp = ((uint64_t)p_cmd_resp->value_h << 32) + p_cmd_resp->value_l;
+	}
+
+	return ALIF_MAC154_STATUS_OK;
+}
+
+enum alif_mac154_status_code alif_ahi_msg_header_ie_csl_full_resp(struct msg_buf *p_msg,
+								  uint8_t *p_ctx)
+{
+	mac154app_config_header_ie_csl_full_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(
+		p_msg, MAC154APP_CMP_EVT, sizeof(mac154app_config_header_ie_csl_full_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->cmd_code != MAC154APP_CONF_CSL_IE_HEADER_FULL) {
+		return ALIF_MAC154_STATUS_INVALID_MESSAGE;
+	}
+	return alif_ahi_msg_status_convert(p_cmd_resp->status);
+}
+
+enum alif_mac154_status_code alif_ahi_msg_header_ie_csl_reduced_resp(struct msg_buf *p_msg,
+								     uint8_t *p_ctx)
+{
+	mac154app_config_header_ie_csl_reduced_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(
+		p_msg, MAC154APP_CMP_EVT, sizeof(mac154app_config_header_ie_csl_reduced_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->cmd_code != MAC154APP_CONF_CSL_IE_HEADER_REDUCED) {
+		return ALIF_MAC154_STATUS_INVALID_MESSAGE;
+	}
+	return alif_ahi_msg_status_convert(p_cmd_resp->status);
+}
+
+enum alif_mac154_status_code alif_ahi_msg_config_rx_slot_resp(struct msg_buf *p_msg, uint8_t *p_ctx)
+{
+	mac154app_config_rx_slot_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
+						  sizeof(mac154app_config_rx_slot_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->cmd_code != MAC154APP_CONF_RX_SLOT) {
+		return ALIF_MAC154_STATUS_INVALID_MESSAGE;
+	}
+	return alif_ahi_msg_status_convert(p_cmd_resp->status);
+}
+
+
