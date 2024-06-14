@@ -133,6 +133,9 @@ int main(void)
 		return -1;
 	}
 
+
+	LOG_INF("Allocated memory buffer Address is 0x%X", (uint32_t)buffer);
+
 	if (channel_cfg.channel_id == ADC_CHANNEL_6) {
 		temp = (float)get_temperature(buffer[TEMPERATURE_SENSOR]);
 		if (temp == -1) {
