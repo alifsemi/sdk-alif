@@ -50,10 +50,10 @@ uint32_t ch5_fir[18] = {0x00000000, 0x000007FF, 0x00000000, 0x00000004,
  * Application, after getting a given block from the driver and processing its
  * data, needs to free that block.
  */
-#define PCMJ_BLOCK_SIZE		50000
+#define PCMJ_BLOCK_SIZE		30000
 
 /* Number of blocks in the slab */
-#define MEM_SLAB_NUM_BLOCKS		3
+#define MEM_SLAB_NUM_BLOCKS		2
 
 /* size of buffer where the whole data is stored */
 #define DATA_SIZE	(PCMJ_BLOCK_SIZE * MEM_SLAB_NUM_BLOCKS)
