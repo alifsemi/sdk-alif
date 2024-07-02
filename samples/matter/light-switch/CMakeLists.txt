@@ -8,13 +8,12 @@
 
 cmake_minimum_required(VERSION 3.13.1)
 
-find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-
 if(CONFIG_CHIP_FACTORY_DATA)
-set(EXTRA_DTC_OVERLAY_FILE "${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/src/platform/alif/b1_factorydata_partition.overlay")
+set(EXTRA_DTC_OVERLAY_FILE "b1_factorydata_partition.overlay")
 set(OVERLAY_CONFIG "factory_data.conf")
 endif()
 
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(matter-lighting-switch)
 
 set(CHIP_ROOT ${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR})

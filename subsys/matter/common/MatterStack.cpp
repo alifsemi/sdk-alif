@@ -32,7 +32,7 @@ LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 namespace
 {
 // Test network key
-const uint8_t sTestEventTriggerEnableKey[TestEventTriggerDelegate::kEnableKeyLength] = {
+uint8_t sTestEventTriggerEnableKey[TestEventTriggerDelegate::kEnableKeyLength] = {
 	0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
 	0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff};
 #define VerifyInitResultOrReturn(ec, msg)                                                          \
@@ -66,7 +66,7 @@ void MatterStack::matter_internal_init()
 	SetCommissionableDataProvider(&mFactoryDataProvider);
 	// Read EnableKey from the factory data.
 	MutableByteSpan enableKey(sTestEventTriggerEnableKey);
-	err = mFactoryDataProvider.GetEnableKey(enableKey);
+	CHIP_ERROR err = mFactoryDataProvider.GetEnableKey(enableKey);
 	if (err != CHIP_NO_ERROR) {
 		LOG_ERR("mFactoryDataProvider.GetEnableKey() failed. Could not delegate a test "
 			"event trigger");
