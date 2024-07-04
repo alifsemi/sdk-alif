@@ -124,23 +124,16 @@ const void BindingHandler::PrintTable()
 	for (const auto &entry : bindingTable) {
 		switch (entry.type) {
 		case MATTER_UNICAST_BINDING:
-			LOG_INF("[%d] UNICAST:", i++);
-			LOG_INF("\t\t+ Fabric: %d\n \
-            \t+ LocalEndpoint %d \n \
-            \t+ ClusterId %d \n \
-            \t+ RemoteEndpointId %d \n \
-            \t+ NodeId %d",
-				(int)entry.fabricIndex, (int)entry.local,
+			LOG_INF("[%d] UNICAST: Fabric: %d LocalEndpoint %d ClusterId %d "
+				"RemoteEndpointId %d NodeId %d",
+				i++, (int)entry.fabricIndex, (int)entry.local,
 				(int)entry.clusterId.value_or(kInvalidClusterId), (int)entry.remote,
 				(int)entry.nodeId);
 			break;
 		case MATTER_MULTICAST_BINDING:
-			LOG_INF("[%d] GROUP:", i++);
-			LOG_INF("\t\t+ Fabric: %d\n \
-            \t+ LocalEndpoint %d \n \
-            \t+ RemoteEndpointId %d \n \
-            \t+ GroupId %d",
-				(int)entry.fabricIndex, (int)entry.local, (int)entry.remote,
+			LOG_INF("[%d] GROUP: Fabric: %d LocalEndpoint %d RemoteEndpointId %d "
+				"GroupId %d",
+				i++, (int)entry.fabricIndex, (int)entry.local, (int)entry.remote,
 				(int)entry.groupId);
 			break;
 		case MATTER_UNUSED_BINDING:
