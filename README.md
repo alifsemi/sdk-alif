@@ -198,7 +198,7 @@ OTBR_AGENT_OPTS="-I wpan0 -B eth0 spinel+hdlc+uart:///dev/ttyOTBR trel://eth0"
 ```
 Next, power cycle the dongle to activate the border router and create a `wpan0`.
 
-## Light switch samples
+## Light switch sample
 
 This sample demonstrates a device acting as a light switch which controls a light bulb
 Build sample with following commands:
@@ -267,11 +267,11 @@ Interactive mode is enabled to call multiple commands without timeouts.
 
 Flash the light bulb device and commission that to Thread network and use endpoint `node_id´ 1:
 ```
-pairing ble-thread 1 hex:35060004001fffe00c0402a0f7f8051000112233445566778899aabbccddee00030e4f70656e54687265616444656d6f0410445f2b5ca6f2a93a55ce570a70efeecb000300001a02081111111122222222010212340708fd110022000000000e0800000003601c0000 20202021 3840 --timeout 65535
+pairing ble-thread 1 hex:35060004001fffe00c0402a0f7f8051000112233445566778899aabbccddee00030e4f70656e54687265616444656d6f0410445f2b5ca6f2a93a55ce570a70efeecb000300001a02081111111122222222010212340708fd110022000000000e0800000003601c0000 20202021 3840
 ```
 Flash the light switch device and commission that to Thread network and use endpoint `node_id´ 2:
 ```
-pairing ble-thread 2 hex:35060004001fffe00c0402a0f7f8051000112233445566778899aabbccddee00030e4f70656e54687265616444656d6f0410445f2b5ca6f2a93a55ce570a70efeecb000300001a02081111111122222222010212340708fd110022000000000e0800000003601c0000 20202021 3840 --timeout 65535
+pairing ble-thread 2 hex:35060004001fffe00c0402a0f7f8051000112233445566778899aabbccddee00030e4f70656e54687265616444656d6f0410445f2b5ca6f2a93a55ce570a70efeecb000300001a02081111111122222222010212340708fd110022000000000e0800000003601c0000 20202021 3840
 ```
 
 ### Bind the light switch to the light bulb
