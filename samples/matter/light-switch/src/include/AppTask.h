@@ -20,16 +20,11 @@
 
 #include <cstdint>
 
-struct k_timer;
 struct Identify;
 
 class AppTask
 {
       public:
-	enum class Timer : uint8_t {
-		DimmerTrigger,
-		Dimmer
-	};
 
 	static AppTask &Instance()
 	{
