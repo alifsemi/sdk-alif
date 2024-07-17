@@ -83,7 +83,7 @@ Clone the SDK repository to your host machine.
 
     mkdir workspace
     cd workspace
-    west init -m org-115832732@github.com:AlifSemiDev/sdk-alif
+    west init -m https://github.com/alifsemi/sdk-alif.git
     west update
 
 Patch
