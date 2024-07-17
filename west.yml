@@ -21,7 +21,7 @@ manifest:
       url-base: https://github.com/zephyrproject-rtos
     - name: armmbed
       url-base: https://github.com/ARMmbed
-  
+
   #
   # Please add items below based on alphabetical order
   projects:
@@ -30,8 +30,8 @@ manifest:
       repo-path: alif_zephyr
       revision: main
       import:
-        # In addition to the zephyr repository itself, 
-        # Alif SDK fetches the needed projects 
+        # In addition to the zephyr repository itself,
+        # Alif SDK fetches the needed projects
         #
         # Please keep this list sorted alphabetically.
         name-allowlist:
@@ -40,7 +40,8 @@ manifest:
           - cmsis
           - edtt
           - fatfs
-          - hal_alif.git
+          - hal_alif
+          - hal_ethos_u
           - liblc3
           - libmetal
           - littlefs
@@ -61,6 +62,10 @@ manifest:
           - uoscore-uedhoc
           - zcbor
           - zscilib
+    - name: matter
+      repo-path: alif_matter
+      revision: main
+      path: modules/lib/matter
 
     - name: hal_alif
       repo-path: hal_alif
@@ -73,8 +78,11 @@ manifest:
       remote: zephyrproject
       groups:
         - hal
+    - name: mcuboot_alif
+      repo-path: mcuboot_alif
+      path: bootloader/mcuboot
+      revision: main
 
   self:
     path: alif
     west-commands: scripts/west-commands.yml
-

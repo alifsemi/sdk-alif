@@ -1,0 +1,20 @@
+# Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+config IEEE802154_ALIF_AHI_MSG_LIB
+	bool "Build AHI MSG library from sources"
+	depends on IEEE802154_ALIF_SUPPORT
+	default n
+
+config IEEE802154_ALIF_SHELL
+	bool "IEEE 802.15.4 HAL test commands"
+	default y
+	depends on SHELL
+	depends on IEEE802154_ALIF_SUPPORT
+	help
+	  Enable RF driver testing related shell commands.

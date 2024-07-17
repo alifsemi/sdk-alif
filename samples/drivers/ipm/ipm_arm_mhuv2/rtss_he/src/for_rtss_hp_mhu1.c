@@ -15,17 +15,13 @@
 const struct device *mhu1_r;
 const struct device *mhu1_s;
 
-static bool msg_sent;
-static bool msg_received;
-uint8_t recv_count;
+static volatile bool msg_sent;
+static volatile bool msg_received;
 
 static void recv_cb(const struct device *mhuv2_ipmdev, uint32_t *user_data)
 {
 	printk("MSG received is 0x%x\n", *user_data);
-	if (recv_count > 0)
-		++recv_count;
-	else
-		msg_received = true;
+	msg_received = true;
 }
 
 static void send_cb(const struct device *mhuv2_ipmdev, uint32_t *user_data)
@@ -39,7 +35,6 @@ static void send(void)
 	uint32_t set_mhu = 0xFACEFACE;
 
 	msg_received = false;
-	recv_count = 0;
 	msg_sent = false;
 	mhuv2_ipm_send(mhu1_s, 0, &set_mhu);
 	while (!msg_sent)
