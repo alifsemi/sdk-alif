@@ -22,30 +22,30 @@ struct Identify;
 class AppTask
 {
 public:
-    static AppTask & Instance()
-    {
-        static AppTask sAppTask;
-        return sAppTask;
-    };
+	static AppTask & Instance()
+	{
+		static AppTask sAppTask;
+		return sAppTask;
+	};
 
-    CHIP_ERROR StartApp();
-    void UpdateClusterState();
-    PWMDevice & GetPWMDevice() { return mPWMDevice; }
+	CHIP_ERROR StartApp(void);
+	void UpdateClusterState(void);
+	PWMDevice & GetPWMDevice() { return mPWMDevice; }
 
-    static void IdentifyStartHandler(Identify *);
-    static void IdentifyStopHandler(Identify *);
+	static void IdentifyStartHandler(Identify *);
+	static void IdentifyStopHandler(Identify *);
 
 private:
-    CHIP_ERROR Init();
-    static CHIP_ERROR DevInit();
+	CHIP_ERROR Init(void);
+	static CHIP_ERROR DevInit(void);
 
-    static void LightingActionEventHandler(const AppEvent * event);
-    static void PostEvent(AppEvent * event);
-    static void DispatchEvent(const AppEvent * event);
-    static void GetEvent(AppEvent * aEvent);
-    static void StartBLEAdvertisementHandler(const AppEvent * event);
-    static void ActionInitiated(PWMDevice::Action_t action, int32_t actor);
-    static void ActionCompleted(PWMDevice::Action_t action, int32_t actor);
+	static void LightingActionEventHandler(const AppEvent * event);
+	static void PostEvent(AppEvent * event);
+	static void DispatchEvent(const AppEvent * event);
+	static void GetEvent(AppEvent * aEvent);
+	static void StartBLEAdvertisementHandler(const AppEvent * event);
+	static void ActionInitiated(PWMDevice::Action_t action, int32_t actor);
+	static void ActionCompleted(PWMDevice::Action_t action, int32_t actor);
 
-    PWMDevice mPWMDevice;
+	PWMDevice mPWMDevice;
 };

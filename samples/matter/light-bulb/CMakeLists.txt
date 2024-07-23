@@ -48,7 +48,6 @@ target_sources(app PRIVATE
                ${ALIF_COMMON}/pwmdevice/PWMDevice.cpp
                ${ALIF_COMMON}/common/MatterStack.cpp
                ${ALIF_COMMON}/common/FabricTableDelegate.cpp)
-              
 
 chip_configure_data_model(app
     INCLUDE_SERVER

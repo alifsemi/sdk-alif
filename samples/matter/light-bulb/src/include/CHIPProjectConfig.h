@@ -24,6 +24,6 @@
 
 #define CHIP_CONFIG_RMP_DEFAULT_ACK_TIMEOUT (20000_ms32)
 
-#define BTP_CONN_RSP_TIMEOUT_MS 315000 // 315 seconds
+#define BTP_CONN_RSP_TIMEOUT_MS 315000 /* 315 seconds */
 
-#define BTP_ACK_TIMEOUT_MS 315000 // 315 seconds
+#define BTP_ACK_TIMEOUT_MS 315000 /* 315 seconds */

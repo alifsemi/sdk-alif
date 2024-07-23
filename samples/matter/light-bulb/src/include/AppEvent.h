@@ -16,24 +16,21 @@ using EventHandler = void (*)(const AppEvent *);
 
 enum class AppEventType : uint8_t
 {
-    None = 0,
-    Lighting,
-    IdentifyStart,
-    IdentifyStop,
-    ShellButton,
+	None = 0,
+	Lighting,
+	IdentifyStart,
+	IdentifyStop,
+	ShellButton,
 };
 
-struct AppEvent
-{
-    union
-    {
-        struct
-        {
-            uint8_t Action;
-            int32_t Actor;
-        } LightingEvent;
-    };
+struct AppEvent {
+	union {
+		struct {
+			uint8_t Action;
+			int32_t Actor;
+		} LightingEvent;
+	};
 
-    AppEventType Type{ AppEventType::None };
-    EventHandler Handler;
+	AppEventType Type{ AppEventType::None };
+	EventHandler Handler;
 };
