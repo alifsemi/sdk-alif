@@ -13,7 +13,7 @@ git submodule update --init third_party/perfetto/repo
 git submodule update --init third_party/libwebsockets/repo
 git submodule update --init third_party/editline/repo
 
-# Create a Matter virtual enviroment and tools
+# Create a Matter virtual environment and tools
 source scripts/bootstrap.sh
 
 # Upgrade PIP to Matter own virtual env
@@ -23,7 +23,7 @@ pip install -r $PWD_ORG/scripts/requirements-matter.txt
 
 # Build a chip host tools
 echo "Build a Host tools"
-# Clean old build system 
+# Clean old build system
 rm -rf out/host
 gn gen out/host --args='chip_enable_wifi=false'
 ninja -C out/host

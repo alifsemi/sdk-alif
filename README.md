@@ -20,14 +20,14 @@ See the [Introduce to Matter SDK project](https://project-chip.github.io/connect
 
 ## Requirements
 
-1. 1-2 Balletto DK for Matter devices. 
+1. 1-2 Balletto DK for Matter devices.
 2. nRF8240 USB Dongle for Thread Border router with Network RPC Co-Processor binary
 3. Ubuntu 22.04 PC for acting as a Border router
 
 
 ## Getting started
 
-Alif Matter SDK is using Zephyr platform setup with OpenThread. So initial setup for Zephyr enviroment is needed.
+Alif Matter SDK is using Zephyr platform setup with OpenThread. So initial setup for Zephyr environment is needed.
 This chapter defines how to set up Matter environment for Linux Ubuntu 22.04 based operating system and how to config Thread border router for Matter.
 
 ### Prerequites for Ubuntu 22.04
@@ -237,7 +237,7 @@ Before start process we need to know the following parameters:
 
 Border router active data is checked by following command:
 ```
-sudo ot-ctl dataset active -x 
+sudo ot-ctl dataset active -x
 35060004001fffe00c0402a0f7f8051000112233445566778899aabbccddee00030e4f70656e54687265616444656d6f0410445f2b5ca6f2a93a55ce570a70efeecb000300001a02081111111122222222010212340708fd110022000000000e0800000003601c0000
 Done
 ```

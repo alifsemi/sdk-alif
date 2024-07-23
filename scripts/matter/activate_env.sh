@@ -3,7 +3,7 @@
 PWD_ORG=`pwd`
 
 cd ../modules/lib/matter
-# Activate Matter virtual Enviroment
+# Activate Matter virtual Environment
 source scripts/activate.sh
 
 echo "Build a Host tools"
