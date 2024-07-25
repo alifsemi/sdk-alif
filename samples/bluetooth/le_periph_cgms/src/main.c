@@ -34,32 +34,55 @@
 
 #include "bass.h"
 #include "bas.h"
+#include "gapc_msg.h"
 
-#define BT_CONN_STATE_CONNECTED    0x00
-#define BT_CONN_STATE_DISCONNECTED 0x01
+#include "se_service.h"
+
 #define BATT_INSTANCE 0x00
 
-static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
+/* Device definitions */
+/* Load name from configuration file */
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
+static const char device_name[] = DEVICE_NAME;
 
-/* Variable to check if peer device is ready to receive data"*/
+/* BLE definitions */
+#define local_sec_level GAP_SEC1_AUTH_PAIR_ENC
+
+/* State variables for BLE connection and services */
 static bool READY_TO_SEND;
 static bool READY_TO_SEND_BASS;
+static bool connected;
+static bool resolved;
+static gapc_pairing_keys_t stored_keys;
+static gapc_pairing_keys_t generated_keys;
+static gapc_bond_data_t bond_data_saved;
+static uint8_t temp_conidx;
+/* Store advertising activity index for re-starting after disconnection */
+static uint8_t adv_actv_idx;
 
-K_SEM_DEFINE(my_sem, 0, 1);
+static cgm_status_t cgms_status;
+
+/* Semaphores definition */
+K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
+/* Exposed functions */
+static uint16_t start_le_adv(uint8_t actv_idx);
+
 /**
  * Bluetooth stack configuration
  */
+
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_DISABLE,
+	.pairing_mode = GAPM_PAIRING_MODE_ALL,
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
-	.private_identity.addr = {0xCA, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
-	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	.private_identity.addr = {0xDB, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
+	.irk.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08, 0x11,
+			0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
 	.att_cfg = 0,
@@ -73,28 +96,22 @@ static const gapm_config_t gapm_cfg = {
 	.dflt_link_policy = 0, /* BT Classic only */
 };
 
+static gapc_pairing_t p_pairing_info = {
+	.auth = GAP_AUTH_BOND | GAP_AUTH_SEC_CON | GAP_AUTH_MITM,
+	.ikey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
+	.iocap = GAP_IO_CAP_DISPLAY_ONLY,
+	.key_size = 16,
+	.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
+	.rkey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
+};
 
-/* Load name from configuration file */
-#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
-static const char device_name[] = DEVICE_NAME;
 
-/* Store advertising activity index for re-starting after disconnection */
-static uint8_t adv_actv_idx;
-
-static uint16_t start_le_adv(uint8_t actv_idx)
+void on_address_resolved_cb(uint16_t status, const gap_addr_t *p_addr, const gap_sec_key_t *pirk)
 {
-	uint16_t err;
-
-	gapm_le_adv_param_t adv_params = {
-		.duration = 0, /* Advertise indefinitely */
-	};
-
-	err = gapm_le_start_adv(actv_idx, &adv_params);
-	if (err) {
-		LOG_ERR("Failed to start LE advertising with error %u", err);
-	}
-	return err;
+	resolved = (status != GAP_ERR_NO_ERROR) ? false : true;
+	gapc_le_connection_cfm(temp_conidx, 0, resolved ? &(bond_data_saved) : NULL);
 }
+
 
 /**
  * Bluetooth GAPM callbacks
@@ -103,25 +120,35 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 				 const gap_bdaddr_t *p_peer_addr,
 				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
 {
-	LOG_INF("Connection request on index %u", conidx);
-	gapc_le_connection_cfm(conidx, 0, NULL);
+	/* Number of IRKs */
+	uint8_t nb_irk = 1;
 
-	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
+	LOG_DBG("Connection request on index %u", conidx);
+
+	LOG_INF("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
+		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
+		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
+
+	LOG_INF("Peer address type: %s", (p_peer_addr->addr_type == 1) ? "private" : "public");
+	temp_conidx = conidx;
+
+	/* Resolve Address */
+	gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, nb_irk, &(stored_keys.irk.key),
+		on_address_resolved_cb);
+	LOG_INF("Connection parameters: interval %u, latency %u, supervision timeout %u",
 		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
 
-	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
+	connected = true;
 
-	conn_status = BT_CONN_STATE_CONNECTED;
-
+	/* Continue app */
 	k_sem_give(&conn_sem);
-
-	LOG_DBG("Please enable notifications on peer device..");
+	LOG_INF("Please enable notifications on peer device..");
 }
 
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Unexpected key received key on conidx %u", conidx);
-}
+static const gapc_connection_req_cb_t gapc_con_cbs = {
+	.le_connection_req = on_le_connection_req,
+};
+
 
 static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 {
@@ -135,31 +162,57 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
-	conn_status = BT_CONN_STATE_DISCONNECTED;
+	connected = false;
+	READY_TO_SEND = false;
+	resolved = false;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
 			uint16_t max_len)
 {
+	uint16_t err;
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
 
-	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
+	err = gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
 			     (const uint8_t *)device_name);
+
+	if (err) {
+		LOG_ERR("ERROR ON GET NAME CFM 0x%02x", err);
+	}
 }
 
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 {
+	LOG_INF("ON APPEARANCE GET");
 	/* Send 'unknown' appearance */
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
+static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
+	.disconnected = on_disconnection,
+	.name_get = on_name_get,
+	.appearance_get = on_appearance_get,
+	/* Other callbacks in this struct are optional */
+};
+
+
+/*
+ * Error callback
+ */
 static void on_gapm_err(enum co_error err)
 {
 	LOG_ERR("gapm error %d", err);
 }
 
-/* BLPS callbacks */
+static const gapm_err_info_config_cb_t gapm_err_cbs = {
+	.ctrl_hw_error = on_gapm_err,
+};
+
+
+/*
+ * CGMS callbacks
+ */
 
 static void on_cgms_meas_send_complete(uint8_t conidx, uint16_t status)
 {
@@ -174,11 +227,12 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val
 		READY_TO_SEND = false;
 		break;
 	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND:
 		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = true;
-		LOG_DBG("Sending measurements");
+			READY_TO_SEND = true;
+			LOG_INF("Sending measurements");
 		break;
+
+	case PRF_CLI_START_IND:
 	default:
 		break;
 	}
@@ -186,6 +240,12 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val
 
 static void on_rd_status_req(uint8_t conidx, uint32_t token)
 {
+	uint16_t status = 0;
+	uint16_t err = cgms_rd_status_cfm(conidx, token, status, &(cgms_status));
+
+	if (err) {
+		LOG_ERR(" Error sending status 0x%04x", err);
+	}
 }
 
 static void on_re_sess_start_time_req(uint8_t conidx, uint32_t token)
@@ -218,6 +278,23 @@ static void on_ops_ctrl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
 }
 
+static const cgms_cb_t cgms_cb = {
+	.cb_meas_send_cmp = on_cgms_meas_send_complete,
+	.cb_bond_data_upd = on_bond_data_upd,
+	.cb_rd_status_req = on_rd_status_req,
+	.cb_rd_sess_start_time_req = on_re_sess_start_time_req,
+	.cb_rd_sess_run_time_req = on_rd_sess_run_time_req,
+	.cb_sess_start_time_upd = on_sess_start_time_upd,
+	.cb_racp_req = on_racp_req,
+	.cb_racp_rsp_send_cmp = on_racp_rsp_send_cmp,
+	.cb_ops_ctrl_pt_req = on_ops_ctrl_pt_req,
+	.cb_ops_ctrl_pt_rsp_send_cmp = on_ops_ctrl_pt_rsp_send_cmp,
+};
+
+
+/*
+ * Battery service callbacks
+ */
 static void on_bass_batt_level_upd_cmp(uint16_t status)
 {
 	READY_TO_SEND_BASS = true;
@@ -239,32 +316,206 @@ static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
 	default:
 		break;
 	}
-
 }
 
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
+static const bass_cb_t bass_cb = {
+	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
+	.cb_bond_data_upd = on_bass_bond_data_upd,
 };
+
+
+/*
+ * Security callbacks
+ */
+static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
+{
+	stored_keys.csrk = p_keys->csrk;
+	memcpy(stored_keys.irk.key.key, p_keys->irk.key.key, sizeof(stored_keys.irk.key.key));
+	memcpy(stored_keys.irk.identity.addr, p_keys->irk.identity.addr,
+		sizeof(stored_keys.irk.identity.addr));
+
+	stored_keys.irk.identity.addr_type = p_keys->irk.identity.addr_type;
+	stored_keys.ltk = p_keys->ltk;
+	stored_keys.pairing_lvl = p_keys->pairing_lvl;
+	stored_keys.valid_key_bf = p_keys->valid_key_bf;
+}
+static void on_pairing_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
+{
+	uint16_t err;
+
+	do {
+		gapm_le_configure_security_level(local_sec_level);
+		err = gapc_le_pairing_accept(conidx, true, &p_pairing_info, 0);
+
+		if (err != GAP_ERR_NO_ERROR) {
+			LOG_ERR("Pairing error %u", err);
+		}
+	} while (false);
+}
+
+static void on_pairing_failed(uint8_t conidx, uint32_t metainfo, uint16_t reason)
+{
+	LOG_DBG("Pairing failed conidx: %u, metainfo: %u, reason: 0x%02x\n",
+		conidx, metainfo, reason);
+}
+
+static void on_le_encrypt_req(uint8_t conidx, uint32_t metainfo, uint16_t ediv,
+	const gap_le_random_nb_t *p_rand)
+{
+	uint16_t err;
+
+	err = gapc_le_encrypt_req_reply(conidx, true, &stored_keys.ltk.key,
+					stored_keys.ltk.key_size);
+
+	if (err) {
+		LOG_ERR("Error during encrypt request reply %u", err);
+	}
+}
+
+static void on_auth_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
+{
+	LOG_INF("ON AUTH REO");
+}
+
+static void on_auth_info(uint8_t conidx, uint32_t metainfo, uint8_t sec_lvl,
+			bool encrypted, uint8_t key_size)
+{
+}
+
+static void on_pairing_succeed(uint8_t conidx, uint32_t metainfo, uint8_t pairing_level,
+				bool enc_key_present, uint8_t key_type)
+{
+	LOG_INF("PAIRING SUCCEED");
+
+	bond_data_saved.pairing_lvl = pairing_level;
+	bond_data_saved.enc_key_present = true;
+
+	bool bonded = gapc_is_bonded(conidx);
+
+	if (bonded) {
+		LOG_INF("Peer device bonded");
+	}
+}
+
+static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
+{
+	uint16_t err;
+
+	switch (exp_info) {
+	case GAPC_INFO_IRK:
+	{
+		LOG_INF("REQUIRED IRK INFO");
+
+		uint16_t err = gapc_le_pairing_provide_irk(conidx, &(gapm_cfg.irk));
+
+		if (err) {
+			LOG_ERR("IRK send failed");
+		} else {
+			LOG_INF("IRK sent successful");
+		}
+	} break;
+
+	case GAPC_INFO_TK_DISPLAYED:
+		LOG_INF("INFO TK DISPLAYED");
+		break;
+	case GAPC_INFO_PASSKEY_DISPLAYED:
+	err = gapc_pairing_provide_passkey(conidx, true, 123456);
+
+		if (err) {
+			LOG_ERR("ERROR PROVIDING PASSKEY 0x%02x", err);
+		} else {
+			LOG_INF("PASSKEY 123456");
+		}
+		break;
+	case GAPC_INFO_CSRK:
+		LOG_WRN("CSRK REQUEST?");
+		break;
+	case GAPC_INFO_OOB:
+		LOG_WRN("OOB REQUEST");
+		break;
+	case GAPC_INFO_TK_OOB:
+		LOG_WRN("TK OOB REQUEST");
+		break;
+	case GAPC_INFO_TK_ENTERED:
+		LOG_WRN("TK ENTERED");
+		break;
+	case GAPC_INFO_PASSKEY_ENTERED:
+		LOG_WRN("PASSKEY ENTERED");
+		break;
+	default: {
+		LOG_WRN("Requested info 0x%02x", exp_info);
+	} break;
+	}
+}
+
+static void on_ltk_req(uint8_t conidx, uint32_t metainfo, uint8_t key_size)
+{
+	LOG_INF("ltk req\n");
+	uint16_t err;
+
+	gapc_ltk_t *ltk_data = &(generated_keys.ltk);
+
+	uint8_t cnt;
+
+	ltk_data->key_size = GAP_KEY_LEN;
+	ltk_data->ediv = (uint16_t)co_rand_word();
+
+	for (cnt = 0; cnt < RAND_NB_LEN; cnt++)	{
+		ltk_data->key.key[cnt] = (uint8_t)co_rand_word();
+		ltk_data->randnb.nb[cnt] = (uint8_t)co_rand_word();
+		}
+
+	for (cnt = RAND_NB_LEN; cnt < GAP_KEY_LEN; cnt++) {
+		ltk_data->key.key[cnt] = (uint8_t)co_rand_word();
+		}
+
+	err = gapc_le_pairing_provide_ltk(conidx, &generated_keys.ltk);
+
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("LTK provide error %u\n", err);
+	} else {
+		LOG_WRN("LTK PROVIDED");
+	}
+
+	generated_keys.valid_key_bf |= GAP_KDIST_ENCKEY;
+	generated_keys.pairing_lvl = 1;
+}
+
+static void on_numeric_compare_req(uint8_t conidx, uint32_t metainfo, uint32_t numeric_value)
+{
+	LOG_INF("NUMERIC COMPARE REQ");
+}
+static void on_key_pressed(uint8_t conidx, uint32_t metainfo, uint8_t notification_type)
+{
+	LOG_INF("KEY PRESSED");
+}
+static void on_repeated_attempt(uint8_t conidx, uint32_t metainfo)
+{
+	LOG_INF("REPEATED ATTEMPT");
+}
 
 static const gapc_security_cb_t gapc_sec_cbs = {
 	.key_received = on_key_received,
-	/* All other callbacks in this struct are optional */
+	.pairing_req = on_pairing_req,
+	.pairing_failed = on_pairing_failed,
+	.le_encrypt_req = on_le_encrypt_req,
+	.auth_req = on_auth_req,
+	.auth_info = on_auth_info,
+	.pairing_succeed = on_pairing_succeed,
+	.info_req = on_info_req,
+	.ltk_req = on_ltk_req,
+	.numeric_compare_req = on_numeric_compare_req,
+	.key_pressed = on_key_pressed,
+	.repeated_attempt = on_repeated_attempt,
 };
 
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-	/* Other callbacks in this struct are optional */
-};
 
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
-static const gapm_err_info_config_cb_t gapm_err_cbs = {
-	.ctrl_hw_error = on_gapm_err,
-};
-
+/*
+ * Callbacks assignment
+ */
 static const gapm_callbacks_t gapm_cbs = {
 	.p_con_req_cbs = &gapc_con_cbs,
 	.p_sec_cbs = &gapc_sec_cbs,
@@ -274,24 +525,10 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
 
-static const cgms_cb_t cgms_cb = {
-	.cb_meas_send_cmp = on_cgms_meas_send_complete,
-	.cb_bond_data_upd = on_bond_data_upd,
-	.cb_rd_status_req = on_rd_status_req,
-	.cb_rd_sess_start_time_req = on_re_sess_start_time_req,
-	.cb_rd_sess_run_time_req = on_rd_sess_run_time_req,
-	.cb_sess_start_time_upd = on_sess_start_time_upd,
-	.cb_racp_req = on_racp_req,
-	.cb_racp_rsp_send_cmp = on_racp_rsp_send_cmp,
-	.cb_ops_ctrl_pt_req = on_ops_ctrl_pt_req,
-	.cb_ops_ctrl_pt_rsp_send_cmp = on_ops_ctrl_pt_rsp_send_cmp,
 
-};
-
-static const bass_cb_t bass_cb = {
-	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
-	.cb_bond_data_upd = on_bass_bond_data_upd,
-};
+/*
+ * Advertising functions
+ */
 
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
@@ -354,6 +591,21 @@ static uint16_t set_scan_data(uint8_t actv_idx)
 	return err;
 }
 
+static uint16_t start_le_adv(uint8_t actv_idx)
+{
+	uint16_t err;
+	gapm_le_adv_param_t adv_params = {
+		.duration = 0, /* Advertise indefinitely */
+	};
+
+	err = gapm_le_start_adv(actv_idx, &adv_params);
+	if (err) {
+		LOG_ERR("Failed to start LE advertising with error %u", err);
+	}
+	return err;
+}
+
+
 /**
  * Advertising callbacks
  */
@@ -389,7 +641,7 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&my_sem);
+		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -445,7 +697,7 @@ static void server_configure(void)
 	cgms_cfg.type_sample = CGM_TYPE_SMP_CAPILLARY_WHOLE_BLOOD;
 	cgms_cfg.sample_location = CGM_SMP_LOC_FINGER;
 
-	err = prf_add_profile(TASK_ID_CGMS, 0, 0, &cgms_cfg, &cgms_cb, &start_hdl);
+	err = prf_add_profile(TASK_ID_CGMS, local_sec_level, 0, &cgms_cfg, &cgms_cb, &start_hdl);
 
 	if (err) {
 		LOG_ERR("Error %u adding profile", err);
@@ -482,7 +734,7 @@ static void send_measurement(uint16_t current_value)
 		.trend_info = current_value - 50,
 	};
 
-	/* Send measuremnt to connected device */
+	/* Send measurement to connected device */
 	/* Set 0 to first parameter to send only to the first connected peer device */
 	err = cgms_meas_send(0, &p_meas);
 
@@ -502,24 +754,14 @@ uint16_t read_sensor_value(uint16_t current_value)
 	return current_value;
 }
 
-void blps_process(uint16_t measurement)
+void cgms_process(uint16_t measurement)
 {
-	switch (conn_status) {
-	case BT_CONN_STATE_CONNECTED:
-		if (READY_TO_SEND) {
-
-			send_measurement(measurement);
-			READY_TO_SEND = false;
-		} else {
-			LOG_DBG("Not ready to send\n");
-		}
-		break;
-	case BT_CONN_STATE_DISCONNECTED:
+	if (connected && READY_TO_SEND) {
+		send_measurement(measurement);
+		READY_TO_SEND = false;
+	} else if (!connected) {
 		LOG_DBG("Waiting for peer connection...\n");
 		k_sem_take(&conn_sem, K_FOREVER);
-
-	default:
-		break;
 	}
 }
 
@@ -561,16 +803,16 @@ int main(void)
 
 	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 	if (err) {
-		LOG_ERR("gapm_configure error %u", err);
+		LOG_ERR("gapm_configure error %02x", err);
 		return -1;
 	}
 
 	config_battery_service();
 
 	LOG_DBG("Waiting for init...\n");
-	k_sem_take(&my_sem, K_FOREVER);
+	k_sem_take(&init_sem, K_FOREVER);
 
-	LOG_DBG("Init complete!\n");
+	LOG_DBG("Init complete!");
 
 	while (1) {
 		/* Execute process every 1 second */
@@ -578,7 +820,7 @@ int main(void)
 
 		current_value = read_sensor_value(current_value);
 
-		blps_process(current_value);
+		cgms_process(current_value);
 		battery_process();
 	}
 }
