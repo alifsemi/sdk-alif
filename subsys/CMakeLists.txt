@@ -10,3 +10,4 @@ zephyr_include_directories(.)
 
 add_subdirectory(ieee802154)
 add_subdirectory(bluetooth)
+add_subdirectory(powermgr)

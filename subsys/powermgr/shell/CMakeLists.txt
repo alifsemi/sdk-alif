@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -6,10 +6,4 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-menu "Alif SDK subsystems"
-
-rsource "ieee802154/Kconfig"
-rsource "bluetooth/Kconfig"
-rsource "powermgr/Kconfig"
-
-endmenu
+zephyr_sources(src/power_mgr_shell.c)
