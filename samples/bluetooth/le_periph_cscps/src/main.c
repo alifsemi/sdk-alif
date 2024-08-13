@@ -27,15 +27,19 @@
 #include "prf.h"
 #include "cscps.h"
 #include "cscps_msg.h"
+#include "bass.h"
+#include "bas.h"
 
 #define BT_CONN_STATE_CONNECTED      0x00
 #define BT_CONN_STATE_DISCONNECTED   0x01
 #define CSCP_SENSOR_LOCATION_SUPPORT 0x01
+#define BATT_INSTANCE 0x00
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 /* Variable to check if peer device is ready to receive data"*/
 static bool READY_TO_SEND;
+static bool READY_TO_SEND_BASS;
 
 static uint16_t wheel_evt_time;
 
@@ -151,23 +155,24 @@ static void on_gapm_err(enum co_error err)
 
 static void on_meas_send_complete(uint16_t status)
 {
-	LOG_DBG("Send meas completed!\n");
 	READY_TO_SEND = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
 {
 	switch (cfg_val) {
-	case PRF_CLI_STOP_NTFIND: {
+	case PRF_CLI_STOP_NTFIND:
 		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
 		READY_TO_SEND = false;
-	} break;
-
+		break;
 	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND: {
+	case PRF_CLI_START_IND:
 		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
+		LOG_DBG("Sending measurements");
 		READY_TO_SEND = true;
-	}
+		break;
+	default:
+		break;
 	}
 }
 
@@ -178,6 +183,29 @@ static void on_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
 
 static void on_cb_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
+}
+
+static void on_bass_batt_level_upd_cmp(uint16_t status)
+{
+	READY_TO_SEND_BASS = true;
+}
+
+static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
+{
+	switch (ntf_ind_cfg) {
+	case PRF_CLI_STOP_NTFIND:
+		LOG_INF("Client requested BASS stop notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND_BASS = false;
+		break;
+	case PRF_CLI_START_NTF:
+	case PRF_CLI_START_IND:
+		LOG_INF("Client requested BASS start notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND_BASS = true;
+		LOG_DBG("Sending battery level");
+		break;
+	default:
+		break;
+	}
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -220,16 +248,22 @@ static const cscps_cb_t cscps_cb = {
 	.cb_ctnl_pt_rsp_send_cmp = on_cb_ctnl_pt_rsp_send_cmp,
 };
 
+static const bass_cb_t bass_cb = {
+	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
+	.cb_bond_data_upd = on_bass_bond_data_upd,
+};
+
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_CYCLING_SPEED_CADENCE;
-
+	uint16_t svc2 = GATT_SVC_BATTERY_SERVICE;
+	uint8_t num_svc = 2;
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_16_LEN;
+	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
 
 	/* Create advertising data with necessary services */
 	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
@@ -250,11 +284,12 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 
 	/* Update data pointer */
 	p_data = p_data + adv_device_name;
-	p_data[0] = GATT_UUID_16_LEN + 1;
+	p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
 	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 
 	/* Copy identifier */
 	memcpy(p_data + 2, (void *)&svc, sizeof(svc));
+	memcpy(p_data + 4, (void *)&svc2, sizeof(svc2));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf); /* Release ownership of buffer so stack can free it when done */
@@ -395,20 +430,28 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 	create_advertising();
 }
 
+static uint16_t cumul_crk;
+static uint16_t cumul_wheel;
+
 /*  Generate and send dummy data*/
 static void send_measurement(uint16_t current_value)
 {
 	uint16_t err;
 
-	wheel_evt_time += current_value + 1000;
+	wheel_evt_time += current_value + 2000;
 	/*      Dummy measurements values       */
 	cscp_csc_meas_t p_meas = {
-		.flags = CSCP_MEAS_WHEEL_REV_DATA_PRESENT_BIT,
+		.flags = CSCP_MEAS_WHEEL_REV_DATA_PRESENT_BIT |
+			CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
 		/* Moving above 1000 milliseconds */
+		.cumul_wheel_rev = cumul_wheel + 1,
 		.last_wheel_evt_time = wheel_evt_time,
+		.cumul_crank_rev = cumul_crk + 3,
+		.last_crank_evt_time = wheel_evt_time + 2,
 	};
 
-	LOG_DBG("measurement = %u\n", current_value);
+	cumul_crk += 3;
+	cumul_wheel += 1;
 
 	/* Set bit field to all 1's to send notification
 	 * on all connections that are subscribed
@@ -423,7 +466,7 @@ static void send_measurement(uint16_t current_value)
 uint16_t read_sensor_value(uint16_t current_value)
 {
 	/* Generating dummy values between 1 and 5 */
-	if (current_value >= 5) {
+	if (current_value >= 3) {
 		current_value = 1;
 	} else {
 		current_value++;
@@ -436,7 +479,6 @@ void cscps_process(uint16_t measurement)
 	switch (conn_status) {
 	case BT_CONN_STATE_CONNECTED:
 		if (READY_TO_SEND) {
-
 			send_measurement(measurement);
 			READY_TO_SEND = false;
 		}
@@ -448,6 +490,34 @@ void cscps_process(uint16_t measurement)
 
 	default:
 		break;
+	}
+}
+
+static void config_battery_service(void)
+{
+	uint16_t err;
+	struct bass_db_cfg bass_cfg;
+	uint16_t start_hdl = 0;
+
+	bass_cfg.bas_nb = 1;
+	bass_cfg.features[0] = 1;
+
+	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
+}
+
+static void battery_process(void)
+{
+	uint16_t err;
+	/* Fixed value for demonstrating purposes */
+	uint8_t battery_level = 99;
+
+	if (READY_TO_SEND_BASS) {
+		/* Sending dummy battery level to first battery instance*/
+		err = bass_batt_level_upd(BATT_INSTANCE, battery_level);
+
+		if (err) {
+			LOG_ERR("Error %u sending battery level", err);
+		}
 	}
 }
 
@@ -465,6 +535,8 @@ int main(void)
 		return -1;
 	}
 
+	config_battery_service();
+
 	LOG_DBG("Waiting for init...\n");
 	k_sem_take(&init_sem, K_FOREVER);
 
@@ -477,5 +549,8 @@ int main(void)
 		current_value = read_sensor_value(current_value);
 
 		cscps_process(current_value);
+		battery_process();
 	}
+
+	return 0;
 }
