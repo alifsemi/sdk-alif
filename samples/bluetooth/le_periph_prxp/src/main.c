@@ -10,7 +10,7 @@
 /*
  * This example will start an instance of a peripheral Proximity Profile (PRXP)
  * it will notify when the link has been lost with the alert level set from the
- * central device.
+ * central device. Includes Battery Service support.
  */
 
 #include <zephyr/kernel.h>
@@ -29,9 +29,17 @@
 #include "proxr.h"
 #include "proxr_msg.h"
 
+#include "bass.h"
+#include "bas.h"
+
+#define BATT_INSTANCE 0x00
+
 K_SEM_DEFINE(init_sem, 0, 1);
+K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+static bool READY_TO_SEND_BASS;
 
 /* Bluetooth stack configuration */
 static const gapm_config_t gapm_cfg = {
@@ -84,9 +92,12 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
 		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
 
-	LOG_INF("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
-		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
-		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
+	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
+
+	k_sem_give(&conn_sem);
+
+	LOG_DBG("Please enable notifications on peer device..");
+
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -128,6 +139,29 @@ static void on_gapm_err(enum co_error err)
 	LOG_ERR("gapm error %d", err);
 }
 
+static void on_bass_batt_level_upd_cmp(uint16_t status)
+{
+	READY_TO_SEND_BASS = true;
+}
+
+static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
+{
+	switch (ntf_ind_cfg) {
+	case PRF_CLI_STOP_NTFIND:
+		LOG_INF("Client requested BASS stop notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND_BASS = false;
+		break;
+	case PRF_CLI_START_NTF:
+	case PRF_CLI_START_IND:
+		LOG_INF("Client requested BASS start notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND_BASS = true;
+		LOG_DBG("Sending battery level");
+		break;
+	default:
+		break;
+	}
+}
+
 static const gapc_connection_req_cb_t gapc_con_cbs = {
 	.le_connection_req = on_le_connection_req,
 };
@@ -160,6 +194,10 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
 
+static const bass_cb_t bass_cb = {
+	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
+	.cb_bond_data_upd = on_bass_bond_data_upd,
+};
 
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
@@ -168,32 +206,35 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 
 	/* gatt service identifier */
 	svc = GATT_SVC_LINK_LOSS;
+	uint16_t svc2 = GATT_SVC_BATTERY_SERVICE;
 
+	uint8_t num_svc = 2;
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_16_LEN;
+	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
 
 	/* Create advertising data with necessary services */
 	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
 
 	co_buf_t *p_buf;
-	uint8_t *p_data;
 
 	err = co_buf_alloc(&p_buf, 0, adv_len, 0);
 	__ASSERT(err == 0, "Buffer allocation failed");
 
-	p_data = co_buf_data(p_buf);
+	uint8_t *p_data = co_buf_data(p_buf);
+
 	p_data[0] = device_name_len + 1;
 	p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
 	memcpy(p_data + 2, device_name, device_name_len);
 
 	/* Update data pointer */
 	p_data = p_data + adv_device_name;
-	p_data[0] = GATT_UUID_16_LEN + 1;
+	p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
 	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 
 	/* Copy identifier */
 	memcpy(p_data + 2, (void *)&svc, sizeof(svc));
+	memcpy(p_data + 4, (void *)&svc2, sizeof(svc2));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf); /* Release ownership of buffer so stack can free it when done */
@@ -370,6 +411,34 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 	create_advertising();
 }
 
+static void config_battery_service(void)
+{
+	uint16_t err;
+	struct bass_db_cfg bass_cfg;
+	uint16_t start_hdl = 0;
+
+	bass_cfg.bas_nb = 1;
+	bass_cfg.features[0] = 1;
+
+	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
+}
+
+static void battery_process(void)
+{
+	uint16_t err;
+	/* Fixed value for demonstrating purposes */
+	uint8_t battery_level = 99;
+
+	if (READY_TO_SEND_BASS) {
+		/* Sending dummy battery level to first battery instance*/
+		err = bass_batt_level_upd(BATT_INSTANCE, battery_level);
+
+		if (err) {
+			LOG_ERR("Error %u sending battery level", err);
+		}
+	}
+}
+
 int main(void)
 {
 	uint16_t err;
@@ -383,14 +452,18 @@ int main(void)
 		return -1;
 	}
 
+	config_battery_service();
+
 	LOG_DBG("Waiting for init...\n");
 	k_sem_take(&init_sem, K_FOREVER);
+
+	config_battery_service();
 
 	LOG_DBG("Init complete!\n");
 
 	while (1) {
-
 		k_sleep(K_SECONDS(2));
+		battery_process();
 	}
 
 	return 0;
