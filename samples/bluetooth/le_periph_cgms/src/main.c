@@ -10,6 +10,7 @@
 /*
  * This example will start an instance of a peripheral CGMS and send
  * periodic notification updates to the first device that connects to it.
+ * Includes Battery Service support
  */
 
 #include <zephyr/kernel.h>
@@ -31,15 +32,21 @@
 #include "prf_types.h"
 #include "rwprf_config.h"
 
+#include "bass.h"
+#include "bas.h"
+
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
+#define BATT_INSTANCE 0x00
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 /* Variable to check if peer device is ready to receive data"*/
 static bool READY_TO_SEND;
+static bool READY_TO_SEND_BASS;
 
 K_SEM_DEFINE(my_sem, 0, 1);
+K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -66,7 +73,7 @@ static const gapm_config_t gapm_cfg = {
 	.dflt_link_policy = 0, /* BT Classic only */
 };
 
-static const char device_name[] = "ALIF_ZEPHYR_CGMS";
+static const char device_name[] = "ALIF_CGMS";
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
 
@@ -101,6 +108,10 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
 
 	conn_status = BT_CONN_STATE_CONNECTED;
+
+	k_sem_give(&conn_sem);
+
+	LOG_DBG("Please enable notifications on peer device..");
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -148,23 +159,24 @@ static void on_gapm_err(enum co_error err)
 
 static void on_cgms_meas_send_complete(uint8_t conidx, uint16_t status)
 {
-	LOG_DBG("Send meas completed!\n");
 	READY_TO_SEND = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
 {
 	switch (cfg_val) {
-	case PRF_CLI_STOP_NTFIND: {
+	case PRF_CLI_STOP_NTFIND:
 		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
 		READY_TO_SEND = false;
-	} break;
-
+		break;
 	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND: {
+	case PRF_CLI_START_IND:
 		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
 		READY_TO_SEND = true;
-	}
+		LOG_DBG("Sending measurements");
+		break;
+	default:
+		break;
 	}
 }
 
@@ -200,6 +212,30 @@ static void on_ops_ctrl_pt_req(uint8_t conidx, uint8_t op_code,
 
 static void on_ops_ctrl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
+}
+
+static void on_bass_batt_level_upd_cmp(uint16_t status)
+{
+	READY_TO_SEND_BASS = true;
+}
+
+static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
+{
+	switch (ntf_ind_cfg) {
+	case PRF_CLI_STOP_NTFIND:
+		LOG_INF("Client requested BASS stop notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND_BASS = false;
+		break;
+	case PRF_CLI_START_NTF:
+	case PRF_CLI_START_IND:
+		LOG_INF("Client requested BASS start notification/indication (conidx: %u)", conidx);
+		READY_TO_SEND_BASS = true;
+		LOG_DBG("Sending battery level");
+		break;
+	default:
+		break;
+	}
+
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -248,16 +284,23 @@ static const cgms_cb_t cgms_cb = {
 
 };
 
+static const bass_cb_t bass_cb = {
+	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
+	.cb_bond_data_upd = on_bass_bond_data_upd,
+};
+
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_CONTINUOUS_GLUCOSE_MONITORING;
+	uint16_t svc2 = GATT_SVC_BATTERY_SERVICE;
 
+	uint8_t num_svc = 2;
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_16_LEN;
+	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
 
 	/* Create advertising data with necessary services */
 	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
@@ -270,19 +313,17 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	uint8_t *p_data = co_buf_data(p_buf);
 
 	p_data[0] = device_name_len + 1;
-	/* Complete local name (TODO: should be defined
-	 * somewhere in stack...)
-	 */
 	p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
 	memcpy(p_data + 2, device_name, device_name_len);
 
 	/* Update data pointer */
 	p_data = p_data + adv_device_name;
-	p_data[0] = GATT_UUID_16_LEN + 1;
+	p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
 	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 
 	/* Copy identifier */
 	memcpy(p_data + 2, (void *)&svc, sizeof(svc));
+	memcpy(p_data + 4, (void *)&svc2, sizeof(svc2));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf); /* Release ownership of buffer so stack can free it when done */
@@ -437,8 +478,6 @@ static void send_measurement(uint16_t current_value)
 		.trend_info = current_value - 50,
 	};
 
-	LOG_DBG("measurement = %u\n", current_value);
-
 	/* Send measuremnt to connected device */
 	/* Set 0 to first parameter to send only to the first connected peer device */
 	err = cgms_meas_send(0, &p_meas);
@@ -472,10 +511,39 @@ void blps_process(uint16_t measurement)
 		}
 		break;
 	case BT_CONN_STATE_DISCONNECTED:
-		LOG_DBG("Waiting for peer connection\n");
+		LOG_DBG("Waiting for peer connection...\n");
+		k_sem_take(&conn_sem, K_FOREVER);
 
 	default:
 		break;
+	}
+}
+
+static void config_battery_service(void)
+{
+	uint16_t err;
+	struct bass_db_cfg bass_cfg;
+	uint16_t start_hdl = 0;
+
+	bass_cfg.bas_nb = 1;
+	bass_cfg.features[0] = 1;
+
+	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
+}
+
+static void battery_process(void)
+{
+	uint16_t err;
+	/* Fixed value for demonstrating purposes */
+	uint8_t battery_level = 99;
+
+	if (READY_TO_SEND_BASS) {
+		/* Sending dummy battery level to first battery instance*/
+		err = bass_batt_level_upd(BATT_INSTANCE, battery_level);
+
+		if (err) {
+			LOG_ERR("Error %u sending battery level", err);
+		}
 	}
 }
 
@@ -493,6 +561,8 @@ int main(void)
 		return -1;
 	}
 
+	config_battery_service();
+
 	LOG_DBG("Waiting for init...\n");
 	k_sem_take(&my_sem, K_FOREVER);
 
@@ -505,5 +575,6 @@ int main(void)
 		current_value = read_sensor_value(current_value);
 
 		blps_process(current_value);
+		battery_process();
 	}
 }
