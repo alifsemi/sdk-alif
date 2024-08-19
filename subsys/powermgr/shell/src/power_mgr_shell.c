@@ -18,44 +18,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
-static int hex2array(char *str, uint8_t *p_array, uint8_t len)
-{
-	for (int n = 0; n < len; n++) {
-		while (*str != 0 && (*str == ',' || *str == ' ' || *str == ':' || *str == '.')) {
-			str++;
-		}
-		if (*str == 0) {
-			return n;
-		}
-		p_array[n] = strtol(str, &str, 16);
-	}
-	return len;
-}
-
-static int param_get_array(size_t argc, char **argv, char *p_param, uint8_t *p_array, uint8_t len)
-{
-	if (p_param && argc > 1) {
-		for (int n = 0; n < (argc - 1); n++) {
-			if (strcmp(argv[n], p_param) == 0) {
-				return hex2array(argv[n + 1], p_array, len);
-			}
-		}
-	}
-	return 0;
-}
-
-static int param_get_int(size_t argc, char **argv, char *p_param, int def_value)
-{
-	if (p_param && argc > 1) {
-		for (int n = 0; n < (argc - 1); n++) {
-			if (strcmp(argv[n], p_param) == 0) {
-				return strtol(argv[n + 1], NULL, 0);
-			}
-		}
-	}
-	return def_value;
-}
-
 static bool param_get_flag(size_t argc, char **argv, char *p_flag)
 {
 	if (p_flag && argc) {

@@ -85,12 +85,12 @@ static int param_get_array(size_t argc, char **argv, char *p_param, uint8_t *p_a
 	return 0;
 }
 
-static int param_get_int(size_t argc, char **argv, char *p_param, int def_value)
+static int64_t param_get_int(size_t argc, char **argv, char *p_param, int def_value)
 {
 	if (p_param && argc > 1) {
 		for (int n = 0; n < (argc - 1); n++) {
 			if (strcmp(argv[n], p_param) == 0) {
-				return strtol(argv[n + 1], NULL, 0);
+				return strtoll(argv[n + 1], NULL, 0);
 			}
 		}
 	}
@@ -301,8 +301,7 @@ void rx_frame_handler(struct k_work *work)
 		transmit_req.channel = channel;
 		transmit_req.cca_requested = true;
 		transmit_req.acknowledgment_asked = false;
-		transmit_req.timestamp =
-			received_frame.timestamp + reply_delay;
+		transmit_req.timestamp = received_frame.timestamp + reply_delay;
 		transmit_req.msg_id = 0;
 		transmit_req.length = sizeof(packet_unicast);
 		transmit_req.p_payload = packet_unicast;
@@ -427,11 +426,13 @@ static int cmd_config(const struct shell *shell, size_t argc, char **argv)
 	uint32_t key;
 	uint32_t value;
 	uint32_t read_value;
+	bool write;
 	int ret;
 
 	key = param_get_int(argc, argv, "--key", 0);
 	value = param_get_int(argc, argv, "--write", 0);
-	ret = alif_mac154_dbg_rf(value ? 1 : 0, key, value, &read_value);
+	write = param_get_flag(argc, argv, "--write");
+	ret = alif_mac154_dbg_rf(write, key, value, &read_value);
 
 	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT,
 		      "config key:0x%x value:0x%x, read:%x ret:%d\n", key, value, read_value, ret);
