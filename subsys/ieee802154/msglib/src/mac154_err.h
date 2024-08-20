@@ -65,6 +65,10 @@ enum mac154_err {
 	MAC154_ERR_RADIO_ISSUE = 0x1507,
 	/* TX needed CCA and channel is not free */
 	MAC154_ERR_RADIO_CHANNEL_IN_USE = 0x1508,
+	/// No more entry available
+	MAC154_ERR_LIMIT_EXCEED = 0x1509,
+	/// No more entry available
+	MAC154_ERR_INV_PARAMS = 0x150A,
 
 	/* reuses of preexisting hl_error... */
 #ifndef HL_ERROR_H_
