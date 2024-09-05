@@ -37,7 +37,6 @@ manifest:
         name-allowlist:
           - canopennode
           - chre
-          - cmsis
           - edtt
           - fatfs
           - hal_alif
@@ -72,6 +71,11 @@ manifest:
       path: bootloader/mcuboot
       revision: main
 
+    - name: cmsis_alif
+      revision: 85f6b92af0f6ac72594d391f895c45cc30847e41
+      path: modules/hal/cmsis
+      groups:
+         - hal
   self:
     path: alif
     west-commands: scripts/west-commands.yml
