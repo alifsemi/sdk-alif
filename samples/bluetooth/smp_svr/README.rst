@@ -88,3 +88,23 @@ The mcumgr command-line tool supports BLE only on Linux and macOS.
 
       mcumgr -conntype ble --connstring ctlr_name=hci0,peer_name='ALIF_SMP' \
          image confirm <slot1_image_hash>
+
+Updating the Image Using the Alif mobile application
+****************************************************
+
+1. Scan and connect to the device.
+
+2. Inspect the current hash in the info tab.
+
+3. Build a new zephyr.signed.bin binary with the same command and export it
+      to the mobile phone or to a cloud service. The new file will have a
+      different hash.
+
+4. Load the new file from the Upgrade tab in the mobile phone.
+
+5. Tap the update button and wait until the new firmware is uploaded.
+
+6. On Android, the app will reconnect to the device after restart and the new
+      hash can be seen in the info tab.
+      On iOS, the app will disconnect after the update. Connect again to
+      inspect the new hash.
