@@ -1,5 +1,7 @@
-# Copyright (C) 2024 Alif Semiconductor.
-# SPDX-License-Identifier: Apache-2.0
+/*
+ * Copyright (C) 2024 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
 /* setting i2c0 as master and lpi2c instance as slave.
  *
@@ -18,5 +20,4 @@
 
 &lpi2c {
 	status = "okay";
-
 };
