@@ -12,6 +12,8 @@
 
 LOG_MODULE_REGISTER(PDM, LOG_LEVEL_INF);
 
+#define PDM_NODE	DT_ALIAS(pdm_audio)
+
 #define CHANNEL_4  4
 #define CHANNEL_5  5
 
@@ -70,7 +72,7 @@ K_MEM_SLAB_DEFINE(mem_slab, PCMJ_BLOCK_SIZE, MEM_SLAB_NUM_BLOCKS, 4);
 
 void pdm_ch_config(void)
 {
-	const struct device *pcmj_device = DEVICE_DT_GET(DT_NODELABEL(pdm));
+	const struct device *pcmj_device = DEVICE_DT_GET(PDM_NODE);
 
 	pdm_set_ch_phase(pcmj_device, CHANNEL_4, CH4_PHASE);
 
@@ -207,7 +209,7 @@ void init_pdm(void)
 
 	LOG_INF("PDM init okay\n");
 
-	pcmj_device = DEVICE_DT_GET(DT_NODELABEL(pdm));
+	pcmj_device = DEVICE_DT_GET(PDM_NODE);
 
 	if (!pcmj_device) {
 		LOG_ERR("pcmj_device not found\n");
