@@ -179,6 +179,7 @@ void iso_datapath_htoc_notify_sdu_available(void *datapath, uint32_t capture_tim
 					    uint16_t sdu_seq)
 {
 	if (datapath == NULL) {
+		LOG_ERR("null datapath");
 		return;
 	}
 
@@ -222,9 +223,10 @@ void iso_datapath_htoc_notify_sdu_available(void *datapath, uint32_t capture_tim
 		return;
 	}
 
-	uint32_t presentation_delay = sync_info.sdu_anchor - capture_info.capture_timestamp;
+	/* LOG_INF("Successful sdu"); */
+	/* uint32_t presentation_delay = sync_info.sdu_anchor - capture_info.capture_timestamp; */
 
-	presentation_compensation_notify_timing(presentation_delay);
+	/* presentation_compensation_notify_timing(presentation_delay); */
 }
 
 int iso_datapath_htoc_delete(struct iso_datapath_htoc *datapath)
