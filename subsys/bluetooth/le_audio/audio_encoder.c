@@ -138,6 +138,7 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 			if (cb_item->cb) {
 				cb_item->cb(cb_item->context, capture_timestamp, enc->sdu_seq);
 			}
+			cb_item = cb_item->next;
 		}
 
 		/* Increment sequence number for next SDU */
