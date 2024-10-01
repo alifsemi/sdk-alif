@@ -154,6 +154,8 @@ void inferenceProcessTask(void *_name, void *heap, void *_params)
 	}
 
 	k_thread_abort(k_current_get());
+
+	CODE_UNREACHABLE;
 }
 
 /* inferenceSenderTask - Creates NUM_INFERENCE_JOBS jobs, queues them, and then
@@ -255,7 +257,7 @@ int main()
 		const size_t stackSize = 8192;
 		k_thread_stack_t *stack = static_cast<k_thread_stack_t *>(k_malloc(stackSize));
 		if (stack == nullptr) {
-			printk("Failed to allocate stack to 'inferenceProcessTask%i'\n", n);
+			printk("Failed to allocate stack to 'inferenceSenderTask%i'\n", n);
 			exit(1);
 		}
 
