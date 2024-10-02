@@ -1,4 +1,10 @@
-## LE Audio Broadcast Source Sample
+.. _bluetooth-broadcast-source-sample:
+
+BLE Audio Broadcast Source Sample
+#################################
+
+Overview
+********
 
 This sample demonstrates the LE audio broadcast source use-case.
 
@@ -6,7 +12,17 @@ The broadcast name used can be configured using `CONFIG_BROADCAST_NAME`. This mi
 
 Currently the sample only supports mono (single channel audio). Stereo support is planned to be added later.
 
-### Alif B1 FPGA board
+
+Building and Running
+********************
+
+This sample can be found under :zephyr_file:`samples/bluetooth/broadcast_source` in the
+sdk-alif tree.
+
+See :ref:`Alif bluetooth samples section <alif-bluetooth-samples>` for details.
+
+Alif B1 FPGA board
+******************
 
 On this board, audio support relies on the following additional hardware:
 - SI570 clock generator, to generate the MCLK signal. This is connected via a TCA9548 I2C mux.
