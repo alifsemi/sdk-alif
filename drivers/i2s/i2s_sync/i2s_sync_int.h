@@ -18,13 +18,11 @@
 #include <stdbool.h>
 #include <zephyr/types.h>
 #include <zephyr/sys/__assert.h>
+#include <core_cm55.h>
 
 #define __IOM volatile
 #define __OM  volatile
 #define __IM  volatile const
-
-#define _VAL2FLD(field, value) (((uint32_t)(value) << field##_Pos) & field##_Msk)
-#define _FLD2VAL(field, value) (((uint32_t)(value) & field##_Msk) >> field##_Pos)
 
 struct i2s_t {
 	__IOM uint32_t IER;  /*!< Offset:0x0 I2S Global Enable */
