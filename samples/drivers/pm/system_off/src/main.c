@@ -14,13 +14,51 @@
 #include <soc.h>
 #include <se_service.h>
 
-#define RTC DT_NODELABEL(rtc0)
-#define RTC_SLEEP_S (20)
-#define RTC_SLEEP_US (RTC_SLEEP_S * 1000 * 1000)
+/**
+ * As per the application requirements, it can remove the memory blocks which are not in use.
+ */
+#if defined(CONFIG_SOC_SERIES_ENSEMBLE_E1C) || defined(CONFIG_SOC_SERIES_BALLETTO_B1)
+	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | \
+					SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |\
+					SRAM5_5_MASK
+	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
+#else
+	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK
+	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
+#endif
 
-#define LPRTC_IRQ_IRQn 58
+#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
+	#define SE_OFFP_EWIC_CFG EWIC_RTC_A
+	#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
+#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
+	#define SE_OFFP_EWIC_CFG EWIC_VBAT_TIMER
+	#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
+#else
+#error "Wakeup Device not enabled in the dts"
+#endif
 
-static bool is_rtc_wakeup;
+#define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
+
+#define SLEEP_IN_SEC (20)
+#define SLEEP_IN_MICROSECS (SLEEP_IN_SEC * 1000 * 1000)
+
+#define SOC_STANDBY_MODE_PD PD_SSE700_AON_MASK
+#define SOC_STOP_MODE_PD PD_VBAT_AON_MASK
+
+/**
+ * By default STOP mode is requested.
+ * For Standby, set the SOC_REQUESTED_POWER_MODE to SOC_STANDBY_MODE_PD
+ */
+#define SOC_REQUESTED_POWER_MODE SOC_STOP_MODE_PD
+
+static uint32_t wakeup_reason;
+
+static inline uint32_t get_wakeup_irq_status(void)
+{
+	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
+}
 
 /*
  * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
@@ -29,9 +67,7 @@ static bool is_rtc_wakeup;
  */
 static int get_core_wakeup_reason(void)
 {
-	if (NVIC_GetPendingIRQ(LPRTC_IRQ_IRQn)) {
-		is_rtc_wakeup = true;
-	}
+	wakeup_reason = get_wakeup_irq_status();
 
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 
@@ -71,15 +107,12 @@ static int app_set_run_params(void)
 	runp.run_clk_src   = CLK_SRC_PLL;
 #if defined(CONFIG_RTSS_HP)
 	runp.cpu_clk_freq  = CLOCK_FREQUENCY_400MHZ;
-	runp.memory_blocks = SRAM2_MASK | SRAM3_MASK | MRAM_MASK;
 #else
 	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
-	runp.memory_blocks = SRAM4_1_MASK | SRAM4_2_MASK
-				| SRAM5_1_MASK | SRAM5_2_MASK;
+#endif
 	if (SCB->VTOR) {
 		runp.memory_blocks |= MRAM_MASK;
 	}
-#endif
 
 	ret = se_service_set_run_cfg(&runp);
 	if (ret) {
@@ -91,25 +124,17 @@ static int app_set_run_params(void)
 }
 SYS_INIT(app_set_run_params, POST_KERNEL, 50);
 
-static void alarm_callback_fn(const struct device *rtc_dev,
+static void alarm_callback_fn(const struct device *wakeup_dev,
 				      uint8_t chan_id, uint32_t ticks,
 				      void *user_data)
 {
-	uint32_t now_ticks;
-	int ret;
-
-	ret = counter_get_value(rtc_dev, &now_ticks);
-	if (ret) {
-		printk("Failed to read counter value (err %d)", ret);
-		return;
-	}
-	printk("!!! Alarm !!! at %u ticks\n", now_ticks);
+	printk("%s: !!! Alarm !!!\n", wakeup_dev->name);
 }
 
 int main(void)
 {
 	const struct device *const cons = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-	const struct device *const rtc_dev = DEVICE_DT_GET(RTC);
+	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	struct counter_alarm_cfg alarm_cfg;
 	off_profile_t offp;
 	uint32_t now_ticks;
@@ -121,16 +146,16 @@ int main(void)
 		return 0;
 	}
 
-	if (!device_is_ready(rtc_dev)) {
-		printk("%s: device not ready.\n", rtc_dev->name);
+	if (!device_is_ready(wakeup_dev)) {
+		printk("%s: device not ready.\n", wakeup_dev->name);
 		printk("ERROR: app exiting..\n");
 		return 0;
 	}
 
-		printk("\n%s System Off Demo\n", CONFIG_BOARD);
+	printk("\n%s System Off Demo\n", CONFIG_BOARD);
 
-	if (is_rtc_wakeup) {
-		printk("\r\nWakeup Interrupt Reason : RTC\n");
+	if (wakeup_reason) {
+		printk("\r\nWakeup Interrupt Reason : %s\n", wakeup_dev->name);
 	}
 
 	ret = se_service_get_off_cfg(&offp);
@@ -140,11 +165,11 @@ int main(void)
 		return 0;
 	}
 
-	offp.power_domains = PD_VBAT_AON_MASK;
+	offp.power_domains = SOC_REQUESTED_POWER_MODE;
 	offp.aon_clk_src   = CLK_SRC_LFXO;
 	offp.stby_clk_src  = CLK_SRC_HFXO;
-	offp.ewic_cfg      = EWIC_RTC_A;
-	offp.wakeup_events = WE_LPRTC;
+	offp.ewic_cfg      = SE_OFFP_EWIC_CFG;
+	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
 	offp.vtor_address  = SCB->VTOR;
 	offp.memory_blocks = MRAM_MASK;
 
@@ -154,10 +179,9 @@ int main(void)
 	 * This is just for this test application.
 	 */
 	if (!SCB->VTOR) {
-		offp.memory_blocks = SRAM4_1_MASK | SRAM4_2_MASK
-					| SRAM5_1_MASK | SRAM5_2_MASK | SERAM_MASK;
+		offp.memory_blocks = APP_RET_MEM_BLOCKS | SERAM_MEMORY_BLOCKS_IN_USE;
 	} else {
-		offp.memory_blocks |= SERAM_MASK;
+		offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
 	}
 #else
 	/*
@@ -182,27 +206,21 @@ int main(void)
 		return 0;
 	}
 
-	ret = counter_start(rtc_dev);
+	ret = counter_start(wakeup_dev);
 	if (ret) {
 		printk("Failed to start counter (err %d)", ret);
 		printk("ERROR: app exiting..\n");
 		return 0;
 	}
 
-	ret = counter_get_value(rtc_dev, &now_ticks);
-	if (ret) {
-		printk("Failed to read counter value (err %d)", ret);
-		printk("ERROR: app exiting..\n");
-		return 0;
-	}
 	alarm_cfg.flags = 0;
-	alarm_cfg.ticks = counter_us_to_ticks(rtc_dev, RTC_SLEEP_US);
+	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, SLEEP_IN_MICROSECS);
 	alarm_cfg.callback = alarm_callback_fn;
 	alarm_cfg.user_data = &alarm_cfg;
 
 	printk("Set Alarm and enter Normal Sleep\n");
 
-	ret = counter_set_channel_alarm(rtc_dev, 0,
+	ret = counter_set_channel_alarm(wakeup_dev, 0,
 					&alarm_cfg);
 	if (ret) {
 		printk("Couldnt set the alarm\n");
@@ -210,24 +228,28 @@ int main(void)
 		return 0;
 	}
 	printk("Set alarm in %u sec (%u ticks)\n",
-	       RTC_SLEEP_S,
+	       SLEEP_IN_SEC,
 	       alarm_cfg.ticks);
 
-	k_sleep(K_SECONDS(RTC_SLEEP_S + 1));
+	k_sleep(K_SECONDS(SLEEP_IN_SEC + 1));
 
-	printk("Set Alarm and enter Subsystem OFF & then STOP mode\n");
+	printk("Set Alarm and enter Subsystem OFF & then STANDBY/STOP mode\n");
 
 	/*
 	 * Set the alarm and delay so that idle thread can run
 	 */
-	ret = counter_get_value(rtc_dev, &now_ticks);
+#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
+	ret = counter_get_value(wakeup_dev, &now_ticks);
 	if (ret) {
 		printk("Failed to read counter value (err %d)", ret);
 		printk("ERROR: app exiting..\n");
 		return 0;
 	}
-	alarm_cfg.ticks = now_ticks + counter_us_to_ticks(rtc_dev, RTC_SLEEP_US);
-	ret = counter_set_channel_alarm(rtc_dev, 0,
+#else
+	now_ticks = 0;
+#endif
+	alarm_cfg.ticks = now_ticks + counter_us_to_ticks(wakeup_dev, SLEEP_IN_MICROSECS);
+	ret = counter_set_channel_alarm(wakeup_dev, 0,
 					&alarm_cfg);
 	if (ret) {
 		printk("Failed to set the alarm (err %d)", ret);
@@ -236,7 +258,7 @@ int main(void)
 	}
 
 	printk("Set alarm in %u sec (%u ticks)\n",
-	       RTC_SLEEP_S,
+	       SLEEP_IN_SEC,
 	       alarm_cfg.ticks);
 
 	if (ret) {
