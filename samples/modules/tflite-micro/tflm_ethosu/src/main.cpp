@@ -103,7 +103,7 @@ volatile int totalCompletedJobs = 0;
 /* TensorArena static initialisation */
 const size_t arenaSize = TENSOR_ARENA_SIZE_PER_INFERENCE;
 
-__attribute__((section("tflm_arena"), aligned(16)))
+__attribute__((section(".bss.tflm_arena"), aligned(16)))
 uint8_t inferenceProcessTensorArena[NUM_INFERENCE_TASKS][arenaSize];
 
 /* Allocate and initialize heap */
@@ -177,9 +177,9 @@ void inferenceSenderTask(void *_name, void *heap, void *_queue)
 	xInferenceJob jobs[NUM_JOBS_PER_TASK];
 	for (int n = 0; n < NUM_JOBS_PER_TASK; n++) {
 		auto &job = jobs[n];
-		job = xInferenceJob(modelName, DataPtr(networkModelData, sizeof(networkModelData)),
-				    { DataPtr(inputData, sizeof(inputData)) }, {},
-				    { DataPtr(expectedOutputData, sizeof(expectedOutputData)) },
+		job = xInferenceJob(modelName, DataPtr((void*)networkModelData, sizeof(networkModelData)),
+				    { DataPtr((void*)inputData, sizeof(inputData)) }, {},
+				    { DataPtr((void*)expectedOutputData, sizeof(expectedOutputData)) },
 				    &senderQueue);
 
 		printk("%s: Sending inference. job=%p, name=%s\n", name->c_str(), &job,
