@@ -18,18 +18,21 @@ subsystem off of RTSS cores in Alif SoC. The functional behavior is:
 * Set RUN profile for the subsystem (sets Clock source, power domains, CPU freq etc)
 * Display the last reset/wakeup reason
 * Set OFF profile for the subsystem (sets VTOR/RTC wakeup event/Retention blocks/Power Domains)
-* Set RTC for 20sec which make sure system goes to idle task(Normal sleep)
-* Wait for the RTC interrupt
-* Set the RTC again for 20sec
-* Force the subsystem to go to OFF state
+* Sleep for 3secs(NORMAL_SLEEP_IN_USEC) so that system goes to idle task(Normal sleep)
+* After waking up, again sleep for 20sec(DEEP_SLEEP_IN_USEC), which will make sure the subsystem
+  goes to OFF state
 * For the SoC to transition to global states(IDLE/STANDBY/STOP), it requires voting
   from all the remaining subsystem in the SoC
-* Subsystem reboots once the RTC interrupt triggers and the above steps continue
+* Subsystem reboots once the wakeup interrupt triggers and the above steps continue
 
 Note:
 *****
 * This application runs from ITCM by default. To run from the MRAM, set CONFIG_ROM_ITCM=n
   in the prj.conf.
+* CONFIG_CORTEX_M_SYSTICK_IDLE_TIMER is set by default. RTC0 will be used as the idle timer when
+  it goes to subsystem Off state. User may disable this along with updating the 'min-residency-us'
+  in the overlay file with a higher value so that the subsystem won't go to OFF state unless
+  requested using pm_state_force or sys_poweroff.
 * User should use the SETOOLS package which can be downloaded from our website
   for flashing the binaries to MRAM. See :ref:`programming_an_application` for more information.
 * If using a USB hub to connect the UART, it is advised to set the

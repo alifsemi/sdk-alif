@@ -15,3 +15,15 @@
 	prescaler = < 32768 >;
 	status = "okay";
 };
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+	};
+
+	power-states {
+		off: off {
+			min-residency-us = < 5000000 >;
+		};
+	};
+};
