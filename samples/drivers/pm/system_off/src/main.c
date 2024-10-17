@@ -21,6 +21,16 @@
 #include <se_service.h>
 
 /**
+ * Enable this if we need systop to be ON in the early boot.
+ *
+ * We normally use SE Services to enable the SYSTOP. In the warmboot, depending on the
+ * power domain set in the OFF profile, SYSTOP might not be ON. The SE services will be invoked
+ * (much later in the boot process) after the devices are configured. So the devices in the SYSTOP
+ * region, may not be configured correctly.
+ */
+#define EARLY_BOOT_SYSTOP_ON 1
+
+/**
  * As per the application requirements, it can remove the memory blocks which are not in use.
  */
 #if defined(CONFIG_SOC_SERIES_ENSEMBLE_E1C) || defined(CONFIG_SOC_SERIES_BALLETTO_B1)
@@ -70,6 +80,35 @@ static inline uint32_t get_wakeup_irq_status(void)
 {
 	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
 }
+
+#ifdef EARLY_BOOT_SYSTOP_ON
+/**
+ * This function will be invoked in the PRE_KERNEL_1 phase of the init routine.
+ * This is required to do only when we need the SYSTOP to be ON.
+ *
+ * This will make sure SYSTOP be ON before initializing the peripherals.
+ */
+static uint32_t host_bsys_pwr_req;
+#define HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON 0x20
+
+static inline void app_force_host_systop_on(void)
+{
+	host_bsys_pwr_req = sys_read32(HOST_BSYS_PWR_REQ);
+	sys_write32(host_bsys_pwr_req | HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON, HOST_BSYS_PWR_REQ);
+}
+
+static inline void app_restore_host_systop(void)
+{
+	sys_write32(host_bsys_pwr_req, HOST_BSYS_PWR_REQ);
+}
+
+static int app_pre_kernel1_init(void)
+{
+	app_force_host_systop_on();
+	return 0;
+}
+SYS_INIT(app_pre_kernel1_init, PRE_KERNEL_1, 39); /* (CONFIG_KERNEL_INIT_PRIORITY_DEFAULT - 1) */
+#endif
 
 /*
  * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
@@ -130,6 +169,9 @@ static int app_set_run_params(void)
 		printk("SE: set_run_cfg failed = %d.\n", ret);
 		return 0;
 	}
+#ifdef EARLY_BOOT_SYSTOP_ON
+	app_restore_host_systop();
+#endif
 
 	return 0;
 }
