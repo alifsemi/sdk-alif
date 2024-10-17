@@ -8,6 +8,12 @@
 
 menu "Alif Bluetooth LE Audio Broadcast Sink"
 
+config BROADCAST_NAME
+	string "LE audio broadcast name"
+	default "ALIF_LE_AUDIO"
+	help
+	  Broadcast name to connect to
+
 choice
 	prompt "Choose way to determine left/right audio channels"
 	default AUDIO_LOCATION_USE_GAF

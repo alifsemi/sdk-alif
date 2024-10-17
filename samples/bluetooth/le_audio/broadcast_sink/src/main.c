@@ -66,7 +66,7 @@ static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		return;
 	}
 
-	LOG_DBG("gapm process completed successfully");
+	LOG_INF("gapm process completed successfully");
 
 	int ret = broadcast_sink_start();
 
@@ -74,7 +74,7 @@ static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		LOG_ERR("Failed to start broadcast sink, err %d", ret);
 	}
 
-	LOG_DBG("Broadcast sink started");
+	LOG_INF("Broadcast sink started");
 }
 
 int main(void)
@@ -86,7 +86,7 @@ int main(void)
 		return ret;
 	}
 
-	LOG_DBG("BLE enabled");
+	LOG_INF("BLE enabled");
 
 	uint16_t err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 

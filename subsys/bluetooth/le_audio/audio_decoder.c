@@ -90,6 +90,10 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 				}
 
 				uint8_t bad_frame = (p_sdu->status != ISOOSHM_SDU_STATUS_VALID);
+				if (bad_frame) {
+					LOG_WRN("Bad frame received, SDU status: %u",
+					p_sdu->status);
+				}
 				uint8_t bec_detect;
 
 				ret = lc3_api_decode_frame(&dec->lc3_cfg, dec->lc3_decoder[i],

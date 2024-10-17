@@ -60,13 +60,13 @@ struct broadcast_sink_env {
 
 #define I2S_NODE      DT_ALIAS(i2s_bus)
 #define CODEC_NODE    DT_ALIAS(audio_codec)
-#define MCLK_GEN_NODE DT_ALIAS(mclk_gen)
+/* #define MCLK_GEN_NODE DT_ALIAS(mclk_gen) */
 
 BUILD_ASSERT(!DT_PROP(I2S_NODE, mono_mode), "I2S must be configured in stereo mode");
 
 const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
 const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
-const struct device *mclk_gen_dev = DEVICE_DT_GET(MCLK_GEN_NODE);
+/* const struct device *mclk_gen_dev = DEVICE_DT_GET(MCLK_GEN_NODE); */
 
 static uint8_t expected_streams;
 static bool public_broadcast_found;
@@ -82,7 +82,7 @@ static int broadcast_sink_init(void)
 	/* Check all devices are ready */
 	__ASSERT(device_is_ready(i2s_dev), "I2S is not ready");
 	__ASSERT(device_is_ready(codec_dev), "Audio codec is not ready");
-	__ASSERT(device_is_ready(mclk_gen_dev), "MCLK device is not ready");
+	/* __ASSERT(device_is_ready(mclk_gen_dev), "MCLK device is not ready"); */
 
 	return ret;
 }
@@ -94,7 +94,7 @@ static void reset_sink_config(void)
 	memset(&sink_env, 0, sizeof(sink_env));
 	sink_env.datapath_cfg_valid = true;
 	sink_env.datapath_cfg.i2s_dev = i2s_dev;
-	sink_env.datapath_cfg.mclk_dev = mclk_gen_dev;
+	/* sink_env.datapath_cfg.mclk_dev = mclk_gen_dev; */
 	sink_env.right_channel_pos = INVALID_CHANNEL_INDEX;
 	sink_env.left_channel_pos = INVALID_CHANNEL_INDEX;
 }
@@ -132,7 +132,7 @@ static int sink_enable(void)
 		sink_env.chosen_streams_bf |= (1U << (sink_env.right_channel_pos - 1));
 	}
 
-	LOG_DBG("Chosen streams bitfield: %x", sink_env.chosen_streams_bf);
+	LOG_INF("Chosen streams bitfield: %x", sink_env.chosen_streams_bf);
 
 	uint16_t err =
 		bap_bc_sink_enable(sink_env.pa_lid, &sink_env.bcast_id, sink_env.chosen_streams_bf,
@@ -187,38 +187,38 @@ static void on_bap_bc_scan_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t pa
 {
 	switch (cmd_type) {
 	case BAP_BC_SCAN_CMD_TYPE_START:
-		LOG_DBG("Scan start cmd complete, status %u", status);
+		LOG_INF("Scan start cmd complete, status %u", status);
 		break;
 	case BAP_BC_SCAN_CMD_TYPE_STOP:
-		LOG_DBG("Scan stop cmd complete, status %u", status);
+		LOG_INF("Scan stop cmd complete, status %u", status);
 		break;
 	case BAP_BC_SCAN_CMD_TYPE_PA_SYNCHRONIZE:
-		LOG_DBG("PA synchronise cmd complete, status %u", status);
+		LOG_INF("PA synchronise cmd complete, status %u", status);
 		break;
 	case BAP_BC_SCAN_CMD_TYPE_PA_TERMINATE:
-		LOG_DBG("PA terminate cmd complete, status %u", status);
+		LOG_INF("PA terminate cmd complete, status %u", status);
 		break;
 	default:
-		LOG_DBG("Unexpected cmd_type %u", cmd_type);
+		LOG_INF("Unexpected cmd_type %u", cmd_type);
 		break;
 	}
 }
 
 static void on_bap_bc_scan_timeout(void)
 {
-	LOG_DBG("scan timeout");
+	LOG_INF("scan timeout");
 }
 
 static void on_bap_bc_scan_report(const bap_adv_id_t *p_adv_id, const bap_bcast_id_t *p_bcast_id,
 				  uint8_t info_bf, const gaf_adv_report_air_info_t *p_air_info,
 				  uint16_t length, const uint8_t *p_data)
 {
-	LOG_DBG("Got scan report");
-	LOG_DBG("Public Broadcast Profile %s supported",
+	LOG_INF("Got scan report");
+	LOG_INF("Public Broadcast Profile %s supported",
 		(info_bf & BAP_BC_SCAN_PUBLIC_BROADCAST_SUPPORT_BIT) ? "is" : "is not");
-	LOG_DBG("Broadcast ID: %02x %02x %02x", p_bcast_id->id[0], p_bcast_id->id[1],
+	LOG_INF("Broadcast ID: %02x %02x %02x", p_bcast_id->id[0], p_bcast_id->id[1],
 		p_bcast_id->id[2]);
-	LOG_DBG("Air info: tx_pwr %u, rssi %u", p_air_info->tx_pwr, p_air_info->rssi);
+	LOG_INF("Air info: tx_pwr %u, rssi %u", p_air_info->tx_pwr, p_air_info->rssi);
 	LOG_HEXDUMP_DBG(p_data, length, "adv data: ");
 
 	/* Store broadcast ID for later */
@@ -230,8 +230,10 @@ static void on_bap_bc_scan_public_bcast(const bap_adv_id_t *p_adv_id,
 					uint8_t broadcast_name_len, const uint8_t *p_broadcast_name,
 					uint8_t metadata_len, const uint8_t *p_metadata)
 {
-	LOG_DBG("Got public broadcast report");
-	LOG_DBG("PBP features: encrypted: %s, standard quality: %s, high quality: %s",
+	bool correct_stream = false;
+
+	LOG_INF("Got public broadcast report");
+	LOG_INF("PBP features: encrypted: %s, standard quality: %s, high quality: %s",
 		(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT) ? "yes" : "no",
 		(pbp_features_bf & BAP_BC_PBP_FEATURES_STANDARD_QUALITY_PRESENT_BIT) ? "yes" : "no",
 		(pbp_features_bf & BAP_BC_PBP_FEATURES_HIGH_QUALITY_PRESENT_BIT) ? "yes" : "no");
@@ -240,12 +242,16 @@ static void on_bap_bc_scan_public_bcast(const bap_adv_id_t *p_adv_id,
 
 		memcpy(broadcast_name, p_broadcast_name, broadcast_name_len);
 		broadcast_name[broadcast_name_len] = '\0';
-		LOG_DBG("Broadcast name %s", broadcast_name);
+		LOG_INF("Broadcast name %s", broadcast_name);
+
+		correct_stream = (0 == memcmp(CONFIG_BROADCAST_NAME, broadcast_name,
+				  broadcast_name_len));
 	}
 	LOG_HEXDUMP_DBG(p_metadata, metadata_len, "metadata: ");
 
 	/* If we found a non-encrypted public broadcast, synchronise to this */
-	if (!(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT) && !public_broadcast_found) {
+	if (correct_stream && !(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT)
+		&& !public_broadcast_found) {
 		LOG_INF("Synchronising to public broadcast");
 		public_broadcast_found = true;
 
@@ -262,35 +268,35 @@ static void on_bap_bc_scan_public_bcast(const bap_adv_id_t *p_adv_id,
 static void on_bap_bc_scan_pa_established(uint8_t pa_lid, const bap_adv_id_t *p_adv_id, uint8_t phy,
 					  uint16_t interval_frames)
 {
-	LOG_DBG("PA synchronised, pa_lid %u interval %u ms", pa_lid, (interval_frames * 5) / 4);
+	LOG_INF("PA synchronised, pa_lid %u interval %u ms", pa_lid, (interval_frames * 5) / 4);
 
 	uint16_t err = bap_bc_scan_stop();
 
 	if (err) {
-		LOG_DBG("Failed to stop scanning, err %u", err);
+		LOG_INF("Failed to stop scanning, err %u", err);
 	}
 }
 
 static void on_bap_bc_scan_pa_terminated(uint8_t pa_lid, uint8_t reason)
 {
-	LOG_DBG("PA desynchronised, reason %u", reason);
+	LOG_INF("PA desynchronised, reason %u", reason);
 }
 
 static void on_bap_bc_scan_pa_report(uint8_t pa_lid, const gaf_adv_report_air_info_t *p_air_info,
 				     uint16_t length, const uint8_t *p_data)
 {
-	LOG_DBG("PA report");
-	LOG_DBG("Air info: tx_pwr %u rssi %u", p_air_info->tx_pwr, p_air_info->rssi);
+	LOG_INF("PA report");
+	LOG_INF("Air info: tx_pwr %u rssi %u", p_air_info->tx_pwr, p_air_info->rssi);
 	LOG_HEXDUMP_DBG(p_data, length, "periodic adv data: ");
 }
 
 static void on_bap_bc_scan_big_info_report(uint8_t pa_lid, const gapm_le_big_info_t *p_report)
 {
-	LOG_DBG("BIGinfo report");
-	LOG_DBG("SDU interval %u us, ISO interval %u ms, max_pdu %u max_sdu %u",
+	LOG_INF("BIGinfo report");
+	LOG_INF("SDU interval %u us, ISO interval %u ms, max_pdu %u max_sdu %u",
 		p_report->sdu_interval, p_report->iso_interval, p_report->max_pdu,
 		p_report->max_sdu);
-	LOG_DBG("num_bis %u, NSE %u, BN %u, PTO %u, IRC %u, PHY %u, framing %u, encrypted %u",
+	LOG_INF("num_bis %u, NSE %u, BN %u, PTO %u, IRC %u, PHY %u, framing %u, encrypted %u",
 		p_report->num_bis, p_report->nse, p_report->bn, p_report->pto, p_report->irc,
 		p_report->phy, p_report->framing, p_report->encrypted);
 }
@@ -298,7 +304,7 @@ static void on_bap_bc_scan_big_info_report(uint8_t pa_lid, const gapm_le_big_inf
 static void on_bap_bc_scan_group_report(uint8_t pa_lid, uint8_t nb_subgroups, uint8_t nb_streams,
 					uint32_t pres_delay_us)
 {
-	LOG_DBG("Group report: %u subgroups, %u streams, presentation delay %u us", nb_subgroups,
+	LOG_INF("Group report: %u subgroups, %u streams, presentation delay %u us", nb_subgroups,
 		nb_streams, pres_delay_us);
 	expected_streams = nb_streams;
 
@@ -311,11 +317,11 @@ static void on_bap_bc_scan_subgroup_report(uint8_t pa_lid, uint8_t sgrp_id, uint
 					   const bap_cfg_ptr_t *p_cfg,
 					   const bap_cfg_metadata_ptr_t *p_metadata)
 {
-	LOG_DBG("Subgroup report");
-	LOG_DBG("sgrp_id %u, stream_bf %x, codec_id %02x %02x %02x %02x %02x", sgrp_id,
+	LOG_INF("Subgroup report");
+	LOG_INF("sgrp_id %u, stream_bf %x, codec_id %02x %02x %02x %02x %02x", sgrp_id,
 		stream_pos_bf, p_codec_id->codec_id[0], p_codec_id->codec_id[1],
 		p_codec_id->codec_id[2], p_codec_id->codec_id[3], p_codec_id->codec_id[4]);
-	LOG_DBG("BAP cfg: loc_bf %x frame_octet %u sampling_freq %u frame_dur %u frames_sdu %u",
+	LOG_INF("BAP cfg: loc_bf %x frame_octet %u sampling_freq %u frame_dur %u frames_sdu %u",
 		p_cfg->param.location_bf, p_cfg->param.frame_octet, p_cfg->param.sampling_freq,
 		p_cfg->param.frame_dur, p_cfg->param.frames_sdu);
 
@@ -342,7 +348,7 @@ static void assign_audio_channel(uint8_t stream_count, uint8_t stream_pos, uint1
 #else /* CONFIG_AUDIO_LOCATION_IMPLICIT */
 	if (stream_count == 0) {
 #endif
-		LOG_DBG("Stream index %u is left or centre channel", stream_pos);
+		LOG_INF("Stream index %u is left or centre channel", stream_pos);
 		sink_env.left_channel_pos = stream_pos;
 	}
 
@@ -352,7 +358,7 @@ static void assign_audio_channel(uint8_t stream_count, uint8_t stream_pos, uint1
 #else /* CONFIG_AUDIO_LOCATION_IMPLICIT */
 	if (stream_count == 1) {
 #endif
-		LOG_DBG("Stream index %u is right channel", stream_pos);
+		LOG_INF("Stream index %u is right channel", stream_pos);
 		sink_env.right_channel_pos = stream_pos;
 		sink_env.datapath_cfg.stereo = true;
 	}
@@ -364,8 +370,8 @@ static void on_bap_bc_scan_stream_report(uint8_t pa_lid, uint8_t sgrp_id, uint8_
 {
 	static uint8_t stream_report_count;
 
-	LOG_DBG("Stream report %u", stream_pos);
-	LOG_DBG("BAP cfg: loc_bf %x frame_octet %u sampling_freq %u frame_dur %u frames_sdu %u",
+	LOG_INF("Stream report %u", stream_pos);
+	LOG_INF("BAP cfg: loc_bf %x frame_octet %u sampling_freq %u frame_dur %u frames_sdu %u",
 		p_cfg->param.location_bf, p_cfg->param.frame_octet, p_cfg->param.sampling_freq,
 		p_cfg->param.frame_dur, p_cfg->param.frames_sdu);
 
@@ -375,7 +381,7 @@ static void on_bap_bc_scan_stream_report(uint8_t pa_lid, uint8_t sgrp_id, uint8_
 		expected_streams = 0;
 		stream_report_count = 0;
 
-		LOG_DBG("Disabling PA reports");
+		LOG_INF("Disabling PA reports");
 		uint16_t err = bap_bc_scan_pa_report_ctrl(sink_env.pa_lid, 0);
 
 		if (err) {
@@ -383,7 +389,7 @@ static void on_bap_bc_scan_stream_report(uint8_t pa_lid, uint8_t sgrp_id, uint8_
 		}
 
 		if (sink_env.left_channel_pos == INVALID_CHANNEL_INDEX) {
-			LOG_DBG("A left or centre channel must be present");
+			LOG_INF("A left or centre channel must be present");
 			sink_env.datapath_cfg_valid = false;
 		}
 
@@ -406,11 +412,11 @@ static void on_bap_bc_sink_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t gr
 {
 	switch (cmd_type) {
 	case BAP_BC_SINK_CMD_TYPE_ENABLE:
-		LOG_DBG("enable cmd complete, status %u, grp %u, stream %u", status, grp_lid,
+		LOG_INF("enable cmd complete, status %u, grp %u, stream %u", status, grp_lid,
 			stream_pos);
 		break;
 	case BAP_BC_SINK_CMD_TYPE_START_STREAMING:
-		LOG_DBG("start streaming cmd complete, status %u, grp %u, stream %u", status,
+		LOG_INF("start streaming cmd complete, status %u, grp %u, stream %u", status,
 			grp_lid, stream_pos);
 		sink_env.started_streams_bf |= (1U << (stream_pos - 1));
 
@@ -428,7 +434,7 @@ static void on_bap_bc_sink_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t gr
 		}
 		break;
 	default:
-		LOG_DBG("Unexpected cmd type %u", cmd_type);
+		LOG_ERR("Unexpected cmd type %u", cmd_type);
 		break;
 	}
 }
@@ -437,7 +443,7 @@ static void on_bap_bc_sink_quality_cmp_evt(uint16_t status, uint8_t grp_lid, uin
 					   uint32_t crc_error_packets, uint32_t rx_unrx_packets,
 					   uint32_t duplicate_packets)
 {
-	LOG_DBG("cb_sink_quality, status %u group %u stream %u crc_err %u missing %u duplicate %u",
+	LOG_INF("cb_sink_quality, status %u group %u stream %u crc_err %u missing %u duplicate %u",
 		status, grp_lid, stream_pos, crc_error_packets, rx_unrx_packets, duplicate_packets);
 }
 
@@ -462,7 +468,7 @@ static void on_bap_bc_sink_status(uint8_t grp_lid, uint8_t state, uint32_t strea
 		start_scanning();
 		break;
 	default:
-		LOG_DBG("Unexpected bc_sink state %u", state);
+		LOG_ERR("Unexpected bc_sink state %u", state);
 		break;
 	}
 }

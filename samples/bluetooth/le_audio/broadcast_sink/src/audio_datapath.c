@@ -38,9 +38,15 @@ struct audio_datapath {
 K_THREAD_STACK_DEFINE(decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE);
 
 static struct audio_datapath env;
+static uint16_t last_sdu;
 
 static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 {
+	if (last_sdu && (last_sdu + 1 < sdu_seq)) {
+		LOG_INF("SDU sequence number jumps, last: %u, now: %u", last_sdu, sdu_seq);
+	}
+	last_sdu = sdu_seq;
+
 	if (0 == (sdu_seq % 128)) {
 		LOG_INF("SDU sequence number %u", sdu_seq);
 	}
@@ -123,25 +129,30 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		return ret;
 	}
 
-	ret = presentation_compensation_configure(cfg->mclk_dev, pres_delay_us);
-	if (ret != 0) {
-		LOG_ERR("Failed to configure presentation compensation module, err %d", ret);
-		return ret;
-	}
+	/* TODO: Change MCLK to use alif clock control */
+
+	/* ret = presentation_compensation_configure(cfg->mclk_dev, pres_delay_us);
+	 * if (ret != 0) {
+	 *	LOG_ERR("Failed to configure presentation compensation module, err %d", ret);
+	 *	return ret;
+	 * }
+	 */
 
 	/* Add presentation compensation callback to notify audio sink */
-	ret = presentation_compensation_register_cb(audio_sink_i2s_apply_timing_correction);
-	if (ret != 0) {
-		LOG_ERR("Failed to register presentation compensation callback, err %d", ret);
-		return ret;
-	}
+	/* ret = presentation_compensation_register_cb(audio_sink_i2s_apply_timing_correction);
+	 * if (ret != 0) {
+	 *	LOG_ERR("Failed to register presentation compensation callback, err %d", ret);
+	 *	return ret;
+	 * }
+	 */
 
 #ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
-	ret = presentation_compensation_register_debug_cb(on_timing_debug_info_ready);
-	if (ret != 0) {
-		LOG_ERR("Failed to register presentation compensation debug callback, err %d", ret);
-		return ret;
-	}
+	/* ret = presentation_compensation_register_debug_cb(on_timing_debug_info_ready);
+	 * if (ret != 0) {
+	 *	LOG_ERR("Failed to register presentation compensation debug callback, err %d", ret);
+	 *	return ret;
+	 * }
+	 */
 #endif
 
 	ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
@@ -173,7 +184,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		return ret;
 	}
 
-	LOG_DBG("Created audio datapath");
+	LOG_INF("Created audio datapath");
 
 	return 0;
 }
@@ -220,7 +231,7 @@ int audio_datapath_cleanup(void)
 		audio_queue_delete(env.audio_queue);
 	}
 
-	LOG_DBG("Removed audio datapath");
+	LOG_INF("Removed audio datapath");
 
 	return 0;
 }

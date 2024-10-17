@@ -45,6 +45,7 @@ static void recv_next_sdu(struct iso_datapath_ctoh *datapath)
 				   K_NO_WAIT);
 
 	if (ret) {
+		LOG_ERR("Not enough memory to allocate receiving buffer");
 		datapath->awaiting_buffer = true;
 		return;
 	}

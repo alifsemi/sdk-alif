@@ -105,9 +105,10 @@ static void on_i2s_complete(const struct device *dev, enum i2s_sync_status statu
 
 static void submit_presentation_delay(struct k_work *item)
 {
-	struct pres_delay_work *w = CONTAINER_OF(item, struct pres_delay_work, work);
+	(void)item;
+	/* struct pres_delay_work *w = CONTAINER_OF(item, struct pres_delay_work, work); */
 
-	presentation_compensation_notify_timing(w->pres_delay_us);
+	/* presentation_compensation_notify_timing(w->pres_delay_us); */
 }
 
 int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio_queue,
