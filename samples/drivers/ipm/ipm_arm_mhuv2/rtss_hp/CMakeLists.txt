@@ -8,11 +8,6 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-if(NOT ("${BOARD}" STREQUAL "alif_e7_dk_rtss_hp" OR
-	"${BOARD}" STREQUAL "alif_e3_dk_rtss_hp"))
-	message(FATAL_ERROR "${BOARD} was not supported for this sample")
-endif()
-
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(mhuv2)
 

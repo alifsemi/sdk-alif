@@ -30,6 +30,11 @@ interrupts and registered callback functions are called for usage.
 This sample has been tested on :ref:`alif_e7_dk_rtss_hp`, using
 Alif DevKit Ensemble family board.
 
+Supported Targets
+*****************
+* alif_e3_dk_rtss_hp
+* alif_e7_dk_rtss_hp
+
 Building
 ********
 
