@@ -4,6 +4,6 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-mainmenu "Alif SYSTEM OFF demo"
+mainmenu "Alif System Off Demo"
 
 source "Kconfig.zephyr"
