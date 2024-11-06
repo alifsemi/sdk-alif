@@ -14,7 +14,6 @@ Getting started with Zephyr Alif SDK
    overview
    hardware_and_software_setup
    building_application_binaries
-   helloworld_sample_app
    programming_an_app
 
 Document History

@@ -90,7 +90,6 @@ Fetch the SDK
 -------------
 
 For details on how the toolchain selection is done, refer Zephyr's documentation: `Toolchain Selection`_.
-The application is run from ITCM and stored in MRAM.
 
 This section explains building Zephyr using the GCC toolchain.
 
@@ -100,10 +99,21 @@ This section explains building Zephyr using the GCC toolchain.
 
        mkdir sdk-alif
        cd sdk-alif
-       west init -m org-115832732@github.com:AlifSemi/sdk-alif.git --mr main
+       west init -m https://github.com/alifsemi/sdk-alif.git --mr main
        west update
 
-2. Build an Application using the `west` tool.
+2. Build an Application
+
+      Supported Targets
+
+      - alif_e3_dk_rtss_he
+
+      - alif_e3_dk_rtss_hp
+
+      - alif_e7_dk_rtss_he
+
+      - alif_e7_dk_rtss_hp
+
 
    a. Navigate to the Zephyr directory:
 
@@ -111,43 +121,61 @@ This section explains building Zephyr using the GCC toolchain.
 
           cd zephyr
 
-   b. **HelloWorld Application**
+   b. Build HelloWorld Application
+
       An application that prints a Hello World message along with the board name.
 
-      - **RTSS-HE**
+      **RTSS-HE**
+
+	Build for ITCM :
 
         .. code-block:: console
 
             west build -b alif_e7_dk_rtss_he samples/hello_world
 
-      - **RTSS-HP**
+        Build for MRAM : (Address : 0x80000000)
+
+        .. code-block:: console
+
+            west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_ROM_ITCM=n
+
+
+      **RTSS-HP**
+
+	Build for ITCM :
 
         .. code-block:: console
 
             west build -b alif_e7_dk_rtss_hp samples/hello_world
 
+        Build for MRAM : (Address : 0x80200000)
+
+	.. code-block:: console
+
+    	   west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_ROM_ITCM=n
+
+
       .. note::
-
          By default, Ninja is used.
-	  To switch to using Unix Makefiles, add the following option: -- -G "Unix Makefiles"
-
-   .. note::
-
-   	Save the built application binary images as follows:
-
-   	- **RTSS-HE:**
-
-          .. code-block:: console
-
-               cp build/zephyr/zephyr.bin /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshe_helloworld.bin
-
-   	- **RTSS-HP:**
-
-          .. code-block:: console
-
-               cp build/zephyr/zephyr.bin /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshp_helloworld.bin
+	 To switch to using Unix Makefiles, add the following option:
+	 ``-- -G "Unix Makefiles"``
 
 
-   To verify booting, use the configuration file at `app-release-exec-linux/build/config/zephyr_e7_rtsshe_rtsshp_helloworld.json` and program MRAM as described in :ref:`programming_an_application`.
+   c. Save the binaries
+
+     **RTSS-HE**
+
+        .. code-block:: console
+
+               cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshe_helloworld.bin
+
+     **RTSS-HP**
+
+        .. code-block:: console
+
+               cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshp_helloworld.bin
+
+
+   To verify booting, program MRAM as described in :ref:`programming_an_application`.
 
 

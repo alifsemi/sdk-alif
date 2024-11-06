@@ -29,45 +29,42 @@ The application binaries are:
 #. Press the reset button to power on DevKit.
 #. Create a JSON file zephyr_e7_rtsshe_rtsshp_helloworld.json for the RTSS-HE and RTSS-HP. You can also use the file with the same filename that was copied into this directory during setup.
 
-   .. code-block:: console
-
-      cd app-release-exec-linux/
-      gedit build/config
-
-
-.. code-block:: json
-
-    {
-        "DEVICE": {
-            "disabled": false,
-            "binary": "app-device-config.json",
-            "version": "0.5.00",
-            "signed": true
-        },
-        "Zephyr-RTSS-HE": {
-            "binary": "zephyr_e7_rtsshe_helloworld.bin",
-            "version": "1.0.0",
-            "cpu_id": "M55_HE",
-            "loadAddress": "0x58000000",
-            "flags": ["load", "boot"],
-            "signed": false
-        },
-        "Zephyr-RTSS-HP": {
-            "binary": "zephyr_e7_rtsshp_helloworld.bin",
-            "version": "1.0.0",
-            "cpu_id": "M55_HP",
-            "loadAddress": "0x50000000",
-            "flags": ["load", "boot"],
-            "signed": false
-        }
-    }
-
-
-#. Go to Alif Security Toolkit directory containing app-gen-toc, app-write-mram, and updateSystemPackage programs. (This example assumes the tools are located at /home/$USER/app-release-exec-linux).
+   .. note::
+      This example assumes that the pre-build binaries containing app-gen-toc, app-write-mram, and updateSystemPackage programs delivered from Alif are located at YOUR_WORKSPACE
 
    .. code-block:: console
 
-       cd app-release-exec-linux
+      cd YOUR_WORKSPACE/app-release-exec-linux/
+      vi build/config/zephyr_e7_rtsshe_rtsshp_helloworld.json
+
+
+   .. code-block:: json
+
+       {
+           "DEVICE": {
+               "disabled": false,
+               "binary": "app-device-config.json",
+               "version": "0.5.00",
+               "signed": true
+           },
+           "Zephyr-RTSS-HE": {
+               "binary": "zephyr_e7_rtsshe_helloworld.bin",
+               "version": "1.0.0",
+               "cpu_id": "M55_HE",
+               "loadAddress": "0x58000000",
+               "flags": ["load", "boot"],
+               "signed": false
+           },
+           "Zephyr-RTSS-HP": {
+               "binary": "zephyr_e7_rtsshp_helloworld.bin",
+               "version": "1.0.0",
+               "cpu_id": "M55_HP",
+               "loadAddress": "0x50000000",
+               "flags": ["load", "boot"],
+               "signed": false
+           }
+       }
+
 
 #. Create an Alif Application image using the app-gen-toc script and choose the above created json.
 
@@ -82,16 +79,14 @@ Deploying ATOC
 
 Program Alif application image build/AppTocPackage.bin under the build directory through ISP.
 
-Syntax:
+   .. code-block:: console
 
-.. code-block:: console
+      ./app-write-mram -p
 
-    ./app-write-mram -p
+   .. note::
 
-.. note::
-
-   a. In the above example, the SE-UART is detected as `/dev/ttyACM0` on the host. Please identify the correct device node using the `dmesg` command.
-   b. Please refer to `Alif Security Toolkit Quick Start Guide`_ for more information.
+     a. In the above example, the SE-UART is detected as `/dev/ttyACM0` on the host. Please identify the correct device node using the `dmesg` command.
+     b. Please refer to `Alif Security Toolkit Quick Start Guide`_ for more information.
 
 .. tip::
 
@@ -112,8 +107,8 @@ Syntax:
    - If the device is still not recognized, check for loose connections or try using a different USB port.
 
 
-Booting the RTSS-HE and RTSS-HP with the Programmed Applications
-----------------------------------------------------------------
+Booting the applications
+------------------------
 
 #. Open a serial console application on host PC - baud rate of 115200.
 #. Select the RTSS-HE USB port (Example: /dev/ttyACM1)
