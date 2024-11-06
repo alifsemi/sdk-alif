@@ -26,7 +26,7 @@ Components
 
 The image below shows various SDK components. The main components are SDK Alif, Zephyr RTOS, HAL Alif and the MCUboot bootloader.
 
-.. figure:: _static/sdk_components.jpg
+.. figure:: _static/sdk_components.png
    :alt: SDK Components
    :width: 500px
    :align: center

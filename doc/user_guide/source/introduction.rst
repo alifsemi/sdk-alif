@@ -4,23 +4,23 @@ Introduction
 In this user guide, we cover the following steps:
 
 1. **Prerequisites for Building Zephyr OS:**
-   Understand the requirements for building Zephyr OS, a small Real-Time Operating System designed for connected, resource-constrained, and embedded devices       for the real-time subsystems in Alif's devices.
+   Understand the requirements for building Zephyr OS, a small Real-Time Operating System designed for connected, resource-constrained, and embedded devices for the real-time subsystems in Alif's devices.
 
 2. **Building an Application Using the West Tool:**
-   Learn how to build an application using the west tool. West is Zephyr’s meta tool written in Python, which calls CMake/Make commands on a Linux host—such      as Ubuntu.
+   Learn how to build an application using the west tool. West is Zephyr’s meta tool written in Python, which calls CMake/Make commands on a Linux host—such as Ubuntu.
 
 3. **Programming the Application Binary onto ITCM:**
    Steps to program the application binary onto the ITCM of one of the real-time subsystems and booting the application.
 
 4.  **Running the Application from MRAM:**
-    Discover how to run applications directly from MRAM. Learn about the supported targets, specific MRAM boot addresses for RTSS-HE and RTSS-HP, and the           necessary build commands.
+    Discover how to run applications directly from MRAM. Learn about the supported targets, specific MRAM boot addresses for RTSS-HE and RTSS-HP, and the necessary build commands.
 
 The Alif DevKit
 ---------------
 
 The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
 
-* It includes multiple Cortex-M class processors (Ensemble E3 and E7 series) and additionally multiple Cortex-A class processors (Ensemble E7 series).
+It includes multiple Cortex-M class processors (Ensemble E3 and E7 series) and additionally multiple Cortex-A class processors (Ensemble E7 series).
 
 The E7 series processors have:
 
@@ -46,22 +46,26 @@ Zephyr uses a meta-tool called `west` to execute Kconfig, CMake and build system
 Hardware and Software Requirements
 ----------------------------------
 
-Hardware Requirement
-
+Hardware Requirements
 ~~~~~~~~~~~~~~~~~~~~~
 
-* Alif Ensemble Devkit Gen2 (DK-E7).
+* Alif Ensemble Devkit Gen2
 
 Software Requirements
-
 ~~~~~~~~~~~~~~~~~~~~~
 
-- **Ubuntu 20.04 64-bit** or Later
+1. For Host PC:
+   Ubuntu 20.04 64-bit or later.
 
-*Note: While different flavors of Linux distributions may also work, they have not been thoroughly tested.*
+   *Note: While different flavors of Linux distributions may also work, they have not been thoroughly tested.*
+
+
+2. Alif Security Toolkit version 1.98.3 or later.
+
+   * Available at `Alif Toolkit Download`_
+
 
 Toolchains
-
 ~~~~~~~~~~
 
 The following toolchains have been tested for the SDK application:
