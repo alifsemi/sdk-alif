@@ -105,10 +105,36 @@ static inline void app_restore_host_systop(void)
 static int app_pre_kernel1_init(void)
 {
 	app_force_host_systop_on();
+
 	return 0;
 }
 SYS_INIT(app_pre_kernel1_init, PRE_KERNEL_1, 39); /* (CONFIG_KERNEL_INIT_PRIORITY_DEFAULT - 1) */
 #endif
+
+/**
+ * Use the HFOSC clock for the UART console
+ */
+#if DT_SAME_NODE(DT_NODELABEL(uart4), DT_CHOSEN(zephyr_console))
+#define CONSOLE_UART_NUM 4
+#elif DT_SAME_NODE(DT_NODELABEL(uart2), DT_CHOSEN(zephyr_console))
+#define CONSOLE_UART_NUM 2
+#else
+#error "Specify the uart console number"
+#endif
+
+#define UART_CTRL_CLK_SEL_POS 8
+
+static int app_pre_console_init(void)
+{
+	/* Enable HFOSC in CGU */
+	sys_set_bits(CGU_CLK_ENA, BIT(23));
+
+	/* Enable HFOSC for the UART console */
+	sys_clear_bits(EXPSLV_UART_CTRL, BIT((CONSOLE_UART_NUM + UART_CTRL_CLK_SEL_POS)));
+
+	return 0;
+}
+SYS_INIT(app_pre_console_init, PRE_KERNEL_1, 50);
 
 /*
  * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
@@ -125,13 +151,8 @@ static int app_pre_kernel_init(void)
 }
 SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
 
-/*
- * This function will be invoked in the POST_KERNEL phase of the init routine.
- * In this example we are using the UART as console and the banner string will
- * be pushed before the APPLICATION phase of the init routine.
- *
- * We have to make sure the SYSTOP is ON before UART is initialized.
- * Set the RUN profile parameters for this application accordingly.
+/**
+ * Set the RUN profile parameters for this application.
  */
 static int app_set_run_params(void)
 {
@@ -175,7 +196,6 @@ static int app_set_run_params(void)
 
 	return 0;
 }
-SYS_INIT(app_set_run_params, POST_KERNEL, 50);
 
 static int app_set_off_params(void)
 {
@@ -335,6 +355,12 @@ int main(void)
 
 	if (wakeup_reason) {
 		printk("\r\nWakeup Interrupt Reason : %s\n\n", wakeup_dev->name);
+	}
+
+	ret = app_set_run_params();
+	if (ret) {
+		printk("ERROR: app exiting..\n");
+		return 0;
 	}
 
 	ret = app_set_off_params();

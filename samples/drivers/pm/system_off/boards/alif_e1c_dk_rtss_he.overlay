@@ -16,6 +16,13 @@
 	status = "okay";
 };
 
+/**
+ * Set the console uart frequency to use the HFOSC(38.4)
+ */
+&uart2 {
+	clock-frequency = < 38400000 >;
+};
+
 / {
 	chosen {
 		zephyr,cortex-m-idle-timer = &rtc0;
