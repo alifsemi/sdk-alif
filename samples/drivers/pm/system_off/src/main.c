@@ -14,6 +14,7 @@
 #include <zephyr/init.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
+#include <zephyr/sys/poweroff.h>
 #include <zephyr/drivers/counter.h>
 #include <cmsis_core.h>
 #include <soc.h>
@@ -263,11 +264,8 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 		return ret;
 	}
 
-	/*
-	 * Force Subsytem OFF on any delay.
-	 */
-	pm_state_force(0u, &(struct pm_state_info){PM_STATE_SOFT_OFF, 0, 0});
-	k_sleep(K_SECONDS(1));
+	sys_poweroff();
+
 #endif
 
 	return 0;
