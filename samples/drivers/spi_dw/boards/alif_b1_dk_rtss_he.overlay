@@ -19,15 +19,21 @@
 	};
 };
 
-&lpspi0 {
+&dma2 {
 	status = "okay";
 };
 
-&spi1 {
-	status = "disabled";
+&lpspi0 {
+	status = "okay";
+
+	dmas = <&dma2 0 13>, <&dma2 1 12>;
+	dma-names = "txdma", "rxdma";
 };
 
 &spi0 {
 	status = "okay";
 	serial-target;
+
+	dmas = <&dma2 2 20>, <&dma2 3 16>;
+	dma-names = "txdma", "rxdma";
 };
