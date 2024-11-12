@@ -33,5 +33,4 @@ commands.
 
 .. code-block:: bash
 
-    $ west build -b mps3_an547 zephyr/samples/tflm_ethosu
-    $ FVP_Corstone_SSE-300_Ethos-U55 build/zephyr/zephyr.elf
+    $ west build -b alif_e7_dk_rtss_he ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -G"Unix Makefiles"

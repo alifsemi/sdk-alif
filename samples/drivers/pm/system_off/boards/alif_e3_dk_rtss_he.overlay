@@ -1,0 +1,24 @@
+/*
+ * Copyright (c) 2024 Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * By default, the core boots from ITCM. Enable the below node to boot
+ * from MRAM. Please make sure to use the same address in the json file
+ * while flashing the binary using SE tools.
+ */
+/*
+&itcm {
+	reg = < 0x80000000 DT_SIZE_K(1024) >;
+	itcm_global_base = < 0x80000000 >;
+};
+*/
+
+/*
+ * Enable RTC and Set the counter to increment every 1sec
+ */
+&rtc0 {
+	prescaler = < 32768 >;
+	status = "okay";
+};

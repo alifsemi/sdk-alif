@@ -37,7 +37,6 @@ manifest:
         name-allowlist:
           - canopennode
           - chre
-          - cmsis
           - edtt
           - fatfs
           - hal_alif
@@ -67,22 +66,16 @@ manifest:
       revision: main
       path: modules/lib/matter
 
-    - name: hal_alif
-      repo-path: hal_alif
-      path: modules/hal/alif
-      revision: main
-
-    - name: hal_ethos_u
-      revision: 90ada2ea5681b2a2722a10d2898eac34c2510791
-      path: modules/hal/ethos_u
-      remote: zephyrproject
-      groups:
-        - hal
     - name: mcuboot_alif
       repo-path: mcuboot_alif
       path: bootloader/mcuboot
       revision: main
 
+    - name: cmsis_alif
+      revision: 85f6b92af0f6ac72594d391f895c45cc30847e41
+      path: modules/hal/cmsis
+      groups:
+         - hal
   self:
     path: alif
     west-commands: scripts/west-commands.yml

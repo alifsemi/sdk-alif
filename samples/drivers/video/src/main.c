@@ -11,7 +11,7 @@
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
 #define N_FRAMES		10
-#define N_VID_BUFF		2
+#define N_VID_BUFF		CONFIG_VIDEO_BUFFER_POOL_NUM_MAX
 
 int main(void)
 {
@@ -104,7 +104,14 @@ int main(void)
 			i, i, (uint32_t)buffers[i]->buffer,
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
-	k_msleep(1000);
+
+	/*
+	 * TODO: Need to fix this delay.
+	 * As per our observation, if we are not giving this much delay
+	 * then mt9m114 camera sensor is not setup properly and images its
+	 * sending out are not clear.
+	 */
+	k_msleep(7000);
 
 	/* Start video capture */
 	ret = video_stream_start(video);
