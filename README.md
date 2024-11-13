@@ -17,7 +17,7 @@ If you're new to Zephyr, start by reviewing the [Introduction to Zephyr](http://
 
 ## User Guide
 
-The User Guide provides a comprehensive look at how to set up, build, and deploy applications on Alif devices using the Zephyr RTOS. Access the full guide [User Guide](https://github.com/alifsemi/sdk-alif/releases/download/v1.0.0/user_guide).
+The User Guide provides a comprehensive look at how to set up, build, and deploy applications on Alif devices using the Zephyr RTOS. Access the full guide [User Guide](https://github.com/alifsemi/sdk-alif/releases/download/v1.0.0/user_guide.pdf).
 
 ## Release Notes
 
@@ -28,7 +28,7 @@ Stay informed about the latest updates:
 * Known Issues: Understand any current limitations or potential issues to be aware of while developing.
 
 
-For complete release details, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v1.0.0//release_notes).
+For complete release details, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v1.0.0//release_notes.pdf).
 
 ---
 
