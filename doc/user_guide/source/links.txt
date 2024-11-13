@@ -4,14 +4,11 @@
 .. _`GCC Download`: https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
 .. _`ArmCLang Download`: https://developer.arm.com/Tools%20and%20Software/Arm%20Compiler%20for%20Embedded
 .. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
-.. _`FW_1_0_DEV.tar`: https://yourdomain.com/userguide
 .. _`Alif Toolkit Download`: https://alifsemi.com/download/APFW0002
-.. _`Alif Zephyr SDK Source`: https://github.com/AlifSemiDev/zephyr_alif
-.. _`Alif Security Toolkit Quick Start Guide`: https://yourdomain.com/SE_Toolkit_Guide
-.. _`zephyr_alif`: https://github.com/AlifSemiDev/zephyr_alif
-.. _`alif_matter`: https://github.com/AlifSemiDev/alif_matter
-.. _`mcuboot_alif`: https://github.com/AlifSemiDev/mcuboot_alif
-.. _`cmsis_alif`: https://github.com/AlifSemiDev/cmsis_alif
-.. _`hal_alif`: https://github.com/AlifSemiDev/hal_alif
-.. _`sdk-alif`: https://github.com/AlifSemiDev/sdk_alif
+.. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
+.. _`zephyr_alif`: https://github.com/alifsemi/alif_zephyr
+.. _`mcuboot_alif`: https://github.com/alifsemi/alif_mcuboot
+.. _`cmsis_alif`: https://github.com/alifsemi/alif_ensemble-cmsis-dfp
+.. _`hal_alif`: https://github.com/alifsemi/hal_alif
+.. _`sdk-alif`: https://github.com/alifsemi/sdk-alif
 

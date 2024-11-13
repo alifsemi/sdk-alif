@@ -1,11 +1,10 @@
 .. ### This page lists links used in Alif docs.
 
 .. _`Zephyr`: https://zephyrproject.org/
-.. _`GCC Download`: https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
+.. _`GCC Download`: https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
 .. _`ArmCLang Download`: https://developer.arm.com/Tools%20and%20Software/Arm%20Compiler%20for%20Embedded
 .. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
 .. _`Zephyr OS GitHub`: https://github.com/zephyrproject-rtos/zephyr
-.. _`ZAS User Guide`: https://yourdomain.com/userguide
-.. _`ZAS Application Notes`: https://yourdomain.com/appnotes
+.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v1.0.0/user_guide
 .. _`Alif Trademarks`: https://alifsemi.com/legal
 .. _`Zephyr Project website`: https://www.zephyrproject.org
