@@ -6,9 +6,9 @@
 .. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
 .. _`Alif Toolkit Download`: https://alifsemi.com/download/APFW0002
 .. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
-.. _`zephyr_alif`: https://github.com/alifsemi/alif_zephyr
-.. _`mcuboot_alif`: https://github.com/alifsemi/alif_mcuboot
-.. _`cmsis_alif`: https://github.com/alifsemi/alif_ensemble-cmsis-dfp
+.. _`zephyr_alif`: https://github.com/alifsemi/zephyr_alif
+.. _`mcuboot_alif`: https://github.com/alifsemi/mcuboot_alif
+.. _`cmsis_alif`: https://github.com/alifsemi/cmsis_alif
 .. _`hal_alif`: https://github.com/alifsemi/hal_alif
 .. _`sdk-alif`: https://github.com/alifsemi/sdk-alif
 

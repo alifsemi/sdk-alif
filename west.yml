@@ -27,7 +27,7 @@ manifest:
   projects:
 
     - name: zephyr
-      repo-path: alif_zephyr
+      repo-path: zephyr_alif
       revision: main
       import:
         # In addition to the zephyr repository itself,
