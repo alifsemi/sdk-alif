@@ -218,7 +218,6 @@ External References
 ===================
 
 -  ZAS User Guide `ZAS User Guide`_
--  ZAS Application Notes `ZAS Application Notes`_
 
 Copyright/Trademark
 ===================
