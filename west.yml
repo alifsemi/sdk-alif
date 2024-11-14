@@ -62,7 +62,7 @@ manifest:
           - zcbor
           - zscilib
     - name: matter
-      repo-path: alif_matter
+      repo-path: matter_alif
       revision: main
       path: modules/lib/matter
 
