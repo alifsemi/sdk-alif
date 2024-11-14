@@ -9,7 +9,6 @@
 .. _`Alif Zephyr SDK Source`: https://github.com/AlifSemiDev/zephyr_alif
 .. _`Alif Security Toolkit Quick Start Guide`: https://yourdomain.com/SE_Toolkit_Guide
 .. _`zephyr_alif`: https://github.com/AlifSemiDev/zephyr_alif
-.. _`alif_matter`: https://github.com/AlifSemiDev/alif_matter
 .. _`mcuboot_alif`: https://github.com/AlifSemiDev/mcuboot_alif
 .. _`cmsis_alif`: https://github.com/AlifSemiDev/cmsis_alif
 .. _`hal_alif`: https://github.com/AlifSemiDev/hal_alif

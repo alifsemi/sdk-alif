@@ -48,39 +48,26 @@ Follow these commands to install dependencies, configure the environment, and pr
 
       export PATH=$PATH:$HOME/.local/bin
 
-5. Download and extract the ARM Zephyr toolchain:
-
-   .. code-block:: console
-
-      wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
-      tar -xf toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
-
-6. Update the PATH environment variable for the ARM Zephyr toolchain:
-
-   .. code-block:: console
-
-      export PATH=$PATH:`pwd`/arm-zephyr-eabi/bin
-
-7. Download the Zephyr SDK:
+5. Download the Zephyr SDK:
 
    .. code-block:: console
 
       wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/zephyr-sdk-0.16.5_linux-x86_64_minimal.tar.xz
 
-8. Extract the SDK:
+6. Extract the SDK:
 
    .. code-block:: console
 
       tar -xf zephyr-sdk-0.16.5_linux-x86_64_minimal.tar.xz
 
-9. Set up the Zephyr toolchain:
+7. Set up the Zephyr toolchain:
 
    .. code-block:: console
 
       cd zephyr-sdk-0.16.5
-      ./setup.sh -h -c
+      ./setup.sh -t arm-zephyr-eabi -h -c
 
-10. Return to the previous directory:
+8. Return to the previous directory:
 
     .. code-block:: console
 
@@ -113,6 +100,9 @@ This section explains building Zephyr using the GCC toolchain.
       - alif_e7_dk_rtss_he
 
       - alif_e7_dk_rtss_hp
+
+      .. note::
+         alif_e7_dk_rtss_he and alif_e7_dk_rtss_hp can also run from Devkit E5.
 
 
    a. Navigate to the Zephyr directory:
@@ -162,6 +152,9 @@ This section explains building Zephyr using the GCC toolchain.
 
 
    c. Save the binaries
+
+      .. note::
+         This example assumes that the pre-build binaries delivered from Alif are located at YOUR_WORKSPACE
 
      **RTSS-HE**
 

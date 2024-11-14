@@ -107,7 +107,7 @@ Program Alif application image build/AppTocPackage.bin under the build directory
    - If the device is still not recognized, check for loose connections or try using a different USB port.
 
 
-Booting the applications
+Booting the Applications
 ------------------------
 
 #. Open a serial console application on host PC - baud rate of 115200.
