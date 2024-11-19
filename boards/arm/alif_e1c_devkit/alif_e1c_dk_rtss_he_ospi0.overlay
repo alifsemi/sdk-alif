@@ -21,29 +21,42 @@
 	zephyr,memory-region = "DTCM";
 };
 
-/* Redefine pinmux for below GPIO ports so that pins used for */
-/* the OSPI0 NOR flash are not modified. */
-&pinctrl_gpio2 {
+/* Override GPIO PINMUX with OSPI-0 */
+&pinctrl_gpio0 {
 	group0 {
-		pinmux = < PIN_P2_0__GPIO >;
-	};
-};
-&pinctrl_gpio4 {
-	group0 {
-		pinmux = < PIN_P4_0__GPIO >,
-			 < PIN_P4_1__GPIO >;
+		pinmux = <PIN_P0_0__GPIO>,
+			 <PIN_P0_1__GPIO>,
+			 <PIN_P0_2__OSPI0_SS0_A>,
+			 <PIN_P0_3__GPIO>,
+			 <PIN_P0_4__GPIO>,
+			 <PIN_P0_5__GPIO>,
+			 <PIN_P0_6__GPIO>,
+			 <PIN_P0_7__GPIO>;
 	};
 };
 
 &pinctrl_gpio3 {
 	group0 {
-		pinmux = < PIN_P3_0__GPIO >,
-		         < PIN_P3_1__GPIO >,
-			 < PIN_P3_2__GPIO >,
-			 < PIN_P3_3__GPIO >,
-			 < PIN_P3_4__GPIO >,
-			 < PIN_P3_5__GPIO >,
-			 < PIN_P3_6__GPIO >,
-			 < PIN_P3_7__GPIO >;
+		pinmux = < PIN_P3_0__OSPI0_D0_A >,
+		         < PIN_P3_1__OSPI0_D1_A >,
+			 < PIN_P3_2__OSPI0_D2_A >,
+			 < PIN_P3_3__OSPI0_D3_A >,
+			 < PIN_P3_4__OSPI0_D4_A >,
+			 < PIN_P3_5__OSPI0_D5_A >,
+			 < PIN_P3_6__OSPI0_D6_A >,
+			 < PIN_P3_7__OSPI0_D7_A >;
+	};
+};
+
+&pinctrl_gpio4 {
+	group0 {
+		pinmux = < PIN_P4_0__OSPI0_SCLKN_A >,
+		         < PIN_P4_1__OSPI0_RXDS_A >,
+			 < PIN_P4_2__OSPI0_SCLK_A >,
+			 < PIN_P4_3__GPIO >,
+			 < PIN_P4_4__GPIO >,
+			 < PIN_P4_5__GPIO >,
+			 < PIN_P4_6__GPIO >,
+			 < PIN_P4_7__GPIO >;
 	};
 };
