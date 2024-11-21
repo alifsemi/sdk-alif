@@ -7,7 +7,7 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-/* This application demonstrate the communication and control of a device
+/* This application demonstrates the communication and control of a device
  * allowing to remotely control an LED, and to transmit the state of a button.
  */
 
@@ -25,9 +25,18 @@
 #include "gatt_db.h"
 #include "gatt_srv.h"
 #include "ke_mem.h"
+#include <zephyr/drivers/gpio.h>
+
+#define LED0_NODE	DT_ALIAS(led0)
+#define SW0_NODE	DT_ALIAS(sw0)
+
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios,
+							      {0});
 
 #define BT_CONN_STATE_CONNECTED	   0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
+
 /* Service Definitions */
 #define ATT_128_PRIMARY_SERVICE  ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
 #define ATT_128_INCLUDED_SERVICE ATT_16_TO_128_ARRAY(GATT_DECL_INCLUDE)
@@ -493,6 +502,11 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 				memcpy(&env.char1_val, co_buf_data(p_data),
 				       sizeof(env.char1_val));
 				LOG_DBG("TOGGLE LED, state %d", env.char1_val);
+				if (env.char1_val) {
+					gpio_pin_set_dt(&led, 1);
+				} else {
+					gpio_pin_set_dt(&led, 0);
+				}
 			}
 			break;
 		}
@@ -612,7 +626,7 @@ static uint16_t service_notification_send(uint32_t conidx_mask, uint8_t val)
 int main(void)
 {
 	uint16_t err;
-	uint8_t button_state = 0;
+	int res;
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -628,14 +642,41 @@ int main(void)
 
 	LOG_DBG("Init complete!\n");
 
+	/* Configure LED */
+	if (!gpio_is_ready_dt(&led)) {
+		LOG_ERR("led is not ready!");
+		return 0;
+	}
+
+	res = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	if (res < 0) {
+		LOG_ERR("led configure failed");
+		return 0;
+	}
+
+	/* LED initial state */
+	gpio_pin_set_dt(&led, 0);
+
+	/* Configure button */
+	if (!gpio_is_ready_dt(&button)) {
+		LOG_ERR("Button is not ready");
+		return 0;
+	}
+
+	res = gpio_pin_configure_dt(&button, GPIO_INPUT);
+	if (res != 0) {
+		LOG_ERR("Button configure failed");
+		return 0;
+	}
+
 	while (1) {
-		k_sleep(K_SECONDS(2));
+		k_sleep(K_MSEC(100));
 
-		/* Toggle button state */
-		button_state ^= 0x01;
-
-		if (conn_status == BT_CONN_STATE_CONNECTED) {
-			err = service_notification_send(UINT32_MAX, button_state);
+		if ((conn_status == BT_CONN_STATE_CONNECTED)
+		&& (env.ntf_cfg == PRF_CLI_START_NTF)
+		&& (!env.ntf_ongoing)) {
+			err = service_notification_send(UINT32_MAX,
+			!gpio_pin_get_dt(&button));
 			if (err) {
 				LOG_ERR("Error %u sending measurement", err);
 			}
