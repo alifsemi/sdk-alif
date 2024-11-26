@@ -81,7 +81,7 @@ enum service_att_list {
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 static uint8_t adv_actv_idx;
 static struct service_env env;
-static const char device_name[] = "ALIF_LBS";
+static const char device_name[] = "ALIF_BLK";
 
 /* Service UUID to pass into gatt_db_svc_add */
 static const uint8_t lbs_service_uuid[] = LBS_UUID_128_SVC;
@@ -104,7 +104,7 @@ static const gatt_att_desc_t lbs_att_db[LBS_IDX_NB] = {
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
-	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
+	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	.private_identity.addr = {0xCF, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
 	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
