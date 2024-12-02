@@ -1,0 +1,28 @@
+.. ### This page lists links used in Alif docs.
+
+.. _`Alif Toolkit Download`: https://alifsemi.com/download/APFW0002
+.. _`Alif Zephyr SDK Source`: https://github.com/alifsemi/zephyr_alif
+.. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
+
+.. _`sdk-alif`: https://github.com/alifsemi/sdk-alif
+.. _`zephyr_alif`: https://github.com/alifsemi/zephyr_alif
+.. _`mcuboot_alif`: https://github.com/alifsemi/mcuboot_alif
+.. _`cmsis_alif`: https://github.com/alifsemi/cmsis_alif
+.. _`hal_alif`: https://github.com/alifsemi/hal_alif
+
+.. ### Arm Hardware
+.. _`Helium`: https://www.arm.com/technologies/helium
+
+.. ### Compilers
+.. _`LLVM Embedded Toolchain for Arm`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm
+.. _`Arm GNU Toolchain`: https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
+
+.. ### Compiler downloads
+.. _`Toolchain Selection`: https://docs.zephyrproject.org/latest/develop/toolchains/index.html
+.. _`GCC Download`: https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
+.. _`ArmCLang Download`: https://developer.arm.com/Tools%20and%20Software/Arm%20Compiler%20for%20Embedded
+.. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
+
+.. ### Compiler configurations
+.. _`Options for GCC Code Generation`: https://gcc.gnu.org/onlinedocs/gcc/Code-Gen-Options.html
+.. _`Options for Clang Code Generation`: https://clang.llvm.org/docs/ClangCommandLineReference.html
