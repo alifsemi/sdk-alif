@@ -29,7 +29,7 @@ automatically built to support booting with MCUboot. Application signing is also
 
 .. code-block:: console
 
-   west build --sysbuild -b alif_b1_fpga_rtss_he_ble alif/samples/bluetooth/smp_svr
+   west build --sysbuild -b alif_b1_dk_rtss_he alif/samples/bluetooth/smp_svr
 
 The resulting binaries then need to be flashed to the correct addresses in MRAM. The MCUboot
 bootloader uses fixed addresses for image slots.
