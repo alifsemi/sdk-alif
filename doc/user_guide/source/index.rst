@@ -12,7 +12,6 @@ Getting started with Zephyr Alif SDK
 
    introduction
    overview
-   hardware_and_software_setup
    building_application_binaries
    programming_an_app
 

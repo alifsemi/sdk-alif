@@ -4,8 +4,12 @@
 Follow this guide to:
 
 - Set up the host system on Ubuntu 20.04 LTS or later.
-
 - Build a sample application
+
+.. note::
+
+   The examples in this document make use of Ensemble E7 Devkit, unless otherwise specified.
+
 
 Setting up Host System
 ----------------------
@@ -14,10 +18,10 @@ Follow these commands to install dependencies, configure the environment, and pr
 
 .. note::
 
-	If you are using a virtual environment, make sure to install the Python dependencies within that isolated environment to manage dependencies more effectively.
-	For more information, refer to the `Python virtual environment`_ documentation.
+   If you are using a virtual environment, make sure to install the Python dependencies within that isolated environment to manage dependencies more effectively.
+   For more information, refer to the `Python virtual environment`_ documentation.
 
-	.. _Python virtual environment: https://docs.python.org/3/library/venv.html
+   .. _Python virtual environment: https://docs.python.org/3/library/venv.html
 
 1. Update the package list:
 
@@ -30,7 +34,6 @@ Follow these commands to install dependencies, configure the environment, and pr
    .. code-block:: console
 
       sudo apt install python3-dev -y
-
       sudo apt install -y --no-install-recommends python3-pip git \
       wget xz-utils file make python3-setuptools python3-wheel ninja-build \
       build-essential
@@ -69,106 +72,101 @@ Follow these commands to install dependencies, configure the environment, and pr
 
 8. Return to the previous directory:
 
-    .. code-block:: console
+   .. code-block:: console
 
-       cd ..
+      cd ..
 
 Fetch the SDK
 -------------
-
-For details on how the toolchain selection is done, refer Zephyr's documentation: `Toolchain Selection`_.
+For details on how the toolchain selection is done, refer to Zephyr's documentation: `Toolchain Selection`_.
 
 This section explains building Zephyr using the GCC toolchain.
 
-1. Fetch the Alif Zephyr SDK source from the `main` branch from the following location: `Alif Zephyr SDK Source`_.
+1. Fetch the Alif Zephyr SDK Source
+***********************************
 
-   .. code-block:: console
+Fetch the SDK source from the `main` branch:
 
-       mkdir sdk-alif
-       cd sdk-alif
-       west init -m https://github.com/alifsemi/sdk-alif.git --mr main
-       west update
+.. code-block:: console
+
+   mkdir sdk-alif
+   cd sdk-alif
+   west init -m https://github.com/alifsemi/sdk-alif.git --mr main
+   west update
 
 2. Build an Application
+***********************
+For details on how the toolchain selection is done, refer to Zephyr's documentation: `Toolchain Selection`_.
 
-      Supported Targets
+Supported Targets:
 
-      - alif_e3_dk_rtss_he
+- alif_e3_dk_rtss_he
+- alif_e3_dk_rtss_hp
+- alif_e7_dk_rtss_he
+- alif_e7_dk_rtss_hp
+- alif_e1c_dk_rtss_he
+- alif_b1_dk_rtss_he
 
-      - alif_e3_dk_rtss_hp
+.. note::
+   The `alif_e7_dk_rtss_he` and `alif_e7_dk_rtss_hp` can also be run from Devkit E5.
 
-      - alif_e7_dk_rtss_he
+a. Navigate to the Zephyr Directory
 
-      - alif_e7_dk_rtss_hp
+.. code-block:: console
 
-      .. note::
-         alif_e7_dk_rtss_he and alif_e7_dk_rtss_hp can also run from Devkit E5.
+   cd zephyr
 
+b. Build the HelloWorld Application
 
-   a. Navigate to the Zephyr directory:
+   An application that prints a "Hello World" message along with the board name.
 
-      .. code-block:: console
+**RTSS-HE**
 
-          cd zephyr
+- Build for ITCM:
 
-   b. Build HelloWorld Application
+  .. code-block:: console
 
-      An application that prints a Hello World message along with the board name.
+     west build -b alif_e7_dk_rtss_he samples/hello_world
 
-      **RTSS-HE**
+- Build for MRAM (Address: 0x80000000):
 
-	Build for ITCM :
+  .. code-block:: console
 
-        .. code-block:: console
+     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_ROM_ITCM=n
 
-            west build -b alif_e7_dk_rtss_he samples/hello_world
+**RTSS-HP**
 
-        Build for MRAM : (Address : 0x80000000)
+- Build for ITCM:
 
-        .. code-block:: console
+  .. code-block:: console
 
-            west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_ROM_ITCM=n
+     west build -b alif_e7_dk_rtss_hp samples/hello_world
 
+- Build for MRAM (Address: 0x80200000):
 
-      **RTSS-HP**
+  .. code-block:: console
 
-	Build for ITCM :
+     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_ROM_ITCM=n
 
-        .. code-block:: console
+.. note::
+   By default, Ninja is used. To switch to using Unix Makefiles, add the following option:
+   ``-- -G "Unix Makefiles"``
 
-            west build -b alif_e7_dk_rtss_hp samples/hello_world
+c. Save the Binaries
 
-        Build for MRAM : (Address : 0x80200000)
+**RTSS-HE**
 
-	.. code-block:: console
+.. code-block:: console
 
-    	   west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_ROM_ITCM=n
+   cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshe_helloworld.bin
 
+**RTSS-HP**
 
-      .. note::
-         By default, Ninja is used.
-	 To switch to using Unix Makefiles, add the following option:
-	 ``-- -G "Unix Makefiles"``
+.. code-block:: console
 
+   cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshp_helloworld.bin
 
-   c. Save the binaries
+To verify booting, program MRAM as described in :ref:`programming_an_application`.
 
-      .. note::
-         This example assumes that the pre-build binaries delivered from Alif are located at YOUR_WORKSPACE
-
-     **RTSS-HE**
-
-        .. code-block:: console
-
-               cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshe_helloworld.bin
-
-     **RTSS-HP**
-
-        .. code-block:: console
-
-               cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshp_helloworld.bin
-
-
-   To verify booting, program MRAM as described in :ref:`programming_an_application`.
-
-
+.. note::
+   This example assumes that the pre-built binaries delivered from Alif are located at YOUR_WORKSPACE.

@@ -13,4 +13,4 @@
 .. _`cmsis_alif`: https://github.com/AlifSemiDev/cmsis_alif
 .. _`hal_alif`: https://github.com/AlifSemiDev/hal_alif
 .. _`sdk-alif`: https://github.com/AlifSemiDev/sdk_alif
-
+.. _`Alif Hardware Reference Manual`:  https://alifsemi.com/download/APFW0002

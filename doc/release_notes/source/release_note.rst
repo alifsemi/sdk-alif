@@ -3,23 +3,14 @@ Introduction
 
 The **Zephyr Alif SDK (ZAS)** is a comprehensive suite of tools that makes it possible to configure, build, and deploy applications for Alif's microcontrollers.
 
-The **Alif DevKit** is a development device featuring an Alif Ensemble multi-core, high-performance, low-power consumption embedded device. It includes multiple Cortex-M class processors (Ensemble™ family E3 series) and additionally multiple Cortex-A class processors (Ensemble™ family E7 series) on a single device.
+The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
 
-E7 Series Processors
-====================
+The **Ensemble DevKit (DK-E7)**  allows you to configure the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
 
-The E7 series processors feature:
+The **Ensemble E1C DevKit (DK-E1C)** is designed to explore the Compact series of Ensemble devices.
 
-- **Application Processor Cores**: Dual-core Arm® Cortex®-A32 processors.
-- **Real-Time Processor Cores**: Cortex-M55 processors implementing the Arm v8.1 instruction set, including Helium M-Profile Vector Extension (MVE). Each Real-Time Processor core is paired with an Arm Ethos™-U55 microNPU for AI/ML acceleration.
+The **Balletto DevKit (DK-B1)** introduces the Balletto B1 series, a wireless MCU with integrated hardware acceleration for AI/ML workloads. It combines Bluetooth Low Energy 5.3 and 802.15.4 based Thread protocols, an Ethos-U55 microNPU for AI acceleration, and a Cortex-M55 MCU core.
 
-Real-Time Processor Cores
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- **High-Performance Arm Cortex-M55 (RTSS-HP)**: Operating at up to 400 MHz.
-- **High-Efficiency Arm Cortex-M55 (RTSS-HE)**: Operating at up to 160 MHz.
-
-The Cortex-M cores boot with **Zephyr OS**, a small RTOS for connected, resource-constrained, and embedded devices.
 
 Installing the SDK and Building the Application
 ===============================================
@@ -85,6 +76,8 @@ List of Supported Peripheral Devices and Features
 - **HWSEM (Hardware Semaphore)**:
   A need for synchronization while accessing a shared resource (memory or peripheral) by two or more independent processing subsystems is fulfilled by the HWSEM. By accessing shared resources with synchronization, the possibility of race conditions, deadlock, and abnormal behavior among independent processing subsystems can be avoided.
 
+  Hardware Semaphore is supported in the E7 Series.
+
 - **CDC-200 (Customizable Display Controller-200)**:
   The CDC from TES is a fully configurable VHDL IP to drive a pixel display. It can implement multiple layers and provides composition (blending) support.
 
@@ -137,7 +130,7 @@ List of Supported Peripheral Devices and Features
   Developers can now integrate the Zephyr Watchdog Timer (WDT) into their applications using the ZAS framework, enabling fault detection capabilities.
 
 - **OSPI Flash (Octal SPI Flash)**:
-  The Alif Devkit-e7 Board incorporates a 32MB ISSI Flash (IS25WX256), interfaced with the Octal SPI 1 controller. This flash memory serves as a vital repository for firmware, configuration data, and essential information. Developers utilizing the Alif Semiconductor Zephyr SDK can harness the flash driver, which implements the Zephyr Standard flash APIs. These APIs empower you to perform the following operations on the flash:
+  The Alif Devkit-e7 Board incorporates a 32MB ISSI Flash (IS25WX256), interfaced with the Octal SPI controller. This flash memory serves as a vital repository for firmware, configuration data, and essential information. Developers utilizing the Alif Semiconductor Zephyr SDK can harness the flash driver, which implements the Zephyr Standard flash APIs. These APIs empower you to perform the following operations on the flash:
 
   - **Erase**: Target specific sectors or the entire flash memory.
   - **Read**: Retrieve data from the flash memory.
@@ -165,54 +158,86 @@ List of Supported Peripheral Devices and Features
 - **MCU-BOOT**:
   MCU-boot is a secure bootloader for 32-bit microcontrollers, providing a common hardware and OS-independent framework for secure booting of applications and recoverable software upgrades. MCU-boot relies on the hardware abstraction layer (HAL) provided by the target OS and consists of two parts: the core bootloader library and the bootloader application. The bootloader framework mentioned above is primarily provided by the bootloader library, while the bootloader application is supplied by the target platform or OS. ZAS supports using MCU-boot as the bootloader and for device firmware upgrades. In this case, the application part of the bootloader will be provided by Zephyr. MCU-boot relies on the hardware porting layers provided by Zephyr, especially the flash map abstraction layer and the flash storage partition description provided by the Zephyr device tree, to enable its functionality.
 
+- **BLE**:
+  The Alif BLE host stack in Balletto B1 ROM conserves flash space. BLE is supported only in the Balletto series.
+
+- **LC3**:
+  The Alif LC3 Codec in Balletto B1 ROM supports BLE isochronous audio data encoding and decoding.
+
 Known Issues
 ============
 
 1. The Zephyr device driver for CDC200 only supports ARGB8888, RGB888, and RGB565 formats. However, this is just a subset of all the features supported by the CDC200 IP. This limitation maybe addressed in future releases.
+
 2. In the demo application, restrict the use of formats to ARGB8888 for Layer 2. Layer 2 directly copies an image from a C array to the framebuffer (FB) in ARGB8888 format. Formats for Layer 1 can be modified.
+
 3. Building Zephyr applications from the DTCM of RTSS-HP and RTSS-HE fails with the open-source Clang compiler (LLVM).
+
 4. The Ethos-u application has not been tested for compilation with ArmClang and open-source Clang compilers.
+
 5. Ethos-u application lacks support for building and running from MRAM or ITCM. It currently runs from SRAM0 (0x0200 0000).
+
 6. The RTSS_HE and RTSS_HP I2S application operate from SRAM0 (0x0200 0000) and DTCM (0x5080 0000) in a non-XIP mode.
+
 7. Compiling the I2S application with the open-source Clang compiler results in failure.
+
 8. Camera:
+
    a. Video buffer allocations to SRAM1 region are non-standard.
+
    b. Support for RGB formats needs to be added.
+
    c. The CMOS sensor and CSI bus are configured for RAW10 format, while the Camera controller is configured for RAW8 format due to a lack of proper post-processing tools. The configuration of the CMOS sensor for RAW8 format needs         	reworking.
+
    d. Not tested with the LLVM toolchain.
+
    e. The following is a list of issues fixed w.r.t the functionality of peripheral devices.
 
-The following is a list of issues known with respect to the functionality of peripheral devices.
+The following is a list of known issues related to the functionality of peripheral devices.
 
-+----------------+-------------------------------------------------------------+
-| **Alif-ID**    | **Description**                                             |
-+================+=============================================================+
-| `PSBT-189`     | Unable to configure the UART driver with odd, mark, or      |
-|                | space parity (UART_CFG_PARITY_ODD, UART_CFG_PARITY_MARK,    |
-|                | UART_CFG_PARITY_SPACE)                                      |
-+----------------+-------------------------------------------------------------+
-| `PSBT-190`     | Unable to configure the UART driver with the following stop |
-|                | bit configurations: UART_CFG_STOP_BITS_0_5 and              |
-|                | UART_CFG_STOP_BITS_1_5                                      |
-+----------------+-------------------------------------------------------------+
-| `PSBT-613`     | Communication messages not transmitted between RTSS-HE and  |
-|                | RTSS-HP via TCM in MHU0/MHU1 sample app                     |
-+----------------+-------------------------------------------------------------+
-| `PSBT-656`     | LPSPI Master RX & Slave TX Data Mismatch at 3 MHz Frequency |
-|                | with and without DMA                                        |
-+----------------+-------------------------------------------------------------+
-| `PSBT-659`     | SPI Master RX & Slave TX Data Mismatch                      |
-+----------------+-------------------------------------------------------------+
-| `PSBT-672`     | [Zephyr] UART Auto Flow Control RTS/CTS Functionality Not   |
-|                | Enabled/Implemented for E7 DevKit Board                     |
-+----------------+-------------------------------------------------------------+
-| `PSBT-730`     | OSPI Boot Failing on HP/HE Core with No Boot Prints Using   |
-|                | ZAS-v1.0.0 Release                                          |
-+----------------+-------------------------------------------------------------+
-| `PSBT-735`     | OSPI Flash Operations (Read/Write/Erase) Failing at Clock   |
-|                | Speeds of 40MHz or Higher on M55-HP/M55-HE Cores with       |
-|                | ZAS-v1.0.0 Release                                          |
-+----------------+-------------------------------------------------------------+
+.. list-table::
+   :header-rows: 1
+
+   * - **Alif-ID**
+     - **Description**
+   * - `PSBT-189`
+     - Unable to configure the UART driver with odd, mark, or space parity (UART_CFG_PARITY_ODD, UART_CFG_PARITY_MARK, UART_CFG_PARITY_SPACE).
+   * - `PSBT-190`
+     - Unable to configure the UART driver with the following stop bit configurations: UART_CFG_STOP_BITS_0_5 and UART_CFG_STOP_BITS_1_5.
+   * - `PSBT-613`
+     - Communication messages not transmitted between RTSS-HE and RTSS-HP via TCM in the MHU0/MHU1 sample app.
+   * - `PSBT-656`
+     - LPSPI Master RX & Slave TX data mismatch at 3 MHz frequency with and without DMA.
+   * - `PSBT-659`
+     - SPI Master RX & Slave TX data mismatch.
+   * - `PSBT-672`
+     - [Zephyr] UART auto flow control RTS/CTS functionality not enabled/implemented for the E7 DevKit board.
+   * - `PSBT-730`
+     - OSPI boot failing on HP/HE core with no boot prints using ZAS-v1.0.0 release.
+   * - `PSBT-735`
+     - OSPI flash operations (read/write/erase) failing at clock speeds of 40MHz or higher on M55-HP/M55-HE cores with ZAS-v1.0.0 release.
+   * - `PSBT-479`
+     - [Zephyr-v3.3] Compilation of the ethosu application using armclang is failing due to newlib.h not found with TCM cm55_he/cm55_hp using Zephyr-E7-B0-v0.2.0-Beta.
+   * - `PSBT-840`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No prints for the display demo application for MIPI-DSI 1-lane display panel when built using the ARMCLANG compiler.
+   * - `PSBT-843`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No image for the display demo application for CDC200 parallel display panel when built using the ARMCLANG compiler.
+   * - `PSBT-625`
+     - [Zephyr WDT] Watchdog reset functionality not working.
+   * - `PSBT-848`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No logs visible on the UART2 console for I2S with OSPI (TCM and MRAM are working fine).
+   * - `PSBT-846`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Warnings observed in all build logs when FLASH_ADDRESS_IN_SINGLE_FIFO_LOCATION is set using ZAS-v1.1 release.
+   * - `PSBT-847`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] ERROR: Stack overflow on CPU 0 when running the LC3 Codec application.
+   * - `PSBT-850`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Using the BLE application 'ALIF_HR', the device is not listed among the Bluetooth devices when using the mobile application.
+   * - `PSBT-831`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Unable to build the mcuboot app using the armclang toolchain.
+   * - `PSBT-857`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Build error when trying to build the BLE application using the ARM-Clang compiler.
+   * - `PSBT-858`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Build error when trying to build the LC3 codec application using the ARM-Clang and LLVM compiler.
 
 External References
 ===================

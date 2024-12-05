@@ -1,0 +1,18 @@
+
+/* Underline main heading and first level subheading */
+h1, h2 {
+    position: relative;
+    margin-bottom: 1.5em; /* Keeps spacing below the heading */
+}
+
+/* Add a line under h1 and h2 */
+h1::after, h2::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -10px;  /* Adjust this value for where the line should appear relative to the heading */
+    height: 1px;
+    background-color: #111388;  /* Blue color for the line */
+    opacity: 1;     /* Full opacity */
+}
