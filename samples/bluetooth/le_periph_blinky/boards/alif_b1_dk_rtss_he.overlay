@@ -1,0 +1,29 @@
+/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+
+/* for "buttons" node gpio5_7, enable software pull-up */
+&pinctrl_gpio5 {
+	group0 {
+		pinmux = < PIN_P5_0__GPIO >,
+			 < PIN_P5_1__GPIO >,
+			 < PIN_P5_2__GPIO >,
+			 < PIN_P5_3__GPIO >,
+			 < PIN_P5_4__GPIO >,
+			 < PIN_P5_5__GPIO >,
+			 < PIN_P5_6__GPIO >,
+			 < PIN_P5_7__GPIO >;
+		read_enable = < 0x1 >;
+	};
+
+	group1 {
+		pinmux = < PIN_P5_7__GPIO >;
+		driver_state_control = <1>;
+	};
+};

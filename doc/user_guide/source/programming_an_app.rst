@@ -3,7 +3,15 @@
 Programming an Application
 ==========================
 
-Alif offers a set of tools that can be used to merge Zephyr images and binaries of different cores, resulting in a single image known as an Application Table of Contents (ATOC) image. This ATOC image, which includes the Zephyr binary images (zephyr_e7_rtsshe_helloworld.bin, zephyr_e7_rtsshp_helloworld.bin) for the HE or HP Real-Time SubSystems[RTSS], is programmed into MRAM (a non-volatile memory) using the tools.
+Alif offers a set of tools that can be used to merge Zephyr images and binaries from different cores.
+
+This process results in a single image known as an Application Table of Contents (ATOC) image.
+
+The ATOC image includes the Zephyr binary images zephyr_e7_rtsshe_helloworld.bin and zephyr_e7_rtsshp_helloworld.bin.
+
+These binaries are for the HE or HP Real-Time SubSystems (RTSS).
+
+The ATOC image is programmed into MRAM, a type of non-volatile memory, using the tools.
 
 Getting the ATOC image onto MRAM consists of the following steps:
 
@@ -22,11 +30,13 @@ The JSON file (`zephyr_e7_rtsshe_rtsshp_helloworld.json`) is configured to boot 
 
 The application binaries are:
 
-- **RTSS-HE Application binary:** `zephyr_e7_rtsshe_helloworld.bin`
-- **RTSS-HP Application binary:** `zephyr_e7_rtsshp_helloworld.bin`
+   - **RTSS-HE Application binary:** `zephyr_e7_rtsshe_helloworld.bin`
+   - **RTSS-HP Application binary:** `zephyr_e7_rtsshp_helloworld.bin`
 
-#. Ensure that you have connected a USB PRG cable between the host and the SE-UART of the DevKit. Please refer section :ref:`connecting-usb-prg` to know how to connect the FTDI USB cable.
+#. Ensure that you have connected a USB PRG cable between the host and the SE-UART of the DevKit. Please refer to `Alif Hardware Reference Manual`_ for more information.
+
 #. Press the reset button to power on DevKit.
+
 #. Create a JSON file zephyr_e7_rtsshe_rtsshp_helloworld.json for the RTSS-HE and RTSS-HP. You can also use the file with the same filename that was copied into this directory during setup.
 
    .. note::
@@ -37,33 +47,67 @@ The application binaries are:
       cd YOUR_WORKSPACE/app-release-exec-linux/
       vi build/config/zephyr_e7_rtsshe_rtsshp_helloworld.json
 
+#. Select the appropriate JSON and binary files based on whether you need ITCM or MRAM configuration.
 
-   .. code-block:: json
+   .. tabs::
 
-       {
-           "DEVICE": {
-               "disabled": false,
-               "binary": "app-device-config.json",
-               "version": "0.5.00",
-               "signed": true
-           },
-           "Zephyr-RTSS-HE": {
-               "binary": "zephyr_e7_rtsshe_helloworld.bin",
-               "version": "1.0.0",
-               "cpu_id": "M55_HE",
-               "loadAddress": "0x58000000",
-               "flags": ["load", "boot"],
-               "signed": false
-           },
-           "Zephyr-RTSS-HP": {
-               "binary": "zephyr_e7_rtsshp_helloworld.bin",
-               "version": "1.0.0",
-               "cpu_id": "M55_HP",
-               "loadAddress": "0x50000000",
-               "flags": ["load", "boot"],
-               "signed": false
-           }
-       }
+      .. tab:: ITCM Configuration
+
+         .. code-block:: json
+
+            {
+                "DEVICE": {
+                    "disabled": false,
+                    "binary": "app-device-config.json",
+                    "version": "0.5.00",
+                    "signed": true
+                },
+                "Zephyr-RTSS-HE": {
+                    "binary": "zephyr_e7_rtsshe_helloworld.bin",
+                    "version": "1.0.0",
+                    "cpu_id": "M55_HE",
+                    "loadAddress": "0x58000000",
+                    "flags": ["load", "boot"],
+                    "signed": false
+                },
+                "Zephyr-RTSS-HP": {
+                    "binary": "zephyr_e7_rtsshp_helloworld.bin",
+                    "version": "1.0.0",
+                    "cpu_id": "M55_HP",
+                    "loadAddress": "0x50000000",
+                    "flags": ["load", "boot"],
+                    "signed": false
+                }
+            }
+
+      .. tab:: MRAM Configuration
+
+         .. code-block:: json
+
+            {
+                "DEVICE": {
+                    "disabled": false,
+                    "binary": "app-device-config.json",
+                    "version": "0.5.00",
+                    "signed": true
+                },
+                "Zephyr-RTSS-HE": {
+                    "binary": "zephyr_e7_rtsshe_helloworld.bin",
+                    "version": "1.0.0",
+                    "cpu_id": "M55_HE",
+                    "mramAddress": "0x80000000",
+                    "flags": ["boot"],
+                    "signed": false
+                },
+                "Zephyr-RTSS-HP": {
+                    "binary": "zephyr_e7_rtsshp_helloworld.bin",
+                    "version": "1.0.0",
+                    "cpu_id": "M55_HP",
+                    "mramAddress": "0x80200000",
+                    "flags": ["boot"],
+                    "signed": false
+                }
+            }
 
 
 #. Create an Alif Application image using the app-gen-toc script and choose the above created json.
@@ -88,35 +132,37 @@ Program Alif application image build/AppTocPackage.bin under the build directory
      a. In the above example, the SE-UART is detected as `/dev/ttyACM0` on the host. Please identify the correct device node using the `dmesg` command.
      b. Please refer to `Alif Security Toolkit Quick Start Guide`_ for more information.
 
-.. tip::
+   .. tip::
 
-   Ensure that your user has sufficient access to the `dialout` group for SE-UART device communication.
+      Ensure that your user has sufficient access to the `dialout` group for SE-UART device communication.
 
-   - To check if the current user has access, use:
+      - To check if the current user has access, use:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        groups
+           groups
 
-   - If `dialout` or `tty` is not in the list, add the user to the `dialout` group with:
+      - If `dialout` or `tty` is not in the list, add the user to the `dialout` group with:
 
-     .. code-block:: console
+      .. code-block:: console
 
-        sudo usermod -a -G dialout USERNAME
+           sudo usermod -a -G dialout $USER
 
-   - If the device is still not recognized, check for loose connections or try using a different USB port.
+      - If the device is still not recognized, check for loose connections or try using a different USB port.
 
 
-Booting the applications
+Booting the Applications
 ------------------------
 
 #. Open a serial console application on host PC - baud rate of 115200.
+
 #. Select the RTSS-HE USB port (Example: /dev/ttyACM1)
+
 #. Select the RTSS-HP USB port (Example: /dev/ttyUSB0)
+
 #. You can see the greeting on the serial console as below.
 
 .. code-block:: console
 
    *** Booting Zephyr OS build 4b48dd532761 ****
    Hello World ! alif_e7_devkit
-

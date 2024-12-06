@@ -12,7 +12,6 @@ Getting started with Zephyr Alif SDK
 
    introduction
    overview
-   hardware_and_software_setup
    building_application_binaries
    programming_an_app
 
@@ -27,6 +26,8 @@ Document History
       - Change Log
     * - 1.0
       - First Production Release
+    * - 1.1
+      - Updated the document to incorporate E1C and Balletto.
 
 Indices and tables
 ==================

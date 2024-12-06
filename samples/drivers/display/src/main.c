@@ -202,6 +202,8 @@ int main(void)
 
 	display_get_capabilities(panel, &panel_caps);
 	LOG_INF("Panel Orientation - %d", panel_caps.current_orientation);
+
+	display_blanking_off(panel);
 #endif /* defined(CONFIG_MIPI_DSI) */
 
 #if (!defined(CONFIG_MIPI_DSI) || \

@@ -11,5 +11,3 @@ project(tflm_ethosu_app)
 target_include_directories(app PRIVATE src/models/keyword_spotting_cnn_small_int8)
 
 target_sources(app PRIVATE src/main.cpp src/inference_process.cpp)
-
-zephyr_linker_sources(SECTIONS linker.ld)

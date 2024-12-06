@@ -244,6 +244,86 @@ static void slave_spi(void *p1, void *p2, void *p3)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
+#if (IS_ENABLED(CONFIG_SOC_SERIES_ENSEMBLE_E1C) ||  \
+	IS_ENABLED(CONFIG_SOC_SERIES_BALLETTO_B1)) /* E1C/B1 dma2 */
+
+#if DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas) /* E1C/B1 LPSPI0 dma2 */
+static void configure_lpspi0_for_dma2(void)
+{
+	/* Enable LPSPI EVTRTR channel */
+	#define LPSPI_DMA_RX_PERIPH_REQ		12
+	#define LPSPI_DMA_TX_PERIPH_REQ		13
+	#define LPSPI_DMA_GROUP             1
+
+	uint32_t regdata;
+
+	printk("\n configure lpspi0 for dma2\n");
+
+	/* select DMA2 group 1 for LPSPI (default dma2 group 1) */
+	sys_clear_bits(M55HE_CFG_HE_DMA_SEL, HE_DMA_SEL_LPSPI_Msk);
+
+	/* channel enable for LPSPI-RX */
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos)|
+			(LPSPI_DMA_GROUP),
+			EVTRTRLOCAL_DMA_CTRL0 + (LPSPI_DMA_RX_PERIPH_REQ * 4));
+
+	/* DMA Handshake enable LPSPI-RX */
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (LPSPI_DMA_GROUP * 4));
+	regdata |= (1 << LPSPI_DMA_RX_PERIPH_REQ);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (LPSPI_DMA_GROUP * 4));
+
+	/* channel enable for LPSPI-TX */
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos)|
+			(LPSPI_DMA_GROUP),
+			EVTRTRLOCAL_DMA_CTRL0 + (LPSPI_DMA_TX_PERIPH_REQ * 4));
+
+	/* DMA Handshake enable LPSPI-TX */
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (LPSPI_DMA_GROUP * 4));
+	regdata |= (1 << LPSPI_DMA_TX_PERIPH_REQ);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (LPSPI_DMA_GROUP * 4));
+}
+#endif /* E1C/B1 LPSPI0 dma2 */
+
+#if DT_NODE_HAS_PROP(DT_NODELABEL(spi0), dmas) /* E1C/B1 SPI0 dma2 */
+static void configure_spi0_for_dma2(void)
+{
+	/* Enable SPI0 dma2 EVTRTR channel */
+	#define SPI0_DMA_RX_PERIPH_REQ         16
+	#define SPI0_DMA_TX_PERIPH_REQ         20
+	#define SPI0_DMA_GROUP                 2
+
+	uint32_t regdata;
+
+	printk("\n configure spi0 for dma2\n");
+
+	/* channel enable SPI0-RX */
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos)|
+			(SPI0_DMA_GROUP),
+			EVTRTRLOCAL_DMA_CTRL0 + (SPI0_DMA_RX_PERIPH_REQ * 4));
+
+	/* DMA Handshake enable SPI0-RX */
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (SPI0_DMA_GROUP * 4));
+	regdata |= (1 << SPI0_DMA_RX_PERIPH_REQ);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (SPI0_DMA_GROUP * 4));
+
+	/* channel enable SPI0-TX */
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos)|
+			(SPI0_DMA_GROUP),
+			EVTRTRLOCAL_DMA_CTRL0 + (SPI0_DMA_TX_PERIPH_REQ * 4));
+
+	/* DMA Handshake enable SPI0-TX */
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (SPI0_DMA_GROUP * 4));
+	regdata |= (1 << SPI0_DMA_TX_PERIPH_REQ);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (SPI0_DMA_GROUP * 4));
+}
+#endif /* E1C/B1 SPI0 dma2 */
+
+#endif /* E1C/B1 dma2 */
+
 #if DT_NODE_HAS_PROP(DT_NODELABEL(spi4), dmas) /* LPSPI(SPI4) dma2 */
 static void configure_lpspi_for_dma2(void)
 {
@@ -267,6 +347,7 @@ static void configure_lpspi_for_dma2(void)
 			EVTRTRLOCAL_DMA_CTRL0 + (LPSPI_DMA_TX_PERIPH_REQ * 4));
 }
 #endif /* LPSPI(SPI4) dma2 */
+
 
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma0), arm_dma_pl330, okay) /* dma0 */
 
@@ -397,9 +478,22 @@ int main(void)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
-#if DT_NODE_HAS_PROP(DT_NODELABEL(spi4), dmas) /* LPSPI(SPI4) dma2 */
+#if (IS_ENABLED(CONFIG_SOC_SERIES_ENSEMBLE_E1C) || \
+	IS_ENABLED(CONFIG_SOC_SERIES_BALLETTO_B1)) /* E1C/B1 dma2 */
+
+#if DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas) /* E1C/B1 LPSPI0 dma2 */
+	configure_lpspi0_for_dma2();
+#endif
+
+#if DT_NODE_HAS_PROP(DT_NODELABEL(spi0), dmas) /* E1C/B1 SPI0 dma2 */
+	configure_spi0_for_dma2();
+#endif
+	/* end E1C/B1 dma2 */
+
+#elif DT_NODE_HAS_PROP(DT_NODELABEL(spi4), dmas) /* LPSPI(SPI4) dma2 */
 	configure_lpspi_for_dma2();
 #endif
+	/* end dma2 */
 
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma0), arm_dma_pl330, okay) /* dma0 */
 

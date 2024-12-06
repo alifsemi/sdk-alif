@@ -11,26 +11,31 @@
 / {
 	soc {
 		cdc200: cdc200@49031000 {
-			width = <480>;
-			height = <800>;
-			hfront-porch = <5>;
-			hback-porch = <5>;
-			hsync-len = <4>;
-			vfront-porch = <10>;
-			vback-porch = <10>;
+			width = <320>;
+			hfront-porch = <46>;
+			hback-porch = <16>;
+			hsync-len = <14>;
+
+			height = <480>;
+			vfront-porch = <2>;
+			vback-porch = <2>;
 			vsync-len = <2>;
+
 			hsync-active = <0>;
 			vsync-active = <0>;
-			de-active = <1>;
-			pixelclk-active = <0>;
+			de-active = <0>;
+			pixelclk-active = <1>;
+
+			clock-frequency = <11547360>;
+
 			bg-color = <0>;
 			enable-l1 = <1>;
-			pixel-fmt-l1 = "rgb-888";
+			pixel-fmt-l1 = "rgb-565";
 			def-back-color-l1 = <0>;
 			win-x0-l1 = <0>;
 			win-y0-l1 = <0>;
-			win-x1-l1 = <480>;
-			win-y1-l1 = <800>;
+			win-x1-l1 = <320>;
+			win-y1-l1 = <480>;
 			blend-factor1-l1 = <4>;
 			blend-factor2-l1 = <5>;
 			const-alpha-l1 = <0xff>;
@@ -45,4 +50,15 @@
 			const-alpha-l2 = <0xff>;
 		};
 	};
+};
+
+&mipi_dsi {
+	//dpi-video-pattern-gen = "vertical-color-bar";
+	//dpi-video-pattern-gen = "horizontal-color-bar";
+	//dpi-video-pattern-gen = "vertical-bit-error-rate";
+	status = "okay";
+};
+
+&ili9488 {
+	status = "okay";
 };

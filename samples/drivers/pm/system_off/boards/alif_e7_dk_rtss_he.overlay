@@ -1,19 +1,12 @@
-/*
- * Copyright (c) 2024 Alif Semiconductor
- * SPDX-License-Identifier: Apache-2.0
+/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
  */
-
-/*
- * By default, the core boots from ITCM. Enable the below node to boot
- * from MRAM. Please make sure to use the same address in the json file
- * while flashing the binary using SE tools.
- */
-/*
-&itcm {
-	reg = < 0x80000000 DT_SIZE_K(1024) >;
-	itcm_global_base = < 0x80000000 >;
-};
-*/
 
 /*
  * Enable RTC and Set the counter to increment every 1sec
@@ -21,4 +14,23 @@
 &rtc0 {
 	prescaler = < 32768 >;
 	status = "okay";
+};
+
+/**
+ * Set the console uart frequency to use the HFOSC(38.4)
+ */
+&uart4 {
+	clock-frequency = < 38400000 >;
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+	};
+
+	power-states {
+		off: off {
+			min-residency-us = < 5000000 >;
+		};
+	};
 };

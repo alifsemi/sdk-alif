@@ -4,5 +4,10 @@
 /samples/drivers/ipm/              @HemanthKumar-AlifSemi
 /.checkpatch.conf/                 @HemanthKumar-AlifSemi
 /samples/drivers/spi_flash/        @HemanthKumar-AlifSemi
+/samples/bluetooth/                @AnttiKauppila-AlifSemi @VeijoPesonen
+/samples/matter/                   @jheiskan81
+/samples/lc3/                      @AnttiKauppila-AlifSemi @VeijoPesonen
+/subsys/bluetooth/                 @AnttiKauppila-AlifSemi @VeijoPesonen
 /subsys/ieee802154/                @mikter @jheiskan81
+/subsys/matter/                    @jheiskan81
 /applications/testapp/             @mikter @jheiskan81

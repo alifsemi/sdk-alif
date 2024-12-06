@@ -1,0 +1,62 @@
+/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+&itcm {
+	compatible = "alif,itcm", "zephyr,memory-region";
+	/* The following line sets the size of OSPI0 flash to 2MB */
+	reg = <0xa0000000 DT_SIZE_M(2)>;
+	itcm_global_base = <0xa0000000>;
+	zephyr,memory-region = "ITCM";
+};
+&dtcm {
+	compatible = "alif,dtcm", "zephyr,memory-region";
+	reg = <0x20000000 DT_SIZE_K(1536)>;
+	dtcm_global_base = <0x58800000>;
+	zephyr,memory-region = "DTCM";
+};
+
+/* Override GPIO PINMUX with OSPI-0 */
+&pinctrl_gpio0 {
+	group0 {
+		pinmux = <PIN_P0_0__GPIO>,
+			 <PIN_P0_1__GPIO>,
+			 <PIN_P0_2__OSPI0_SS0_A>,
+			 <PIN_P0_3__GPIO>,
+			 <PIN_P0_4__GPIO>,
+			 <PIN_P0_5__GPIO>,
+			 <PIN_P0_6__GPIO>,
+			 <PIN_P0_7__GPIO>;
+	};
+};
+
+&pinctrl_gpio3 {
+	group0 {
+		pinmux = < PIN_P3_0__OSPI0_D0_A >,
+		         < PIN_P3_1__OSPI0_D1_A >,
+			 < PIN_P3_2__OSPI0_D2_A >,
+			 < PIN_P3_3__OSPI0_D3_A >,
+			 < PIN_P3_4__OSPI0_D4_A >,
+			 < PIN_P3_5__OSPI0_D5_A >,
+			 < PIN_P3_6__OSPI0_D6_A >,
+			 < PIN_P3_7__OSPI0_D7_A >;
+	};
+};
+
+&pinctrl_gpio4 {
+	group0 {
+		pinmux = < PIN_P4_0__OSPI0_SCLKN_A >,
+		         < PIN_P4_1__OSPI0_RXDS_A >,
+			 < PIN_P4_2__OSPI0_SCLK_A >,
+			 < PIN_P4_3__GPIO >,
+			 < PIN_P4_4__GPIO >,
+			 < PIN_P4_5__GPIO >,
+			 < PIN_P4_6__GPIO >,
+			 < PIN_P4_7__GPIO >;
+	};
+};
