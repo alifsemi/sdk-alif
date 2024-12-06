@@ -26,6 +26,8 @@ Document History
       - Change Log
     * - 1.0
       - First Production Release
+    * - 1.1
+      - Updated the document to incorporate E1C and Balletto.
 
 Indices and tables
 ==================
