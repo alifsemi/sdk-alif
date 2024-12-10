@@ -31,7 +31,7 @@ void cmp_callback(const struct device *dev, uint8_t status)
 int main(void)
 {
 	uint32_t loop = 10;
-	uint32_t inst;
+	uint8_t cmp = DT_ENUM_IDX(NODE_LABEL, driver_instance);
 
 	static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(DT_NODELABEL(aled0), gpios);
 
@@ -40,18 +40,18 @@ int main(void)
 		return -1;
 	}
 
-	int ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_LOW);
+	if (cmp) {
+		int ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_LOW);
 
-	if (ret != 0) {
-		printk("Error %d: failed to configure LED pin\n", ret);
-		return -1;
+		if (ret != 0) {
+			printk("Error %d: failed to configure LED pin\n", ret);
+			return -1;
+		}
+
+		k_msleep(2000);
 	}
 
-	k_msleep(2000);
-
 	const struct device *const cmp_dev = DEVICE_DT_GET(NODE_LABEL);
-
-	inst = DT_ENUM_IDX(NODE_LABEL, driver_instance);
 
 	if (!device_is_ready(cmp_dev)) {
 		printk("device not ready\n");
@@ -73,7 +73,10 @@ int main(void)
 
 	while (loop--) {
 
-		gpio_pin_toggle_dt(&led);
+		if (cmp) {
+
+			gpio_pin_toggle_dt(&led);
+		}
 
 		/* wait for the comparasion */
 		while (call_back_event == 0) {
@@ -82,25 +85,29 @@ int main(void)
 
 		call_back_event = 0;
 
-		/* Introducing a delay to stabilize input
-		 * voltage for comparator measurement
-		 */
-		k_msleep(50);
+		if (cmp) {
 
-		/* If user give +ve input voltage more than -ve input voltage, status will be set to
-		 * 1
-		 */
-		if (cmp_status == 1) {
-			LOG_INF("positive input voltage is greater than negative input voltage");
-		}
-		/* If user give -ve input voltage more than +ve input voltage, status will be set to
-		 * 0
-		 */
-		else if (cmp_status == 0) {
-			LOG_INF("negative input voltage is greater than the positive input "
-				"voltage");
-		} else {
-			LOG_INF("ERROR: Status detection is failed");
+			/* Introducing a delay to stabilize input
+			 * voltage for comparator measurement
+			 */
+			k_msleep(50);
+
+			/* If user give +ve input voltage more than -ve input voltage,
+			 * status will be set to 1.
+			 */
+			if (cmp_status == 1) {
+				LOG_INF("positive input voltage is greater than negative input"
+					 " voltage");
+			}
+			/* If user give -ve input voltage more than +ve input voltage,
+			 * status will be set to 0.
+			 */
+			else if (cmp_status == 0) {
+				LOG_INF("negative input voltage is greater than the positive input"
+					" voltage");
+			} else {
+				LOG_INF("ERROR: Status detection is failed");
+			}
 		}
 	}
 
