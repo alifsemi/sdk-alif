@@ -11,6 +11,10 @@
 	gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;
 };
 
+&lpcmp {
+	status = "disabled";
+};
+
 &cmp0 {
 	status = "okay";
 };
