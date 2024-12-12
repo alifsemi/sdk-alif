@@ -19,36 +19,29 @@
 	};
 
 	soc {
-		i2c1: i2c1@49011000 {
-			compatible = "snps,designware-i2c";
-			clock-frequency = <I2C_BITRATE_STANDARD>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0x49011000 0x1000>;
-			pinctrl-0 = <&pinctrl_i2c1>;
-			pinctrl-names = "default";
-			interrupt-parent = <&nvic>;
-			interrupts = <133 3>;
-			status = "okay";
 
-			wm8904: wm8904@1a {
-				compatible = "cirrus,wm8904";
-				reg = <0x1a>;
-				status = "okay";
-			};
-		};
-
-		i2s0: i2s0@49014000 {
-			compatible = "alif,i2s-sync";
-			reg = <0x49014000 0x1000>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_i2s0>;
-			interrupts = <141 3>;
-			bit-depth = <16>;
-			sample-rate = <48000>;
-			status = "okay";
-		};
 	};
+};
+
+&i2c1 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	status = "okay";
+
+	wm8904: wm8904@1a {
+		compatible = "cirrus,wm8904";
+		reg = <0x1a>;
+		status = "okay";
+	};
+};
+
+&i2s0 {
+	/delete-property/ clock-frequency;
+	/delete-property/ driver_instance;
+	compatible = "alif,i2s-sync";
+	interrupts = <141 3>;
+	bit-depth = <16>;
+	sample-rate = <48000>;
+	status = "okay";
 };
 
 &pinctrl {

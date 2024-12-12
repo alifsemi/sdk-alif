@@ -111,7 +111,7 @@ struct m55he_cfg_t { /*!< (@ 0x43007000) M55HE_CFG Structure                    
 	__IOM uint32_t HE_CLK_ENA;  /*!< (@ 0x00000010) Peripheral Clock Enable Register    */
 	__IOM uint32_t HE_I2S_CTRL; /*!< (@ 0x00000014) LPI2S Control Register   */
 	__IM uint32_t RESERVED[2];
-	__IOM uint32_t HE_CAMERA_PIXCLK; /*!< (@ 0x00000020) LPCPI Pixel Clock Control Register */
+	__IOM uint32_t HE_CAMERA_PIXCLK_R; /*!< (@ 0x00000020) LPCPI Pixel Clock Control Register */
 };
 
 #define CLKCTL_PER_SLV_BASE 0x4902F000UL
