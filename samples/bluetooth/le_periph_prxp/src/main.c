@@ -45,7 +45,7 @@ static bool READY_TO_SEND_BASS;
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
-	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
+	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	/*      Dummy address   */
 	.private_identity.addr = {0xCB, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
@@ -61,7 +61,9 @@ static const gapm_config_t gapm_cfg = {
 	.rx_path_comp = 0,
 };
 
-static const char device_name[] = "ALIF_PRXP";
+/* Load name from configuration file */
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
+static const char device_name[] = DEVICE_NAME;
 
 static uint8_t adv_actv_idx;
 
