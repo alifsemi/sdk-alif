@@ -54,7 +54,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
-	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
+	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	/*      Dummy address   */
 	.private_identity.addr = {0xCB, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
@@ -70,7 +70,10 @@ static const gapm_config_t gapm_cfg = {
 	.rx_path_comp = 0,
 };
 
-static const char device_name[] = "ALIF_CSCPS";
+/* Load name from configuration file */
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
+static const char device_name[] = DEVICE_NAME;
+
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
 
