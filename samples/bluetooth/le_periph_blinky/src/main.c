@@ -81,7 +81,10 @@ enum service_att_list {
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 static uint8_t adv_actv_idx;
 static struct service_env env;
-static const char device_name[] = "ALIF_BLK";
+
+/* Load name from configuration file */
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
+static const char device_name[] = DEVICE_NAME;
 
 /* Service UUID to pass into gatt_db_svc_add */
 static const uint8_t lbs_service_uuid[] = LBS_UUID_128_SVC;
