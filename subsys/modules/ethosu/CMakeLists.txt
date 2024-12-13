@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -8,7 +8,5 @@
 
 zephyr_include_directories(.)
 
-add_subdirectory(ieee802154)
-add_subdirectory(bluetooth)
-add_subdirectory(powermgr)
-add_subdirectory(modules)
+add_subdirectory_ifdef(CONFIG_ALIF_ETHOSU_SHELL shell/)
+

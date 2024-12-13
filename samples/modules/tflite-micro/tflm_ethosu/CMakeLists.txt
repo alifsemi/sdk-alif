@@ -19,4 +19,9 @@ endif()
 
 target_include_directories(app PRIVATE src/models/keyword_spotting_cnn_small_int8)
 
-target_sources(app PRIVATE src/main.cpp src/inference_process.cpp)
+add_subdirectory(
+    ../../../../lib/ethosu_utils
+    ${CMAKE_BINARY_DIR}/lib/ethosu_utils
+)
+
+target_sources(app PRIVATE src/main.cpp)

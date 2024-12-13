@@ -17,13 +17,13 @@
 #include <zephyr/kernel.h>
 
 /* Model data */
-#include "input.h"
-#include "output.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/input.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/output.h"
 
 #if defined(CONFIG_ARM_ETHOS_U55_256)
-#include "model_u55_256.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/model_u55_256.h"
 #else
-#include "model.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/model_u55_128.h"
 #endif
 
 using namespace std;
