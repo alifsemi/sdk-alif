@@ -37,18 +37,17 @@
 				status = "okay";
 			};
 		};
-
-		i2s0: i2s0@49014000 {
-			compatible = "alif,i2s-sync";
-			reg = <0x49014000 0x1000>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pinctrl_i2s0>;
-			interrupts = <141 3>;
-			bit-depth = <16>;
-			sample-rate = <48000>;
-			status = "okay";
-		};
 	};
+};
+
+&i2s0 {
+	/delete-property/ clock-frequency;
+	/delete-property/ driver_instance;
+	compatible = "alif,i2s-sync";
+	interrupts = <141 3>;
+	bit-depth = <16>;
+	sample-rate = <48000>;
+	status = "okay";
 };
 
 &pinctrl {
