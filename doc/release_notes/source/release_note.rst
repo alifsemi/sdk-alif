@@ -204,8 +204,12 @@ The following is a list of known issues related to the functionality of peripher
      - Unable to configure the UART driver with odd, mark, or space parity (UART_CFG_PARITY_ODD, UART_CFG_PARITY_MARK, UART_CFG_PARITY_SPACE).
    * - `PSBT-190`
      - Unable to configure the UART driver with the following stop bit configurations: UART_CFG_STOP_BITS_0_5 and UART_CFG_STOP_BITS_1_5.
+   * - `PSBT-479`
+     - [Zephyr-v3.3] Compilation of the ethosu application using armclang is failing due to newlib.h not found with TCM cm55_he/cm55_hp using Zephyr-E7-B0-v0.2.0-Beta.
    * - `PSBT-613`
      - Communication messages not transmitted between RTSS-HE and RTSS-HP via TCM in the MHU0/MHU1 sample app.
+   * - `PSBT-625`
+     - [Zephyr WDT] Watchdog reset functionality not working.
    * - `PSBT-656`
      - LPSPI Master RX & Slave TX data mismatch at 3 MHz frequency with and without DMA.
    * - `PSBT-659`
@@ -216,24 +220,18 @@ The following is a list of known issues related to the functionality of peripher
      - OSPI boot failing on HP/HE core with no boot prints using ZAS-v1.0.0 release.
    * - `PSBT-735`
      - OSPI flash operations (read/write/erase) failing at clock speeds of 40MHz or higher on M55-HP/M55-HE cores with ZAS-v1.0.0 release.
-   * - `PSBT-479`
-     - [Zephyr-v3.3] Compilation of the ethosu application using armclang is failing due to newlib.h not found with TCM cm55_he/cm55_hp using Zephyr-E7-B0-v0.2.0-Beta.
+   * - `PSBT-831`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Unable to build the mcuboot app using the armclang toolchain.
    * - `PSBT-840`
      - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No prints for the display demo application for MIPI-DSI 1-lane display panel when built using the ARMCLANG compiler.
    * - `PSBT-843`
      - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No image for the display demo application for CDC200 parallel display panel when built using the ARMCLANG compiler.
-   * - `PSBT-625`
-     - [Zephyr WDT] Watchdog reset functionality not working.
-   * - `PSBT-848`
-     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No logs visible on the UART2 console for I2S with OSPI (TCM and MRAM are working fine).
    * - `PSBT-846`
      - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Warnings observed in all build logs when FLASH_ADDRESS_IN_SINGLE_FIFO_LOCATION is set using ZAS-v1.1 release.
    * - `PSBT-847`
-     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] ERROR: Stack overflow on CPU 0 when running the LC3 Codec application.
-   * - `PSBT-850`
-     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Using the BLE application 'ALIF_HR', the device is not listed among the Bluetooth devices when using the mobile application.
-   * - `PSBT-831`
-     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Unable to build the mcuboot app using the armclang toolchain.
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] ERROR: Stack overflow on CPU 0 is seen when LC3 Codec Application is ran
+   * - `PSBT-848`
+     - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] No logs visible on the UART2 console for I2S with OSPI (TCM and MRAM are working fine).
    * - `PSBT-857`
      - [SPARK-Balletto-B1C-A1-DM-HE-ZAS] Build error when trying to build the BLE application using the ARM-Clang compiler.
    * - `PSBT-858`
@@ -243,7 +241,6 @@ External References
 ===================
 
 -  ZAS User Guide `ZAS User Guide`_
--  ZAS Application Notes `ZAS Application Notes`_
 
 Copyright/Trademark
 ===================
