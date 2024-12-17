@@ -28,7 +28,7 @@ Stay informed about the latest updates:
 * Known Issues: Understand any current limitations or potential issues to be aware of while developing.
 
 
-For complete release details, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v1.1.0//release_notes.pdf).
+For complete release details, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v1.1.0/release_notes.pdf).
 
 ---
 

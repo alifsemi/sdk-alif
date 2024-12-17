@@ -53,7 +53,7 @@ The SDK offers a comprehensive suite of components to enhance software developme
      - Alif-specific applications and examples, tailored for their hardware.
    * - **Third-Party Licensed**
      - Integration of third-party tools and libraries, in source and binary forms.
-   * - **Ceva BLE Stack**
+   * - **Alif BLE Stack**
      - Implementation of Bluetooth Low Energy stack for wireless communication.
    * - **LC3 Audio Codec**
      - Low Complexity Communication Codec for high-quality, low bitrate audio.
@@ -117,4 +117,4 @@ The following directory structure represents the Zephyr project:
 
    *SDK Directory Tree*
 
-This structure organizes Zephyr's components for easy navigation and integration with additional APIs like the Ceva BLE Stack, LC3 Audio Codec, BLE API, LC3 API, and 15.4 API when and where required.
+This structure organizes Zephyr's components for easy navigation and integration with additional APIs like the LC3 Audio Codec, BLE API, LC3 API, and 15.4 API when and where required.

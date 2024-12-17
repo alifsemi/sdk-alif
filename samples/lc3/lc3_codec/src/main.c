@@ -16,12 +16,14 @@
 
 LOG_MODULE_REGISTER(main);
 
-#define LC3_APP_SAMPLE_RATE    24000
-#define LC3_APP_FRAME_DURATION FRAME_DURATION_10_MS
-#define AUDIO_FRAME_SAMPLES    240
-#define ENCODED_DATA_LEN       60
-#define SIGNAL_AMPLITUDE       30000.0f
-#define SIGNAL_FREQUENCY       500.0f
+#define LC3_APP_SAMPLE_RATE	24000
+#define LC3_APP_BITRATE		48000
+#define MAX_BYTE_COUNT		400
+#define LC3_APP_FRAME_DURATION	FRAME_DURATION_10_MS
+#define AUDIO_FRAME_SAMPLES	240
+#define ENCODED_DATA_LEN	60
+#define SIGNAL_AMPLITUDE	30000.0f
+#define SIGNAL_FREQUENCY	500.0f
 /* M_PI is not defined in math.h for some reason */
 #define PI                     3.14159265358979323846f
 
@@ -102,20 +104,27 @@ int main(void)
 
 	for (uint32_t i = 0; i < AUDIO_FRAME_SAMPLES; i++) {
 		input_audio[i] = SIGNAL_AMPLITUDE *
-				 sin((2.0f * PI * SIGNAL_FREQUENCY * i) / LC3_APP_SAMPLE_RATE);
+				 (float)sin((2.0f * PI * SIGNAL_FREQUENCY * i)
+				 / LC3_APP_SAMPLE_RATE);
 	}
 
 	LOG_INF("Input audio data:");
 	visualise_audio_data(input_audio, AUDIO_FRAME_SAMPLES, 2);
 
-	/* Create a buffer to hold the encoded data. The size can be chosen relatively freely, but a
-	 * smaller size will result in lower audio quality as the codec must compress the data more.
-	 */
-	static uint8_t encoded_data[ENCODED_DATA_LEN];
+	uint16_t byte_count;
+	uint8_t bytes[MAX_BYTE_COUNT];
+
+	byte_count = lc3_api_get_byte_count(LC3_APP_BITRATE, LC3_APP_SAMPLE_RATE,
+		LC3_APP_FRAME_DURATION);
+
+	if (byte_count > MAX_BYTE_COUNT) {
+		LOG_ERR("byte_count exceeded MAX_BYTE_COUNT!");
+		return -1;
+	}
 
 	/* Encode the data */
-	ret = lc3_api_encode_frame(&lc3_config, &lc3_encoder, input_audio, encoded_data,
-				   ENCODED_DATA_LEN, p_encoder_scratch);
+	ret = lc3_api_encode_frame(&lc3_config, &lc3_encoder, input_audio, bytes,
+				   byte_count, p_encoder_scratch);
 	__ASSERT(ret == 0, "Failed to encode frame with err %d", ret);
 
 	LOG_INF("Frame endoded");
@@ -124,7 +133,7 @@ int main(void)
 	static int16_t output_audio[AUDIO_FRAME_SAMPLES];
 	uint8_t bec_detect = 0;
 
-	ret = lc3_api_decode_frame(&lc3_config, &lc3_decoder, encoded_data, ENCODED_DATA_LEN, 0,
+	ret = lc3_api_decode_frame(&lc3_config, &lc3_decoder, bytes, byte_count, 0,
 				   &bec_detect, output_audio, p_decoder_scratch);
 	__ASSERT(ret == 0, "Failed to decode frame with err %d", ret);
 	__ASSERT(bec_detect == 0, "LC3 decoder detected error with input data");

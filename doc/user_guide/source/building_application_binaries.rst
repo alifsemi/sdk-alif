@@ -78,9 +78,10 @@ Follow these commands to install dependencies, configure the environment, and pr
 
 Fetch the SDK
 -------------
-For details on how the toolchain selection is done, refer to Zephyr's documentation: `Toolchain Selection`_.
 
 This section explains building Zephyr using the GCC toolchain.
+
+For details on how the toolchain selection is done, refer to Zephyr's documentation: `Toolchain Selection`_.
 
 1. Fetch the Alif Zephyr SDK Source
 ***********************************
@@ -96,7 +97,6 @@ Fetch the SDK source from the `main` branch:
 
 2. Build an Application
 ***********************
-For details on how the toolchain selection is done, refer to Zephyr's documentation: `Toolchain Selection`_.
 
 Supported Targets:
 
@@ -112,9 +112,9 @@ Supported Targets:
 
 a. Navigate to the Zephyr Directory
 
-.. code-block:: console
+   .. code-block:: console
 
-   cd zephyr
+      cd zephyr
 
 b. Build the HelloWorld Application
 

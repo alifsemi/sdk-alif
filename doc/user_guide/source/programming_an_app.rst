@@ -162,7 +162,7 @@ Booting the Applications
 
 #. You can see the greeting on the serial console as below.
 
-.. code-block:: console
+   .. code-block:: console
 
-   *** Booting Zephyr OS build 4b48dd532761 ****
-   Hello World ! alif_e7_devkit
+      *** Booting Zephyr OS build 4b48dd532761 ****
+      Hello World ! alif_e7_devkit
