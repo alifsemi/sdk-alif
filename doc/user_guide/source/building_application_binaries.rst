@@ -86,13 +86,13 @@ For details on how the toolchain selection is done, refer to Zephyr's documentat
 1. Fetch the Alif Zephyr SDK Source
 ***********************************
 
-Fetch the SDK source from the `main` branch:
+Fetch the SDK source from the release `v1.1-zas-branch` branch:
 
 .. code-block:: console
 
    mkdir sdk-alif
    cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif.git --mr main
+   west init -m https://github.com/alifsemi/sdk-alif.git --mr v1.1-zas-branch
    west update
 
 2. Build an Application
