@@ -6,6 +6,6 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-add_subdirectory(clock)
+#add_subdirectory(clock)
 add_subdirectory(codec)
 add_subdirectory(i2s)

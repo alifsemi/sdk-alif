@@ -28,7 +28,9 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 #define APPEARANCE_GENERIC_WEIGHT_SCALE 0x0C80
 
 #define DEVICE_APPEARANCE APPEARANCE_GENERIC_WEIGHT_SCALE
-#define DEVICE_NAME	  "ALIF_WSCS"
+
+/* Load name from configuration file */
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 
 static uint8_t client_conidx;
 static uint8_t adv_actv_idx;

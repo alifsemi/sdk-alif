@@ -31,6 +31,7 @@ struct audio_source_i2s {
 };
 
 static struct audio_source_i2s audio_source;
+static int16_t temp[960];
 
 static void finish_last_block(void)
 {
@@ -46,9 +47,28 @@ static void finish_last_block(void)
 		return;
 	}
 
+	/* We need to split the received audio into left and right channel so
+	 * we create a new block where we do this
+	 */
+
+	bool mono_mode = IS_ENABLED(CONFIG_BROADCAST_SOURCE_MONO);
+	/* const size_t block_samples = audio_source.audio_queue->audio_block_samples */
+	const size_t block_samples = mono_mode ? 480 : 960;
+	uint8_t div = mono_mode ? 1 : 2;
+
+	for (size_t i = 0; i < block_samples/div; i++) {
+		temp[i] = audio_source.current_block->buf[i * 2];
+		if (!mono_mode) {
+			temp[block_samples/div + i] =
+			audio_source.current_block->buf[i * 2 + 1];
+		}
+	}
+
+	memcpy(audio_source.current_block->buf, temp, block_samples * 2);
+
 	int ret =
 		k_msgq_put(&audio_source.audio_queue->msgq, &audio_source.current_block, K_NO_WAIT);
-	audio_source.current_block = NULL;
+		audio_source.current_block = NULL;
 
 	if (ret) {
 		audio_source.msgq_dropped_count++;
@@ -59,6 +79,7 @@ static void recv_next_block(const struct device *dev, uint32_t timestamp)
 {
 	int ret = k_mem_slab_alloc(&audio_source.audio_queue->slab,
 				   (void **)&audio_source.current_block, K_NO_WAIT);
+
 	if (ret) {
 		/* If there is no available buffer to receive into, disable the I2S receiver and
 		 * flag that we are awaiting a buffer to become available
@@ -69,7 +90,7 @@ static void recv_next_block(const struct device *dev, uint32_t timestamp)
 		return;
 	}
 
-	int32_t correction_samples = audio_i2s_get_sample_correction(&audio_source.timing);
+	int32_t correction_samples = audio_i2s_get_sample_correction(NULL);
 
 	size_t rx_count;
 	size_t rx_offset;
@@ -95,8 +116,9 @@ static void recv_next_block(const struct device *dev, uint32_t timestamp)
 
 	/* Populate the capture timestamp of the block */
 	audio_source.current_block->timestamp = timestamp;
-
 	i2s_sync_recv(dev, audio_source.current_block->buf + rx_offset, rx_count * sizeof(int16_t));
+
+	/* LOG_INF("start of i2s buf %04x", (audio_source.current_block->buf)[1]); */
 
 	/* Fill any offset in the buffer with zeros, and adjust timestamp accordingly */
 	if (rx_offset) {

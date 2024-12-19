@@ -21,7 +21,7 @@
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
-#define DEVICE_NAME "ALIF_PAST"
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 
 static uint8_t adv_actv_idx;
 static uint8_t sync_actv_idx;

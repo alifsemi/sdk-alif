@@ -4,7 +4,7 @@
  *
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
  *
  */
 
@@ -19,24 +19,18 @@
 	};
 
 	soc {
-		i2c1: i2c1@49011000 {
-			compatible = "snps,designware-i2c";
-			clock-frequency = <I2C_BITRATE_STANDARD>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			reg = <0x49011000 0x1000>;
-			pinctrl-0 = <&pinctrl_i2c1>;
-			pinctrl-names = "default";
-			interrupt-parent = <&nvic>;
-			interrupts = <133 3>;
-			status = "okay";
 
-			wm8904: wm8904@1a {
-				compatible = "cirrus,wm8904";
-				reg = <0x1a>;
-				status = "okay";
-			};
-		};
+	};
+};
+
+&i2c1 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	status = "okay";
+
+	wm8904: wm8904@1a {
+		compatible = "cirrus,wm8904";
+		reg = <0x1a>;
+		status = "okay";
 	};
 };
 
@@ -54,8 +48,8 @@
 	pinctrl_i2c1: pinctrl_i2c1 {
 		group0 {
 			/* Note: defined pinmux names are wrong so just setting numbers directly */
-			pinmux = < PINMUX_PIN(PIN_P7_3, 4) >, /* I2C1 SCL DEVKIT */
-				< PINMUX_PIN(PIN_P7_2, 4) >; /* I2C1 SDA DEVKIT */
+			pinmux = < PINMUX_PIN(PIN_P7_3, 4) >, /* I2C1 SCL DEVKIT*/
+				< PINMUX_PIN(PIN_P7_2, 4) >; /* I2C1 SDA DEVKIT*/
 			read_enable = < 0x1 >;
 		};
 	};

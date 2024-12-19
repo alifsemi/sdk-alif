@@ -23,6 +23,7 @@
 #include "bap_bc.h"
 #include "bap_bc_src.h"
 #include "broadcast_source.h"
+#include "gapi_isooshm.h"
 
 LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 
@@ -35,19 +36,9 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 
 #define I2S_NODE      DT_ALIAS(i2s_bus)
 #define CODEC_NODE    DT_ALIAS(audio_codec)
-#define MCLK_GEN_NODE DT_ALIAS(mclk_gen)
-
-#ifdef CONFIG_BROADCAST_SOURCE_MONO
-BUILD_ASSERT(DT_PROP(I2S_NODE, mono_mode), "Mono mode is selected for broadcast source, I2S driver "
-					   "must also be configured in mono mode");
-#else
-BUILD_ASSERT(!DT_PROP(I2S_NODE, mono_mode), "Stereo mode is selected for broadcast source, I2S "
-					    "driver must also be configured in stereo mode");
-#endif
 
 const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
 const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
-const struct device *mclk_gen_dev = DEVICE_DT_GET(MCLK_GEN_NODE);
 
 K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
 
@@ -79,10 +70,17 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 static int audio_datapath_init(void)
 {
 	int ret;
+	bool mono_mode = IS_ENABLED(CONFIG_BROADCAST_SOURCE_MONO);
+	/* uint8_t mult = mono_mode ? 1 : 2; */
 
-	__ASSERT(device_is_ready(i2s_dev), "I2S device is not ready");
-	__ASSERT(device_is_ready(codec_dev), "Audio codec device is not ready");
-	__ASSERT(device_is_ready(mclk_gen_dev), "MCLK generator device is not ready");
+	if (!device_is_ready(i2s_dev)) {
+		LOG_WRN("I2S device is not ready");
+		return -1;
+	}
+	if (!device_is_ready(codec_dev)) {
+		LOG_WRN("Audio codec device is not ready");
+		return -1;
+	}
 
 	ret = alif_lc3_init();
 	__ASSERT(ret == 0, "Failed to initialise LC3 codec");
@@ -93,11 +91,11 @@ static int audio_datapath_init(void)
 	sdu_queue_r = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
 	__ASSERT(sdu_queue_r, "Failed to create right SDU queue");
 
+	/* we need to receive both channels even if we are in mono mode */
 	audio_queue = audio_queue_create(AUDIO_QUEUE_LENGTH,
-					 CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ / FRAMES_PER_SECOND);
+					 2 * CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ /
+					 FRAMES_PER_SECOND);
 	__ASSERT(audio_queue, "Failed to create audio queue");
-
-	bool mono_mode = IS_ENABLED(CONFIG_BROADCAST_SOURCE_MONO);
 
 	audio_encoder = audio_encoder_create(mono_mode, CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ,
 					     encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE,
@@ -114,18 +112,6 @@ static int audio_datapath_init(void)
 	ret = audio_encoder_register_cb(audio_encoder, audio_source_i2s_notify_buffer_available,
 					NULL);
 	__ASSERT(ret == 0, "Failed to register encoder cb for audio source");
-
-	ret = presentation_compensation_configure(mclk_gen_dev,
-						  (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000));
-	__ASSERT(ret == 0, "Failed to configure presentation compensation");
-
-	ret = presentation_compensation_register_cb(audio_source_i2s_apply_timing_correction);
-	__ASSERT(ret == 0, "Failed to register presentation compensation callback");
-
-#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
-	ret = presentation_compensation_register_debug_cb(on_timing_debug_info_ready);
-	__ASSERT(ret == 0, "Failed to register presentation compensation debug callback");
-#endif
 
 	return 0;
 }
@@ -254,7 +240,7 @@ static int broadcast_source_configure_group(void)
 		.phy_prim = GAPM_PHY_TYPE_LE_1M,
 		.phy_second = GAPM_PHY_TYPE_LE_2M,
 		.adv_sid = 1,
-		.max_tx_pwr = -70,
+		.max_tx_pwr = -2,
 	};
 
 	const bap_bc_per_adv_param_t per_adv_param = {

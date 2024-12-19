@@ -24,7 +24,7 @@
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
-#define DEVICE_NAME "ALIF_SMP"
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 
 /* Standard GATT 16 bit UUIDs must be extended to 128 bits when using gatt_att_desc_t */
 #define GATT_DECL_PRIMARY_SERVICE_UUID128                                                          \

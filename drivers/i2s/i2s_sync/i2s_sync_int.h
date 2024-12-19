@@ -111,14 +111,14 @@ struct m55he_cfg_t { /*!< (@ 0x43007000) M55HE_CFG Structure                    
 	__IOM uint32_t HE_CLK_ENA;  /*!< (@ 0x00000010) Peripheral Clock Enable Register    */
 	__IOM uint32_t HE_I2S_CTRL; /*!< (@ 0x00000014) LPI2S Control Register   */
 	__IM uint32_t RESERVED[2];
-	__IOM uint32_t HE_CAMERA_PIXCLK; /*!< (@ 0x00000020) LPCPI Pixel Clock Control Register */
+	__IOM uint32_t HE_CAMERA_PIXCLK_R; /*!< (@ 0x00000020) LPCPI Pixel Clock Control Register */
 };
 
 #define CLKCTL_PER_SLV_BASE 0x4902F000UL
 #define CLKCTL_PER_SLV      ((struct clkctl_per_slv_t *)CLKCTL_PER_SLV_BASE)
 
 #define M55HE_CFG_BASE 0x43007000UL
-#define M55HE_CFG      ((m55_he_cfg_t *)M55HE_CFG_BASE)
+#define M55HE_CFG      ((struct m55he_cfg_t *)M55HE_CFG_BASE)
 
 /* CLKCTL_PER_SLV I2Sn_CTRL I2S Control field definitions */
 #define I2S_CTRL_SCLK_AON         (1U << 20) /* SCLK Always On                          */
@@ -285,8 +285,8 @@ static inline __IOM uint32_t *clkctl_from_i2s_base(struct i2s_t *i2s)
 		return &CLKCTL_PER_SLV->I2S0_CTRL;
 	case 0x49015000UL:
 		return &CLKCTL_PER_SLV->I2S1_CTRL;
-	case 0x49016000UL:
-		return &CLKCTL_PER_SLV->I2S2_CTRL;
+	case 0x43001000UL:
+		return &M55HE_CFG->HE_I2S_CTRL;
 	case 0x49017000UL:
 		return &CLKCTL_PER_SLV->I2S3_CTRL;
 	default:
