@@ -1,0 +1,2 @@
+.. |**Alif_BLE**| replace:: **ABLE**
+.. |**Alif_LC3**| replace:: **ALC3**

@@ -1,18 +1,21 @@
 List of documents
 =================
 
-|Folder   | Document Name                               |
-|---------|---------------------------------------------|
-|augd00xx | Getting Started With Ensemble and Bluetooth |
+|Folder         | Document Name     |
+|---------------|-------------------|
+| .             | SDK documentation |
+| user_guide    | User Guide        |
+| release_notes | Release Notes     |
 
-Tested with Ubuntu 22.04. The goal is to build the documentation in html- and pdf-format.
+As of now you're supposed to build all the documents separately.
+The goal is to build the documentation in html- and pdf-format.
 
 Prerequisites
 =============
 To be able to build the documentation a number of packages needs to be installed.
 It's assumed you have installed all the documentation tools required by the Zephyr RTOS itself.
 ```
-pip install -r zephyr/scripts/requirements-doc.txt
+pip install -r zephyr/doc/requirements.txt
 ```
 
 For Alif specific requirements please run the following command on the SDK top-level scripts-folder
