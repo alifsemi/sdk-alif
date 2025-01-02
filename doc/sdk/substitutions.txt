@@ -1,0 +1,13 @@
+.. # Alif
+.. |ZAS| replace:: Zephyr Alif SDK
+.. |Alif_BLE| replace:: Ceva-Waves™ BLE
+.. |Alif_LC3| replace:: ALC3
+.. |**Alif_BLE**| replace:: **Ceva-Waves™ BLE**
+.. |**Alif_LC3**| replace:: **ALC3**
+
+.. # Unicode code points
+.. |unicode_trademark| unicode:: U+2122 .. TRADEMARK SIGN
+
+.. # Audio
+.. |ble_audio_intro| replace:: Bluetooth Low Energy (BLE) broadcast enables high-quality audio streaming to multiple devices.
+   The two key roles in broadcast mode are Source and Sink

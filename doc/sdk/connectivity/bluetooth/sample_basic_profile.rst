@@ -5,6 +5,7 @@ Basic Profile Samples
 #####################
 
 All basic profile samples follow a common structure, which is explained below.
+The connection procedures are defined in the Generic Access Profile(GAP)
 We will use the BLE Blood Pressure sample to demonstrate the code organization.
 
 All the samples chooce |**Alif_BLE**| by setting a configuration flag on their *prj.conf* file.
@@ -24,7 +25,7 @@ The stack works asynchronously and the configuration is also done in that manner
 7. Send profile data when connected
 8. Continue advertising when disconnected
 
-.. figure:: /_static/alif_ble_flowchart.drawio.png
+.. figure:: /images/alif_ble_flowchart.drawio.png
 
 **NOTE** Error checking has been omitted for brevity.
 
