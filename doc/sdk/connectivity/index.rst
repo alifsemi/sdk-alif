@@ -1,7 +1,7 @@
 .. _zas-connectivity:
 
-Connectivity Documentation
-##########################
+Connectivity
+############
 
 .. toctree::
    :maxdepth: 1

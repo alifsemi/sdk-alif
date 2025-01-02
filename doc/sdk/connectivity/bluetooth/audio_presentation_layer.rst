@@ -1,9 +1,6 @@
-#########
-BLE Audio
-#########
-
+##################
 Presentation Layer
-==================
+##################
 
 To distribute and/or consume audio using BLE a presentation layer is
 required between the user application and the ISO data path. The main
@@ -89,7 +86,7 @@ recorded audio on time, according to the specified presentation delay.
 Design
 ======
 
-.. image:: /_static/alif_ble_audio_presentation_layer.drawio.png
+.. image:: /images/alif_ble_audio_presentation_layer.drawio.png
 
 Timestamp synchronization
 -------------------------
@@ -178,7 +175,7 @@ domain, at which the audio frame must be rendered:
 
 With *PresentationDelay* the presentation delay of the audio stream:
 
-.. image:: /_static/alif_ble_audio_presentation_delay.drawio.png
+.. image:: /images/alif_ble_audio_presentation_delay.drawio.png
 
 Each time a new audio fragment must be provided to the audio output, the
 user application can get this fragment from the FIFO via the
@@ -303,7 +300,7 @@ When it is time to start capture of the next frame of audio data, the
 presentation compensation module is first used to determine if any
 compensation is required. The presentation compensation module takes as
 its inputs the *RefAnchor* of the last SDU to be sent over the air, and
-the queue of SDU *CaptureTime*s with associated sequence numbers. It
+the queue of SDU *CaptureTime*\ s with associated sequence numbers. It
 finds the *CaptureTime* of the last SDU to be sent and calculates the
 *PresentationError*. Then, depending on the presentation error it can
 take one of the following actions:
@@ -378,7 +375,7 @@ delay is 20 ms, frames are 10 ms long, and it takes 5 ms to encode a
 frame then it is possible to send each encoded SDU to the link layer 15
 ms after capture, to be sent 20 ms after capture, and the link layer's
 SDU buffer will be free again before the next SDU is ready at 25 ms
-after the original SDU’s capture time.
+after the original SDU's capture time.
 
 However adding an SDU FIFO allows more flexibility in choosing the
 presentation delay.

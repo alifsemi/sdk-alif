@@ -1,19 +1,17 @@
 .. _zas-connection-ble:
 
-Alif Bluetooth Documentation
-############################
+Bluetooth - |Alif_BLE|
+######################
 
-.. figure:: /_static/alif_ble_stack.drawio.png
+.. figure:: /images/alif_ble_stack.drawio.png
 
 .. toctree::
    :maxdepth: 1
-   :caption: Contents
+   :caption: BLE
 
    audio.rst
    rom_abi.rst
    sample_basic_profile.rst
-   sample_audiosink.rst
-   sample_audiosource.rst
 
 With Alif's software development kit it's possible to use two different BLE host layers, the one included on Zephyr RTOS and the one provided as ROM code library.
 We refer to Alif's ROM code BLE host layer as |**Alif_BLE**| from now on to make distinction to the Zephyr's BLE host layer.

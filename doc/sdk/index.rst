@@ -6,16 +6,8 @@
 Zephyr Alif SDK Project Documentation
 #####################################
 
-Sections
-********
-
 .. toctree::
    :maxdepth: 1
    :caption: Contents
 
    connectivity/index.rst
-
-Indices and Tables
-******************
-
-* :ref:`genindex`

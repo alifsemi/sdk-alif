@@ -12,7 +12,7 @@ Libraries have been configured to use short enums. For further details please se
 * *-fshort-enums*, check `Options for GCC Code Generation`_
 * *-fshort-enums*, check `Options for Clang Code Generation`_
 
-`Arm GNU Toolchain`_ defaults to short enums but when compiling with `LLVM Embedded Toolchain for Arm`_ defaults to word sized ones.
+`Arm GNU Toolchain`_ defaults to short enums but when compiling with `LLVM Embedded Toolchain for Arm`_ toolchain it defaults to word sized ones.
 
 Threads and synchronization
 ***************************
