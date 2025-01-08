@@ -4,3 +4,6 @@ build*/
 .settings
 .clang-format
 
+*.bkp
+*.orig
+*.pyc
