@@ -62,7 +62,7 @@ Before entering main the sample will
 Main
 ****
 Where the things start to deviate from the basic profile setup is when we define the role of the device during GAPM configuration phase.
-The role is set to be an observer to be able to listen for advertisements from other devices without actively participating in the connection process.
+The role is set to be an *observer* to be able to listen for advertisements from other devices without actively participating in the connection process.
 
 .. code-block:: c
 
@@ -72,11 +72,13 @@ The role is set to be an observer to be able to listen for advertisements from o
 
 **NOTE** All the other members of the configuration structure are assumed to be be the same as with the basic profile config.
 
+You don't need to set GAPM callbacks when acting as a *observer*, except the error callbacks.
+
 ****************
 Audio Sink setup
 ****************
 
-Steps to take to be able to listen a broadcast broadcast
+Steps to take to be able to listen a broadcast
 
 1. Set scan configuration
 2. Set audio sink configuration
