@@ -1,8 +1,8 @@
 .. _zas-connection-ble-audiosink:
 
-##########
-Audio Sink
-##########
+##############
+Broadcast Sink
+##############
 |ble_audio_intro|. This sample demonstrates a sink device.
 
 All the audio samples share the same basic structure with all the other :ref:`BLE profile samples<zas-connection-ble-sample>`.

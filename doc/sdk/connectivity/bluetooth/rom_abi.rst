@@ -16,7 +16,7 @@ Libraries have been configured to use short enums. For further details please se
 
 Threads and synchronization
 ***************************
-|**Alif_BLE**| provides means to mutual exclusion when accessing the stack from multiple threads.
+The API provides means to mutual exclusion when accessing the stack from multiple threads.
 An application must call the following functions if multiple threads are accessing the host layer:
 
 * alif_ble_mutex_lock()
