@@ -1,9 +1,9 @@
 .. # Alif
 .. |ZAS| replace:: Zephyr Alif SDK
 .. |Alif_BLE| replace:: Ceva-Waves™ BLE
-.. |Alif_LC3| replace:: ALC3
+.. |Alif_LC3| replace:: Ceva-Waves™ LC3
 .. |**Alif_BLE**| replace:: **Ceva-Waves™ BLE**
-.. |**Alif_LC3**| replace:: **ALC3**
+.. |**Alif_LC3**| replace:: **Ceva-Waves™ LC3**
 
 .. # Unicode code points
 .. |unicode_trademark| unicode:: U+2122 .. TRADEMARK SIGN
