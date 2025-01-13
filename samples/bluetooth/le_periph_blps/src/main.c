@@ -44,7 +44,7 @@ static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 static bool READY_TO_SEND;
 static bool READY_TO_SEND_BASS;
 
-K_SEM_DEFINE(my_sem, 0, 1);
+K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -341,7 +341,7 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&my_sem);
+		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -528,7 +528,7 @@ int main(void)
 	config_battery_service();
 
 	LOG_DBG("Waiting for init...\n");
-	k_sem_take(&my_sem, K_FOREVER);
+	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
 
