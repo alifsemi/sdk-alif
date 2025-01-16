@@ -33,11 +33,7 @@
 	sensor = <&mt9m114>;
 	lp-cam;
 	port {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		lpcam_ep_in: endpoint@0 {
-			reg = <0>;
+		lpcam_ep_in: endpoint {
 			remote-endpoint = <&mt9m114_ep_out>;
 		};
 	};
