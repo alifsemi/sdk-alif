@@ -35,24 +35,22 @@
 #include "bass.h"
 #include "bas.h"
 
-#define BT_CONN_STATE_CONNECTED	   0x00
-#define BT_CONN_STATE_DISCONNECTED 0x01
-#define TX_INTERVAL		   2
-#define BATT_INSTANCE 0x00
-
-static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
+/* Short interval for demonstration purposes */
+#define TX_INTERVAL	2000 /* in milliseconds */
+#define BATT_INSTANCE	0x00
+#define GLPS_STORE_MAX	0xFFFF
 
 /* Variable to check if peer device is ready to receive data"*/
 static bool READY_TO_SEND;
 static bool READY_TO_SEND_BASS;
 
 static uint16_t seq_num;
+static uint16_t store_idx;
 
 /* Global index to cycle through the values */
 static int current_index;
 
 K_SEM_DEFINE(init_sem, 0, 1);
-K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -61,7 +59,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
  */
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_DISABLE,
+	.pairing_mode = GAPM_PAIRING_MODE_ALL,
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	.private_identity.addr = {0xCD, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
@@ -77,6 +75,15 @@ static const gapm_config_t gapm_cfg = {
 	.rx_path_comp = 0,
 	.class_of_device = 0,  /* BT Classic only */
 	.dflt_link_policy = 0, /* BT Classic only */
+};
+
+static gapc_pairing_t p_pairing_info = {
+	.auth = GAP_AUTH_NONE,
+	.ikey_dist = GAP_KDIST_NONE,
+	.iocap = GAP_IO_CAP_NO_INPUT_NO_OUTPUT,
+	.key_size = 16,
+	.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
+	.rkey_dist = GAP_KDIST_NONE,
 };
 
 /* Load name from configuration file */
@@ -117,10 +124,6 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
 		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
-	conn_status = BT_CONN_STATE_CONNECTED;
-
-	k_sem_give(&conn_sem);
-
 	LOG_DBG("Please enable notifications on peer device..");
 }
 
@@ -141,8 +144,8 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
-	conn_status = BT_CONN_STATE_DISCONNECTED;
 	READY_TO_SEND = false;
+	READY_TO_SEND_BASS = false;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -168,11 +171,6 @@ static void on_gapm_err(enum co_error err)
 
 /* Server callbacks */
 
-static void on_meas_send_complete(uint8_t conidx, uint16_t status)
-{
-	READY_TO_SEND = true;
-}
-
 static void on_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
 {
 	switch (evt_cfg) {
@@ -194,14 +192,89 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
 		break;
 	}
 }
+struct glps_racp_temp {
+	uint8_t conidx;
+	uint8_t op_code;
+	uint8_t func_operator;
+	uint8_t filter_type;
+	const union glp_filter *p_filter;
+};
+
+static struct glps_racp_temp glps_temp;
+
+static uint16_t send_idx = 1;
+static uint16_t nb_stored;
+static bool available_data;
+static bool transfer_in_process;
+struct extended_glucose_meas {
+	uint16_t ext_seq_num;
+	glp_meas_t p_meas;
+};
+
+struct extended_glucose_meas ext_meas[GLPS_STORE_MAX];
+
+static void on_meas_send_complete(uint8_t conidx, uint16_t status)
+{
+	uint16_t err;
+
+	READY_TO_SEND = true;
+
+	if (nb_stored <= 1) {
+		glps_racp_rsp_send(conidx, glps_temp.op_code, GLP_RSP_SUCCESS, 1);
+		send_idx = 1;
+	} else {
+		err = glps_meas_send(glps_temp.conidx,
+				ext_meas[send_idx].ext_seq_num,
+				&ext_meas[send_idx].p_meas, NULL);
+		if (err) {
+			LOG_ERR("Error %u sending measurement", err);
+		}
+		send_idx++;
+		nb_stored--;
+	}
+}
+
+
+static void process_racp_req(uint8_t conidx, uint8_t op_code)
+{
+	uint16_t err;
+
+	nb_stored = store_idx;
+	store_idx = 0;
+
+	if (READY_TO_SEND && available_data) {
+		available_data = false;
+		err = glps_meas_send(glps_temp.conidx, ext_meas[0].ext_seq_num,
+				&ext_meas[0].p_meas, NULL);
+		if (err) {
+			LOG_ERR("Error %u sending measurement", err);
+		}
+	} else {
+		glps_racp_rsp_send(conidx, glps_temp.op_code, GLP_RSP_NO_RECS_FOUND, 0);
+	}
+}
 
 static void on_racp_rep(uint8_t conidx, uint8_t op_code, uint8_t func_operator, uint8_t filter_type,
 			const union glp_filter *p_filter)
 {
+	if (!transfer_in_process) {
+		transfer_in_process = true;
+
+		glps_temp.conidx = conidx;
+		glps_temp.filter_type = filter_type;
+		glps_temp.func_operator = func_operator;
+		glps_temp.op_code = op_code;
+		glps_temp.p_filter = p_filter;
+
+		process_racp_req(conidx, op_code);
+	} else {
+		LOG_ERR("TRANSFER IN PROCESS");
+	}
 }
 
 static void racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
+	transfer_in_process = false;
 }
 
 static void on_bass_batt_level_upd_cmp(uint16_t status)
@@ -223,8 +296,70 @@ static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
 		READY_TO_SEND_BASS = true;
 		LOG_DBG("Sending battery level");
 	}
+	default:{
+	}
 	}
 
+}
+
+/*
+ * Security callbacks
+ */
+
+static void on_pairing_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
+{
+	uint16_t err;
+
+	err = gapc_le_pairing_accept(conidx, true, &p_pairing_info, 0);
+
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Pairing error %u", err);
+	}
+}
+
+static void on_pairing_failed(uint8_t conidx, uint32_t metainfo, uint16_t reason)
+{
+	LOG_DBG("Pairing failed conidx: %u, metainfo: %u, reason: 0x%02x\n",
+		conidx, metainfo, reason);
+}
+
+static void on_le_encrypt_req(uint8_t conidx, uint32_t metainfo, uint16_t ediv,
+	const gap_le_random_nb_t *p_rand)
+{
+}
+
+static void on_auth_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
+{
+}
+
+static void on_auth_info(uint8_t conidx, uint32_t metainfo, uint8_t sec_lvl,
+				bool encrypted,
+				uint8_t key_size)
+{
+}
+
+static void on_pairing_succeed(uint8_t conidx, uint32_t metainfo, uint8_t pairing_level,
+				bool enc_key_present,
+				uint8_t key_type)
+{
+	LOG_INF("Pairing succeeded");
+}
+
+static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
+{
+}
+
+static void on_ltk_req(uint8_t conidx, uint32_t metainfo, uint8_t key_size)
+{
+}
+static void on_numeric_compare_req(uint8_t conidx, uint32_t metainfo, uint32_t numeric_value)
+{
+}
+static void on_key_pressed(uint8_t conidx, uint32_t metainfo, uint8_t notification_type)
+{
+}
+static void on_repeated_attempt(uint8_t conidx, uint32_t metainfo)
+{
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -233,7 +368,17 @@ static const gapc_connection_req_cb_t gapc_con_cbs = {
 
 static const gapc_security_cb_t gapc_sec_cbs = {
 	.key_received = on_key_received,
-	/* All other callbacks in this struct are optional */
+	.pairing_req = on_pairing_req,
+	.pairing_failed = on_pairing_failed,
+	.le_encrypt_req = on_le_encrypt_req,
+	.auth_req = on_auth_req,
+	.auth_info = on_auth_info,
+	.pairing_succeed = on_pairing_succeed,
+	.info_req = on_info_req,
+	.ltk_req = on_ltk_req,
+	.numeric_compare_req = on_numeric_compare_req,
+	.key_pressed = on_key_pressed,
+	.repeated_attempt = on_repeated_attempt,
 };
 
 static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
@@ -419,7 +564,8 @@ static void server_configure(void)
 	uint16_t start_hdl = 0;
 	struct glps_db_cfg glps_cfg = {0};
 
-	err = prf_add_profile(TASK_ID_GLPS, 0, 0, &glps_cfg, &glps_cb, &start_hdl);
+	err = prf_add_profile(TASK_ID_GLPS, GAP_SEC1_NOAUTH_PAIR_ENC, 0, &glps_cfg, &glps_cb,
+				&start_hdl);
 
 	if (err) {
 		LOG_ERR("Error %u adding profile", err);
@@ -472,25 +618,25 @@ prf_sfloat read_sensor_value(void)
 	/* Update the index to cycle through the values */
 	current_index = (current_index + 1) % num_values;
 
-	/* sequence number must be unique per measurement */
-	seq_num += 1;
 
 	/* TODO save the last value in NVM */
 
 	return converted_value;
 }
 
-/*  Generate and send dummy data*/
-static void send_measurement(prf_sfloat current_value)
-{
-	uint16_t err;
 
+/*  Generate and send dummy data*/
+static void store_measurement(prf_sfloat current_value)
+{
 	prf_date_time_t *timePtr = (prf_date_time_t *)get_device_time();
 
 	prf_date_time_t updated_time = *timePtr;
 
 	/* Dummy measurement data */
-	glp_meas_t p_meas = {
+	if (store_idx >= GLPS_STORE_MAX) {
+		store_idx = 0;
+	}
+	glp_meas_t glps_temp_meas = {
 		.base_time = updated_time,
 		.concentration = current_value,
 		.type = GLP_TYPE_CAPILLARY_WHOLE_BLOOD,
@@ -498,32 +644,14 @@ static void send_measurement(prf_sfloat current_value)
 		.flags = GLP_MEAS_GL_CTR_TYPE_AND_SPL_LOC_PRES_BIT,
 	};
 
-	/* Send measuremnt to connected device */
-	/* Set 0 to first parameter to send only to the first connected peer device */
-	err = glps_meas_send(0, seq_num, &p_meas, NULL);
-
-	if (err) {
-		LOG_ERR("Error %u sending measurement", err);
-	}
+	ext_meas[store_idx].p_meas = glps_temp_meas;
+	ext_meas[store_idx].ext_seq_num = seq_num;
+	available_data = true;
+	store_idx++;
+	/* sequence number must be unique per measurement */
+	seq_num += 1;
 }
 
-static void process_measurement(prf_sfloat meas_value)
-{
-	switch (conn_status) {
-	case BT_CONN_STATE_CONNECTED:
-		if (READY_TO_SEND) {
-			send_measurement(meas_value);
-			READY_TO_SEND = false;
-		}
-		break;
-
-	case BT_CONN_STATE_DISCONNECTED:
-		LOG_DBG("Waiting for peer connection...\n");
-		k_sem_take(&conn_sem, K_FOREVER);
-	default:
-		break;
-	}
-}
 
 static void config_battery_service(void)
 {
@@ -532,7 +660,7 @@ static void config_battery_service(void)
 	uint16_t start_hdl = 0;
 
 	bass_cfg.bas_nb = 1;
-	bass_cfg.features[0] = 1;
+	bass_cfg.features[0] = BAS_BATT_LVL_NTF_SUP;
 
 	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
 }
@@ -575,14 +703,15 @@ int main(void)
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
+	LOG_DBG("Waiting for peer connection...\n");
 
 	while (1) {
 		/* Execute process every 1 second */
-		k_sleep(K_SECONDS(TX_INTERVAL));
+		k_sleep(K_MSEC(TX_INTERVAL));
 
 		meas_value = read_sensor_value();
 
-		process_measurement(meas_value);
+		store_measurement(meas_value);
 		battery_process();
 	}
 }
