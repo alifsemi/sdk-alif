@@ -19,14 +19,21 @@
 	};
 };
 
+&dma2 {
+	status = "okay";
+};
+
 &dma0 {
 	status = "okay";
 };
 
 &spi4 {
 	status = "okay";
-	//dmas = <&dma2 0 13>, <&dma2 1 12>;
-	dmas = <&dma0 0 25>, <&dma0 1 24>;
+	dmas = <&dma2 0 13>, <&dma2 1 12>;
+/* If user want to use dma0 for master spi(spi4),
+ * add below dmas property:
+ * dmas = <&dma0 0 25>, <&dma0 1 24>;
+ */
 	dma-names = "txdma", "rxdma";
 };
 
