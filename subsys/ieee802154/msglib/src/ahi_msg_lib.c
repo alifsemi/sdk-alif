@@ -1999,6 +1999,25 @@ enum alif_mac154_status_code alif_ahi_msg_set_key_desc_resp(struct msg_buf *p_ms
 	return alif_ahi_msg_status_convert(p_cmd_resp->status);
 }
 
+enum alif_mac154_status_code alif_ahi_msg_clear_key_desc_resp(struct msg_buf *p_msg, uint8_t *p_ctx)
+{
+	mac154app_config_mac_keys_cmp_evt_t *p_cmd_resp;
+
+	p_cmd_resp = alif_ahi_msg_header_validate(p_msg, MAC154APP_CMP_EVT,
+						  sizeof(mac154app_cmp_evt_t));
+
+	if (!p_cmd_resp) {
+		return ALIF_MAC154_STATUS_COMM_FAILURE;
+	}
+	if (p_ctx) {
+		*p_ctx = p_cmd_resp->dummy;
+	}
+	if (p_cmd_resp->cmd_code != MAC154APP_CLEAR_MAC_KEYS) {
+		return ALIF_MAC154_STATUS_INVALID_MESSAGE;
+	}
+	return alif_ahi_msg_status_convert(p_cmd_resp->status);
+}
+
 enum alif_mac154_status_code alif_ahi_msg_set_frame_counter_resp(struct msg_buf *p_msg, uint8_t *p_ctx, bool if_larger)
 {
 	mac154app_cmp_evt_t *p_cmd_resp;
