@@ -28,7 +28,7 @@ subsystem off of RTSS cores in Alif SoC. The functional behavior is:
 
 Note:
 *****
-* This application runs from ITCM by default. To run from the MRAM, set CONFIG_ROM_ITCM=n
+* This application runs from ITCM by default. To run from the MRAM, set CONFIG_XIP=y
   in the prj.conf.
 * CONFIG_CORTEX_M_SYSTICK_IDLE_TIMER is set by default. RTC0 will be used as the idle timer when
   it goes to subsystem Off state. User may disable this along with updating the 'min-residency-us'
