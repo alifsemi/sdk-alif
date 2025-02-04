@@ -23,7 +23,7 @@ subsystem off of RTSS cores in Alif SoC. The functional behavior is:
 
 Note:
 *****
-* This application runs from ITCM by default. To run from the MRAM, set CONFIG_ROM_ITCM=n
+* This application runs from ITCM by default. To run from the MRAM, set CONFIG_XIP=y
   in the prj.conf.
 * User should use the SETOOLS package which can be downloaded from our website
   for flashing the binaries to MRAM. See :ref:`programming_an_application` for more information.

@@ -126,13 +126,13 @@ b. Build the HelloWorld Application
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_he samples/hello_world
+     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_XIP=n
 
 - Build for MRAM (Address: 0x80000000):
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_ROM_ITCM=n
+     west build -b alif_e7_dk_rtss_he samples/hello_world
 
 **RTSS-HP**
 
@@ -140,13 +140,13 @@ b. Build the HelloWorld Application
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_hp samples/hello_world
+     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_XIP=n
 
 - Build for MRAM (Address: 0x80200000):
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_ROM_ITCM=n
+     west build -b alif_e7_dk_rtss_hp samples/hello_world
 
 .. note::
    By default, Ninja is used. To switch to using Unix Makefiles, add the following option:
