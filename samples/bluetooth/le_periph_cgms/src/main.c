@@ -37,8 +37,14 @@
 #include "gapc_msg.h"
 
 #include "se_service.h"
+#include <zephyr/settings/settings.h>
+#include <string.h>
 
 #define BATT_INSTANCE 0x00
+#define BLE_BOND_KEYS_KEY_0	"ble/bond_keys_0"
+#define BLE_BOND_KEYS_NAME_0	"bond_keys_0"
+#define BLE_BOND_DATA_KEY_0	"ble/bond_data_0"
+#define BLE_BOND_DATA_NAME_0	"bond_data_0"
 
 /* Device definitions */
 /* Load name from configuration file */
@@ -78,9 +84,9 @@ static uint16_t start_le_adv(uint8_t actv_idx);
 static const gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_MODE_ALL,
-	.privacy_cfg = 0,
+	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
 	.renew_dur = 1500,
-	.private_identity.addr = {0xDB, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
+	.private_identity.addr = {0x78, 0x59, 0x94, 0xDE, 0x11, 0xFF},
 	.irk.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08, 0x11,
 			0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 	.gap_start_hdl = 0,
@@ -109,7 +115,14 @@ static gapc_pairing_t p_pairing_info = {
 void on_address_resolved_cb(uint16_t status, const gap_addr_t *p_addr, const gap_sec_key_t *pirk)
 {
 	resolved = (status != GAP_ERR_NO_ERROR) ? false : true;
-	gapc_le_connection_cfm(temp_conidx, 0, resolved ? &(bond_data_saved) : NULL);
+
+	if (resolved) {
+		LOG_INF("Known peer device");
+		gapc_le_connection_cfm(temp_conidx, 0, &(bond_data_saved));
+	} else {
+		LOG_INF("Unknown peer device");
+		gapc_le_connection_cfm(temp_conidx, 0, NULL);
+	}
 }
 
 
@@ -184,7 +197,6 @@ static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint1
 
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 {
-	LOG_INF("ON APPEARANCE GET");
 	/* Send 'unknown' appearance */
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
@@ -195,7 +207,6 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 	.appearance_get = on_appearance_get,
 	/* Other callbacks in this struct are optional */
 };
-
 
 /*
  * Error callback
@@ -208,7 +219,6 @@ static void on_gapm_err(enum co_error err)
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
 };
-
 
 /*
  * CGMS callbacks
@@ -291,7 +301,6 @@ static const cgms_cb_t cgms_cb = {
 	.cb_ops_ctrl_pt_rsp_send_cmp = on_ops_ctrl_pt_rsp_send_cmp,
 };
 
-
 /*
  * Battery service callbacks
  */
@@ -323,12 +332,13 @@ static const bass_cb_t bass_cb = {
 	.cb_bond_data_upd = on_bass_bond_data_upd,
 };
 
-
 /*
  * Security callbacks
  */
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
 {
+	int err;
+
 	stored_keys.csrk = p_keys->csrk;
 	memcpy(stored_keys.irk.key.key, p_keys->irk.key.key, sizeof(stored_keys.irk.key.key));
 	memcpy(stored_keys.irk.identity.addr, p_keys->irk.identity.addr,
@@ -338,19 +348,23 @@ static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairin
 	stored_keys.ltk = p_keys->ltk;
 	stored_keys.pairing_lvl = p_keys->pairing_lvl;
 	stored_keys.valid_key_bf = p_keys->valid_key_bf;
+
+	/* Save under the key "ble/bond_keys_0" */
+	err = settings_save_one(BLE_BOND_KEYS_KEY_0, &stored_keys, sizeof(gapc_pairing_keys_t));
+	if (err) {
+		LOG_ERR("Failed to store test_data (err %d)", err);
+	}
 }
+
 static void on_pairing_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
 {
 	uint16_t err;
 
-	do {
-		gapm_le_configure_security_level(local_sec_level);
-		err = gapc_le_pairing_accept(conidx, true, &p_pairing_info, 0);
+	err = gapc_le_pairing_accept(conidx, true, &p_pairing_info, 0);
 
-		if (err != GAP_ERR_NO_ERROR) {
-			LOG_ERR("Pairing error %u", err);
-		}
-	} while (false);
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Pairing error %u", err);
+	}
 }
 
 static void on_pairing_failed(uint8_t conidx, uint32_t metainfo, uint16_t reason)
@@ -372,26 +386,23 @@ static void on_le_encrypt_req(uint8_t conidx, uint32_t metainfo, uint16_t ediv,
 	}
 }
 
-static void on_auth_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
-{
-	LOG_INF("ON AUTH REO");
-}
-
-static void on_auth_info(uint8_t conidx, uint32_t metainfo, uint8_t sec_lvl,
-			bool encrypted, uint8_t key_size)
-{
-}
-
 static void on_pairing_succeed(uint8_t conidx, uint32_t metainfo, uint8_t pairing_level,
 				bool enc_key_present, uint8_t key_type)
 {
+	int err;
+
 	LOG_INF("PAIRING SUCCEED");
 
 	bond_data_saved.pairing_lvl = pairing_level;
 	bond_data_saved.enc_key_present = true;
 
-	bool bonded = gapc_is_bonded(conidx);
+	err = settings_save_one(BLE_BOND_DATA_KEY_0, &bond_data_saved, sizeof(gapc_bond_data_t));
+	if (err) {
+		LOG_ERR("Failed to store test_data (err %d)", err);
+	}
 
+	/* Verify bond */
+	bool bonded = gapc_is_bonded(conidx);
 	if (bonded) {
 		LOG_INF("Peer device bonded");
 	}
@@ -404,10 +415,7 @@ static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
 	switch (exp_info) {
 	case GAPC_INFO_IRK:
 	{
-		LOG_INF("REQUIRED IRK INFO");
-
-		uint16_t err = gapc_le_pairing_provide_irk(conidx, &(gapm_cfg.irk));
-
+		err = gapc_le_pairing_provide_irk(conidx, &(gapm_cfg.irk));
 		if (err) {
 			LOG_ERR("IRK send failed");
 		} else {
@@ -415,47 +423,27 @@ static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
 		}
 	} break;
 
-	case GAPC_INFO_TK_DISPLAYED:
-		LOG_INF("INFO TK DISPLAYED");
-		break;
 	case GAPC_INFO_PASSKEY_DISPLAYED:
-	err = gapc_pairing_provide_passkey(conidx, true, 123456);
-
+		err = gapc_pairing_provide_passkey(conidx, true, 123456);
 		if (err) {
 			LOG_ERR("ERROR PROVIDING PASSKEY 0x%02x", err);
 		} else {
 			LOG_INF("PASSKEY 123456");
 		}
 		break;
-	case GAPC_INFO_CSRK:
-		LOG_WRN("CSRK REQUEST?");
-		break;
-	case GAPC_INFO_OOB:
-		LOG_WRN("OOB REQUEST");
-		break;
-	case GAPC_INFO_TK_OOB:
-		LOG_WRN("TK OOB REQUEST");
-		break;
-	case GAPC_INFO_TK_ENTERED:
-		LOG_WRN("TK ENTERED");
-		break;
-	case GAPC_INFO_PASSKEY_ENTERED:
-		LOG_WRN("PASSKEY ENTERED");
-		break;
-	default: {
+
+	default:
 		LOG_WRN("Requested info 0x%02x", exp_info);
-	} break;
+		break;
 	}
 }
 
 static void on_ltk_req(uint8_t conidx, uint32_t metainfo, uint8_t key_size)
 {
-	LOG_INF("ltk req\n");
 	uint16_t err;
+	uint8_t cnt;
 
 	gapc_ltk_t *ltk_data = &(generated_keys.ltk);
-
-	uint8_t cnt;
 
 	ltk_data->key_size = GAP_KEY_LEN;
 	ltk_data->ediv = (uint16_t)co_rand_word();
@@ -471,27 +459,21 @@ static void on_ltk_req(uint8_t conidx, uint32_t metainfo, uint8_t key_size)
 
 	err = gapc_le_pairing_provide_ltk(conidx, &generated_keys.ltk);
 
-	if (err != GAP_ERR_NO_ERROR) {
+	if (err) {
 		LOG_ERR("LTK provide error %u\n", err);
 	} else {
-		LOG_WRN("LTK PROVIDED");
+		LOG_INF("LTK PROVIDED");
 	}
 
+	/* Distributed Encryption key */
 	generated_keys.valid_key_bf |= GAP_KDIST_ENCKEY;
-	generated_keys.pairing_lvl = 1;
+
+	/* Peer device bonded through authenticated pairing */
+	generated_keys.pairing_lvl = GAP_PAIRING_BOND_AUTH;
 }
 
 static void on_numeric_compare_req(uint8_t conidx, uint32_t metainfo, uint32_t numeric_value)
 {
-	LOG_INF("NUMERIC COMPARE REQ");
-}
-static void on_key_pressed(uint8_t conidx, uint32_t metainfo, uint8_t notification_type)
-{
-	LOG_INF("KEY PRESSED");
-}
-static void on_repeated_attempt(uint8_t conidx, uint32_t metainfo)
-{
-	LOG_INF("REPEATED ATTEMPT");
 }
 
 static const gapc_security_cb_t gapc_sec_cbs = {
@@ -499,16 +481,11 @@ static const gapc_security_cb_t gapc_sec_cbs = {
 	.pairing_req = on_pairing_req,
 	.pairing_failed = on_pairing_failed,
 	.le_encrypt_req = on_le_encrypt_req,
-	.auth_req = on_auth_req,
-	.auth_info = on_auth_info,
 	.pairing_succeed = on_pairing_succeed,
 	.info_req = on_info_req,
 	.ltk_req = on_ltk_req,
 	.numeric_compare_req = on_numeric_compare_req,
-	.key_pressed = on_key_pressed,
-	.repeated_attempt = on_repeated_attempt,
 };
-
 
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
@@ -525,7 +502,6 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
 
-
 /*
  * Advertising functions
  */
@@ -533,12 +509,12 @@ static const gapm_callbacks_t gapm_cbs = {
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
+	uint8_t num_svc = 2;
 
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_CONTINUOUS_GLUCOSE_MONITORING;
 	uint16_t svc2 = GATT_SVC_BATTERY_SERVICE;
 
-	uint8_t num_svc = 2;
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
 	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
@@ -602,6 +578,7 @@ static uint16_t start_le_adv(uint8_t actv_idx)
 	if (err) {
 		LOG_ERR("Failed to start LE advertising with error %u", err);
 	}
+
 	return err;
 }
 
@@ -793,6 +770,73 @@ static void battery_process(void)
 	}
 }
 
+static int keys_settings_set(const char *name, size_t len_rd,
+			settings_read_cb read_cb, void *cb_arg)
+{
+	int err;
+
+	if (strcmp(name, BLE_BOND_KEYS_NAME_0) == 0) {
+
+		if (len_rd != sizeof(stored_keys)) {
+			LOG_ERR("Incorrect length for test_data: %zu", len_rd);
+			return -EINVAL;
+		}
+
+		err = read_cb(cb_arg, &stored_keys, sizeof(gapc_pairing_keys_t));
+		if (err < 0) {
+			LOG_ERR("Failed to read test_data (err: %d)", err);
+			return err;
+		}
+
+		return 0;
+	} else if (strcmp(name, BLE_BOND_DATA_NAME_0) == 0) {
+
+		if (len_rd != sizeof(bond_data_saved)) {
+			LOG_ERR("Incorrect length for test_data: %zu", len_rd);
+			return -EINVAL;
+		}
+
+		err = read_cb(cb_arg, &bond_data_saved, sizeof(gapc_bond_data_t));
+		if (err < 0) {
+			LOG_ERR("Failed to read test_data (err: %d)", err);
+			return err;
+		}
+
+		return 0;
+	}
+
+	LOG_ERR("stored data not correct");
+	return 0;
+}
+
+static struct settings_handler ble_cgms_conf = {
+	.name = "ble",
+	.h_set = keys_settings_set,
+};
+
+static int keys_retrieve(void)
+{
+	int err;
+
+	err = settings_subsys_init();
+	if (err) {
+		LOG_ERR("settings_subsys_init() failed (err %d)", err);
+		return err;
+	}
+
+	err = settings_register(&ble_cgms_conf);
+	if (err) {
+		LOG_ERR("Failed to register settings handler, err %d", err);
+	}
+
+	err = settings_load();
+	if (err) {
+		LOG_ERR("settings_load() failed, err %d", err);
+	}
+
+	return err;
+}
+
 int main(void)
 {
 	uint16_t err;
@@ -804,7 +848,7 @@ int main(void)
 	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 	if (err) {
 		LOG_ERR("gapm_configure error %02x", err);
-		return -1;
+		return err;
 	}
 
 	config_battery_service();
@@ -813,6 +857,9 @@ int main(void)
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!");
+
+	/* keys retrieve */
+	keys_retrieve();
 
 	while (1) {
 		/* Execute process every 1 second */
@@ -823,4 +870,5 @@ int main(void)
 		cgms_process(current_value);
 		battery_process();
 	}
+	return -ENOTSUP;
 }
