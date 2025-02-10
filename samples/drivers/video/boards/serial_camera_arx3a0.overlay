@@ -1,7 +1,10 @@
-/*
- * Copyright (c) 2025 Alif Semiconductor.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
  *
- * SPDX-License-Identifier: Apache-2.0
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
 #include <dt-bindings/pinctrl/ensemble-pinctrl.h>
