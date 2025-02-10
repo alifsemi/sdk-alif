@@ -165,10 +165,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
-}
 
 /* HRPS callbacks */
 
@@ -240,6 +236,28 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+static void on_gapm_err(uint32_t metainfo, uint8_t code)
+{
+	LOG_ERR("gapm error %d", code);
+}
+static const gapm_cb_t gapm_err_cbs = {
+	.cb_hw_error = on_gapm_err,
+};
+
+static const gapm_callbacks_t gapm_cbs = {
+	.p_con_req_cbs = &gapc_con_cbs,
+	.p_sec_cbs = &gapc_sec_cbs,
+	.p_info_cbs = &gapc_con_inf_cbs,
+	.p_le_config_cbs = &gapc_le_cfg_cbs,
+	.p_bt_config_cbs = NULL, /* BT classic so not required */
+	.p_gapm_cbs = &gapm_err_cbs,
+};
+#else
+static void on_gapm_err(enum co_error err)
+{
+	LOG_ERR("gapm error %d", err);
+}
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
 };
@@ -252,6 +270,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_bt_config_cbs = NULL, /* BT classic so not required */
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 static const hrps_cb_t hrps_cb = {
 	.cb_bond_data_upd = on_bond_data_upd,
