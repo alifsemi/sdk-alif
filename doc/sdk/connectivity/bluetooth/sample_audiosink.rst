@@ -25,6 +25,7 @@ Additionally there is need to set:
 .. code-block:: kconfig
 
 	# Alif's BLE stack
+	CONFIG_BT=y
 	CONFIG_BT_CUSTOM=y
 
 	# Audio
