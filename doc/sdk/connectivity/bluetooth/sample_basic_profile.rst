@@ -12,6 +12,7 @@ All the samples chooce |**Alif_BLE**| by setting a configuration flag on their *
 
 .. code-block:: kconfig
 
+	CONFIG_BT=y
 	CONFIG_BT_CUSTOM=y
 
 The stack works asynchronously and the configuration is also done in that manner. At highest level all the samples will:

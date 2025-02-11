@@ -26,6 +26,7 @@ Additionally there is need to set:
 
 .. code-block:: kconfig
 
+	CONFIG_BT=y
 	CONFIG_BT_CUSTOM=y
 	CONFIG_ALIF_ROM_LC3_CODEC=y
 	CONFIG_ALIF_BLE_AUDIO=y
