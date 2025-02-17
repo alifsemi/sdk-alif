@@ -120,19 +120,7 @@ b. Build the HelloWorld Application
 
    An application that prints a "Hello World" message along with the board name. By default, code execution takes place from MRAM.
 
-- Build for MRAM (Address: 0x80200000):
-
-  .. code-block:: console
-
-     west build -b alif_e7_dk_rtss_hp samples/hello_world
-
 **RTSS-HE**
-
-- Build for ITCM:
-
-  .. code-block:: console
-
-     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 - Build for MRAM (Address: 0x80000000):
 
@@ -140,14 +128,25 @@ b. Build the HelloWorld Application
 
      west build -b alif_e7_dk_rtss_he samples/hello_world
 
+- Build for ITCM:
+
+  .. code-block:: console
+
+     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+
 **RTSS-HP**
+
+- Build for MRAM (Address: 0x80200000):
+
+  .. code-block:: console
+
+     west build -b alif_e7_dk_rtss_hp samples/hello_world
 
 - Build for ITCM:
 
   .. code-block:: console
 
      west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=512
-
 
 .. note::
    By default, Ninja is used. To switch to using Unix Makefiles, add the following option:
