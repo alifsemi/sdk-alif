@@ -146,7 +146,7 @@ b. Build the HelloWorld Application
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=512
+     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 .. note::
    By default, Ninja is used. To switch to using Unix Makefiles, add the following option:
