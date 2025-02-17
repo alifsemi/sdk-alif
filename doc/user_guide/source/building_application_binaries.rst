@@ -120,13 +120,13 @@ b. Build the HelloWorld Application
 
    An application that prints a "Hello World" message along with the board name.
 
-**RTSS-HE**
+   **RTSS-HE**
 
 - Build for ITCM:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_XIP=n
+     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 - Build for MRAM (Address: 0x80000000):
 
@@ -140,7 +140,7 @@ b. Build the HelloWorld Application
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_XIP=n
+     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=512
 
 - Build for MRAM (Address: 0x80200000):
 
