@@ -291,7 +291,7 @@ static inline __IOM uint32_t *clkctl_from_i2s_base(struct i2s_t *i2s)
 		return &CLKCTL_PER_SLV->I2S3_CTRL;
 	default:
 		__ASSERT(0, "I2S instance does not exist");
-		break;
+		return NULL;
 	}
 }
 
