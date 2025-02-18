@@ -14,7 +14,7 @@
 
 struct audio_block {
 	uint32_t timestamp;
-	int16_t buf[];
+	int16_t buf[]; /* 16-bit signed PCM values */
 };
 
 struct audio_queue {
