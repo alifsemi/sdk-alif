@@ -17,7 +17,8 @@ LOG_MODULE_REGISTER(audio_queue, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
 struct audio_queue *audio_queue_create(size_t item_count, size_t audio_block_samples)
 {
-	size_t item_size = (audio_block_samples * sizeof(int16_t)) + sizeof(struct audio_block);
+	/* Timestamp and the 16-bit PCM samples */
+	size_t item_size = sizeof(struct audio_block) + (audio_block_samples * sizeof(int16_t));
 
 	/* Each item must be 4-byte aligned */
 	size_t padded_size = ROUND_UP(item_size, 4);

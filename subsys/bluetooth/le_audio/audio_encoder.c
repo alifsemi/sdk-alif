@@ -71,7 +71,7 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 		/* A NULL audio block can be sent to the queue to wake up and abort thread. Continue
 		 * and check thread abort flag.
 		 */
-		if (audio == NULL) {
+		if (!audio) {
 			continue;
 		}
 
@@ -90,37 +90,38 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 		p_sdu_l->has_timestamp = false;
 		p_sdu_l->seq_num = enc->sdu_seq;
 
-		/* If a right ISO stream exists, allocate an SDU, fill with data and send */
-		if (enc->sdu_queue[1]) {
-			gapi_isooshm_sdu_buf_t *p_sdu_r;
-
-			ret = k_mem_slab_alloc(&enc->sdu_queue[1]->slab, (void *)&p_sdu_r,
-					       K_FOREVER);
-			__ASSERT(ret == 0, "Failed to get memory from slab");
-
-			if (enc->mono) {
-				/* In mono mode, copy the data from the left channel */
-				memcpy(p_sdu_r->data, p_sdu_l->data,
-				       enc->sdu_queue[1]->payload_size);
-			} else {
-				/* In stereo mode, encode the right channel */
-				int16_t *audio_data =
-					audio->buf + enc->audio_queue->audio_block_samples / 2;
-				ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[1],
-							   audio_data, p_sdu_r->data,
-							   enc->sdu_queue[1]->payload_size,
-							   enc->lc3_scratch);
-				__ASSERT(ret == 0, "LC3 encoding failed");
-			}
-
-			p_sdu_r->sdu_len = enc->sdu_queue[1]->payload_size;
-			p_sdu_r->has_timestamp = false;
-			p_sdu_r->seq_num = enc->sdu_seq;
-
-			ret = k_msgq_put(&enc->sdu_queue[1]->msgq, &p_sdu_r, K_FOREVER);
-			__ASSERT(ret == 0, "msgq put failed");
+		/* If only left channel */
+		if (!enc->sdu_queue[1]) {
+			goto send_left;
 		}
 
+		/* When a right ISO stream exists, allocate an SDU, fill with data and send */
+		gapi_isooshm_sdu_buf_t *p_sdu_r;
+
+		ret = k_mem_slab_alloc(&enc->sdu_queue[1]->slab, (void *)&p_sdu_r, K_FOREVER);
+		__ASSERT(ret == 0, "Failed to get memory from slab");
+
+		if (enc->mono) {
+			/* In mono mode, copy the data from the left channel */
+			memcpy(p_sdu_r->data, p_sdu_l->data, enc->sdu_queue[1]->payload_size);
+		} else {
+			/* In stereo mode, encode the right channel */
+			int16_t *audio_data =
+				audio->buf + enc->audio_queue->audio_block_samples / 2;
+			ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[1], audio_data,
+						   p_sdu_r->data, enc->sdu_queue[1]->payload_size,
+						   enc->lc3_scratch);
+			__ASSERT(ret == 0, "LC3 encoding failed");
+		}
+
+		p_sdu_r->sdu_len = enc->sdu_queue[1]->payload_size;
+		p_sdu_r->has_timestamp = false;
+		p_sdu_r->seq_num = enc->sdu_seq;
+
+		ret = k_msgq_put(&enc->sdu_queue[1]->msgq, &p_sdu_r, K_FOREVER);
+		__ASSERT(ret == 0, "msgq put failed");
+
+send_left:
 		/* Send left SDU now that it is no longer needed */
 		ret = k_msgq_put(&enc->sdu_queue[0]->msgq, &p_sdu_l, K_FOREVER);
 		__ASSERT(ret == 0, "msgq put failed");
@@ -134,7 +135,7 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 		/* Notify listeners that a block is completed */
 		struct cb_list *cb_item = enc->cb_list;
 
-		while (cb_item != NULL) {
+		while (cb_item) {
 			if (cb_item->cb) {
 				cb_item->cb(cb_item->context, capture_timestamp, enc->sdu_seq);
 			}
@@ -152,22 +153,22 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 					   struct sdu_queue *sdu_queue_r,
 					   struct audio_queue *audio_queue)
 {
-	if (stack == NULL) {
+	if (!stack) {
 		LOG_ERR("Thread stack must be provided");
 		return NULL;
 	}
 
-	if (audio_queue == NULL) {
+	if (!audio_queue) {
 		LOG_ERR("Audio queue must be provided");
 		return NULL;
 	}
 
-	if (sdu_queue_l == NULL) {
+	if (!sdu_queue_l) {
 		LOG_ERR("At least one SDU queue must be provided");
 		return NULL;
 	}
 
-	if ((sdu_queue_r == NULL) && !mono) {
+	if (!sdu_queue_r && !mono) {
 		LOG_ERR("One SDU queue must be provided per channel");
 		return NULL;
 	}
@@ -175,7 +176,7 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 	struct audio_encoder *enc =
 		(struct audio_encoder *)calloc(sizeof(struct audio_encoder), 1);
 
-	if (enc == NULL) {
+	if (!enc) {
 		LOG_ERR("Failed to allocate audio encoder");
 		return NULL;
 	}
@@ -198,7 +199,7 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 	size_t scratch_size = lc3_api_encoder_scratch_size(&enc->lc3_cfg);
 
 	enc->lc3_scratch = (int32_t *)malloc(scratch_size);
-	if (enc->lc3_scratch == NULL) {
+	if (!enc->lc3_scratch) {
 		LOG_ERR("Failed to allocate encoder scratch memory");
 		audio_encoder_delete(enc);
 		return NULL;
@@ -206,7 +207,7 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 
 	for (int i = 0; i < 2U - enc->mono; i++) {
 		enc->lc3_encoder[i] = (lc3_encoder_t *)malloc(sizeof(lc3_encoder_t));
-		if (enc->lc3_encoder[i] == NULL) {
+		if (!enc->lc3_encoder[i]) {
 			LOG_ERR("Failed to allocate LC3 encoder");
 			audio_encoder_delete(enc);
 			return NULL;
@@ -223,7 +224,7 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 	/* Create and start thread */
 	enc->tid = k_thread_create(&enc->thread, stack, stacksize, audio_encoder_thread_func, enc,
 				   NULL, NULL, CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY, 0, K_NO_WAIT);
-	if (enc->tid == NULL) {
+	if (!enc->tid) {
 		LOG_ERR("Failed to create encoder thread");
 		audio_encoder_delete(enc);
 		return NULL;
@@ -235,13 +236,13 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 int audio_encoder_register_cb(struct audio_encoder *encoder, audio_encoder_sdu_cb_t cb,
 			      void *context)
 {
-	if ((encoder == NULL) || (cb == NULL)) {
+	if (!encoder || !cb) {
 		return -EINVAL;
 	}
 
 	struct cb_list *cb_item = (struct cb_list *)malloc(sizeof(struct cb_list));
 
-	if (cb_item == NULL) {
+	if (!cb_item) {
 		return -ENOMEM;
 	}
 
@@ -256,7 +257,7 @@ int audio_encoder_register_cb(struct audio_encoder *encoder, audio_encoder_sdu_c
 
 int audio_encoder_delete(struct audio_encoder *encoder)
 {
-	if (encoder == NULL) {
+	if (!encoder) {
 		return -EINVAL;
 	}
 
@@ -270,17 +271,17 @@ int audio_encoder_delete(struct audio_encoder *encoder)
 	k_thread_join(&encoder->thread, K_FOREVER);
 
 	for (int i = 0; i < AUDIO_ENCODER_MAX_CHANNELS; i++) {
-		if (encoder->lc3_encoder[i] != NULL) {
+		if (encoder->lc3_encoder[i]) {
 			free(encoder->lc3_encoder[i]);
 		}
 	}
 
-	if (encoder->lc3_scratch != NULL) {
+	if (encoder->lc3_scratch) {
 		free(encoder->lc3_scratch);
 	}
 
 	/* Free linked list of callbacks */
-	while (encoder->cb_list != NULL) {
+	while (encoder->cb_list) {
 		struct cb_list *tmp = encoder->cb_list;
 
 		encoder->cb_list = tmp->next;
