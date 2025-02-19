@@ -32,7 +32,12 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 #define SDU_QUEUE_LENGTH        4
 #define AUDIO_QUEUE_LENGTH      4
 #define MICROSECONDS_PER_SECOND 1000000
+
+#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
 #define FRAMES_PER_SECOND       100
+#else
+#error "Unsupported configuration"
+#endif
 
 #define I2S_NODE      DT_ALIAS(i2s_bus)
 #define CODEC_NODE    DT_ALIAS(audio_codec)
@@ -55,9 +60,11 @@ static struct audio_encoder *audio_encoder;
 
 static void on_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
 {
-	if ((sdu_seq % 128) == 0) {
+#if CONFIG_APP_PRINT_STATS
+	if ((sdu_seq % CONFIG_APP_PRINT_STATS_INTERVAL) == 0) {
 		LOG_INF("SDU sequence number: %u", sdu_seq);
 	}
+#endif
 }
 
 #ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
@@ -70,7 +77,7 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 static int audio_datapath_init(void)
 {
 	int ret;
-	bool mono_mode = IS_ENABLED(CONFIG_BROADCAST_SOURCE_MONO);
+	bool mono_mode = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_SOURCE_MONO);
 	/* uint8_t mult = mono_mode ? 1 : 2; */
 
 	if (!device_is_ready(i2s_dev)) {
@@ -85,21 +92,22 @@ static int audio_datapath_init(void)
 	ret = alif_lc3_init();
 	__ASSERT(ret == 0, "Failed to initialise LC3 codec");
 
-	sdu_queue_l = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
+	sdu_queue_l =
+		sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME);
 	__ASSERT(sdu_queue_l, "Failed to create left SDU queue");
 
-	sdu_queue_r = sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME);
+	sdu_queue_r =
+		sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME);
 	__ASSERT(sdu_queue_r, "Failed to create right SDU queue");
 
 	/* we need to receive both channels even if we are in mono mode */
 	audio_queue = audio_queue_create(AUDIO_QUEUE_LENGTH,
-					 2 * CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ /
-					 FRAMES_PER_SECOND);
+					 2 * CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND);
 	__ASSERT(audio_queue, "Failed to create audio queue");
 
-	audio_encoder = audio_encoder_create(mono_mode, CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ,
-					     encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE,
-					     sdu_queue_l, sdu_queue_r, audio_queue);
+	audio_encoder = audio_encoder_create(mono_mode, CONFIG_ALIF_BLE_AUDIO_FS_HZ, encoder_stack,
+					     CONFIG_LC3_ENCODER_STACK_SIZE, sdu_queue_l,
+					     sdu_queue_r, audio_queue);
 	__ASSERT(audio_encoder, "Failed to create audio encoder");
 
 	ret = audio_source_i2s_configure(i2s_dev, audio_queue,
@@ -224,12 +232,13 @@ static const bap_bc_src_cb_t bap_bc_src_cbs = {.cb_cmp_evt = on_bap_bc_src_cmp_e
 static int broadcast_source_configure_group(void)
 {
 	const bap_bc_grp_param_t grp_param = {.sdu_intv_us = 10000,
-					      .max_sdu = CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME,
-					      .max_tlatency_ms = CONFIG_LE_AUDIO_MAX_TLATENCY,
+					      .max_sdu =
+						      CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
+					      .max_tlatency_ms = CONFIG_ALIF_BLE_AUDIO_MAX_TLATENCY,
 					      .packing = 0,
 					      .framing = ISO_UNFRAMED_MODE,
 					      .phy_bf = GAPM_PHY_TYPE_LE_2M,
-					      .rtn = CONFIG_LE_AUDIO_RTN};
+					      .rtn = CONFIG_ALIF_BLE_AUDIO_RTN};
 
 	const gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
 
@@ -266,18 +275,16 @@ static int broadcast_source_configure_group(void)
 	 * statically allocated
 	 */
 	static bap_cfg_t sgrp_cfg = {
-		.param = {
-				.location_bf = 0, /* Location is unspecified at subgroup level */
-				.frame_octet = CONFIG_LE_AUDIO_OCTETS_PER_CODEC_FRAME,
-				.frame_dur = BAP_FRAME_DUR_10MS,
-				.frames_sdu =
-					0, /* 0 is unspecified, data will not be placed in BASE */
+		.param = {.location_bf = 0, /* Location is unspecified at subgroup level */
+			  .frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
+			  .frame_dur = BAP_FRAME_DUR_10MS,
+			  .frames_sdu = 0, /* 0 is unspecified, data will not be placed in BASE */
 			},
 		.add_cfg.len = 0,
 	};
 
 	sgrp_cfg.param.sampling_freq =
-		bap_sampling_freq_from_hz(CONFIG_LE_AUDIO_SAMPLING_FREQUENCY_HZ);
+		bap_sampling_freq_from_hz(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
 
 	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
 	 * statically allocated

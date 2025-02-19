@@ -18,7 +18,13 @@
 
 LOG_MODULE_REGISTER(audio_sink_i2s, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
-#define SILENCE_SAMPLES 480
+#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
+#define FRAMES_PER_SECOND 100
+#else
+#error "Unsupported configuration"
+#endif
+
+#define SAMPLES_IN_BLOCK CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND
 
 struct audio_sink_i2s {
 	const struct device *dev;
@@ -38,7 +44,7 @@ struct pres_delay_work {
 static struct audio_sink_i2s audio_sink;
 static struct pres_delay_work pd_work;
 
-static int16_t silence[SILENCE_SAMPLES];
+static int16_t silence[SAMPLES_IN_BLOCK];
 
 static void finish_last_block(void)
 {
@@ -125,7 +131,7 @@ int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio
 	audio_sink.timing.samples_per_block = audio_queue->audio_block_samples;
 
 	/* Maximum positive correction is the size of the silence buffer */
-	audio_sink.timing.max_single_correction = SILENCE_SAMPLES;
+	audio_sink.timing.max_single_correction = SAMPLES_IN_BLOCK;
 
 	/* Minimum negative correction is slightly less than a full audio block (cannot send zero
 	 * samples)

@@ -9,8 +9,11 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
+
 #include <stdlib.h>
+
 #include "alif_lc3.h"
 #include "audio_queue.h"
 #include "sdu_queue.h"
@@ -18,8 +21,6 @@
 #include "audio_encoder.h"
 
 LOG_MODULE_REGISTER(audio_encoder, CONFIG_BLE_AUDIO_LOG_LEVEL);
-
-#define AUDIO_ENCODER_MAX_CHANNELS 2
 
 struct cb_list {
 	audio_encoder_sdu_cb_t cb;
@@ -39,14 +40,14 @@ struct audio_encoder {
 
 	/* LC3 configuration, encoder instances and scratch memory */
 	lc3_cfg_t lc3_cfg;
-	lc3_encoder_t *lc3_encoder[AUDIO_ENCODER_MAX_CHANNELS];
+	lc3_encoder_t *lc3_encoder[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
 	int32_t *lc3_scratch;
 
 	/* Linked list of registered callbacks */
 	struct cb_list *cb_list;
 
 	/* Input and output queues */
-	struct sdu_queue *sdu_queue[AUDIO_ENCODER_MAX_CHANNELS];
+	struct sdu_queue *sdu_queue[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
 	struct audio_queue *audio_queue;
 
 	/* Sequence number applied to each outging SDU */
@@ -62,6 +63,20 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 	int ret;
 
 	while (!enc->thread_abort) {
+		gapi_isooshm_sdu_buf_t *p_sdu_l = NULL;
+		gapi_isooshm_sdu_buf_t *p_sdu_r = NULL;
+
+		/* Allocate left SDU (always present) and encode audio into it */
+		ret = k_mem_slab_alloc(&enc->sdu_queue[0]->slab, (void *)&p_sdu_l, K_FOREVER);
+		__ASSERT(ret == 0, "Failed to get memory from slab");
+
+		/* Allocate right SDU (present in stereo mode) and encode audio into it */
+		if (likely(enc->sdu_queue[1])) {
+			ret = k_mem_slab_alloc(&enc->sdu_queue[1]->slab, (void *)&p_sdu_r,
+					       K_FOREVER);
+			__ASSERT(ret == 0, "Failed to get memory from slab");
+		}
+get_audio:
 		/* Get the next audio block */
 		struct audio_block *audio = NULL;
 
@@ -71,16 +86,15 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 		/* A NULL audio block can be sent to the queue to wake up and abort thread. Continue
 		 * and check thread abort flag.
 		 */
-		if (!audio) {
-			continue;
+		if (unlikely(!audio)) {
+			if (enc->thread_abort) {
+				LOG_WRN("Thread aborted");
+				break;
+			}
+			goto get_audio;
 		}
 
-		/* Allocate left SDU (always present) and encode audio into it */
-		gapi_isooshm_sdu_buf_t *p_sdu_l;
-
-		ret = k_mem_slab_alloc(&enc->sdu_queue[0]->slab, (void *)&p_sdu_l, K_FOREVER);
-		__ASSERT(ret == 0, "Failed to get memory from slab");
-
+		/* Encode left */
 		ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[0], audio->buf,
 					   p_sdu_l->data, enc->sdu_queue[0]->payload_size,
 					   enc->lc3_scratch);
@@ -91,46 +105,43 @@ static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 		p_sdu_l->seq_num = enc->sdu_seq;
 
 		/* If only left channel */
-		if (!enc->sdu_queue[1]) {
-			goto send_left;
+		if (unlikely(!enc->sdu_queue[1])) {
+			goto enc_done;
 		}
 
-		/* When a right ISO stream exists, allocate an SDU, fill with data and send */
-		gapi_isooshm_sdu_buf_t *p_sdu_r;
-
-		ret = k_mem_slab_alloc(&enc->sdu_queue[1]->slab, (void *)&p_sdu_r, K_FOREVER);
-		__ASSERT(ret == 0, "Failed to get memory from slab");
-
-		if (enc->mono) {
-			/* In mono mode, copy the data from the left channel */
+		/* Mono mode, copy from left to right */
+		if (unlikely(enc->mono)) {
 			memcpy(p_sdu_r->data, p_sdu_l->data, enc->sdu_queue[1]->payload_size);
-		} else {
-			/* In stereo mode, encode the right channel */
-			int16_t *audio_data =
-				audio->buf + enc->audio_queue->audio_block_samples / 2;
-			ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[1], audio_data,
-						   p_sdu_r->data, enc->sdu_queue[1]->payload_size,
-						   enc->lc3_scratch);
-			__ASSERT(ret == 0, "LC3 encoding failed");
+			goto enc_done;
 		}
+
+		/* Encode right */
+		int16_t *audio_data = audio->buf + enc->audio_queue->audio_block_samples / 2;
+
+		ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[1], audio_data,
+					   p_sdu_r->data, enc->sdu_queue[1]->payload_size,
+					   enc->lc3_scratch);
+		__ASSERT(ret == 0, "LC3 encoding failed");
 
 		p_sdu_r->sdu_len = enc->sdu_queue[1]->payload_size;
 		p_sdu_r->has_timestamp = false;
 		p_sdu_r->seq_num = enc->sdu_seq;
 
-		ret = k_msgq_put(&enc->sdu_queue[1]->msgq, &p_sdu_r, K_FOREVER);
-		__ASSERT(ret == 0, "msgq put failed");
-
-send_left:
-		/* Send left SDU now that it is no longer needed */
-		ret = k_msgq_put(&enc->sdu_queue[0]->msgq, &p_sdu_l, K_FOREVER);
-		__ASSERT(ret == 0, "msgq put failed");
-
+enc_done:
 		/* Temporarily store capture timestamp for callbacks */
 		uint32_t capture_timestamp = audio->timestamp;
 
-		/* Free the completed audio block */
 		k_mem_slab_free(&enc->audio_queue->slab, audio);
+
+		/* Send left */
+		ret = k_msgq_put(&enc->sdu_queue[0]->msgq, &p_sdu_l, K_FOREVER);
+		__ASSERT(ret == 0, "msgq put failed");
+
+		/* Send right */
+		if (likely(p_sdu_r)) {
+			ret = k_msgq_put(&enc->sdu_queue[1]->msgq, &p_sdu_r, K_FOREVER);
+			__ASSERT(ret == 0, "msgq put failed");
+		}
 
 		/* Notify listeners that a block is completed */
 		struct cb_list *cb_item = enc->cb_list;
@@ -187,8 +198,8 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 	enc->audio_queue = audio_queue;
 
 	/* Configure LC3 codec and allocate required memory */
-	int ret =
-		lc3_api_configure(&enc->lc3_cfg, (int32_t)sampling_frequency, FRAME_DURATION_10_MS);
+	int ret = lc3_api_configure(&enc->lc3_cfg, (int32_t)sampling_frequency,
+				    CONFIG_ALIF_LC3_FRAME_DURATION_MS_X100);
 
 	if (ret) {
 		LOG_ERR("Failed to configure LC3 codec, err %d", ret);
@@ -230,6 +241,8 @@ struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequenc
 		return NULL;
 	}
 
+	k_thread_name_set(enc->tid, "lc3_encoder");
+
 	return enc;
 }
 
@@ -270,7 +283,7 @@ int audio_encoder_delete(struct audio_encoder *encoder)
 	/* Join thread before freeing anything */
 	k_thread_join(&encoder->thread, K_FOREVER);
 
-	for (int i = 0; i < AUDIO_ENCODER_MAX_CHANNELS; i++) {
+	for (int i = 0; i < ARRAY_SIZE(encoder->lc3_encoder); i++) {
 		if (encoder->lc3_encoder[i]) {
 			free(encoder->lc3_encoder[i]);
 		}

@@ -26,8 +26,11 @@ Configuration options:
     * - :file:`prj.conf`
       - This is the standard default config. Sampling frequency 48kHz, 10ms frame duration, 100 octets per codec frame. The default retransmissions are set to 4.
 
-    * - :file:`overlay-auracast.conf`
-      - This overlay config can be added to enable Auracast transmitter support.
+    * - :file:`overlay-auracast_16_2.conf`
+      - Enables a Standard Quality codec configuration. 16-bit sample rate, 40 octets per codec frame.
+
+    * - :file:`overlay-auracast_24_2.conf`
+      - Enables a Standard Quality codec configuration. 24-bit sample rate, 60 octets per codec frame.
 
 BAP defined Codec Configuration Settings
 ******************************************

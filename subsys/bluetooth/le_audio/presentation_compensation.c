@@ -16,7 +16,12 @@
 LOG_MODULE_REGISTER(presentation_compensation, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
 #define MICROSECONDS_PER_SECOND 1000000
+
+#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
 #define SECONDS_PER_FRAME       0.01f
+#else
+#error "Unsupported configuration"
+#endif
 
 BUILD_ASSERT(CONFIG_PRESENTATION_COMPENSATION_CORRECTION_FACTOR != 0,
 	     "Correction factor cannot be zero");

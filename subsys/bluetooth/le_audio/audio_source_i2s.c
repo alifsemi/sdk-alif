@@ -17,6 +17,14 @@
 
 LOG_MODULE_REGISTER(audio_source_i2s, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
+#define FRAMES_PER_SECOND 100
+#else
+#error "Unsupported configuration"
+#endif
+
+#define SAMPLES_IN_BLOCK (CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND)
+
 struct audio_source_i2s {
 	const struct device *dev;
 	struct audio_queue *audio_queue;
@@ -31,10 +39,13 @@ struct audio_source_i2s {
 };
 
 static struct audio_source_i2s audio_source;
-static int16_t temp[960];
+static int16_t temp[2 * SAMPLES_IN_BLOCK]; /**< 16-bit PCM samples, two channels sequentially */
 
 static void finish_last_block(void)
 {
+	/* Size of a PCM sample */
+	const size_t pcm_sample_s = sizeof(audio_source.current_block->buf[0]);
+
 	if (audio_source.current_block == NULL) {
 		return;
 	}
@@ -47,24 +58,25 @@ static void finish_last_block(void)
 		return;
 	}
 
-	/* We need to split the received audio into left and right channel so
-	 * we create a new block where we do this
+	/* We need to split the received interleaved audio into left and right channel so
+	 * we create a new block where we do this.
 	 */
 
-	bool mono_mode = IS_ENABLED(CONFIG_BROADCAST_SOURCE_MONO);
-	/* const size_t block_samples = audio_source.audio_queue->audio_block_samples */
-	const size_t block_samples = mono_mode ? 480 : 960;
-	uint8_t div = mono_mode ? 1 : 2;
+	bool stereo_mode = !IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_SOURCE_MONO);
 
-	for (size_t i = 0; i < block_samples/div; i++) {
+	for (size_t i = 0; i < SAMPLES_IN_BLOCK; i++) {
+		/* Every even sample is for left channel */
 		temp[i] = audio_source.current_block->buf[i * 2];
-		if (!mono_mode) {
-			temp[block_samples/div + i] =
-			audio_source.current_block->buf[i * 2 + 1];
+
+		if (stereo_mode) {
+			temp[i + SAMPLES_IN_BLOCK] = audio_source.current_block->buf[i * 2 + 1];
 		}
 	}
 
-	memcpy(audio_source.current_block->buf, temp, block_samples * 2);
+	/* const size_t block_samples = audio_source.audio_queue->audio_block_samples */
+	const size_t block_samples = stereo_mode ? 2 * SAMPLES_IN_BLOCK : SAMPLES_IN_BLOCK;
+
+	memcpy(audio_source.current_block->buf, temp, block_samples * pcm_sample_s);
 
 	int ret =
 		k_msgq_put(&audio_source.audio_queue->msgq, &audio_source.current_block, K_NO_WAIT);

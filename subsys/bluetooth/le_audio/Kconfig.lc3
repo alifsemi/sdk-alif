@@ -1,0 +1,53 @@
+#Copyright(C) 2025 Alif Semiconductor - All Rights Reserved.
+#Use, distribution and modification of this code is permitted under the
+#terms stated in the Alif Semiconductor Software License Agreement
+#
+#You should have received a copy of the Alif Semiconductor Software
+#License Agreement with this file.If not, please write to:
+#contact @alifsemi.com, or visit : https: // alifsemi.com/license
+
+menuconfig ALIF_LC3
+	bool "Alif LC3 codec"
+	default y
+	help
+	  The Alif LC3 codec configuration contains common code to be re-used across LE audio applications.
+
+if ALIF_LC3
+
+module = ALIF_LC3
+module-str = alif-lc3
+source "subsys/logging/Kconfig.template.log_config"
+
+config LC3_ENCODER_STACK_SIZE
+	int "Stack size for LC3 encoder thread"
+	default 6144
+	help
+	  Stack size for LC3 encoder thread. Stack requirements have been experimentally determined
+	  to be around 5.5k for typical settings, so default is 6k to leave some margin.
+
+config LC3_DECODER_STACK_SIZE
+	int "Stack size for LC3 decoder thread"
+	default 3072 if ALIF_BLE_AUDIO_FS_48KHZ
+	default 2048
+	help
+	  Stack size for LC3 decoder thread.
+
+choice
+	prompt "Choose BAP frame duration"
+	default ALIF_LC3_FRAME_DURATION_10MS if ALIF_BLE_AUDIO_FRAME_DURATION_10MS
+
+	config ALIF_LC3_FRAME_DURATION_7_5MS
+	bool "7.5ms"
+	config ALIF_LC3_FRAME_DURATION_10MS
+	bool "10ms"
+
+endchoice
+
+config ALIF_LC3_FRAME_DURATION_MS_X100
+	int
+	default 750  if ALIF_LC3_FRAME_DURATION_7_5MS
+	default 1000 if ALIF_LC3_FRAME_DURATION_10MS
+	help
+	  Numerical representation of the enum values of LC3 frame duration
+
+endif # ALIF_LC3
