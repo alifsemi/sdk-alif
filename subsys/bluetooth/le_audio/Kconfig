@@ -122,6 +122,7 @@ config PRESENTATION_COMPENSATION_CORRECTION_FACTOR
 
 config PRESENTATION_COMPENSATION_DEBUG
 	bool "Enable debug data to be recorded by presentation compensation module"
+	depends on LOG
 	help
 		The PI controller coefficients of the presentation compensation module may need tuning for
 		some use-cases. Enabling this causes presentation compensation data to be logged into a
