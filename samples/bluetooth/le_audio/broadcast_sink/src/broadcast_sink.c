@@ -312,6 +312,42 @@ static void on_bap_bc_scan_group_report(uint8_t pa_lid, uint8_t nb_subgroups, ui
 	sink_env.datapath_cfg.pres_delay_us = pres_delay_us;
 }
 
+static int bap_sampling_freq_from_hz(uint32_t sampling_freq_hz)
+{
+	switch (sampling_freq_hz) {
+	case 8000:
+		return BAP_SAMPLING_FREQ_8000HZ;
+	case 16000:
+		return BAP_SAMPLING_FREQ_16000HZ;
+	case 24000:
+		return BAP_SAMPLING_FREQ_24000HZ;
+	case 32000:
+		return BAP_SAMPLING_FREQ_32000HZ;
+	case 48000:
+		return BAP_SAMPLING_FREQ_48000HZ;
+	default:
+		return BAP_SAMPLING_FREQ_UNKNOWN;
+	}
+}
+
+static int hz_from_bap_sampling_freq(enum bap_sampling_freq bap_sampling_freq)
+{
+	switch (bap_sampling_freq) {
+	case BAP_SAMPLING_FREQ_8000HZ:
+		return 8000;
+	case BAP_SAMPLING_FREQ_16000HZ:
+		return 16000;
+	case BAP_SAMPLING_FREQ_24000HZ:
+		return 24000;
+	case BAP_SAMPLING_FREQ_32000HZ:
+		return 32000;
+	case BAP_SAMPLING_FREQ_48000HZ:
+		return 48000;
+	default:
+		return -EINVAL;
+	}
+}
+
 static void on_bap_bc_scan_subgroup_report(uint8_t pa_lid, uint8_t sgrp_id, uint32_t stream_pos_bf,
 					   const gaf_codec_id_t *p_codec_id,
 					   const bap_cfg_ptr_t *p_cfg,
@@ -326,9 +362,12 @@ static void on_bap_bc_scan_subgroup_report(uint8_t pa_lid, uint8_t sgrp_id, uint
 		p_cfg->param.frame_dur, p_cfg->param.frames_sdu);
 
 	/* Validate config is OK and store relevant info for later use */
-	if (p_cfg->param.sampling_freq != BAP_SAMPLING_FREQ_48000HZ) {
-		LOG_INF("Sampling frequency is not compatible, need %u got %u",
-			BAP_SAMPLING_FREQ_48000HZ, p_cfg->param.sampling_freq);
+	if (p_cfg->param.sampling_freq != bap_sampling_freq_from_hz(CONFIG_ALIF_BLE_AUDIO_FS_HZ)) {
+
+		LOG_ERR("Sampling frequency is not compatible, need %uHz got %d",
+			CONFIG_ALIF_BLE_AUDIO_FS_HZ,
+			hz_from_bap_sampling_freq(p_cfg->param.sampling_freq));
+
 		sink_env.datapath_cfg_valid = false;
 	}
 

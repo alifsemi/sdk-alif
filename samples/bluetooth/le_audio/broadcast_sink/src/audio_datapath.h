@@ -13,10 +13,6 @@
 #include <zephyr/types.h>
 #include <zephyr/device.h>
 
-/* Other sampling rates and frame rates are not supported */
-#define AUDIO_SAMPLING_RATE_HZ  48000
-#define AUDIO_FRAMES_PER_SECOND 100
-
 struct audio_datapath_config {
 	const struct device *i2s_dev;
 	/* const struct device *mclk_dev; */

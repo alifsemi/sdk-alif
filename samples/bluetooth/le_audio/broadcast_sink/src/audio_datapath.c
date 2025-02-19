@@ -18,13 +18,19 @@
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
+#define FRAMES_PER_SECOND 100
+#else
+#error "Unsupported configuration"
+#endif
+
 #define SDU_QUEUE_LENGTH          4
 #define AUDIO_QUEUE_MARGIN_US     20000
 #define CHANNEL_COUNT             2
-#define AUDIO_BLOCK_SAMPLES       ((AUDIO_SAMPLING_RATE_HZ / AUDIO_FRAMES_PER_SECOND)\
-				  * CHANNEL_COUNT)
+#define AUDIO_BLOCK_SAMPLES       (CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND * CHANNEL_COUNT)
 #define MIN_PRESENTATION_DELAY_US 30000
 #define MICROSECONDS_PER_SECOND   1000000
+#define MICROSECONDS_PER_FRAME    (MICROSECONDS_PER_SECOND / FRAMES_PER_SECOND)
 
 struct audio_datapath {
 	struct sdu_queue *sdu_queue_l;
@@ -104,7 +110,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 
 	size_t audio_queue_len_us = pres_delay_us + AUDIO_QUEUE_MARGIN_US;
 	size_t audio_queue_len_blocks =
-		audio_queue_len_us / (MICROSECONDS_PER_SECOND / AUDIO_FRAMES_PER_SECOND);
+		audio_queue_len_us / MICROSECONDS_PER_FRAME;
 
 	env.audio_queue = audio_queue_create(audio_queue_len_blocks, AUDIO_BLOCK_SAMPLES);
 	if (env.audio_queue == NULL) {
@@ -112,7 +118,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		return -ENOMEM;
 	}
 
-	env.decoder = audio_decoder_create(AUDIO_SAMPLING_RATE_HZ, decoder_stack,
+	env.decoder = audio_decoder_create(CONFIG_ALIF_BLE_AUDIO_FS_HZ, decoder_stack,
 					   CONFIG_LC3_DECODER_STACK_SIZE, env.sdu_queue_l,
 					   env.sdu_queue_r, env.audio_queue);
 
@@ -122,7 +128,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	}
 
 	int ret = audio_sink_i2s_configure(cfg->i2s_dev, env.audio_queue,
-					   MICROSECONDS_PER_SECOND / AUDIO_FRAMES_PER_SECOND);
+					   MICROSECONDS_PER_FRAME);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to configure audio sink I2S, err %d", ret);

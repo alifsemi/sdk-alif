@@ -9,8 +9,11 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
+
 #include <stdlib.h>
+
 #include "alif_lc3.h"
 #include "audio_queue.h"
 #include "sdu_queue.h"
@@ -18,8 +21,6 @@
 #include "audio_decoder.h"
 
 LOG_MODULE_REGISTER(audio_decoder, CONFIG_BLE_AUDIO_LOG_LEVEL);
-
-#define AUDIO_DECODER_MAX_CHANNELS 2
 
 struct cb_list {
 	audio_decoder_sdu_cb_t cb;
@@ -36,15 +37,15 @@ struct audio_decoder {
 
 	/* LC3 configuration, decoder instances and memory */
 	lc3_cfg_t lc3_cfg;
-	lc3_decoder_t *lc3_decoder[AUDIO_DECODER_MAX_CHANNELS];
-	int32_t *lc3_status[AUDIO_DECODER_MAX_CHANNELS];
+	lc3_decoder_t *lc3_decoder[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
+	int32_t *lc3_status[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
 	int32_t *lc3_scratch;
 
 	/* Linked list of registered callbacks */
 	struct cb_list *cb_list;
 
 	/* Input and output queues */
-	struct sdu_queue *sdu_queue[AUDIO_DECODER_MAX_CHANNELS];
+	struct sdu_queue *sdu_queue[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
 	struct audio_queue *audio_queue;
 };
 
@@ -64,7 +65,7 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 		ret = k_mem_slab_alloc(&dec->audio_queue->slab, (void **)&audio, K_FOREVER);
 		__ASSERT(ret == 0, "mem slab alloc failed");
 
-		for (int i = 0; i < AUDIO_DECODER_MAX_CHANNELS; i++) {
+		for (int i = 0; i < ARRAY_SIZE(dec->sdu_queue); i++) {
 			/* Decode each channel only if it is present */
 			if (!dec->sdu_queue[i]) {
 				continue;
@@ -88,7 +89,7 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 			 * flag.
 			 */
 			if (!p_sdu) {
-				goto check_thread_abort;
+				break;
 			}
 
 			uint8_t bad_frame = (p_sdu->status != ISOOSHM_SDU_STATUS_VALID);
@@ -103,6 +104,10 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 						   p_sdu->sdu_len, bad_frame, &bec_detect,
 						   audio_data, dec->lc3_scratch);
 			__ASSERT(ret == 0, "LC3 decoding failed on channel %d with err %d", i, ret);
+
+			if (bec_detect) {
+				LOG_WRN("Corrupted input frame is detected");
+			}
 
 			audio->timestamp = p_sdu->timestamp;
 			last_sdu_seq = p_sdu->seq_num;
@@ -134,7 +139,6 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 			}
 			cb_item = cb_item->next;
 		}
-check_thread_abort:
 	}
 
 	LOG_DBG("Decoder thread finished");
@@ -172,8 +176,8 @@ struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread
 	dec->audio_queue = audio_queue;
 
 	/* Configure LC3 codec and allocate required memory */
-	int ret =
-		lc3_api_configure(&dec->lc3_cfg, (int32_t)sampling_frequency, FRAME_DURATION_10_MS);
+	int ret = lc3_api_configure(
+		&dec->lc3_cfg, (int32_t)sampling_frequency, CONFIG_ALIF_LC3_FRAME_DURATION_MS_X100);
 
 	if (ret) {
 		LOG_ERR("Failed to configure LC3 codec, err %d", ret);
@@ -221,11 +225,14 @@ struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread
 	/* Create and start thread */
 	dec->tid = k_thread_create(&dec->thread, stack, stacksize, audio_decoder_thread_func, dec,
 				   NULL, NULL, CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY, 0, K_NO_WAIT);
+
 	if (!dec->tid) {
 		LOG_ERR("Failed to create decoder thread");
 		audio_decoder_delete(dec);
 		return NULL;
 	}
+
+	k_thread_name_set(dec->tid, "lc3_decoder");
 
 	return dec;
 }
@@ -267,8 +274,7 @@ int audio_decoder_delete(struct audio_decoder *decoder)
 	/* Join thread before freeing anything */
 	k_thread_join(&decoder->thread, K_FOREVER);
 
-	for (int i = 0; i < AUDIO_DECODER_MAX_CHANNELS; i++) {
-
+	for (int i = 0; i < ARRAY_SIZE(decoder->lc3_decoder); i++) {
 		if (decoder->lc3_decoder[i]) {
 			free(decoder->lc3_decoder[i]);
 		}
