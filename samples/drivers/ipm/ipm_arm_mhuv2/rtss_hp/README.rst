@@ -54,48 +54,21 @@ Sample output
 *************
 
 .. code-block:: none
-   *** Booting Zephyr OS build zephyr-v3.0.0-116-g04b52f5c6ba4  ***
-   MHU SE services example on alif_e7_dk_rtss_hp
-   Heartbeat test ...
-   heartbeat = 0
-   service ID is 0
-   Heartbeat test done successfullyRND test ...
-   RND test case
-   service ID is 400
-   RND numbers are below
-   0x1a
-   0x2e
-   0xe9
-   0xec
-   0x9b
-   0xbf
-   0x36
-   0x06
-   LCS test ...
-   lcs = 401
-   service ID is 401
-   LCS response is 0x0
-   TOC version test
-   toc = 200
-   service ID is 200
-   The TOC version is 0x0
-   TOC number test
-   number = 201
-   service ID is 201
-   TOC no. 3
-   SE revision test
-   In service_get_se_revision
-   service ID is 103
-   SE Revision is below
-   SES A1 EVALUATION_BOARD SE_FW_0.64.000_DEV v0.64.0 Jan 15 2023 03:14:02
-   uart test ...
-   service ID is 104
-   UART message sent successfully
-   Done
-   Get TOC data test
-   In service_get_toc_data
-   service ID is 205
-   TOC number of entries is 7
+   *** Booting Zephyr OS build zas-v1.2-25-gbaa643aa4a0e ***
+    !!!Read board config using SE Services!!!
+    Device part number is 46080
+    Revision is SES B4 v1.102.0 Nov  8 2024 17:52:19
+    Revision ID = 46080 (0xb400)
+    Alif PN = 414537323246383046353544354c530
+    Serial Number = 00000000
+    HBK0 = f049442ecc790a838d34c31d71e62e6
+    DCU settings = 0000000000000000
+    config = c1000
+    HBK1 = 0000000000000000
+    HBK_FW = 00000000000000000000
+    MfgData = 4135700017000000000017807c0d88303c0a8000c
+    LCS = 1 (0x1)
+    !!!Board config read successfully!!!
 
 :ref:`devkit_e7_rtss_hp`
 1. Building SE services testcase.
@@ -116,45 +89,45 @@ Sample output
 *************
 
 .. code-block:: none
-   *** Booting Zephyr OS build zephyr-v3.0.0-116-g04b52f5c6ba4  ***
-   MHU SE services example on alif_e7_dk_rtss_hp
-   Heartbeat test ...
-   heartbeat = 0
-   service ID is 0
-   Heartbeat test done successfullyRND test ...
-   RND test case
-   service ID is 400
-   RND numbers are below
-   0x1a
-   0x2e
-   0xe9
-   0xec
-   0x9b
-   0xbf
-   0x36
-   0x06
-   LCS test ...
-   lcs = 401
-   service ID is 401
-   LCS response is 0x0
-   TOC version test
-   toc = 200
-   service ID is 200
-   The TOC version is 0x0
-   TOC number test
-   number = 201
-   service ID is 201
-   TOC no. 3
-   SE revision test
-   In service_get_se_revision
-   service ID is 103
-   SE Revision is below
-   SES A1 EVALUATION_BOARD SE_FW_0.64.000_DEV v0.64.0 Jan 15 2023 03:14:02
-   uart test ...
-   service ID is 104
-   UART message sent successfully
-   Done
-   Get TOC data test
-   In service_get_toc_data
-   service ID is 205
-   TOC number of entries is 7
+    *** Booting Zephyr OS build zas-v1.2-25-gbaa643aa4a0e ***
+    RTSS-HP RTSS-HE MHU 0 example on alif_e7_devkit
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
+    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
