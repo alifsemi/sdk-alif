@@ -12,7 +12,6 @@
 #include <zephyr/sys/printk.h>
 #include <errno.h>
 #include <string.h>
-#include <zephyr/drivers/mhuv2_ipm.h>
 #include <se_service.h>
 
 #define BUF_SIZE                   8
