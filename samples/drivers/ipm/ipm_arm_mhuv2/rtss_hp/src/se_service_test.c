@@ -12,7 +12,6 @@
 #include <zephyr/sys/printk.h>
 #include <errno.h>
 #include <string.h>
-#include <zephyr/drivers/mhuv2_ipm.h>
 #include <se_service.h>
 
 #define BUF_SIZE                   8
@@ -31,14 +30,13 @@ int thread0_start(void)
 {
 	int ret = -1;
 
+	printk("!!!Read board config using SE Services!!!\n");
+
 	ret = se_service_get_rnd_num(buffer, BUF_SIZE);
 	if (ret) {
 		printk("fetch_rnd_num failed with %d\n", ret);
 		return ret;
 	}
-	for (uint8_t i = 0 ; i < BUF_SIZE ; ++i)
-		printk("0x%x\n", buffer[i]);
-
 	ret = se_service_get_device_part_number(&dev_part_num);
 	if (ret) {
 		printk("fetch_device_part_number failed with %d\n", ret);
@@ -84,9 +82,6 @@ int thread1_start(void)
 		printk("fetch_rnd_num failed with %d\n", ret);
 		return ret;
 	}
-	for (uint8_t i = 0 ; i < BUF_SIZE ; ++i)
-		printk("0x%x\n", buffer[i]);
-
 	ret = se_service_get_se_revision(revision);
 	if (ret) {
 		printk("fetch_se_revision failed with %d\n", ret);
@@ -103,10 +98,7 @@ int thread1_start(void)
 	printk("Revision ID = %d (0x%x)\n", dev_data.revision_id,
 		dev_data.revision_id);
 
-	format_contents((uint8_t *)&dev_data_buffer[0],
-			(uint8_t *)&dev_data.ALIF_PN[0],
-			sizeof(dev_data.ALIF_PN));
-	printk("Alif PN = %s\n", dev_data_buffer);
+	printk("Alif PN = %s\n", dev_data.ALIF_PN);
 
 	format_contents((uint8_t *)&dev_data_buffer[0],
 			(uint8_t *)&dev_data.SerialN[0],
@@ -144,6 +136,8 @@ int thread1_start(void)
 	printk("MfgData = %s\n", dev_data_buffer);
 
 	printk("LCS = %d (0x%x)\n", dev_data.LCS, dev_data.LCS);
+
+	printk("!!!Board config read successfully!!!\n");
 	return 0;
 }
 
@@ -152,6 +146,7 @@ K_THREAD_DEFINE(thread0, STACK_SIZE, thread0_start,
 		NULL, NULL, NULL, PRIORITY, 0, 0);
 K_THREAD_DEFINE(thread1, STACK_SIZE, thread1_start,
 		NULL, NULL, NULL, PRIORITY, 0, 0);
+
 int main(void)
 {
 	k_thread_start(thread0);
