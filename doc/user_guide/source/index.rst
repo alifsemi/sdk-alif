@@ -28,6 +28,8 @@ Document History
       - First Production Release
     * - 1.1
       - Updated the document to incorporate E1C and Balletto.
+    * - 1.2
+      - Updated the document to include I3C, CAN FD and Touch screen
 
 Indices and tables
 ==================
