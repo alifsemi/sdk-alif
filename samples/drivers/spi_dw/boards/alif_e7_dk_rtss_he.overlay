@@ -23,6 +23,10 @@
 	status = "okay";
 };
 
+&dma0 {
+	status = "okay";
+};
+
 &spi4 {
 	status = "okay";
 
@@ -33,8 +37,8 @@
 
 &spi0 {
 	status = "okay";
-        serial-target;
-        //dmas = <&dma0 2 20>, <&dma0 3 16>;
-	//dma-names = "txdma", "rxdma";
+	serial-target;
+	dmas = <&dma0 2 20>, <&dma0 3 16>;
+	dma-names = "txdma", "rxdma";
 };
 
