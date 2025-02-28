@@ -306,6 +306,43 @@ void multi_sector_test(const struct device *flash_dev)
 	}
 }
 
+void xip_test(const struct device *flash_dev)
+{
+	uint8_t i;
+	uint32_t xip_r[64] = {0}, fls_r[64] = {0}, cnt;
+	uint32_t *ptr = (uint32_t *)DT_PROP_BY_IDX(DT_ALIAS(spi_flash0), xip_base_address, 0);
+	int32_t rc, e_count = 0;
+
+	printf("\nTest 5: XiP Read\n");
+
+	memcpy(xip_r, ptr, sizeof(xip_r));
+
+	printf("Content Read from OSPI Flash in XiP Mode successfully\n\n");
+
+	cnt = ARRAY_SIZE(xip_r);
+
+	printf("Read from Flash cmd while XiP Mode turnned on\n\n");
+
+	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, fls_r, cnt * sizeof(uint16_t));
+	if (rc != 0) {
+		printf("Flash read failed! %d\n", rc);
+		return;
+	}
+
+	for (i = 0; i < cnt; i++)
+		if (fls_r[i] != xip_r[i]) {
+			e_count++;
+		}
+
+	if (!e_count) {
+		printf("XiP Read Test Succceeded !!\n\n");
+	} else {
+		printf("XiP Test Failed !"
+			" contents are NOT Matching : Err Count [%d]!!!\n", e_count);
+	}
+}
+
+
 int main(void)
 {
 	const struct device *flash_dev = DEVICE_DT_GET(DT_ALIAS(spi_flash0));
@@ -326,8 +363,9 @@ int main(void)
 	printf("* Page Size : %d\n", flash_param->page_size);
 	printf("* Erase value : %d\n", flash_param->erase_value);
 	printf("* Write Blk Size: %d\n", flash_param->write_block_size);
-	printf("* Total Size in Bytes: %d\n",
-	       flash_param->num_of_sector * flash_param->sector_size);
+	printf("* Total Size in MB: %d\n",
+	       (flash_param->num_of_sector * flash_param->sector_size) / (1024 * 1024));
+
 
 	/*Current RW support only on 16 DFS */
 	single_sector_test(flash_dev);
@@ -340,6 +378,10 @@ int main(void)
 
 	/* Multi-Secot R/W and Erase test*/
 	multi_sector_test(flash_dev);
+
+#ifdef CONFIG_ALIF_OSPI_FLASH_XIP
+	xip_test(flash_dev);
+#endif
 
 	return 0;
 }
