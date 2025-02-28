@@ -1675,7 +1675,7 @@ void alif_ahi_msg_dbg_reg(struct msg_buf *p_msg, uint16_t ctx, uint8_t write, ui
 }
 
 static void alif_mac154_ie_header_set(struct mac154_header_ie *ie_info,
-				const struct mac_ahi_header_ie *p_header_ie)
+				const struct alif_802154_header_ie *p_header_ie)
 {
 	/* Clear allways by zero */
 	memset(ie_info, 0, sizeof(struct mac154_header_ie));
@@ -1750,7 +1750,7 @@ void alif_ahi_msg_ie_purge_all(struct msg_buf *p_msg, uint16_t ctx)
 
 void alif_ahi_msg_ie_header_gen(struct msg_buf *p_msg, uint16_t ctx, uint16_t short_id,
 				const uint8_t *p_extended_address,
-				const struct mac_ahi_header_ie *p_header_ie)
+				const struct alif_802154_header_ie *p_header_ie)
 {
 	mac154app_config_enh_ack_header_ie_cmd_t *p_cmd;
 
