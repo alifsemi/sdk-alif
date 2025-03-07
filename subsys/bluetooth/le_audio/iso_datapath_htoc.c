@@ -78,7 +78,7 @@ struct iso_datapath_htoc *iso_datapath_htoc_create(uint8_t stream_lid, struct sd
 	}
 
 	struct iso_datapath_htoc *datapath =
-		(struct iso_datapath_htoc *)calloc(sizeof(struct iso_datapath_htoc), 1);
+		(struct iso_datapath_htoc *)calloc(1, sizeof(struct iso_datapath_htoc));
 
 	if (datapath == NULL) {
 		LOG_ERR("Failed to allocate data path");

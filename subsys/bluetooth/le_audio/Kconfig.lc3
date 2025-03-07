@@ -43,10 +43,10 @@ choice
 
 endchoice
 
-config ALIF_LC3_FRAME_DURATION_MS_X100
+config ALIF_LC3_FRAME_DURATION_STATIC_CONFIG
 	int
-	default 750  if ALIF_LC3_FRAME_DURATION_7_5MS
-	default 1000 if ALIF_LC3_FRAME_DURATION_10MS
+	default 0 if ALIF_LC3_FRAME_DURATION_7_5MS
+	default 1 if ALIF_LC3_FRAME_DURATION_10MS
 	help
 	  Numerical representation of the enum values of LC3 frame duration
 
