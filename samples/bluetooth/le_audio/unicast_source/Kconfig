@@ -1,0 +1,54 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+menu "Alif Bluetooth LE Audio Unicast Source"
+
+config BLE_DEVICE_NAME
+	string "BLE device name"
+	default "ALIF_CIS_SRC"
+	help
+	  Device name
+
+config PERIPHERAL_NAME
+	string "LE audio peripheral name"
+	default "ALIF_CIS_SINK"
+	help
+	  Audio sink peripheral to be connected to
+
+config LE_AUDIO_PRESENTATION_DELAY_MS
+	int "Presentation delay in ms"
+	default 40
+	help
+	  LE audio presentation delay in ms. For the audio source use-case, this is defined as the
+	  time in ms from the start of recording an audio frame, to the SDU reference anchor point
+	  at which the SDU containing the same audio frame is sent over BLE. The absolute minimum
+	  possible presentation delay would be the frame length (10 ms) plus the encoding time of
+	  the frame, since it is impossible to send the frame before it has been fully recorded and
+	  encoded. But some margin should be added on top of this to account for any overhead and
+	  timing variations due to other activities of the software occurring while recording and
+	  encoding the audio.
+
+menu "Logging"
+
+module = MAIN
+module-str = main
+source "subsys/logging/Kconfig.template.log_config"
+
+module = UNICAST_SOURCE
+module-str = unicast_source
+source "subsys/logging/Kconfig.template.log_config"
+
+module = STORAGE
+module-str = storage
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu # "Logging"
+
+endmenu # "Alif Bluetooth LE Audio Broadcast Source"
+
+source "Kconfig.zephyr"
