@@ -15,6 +15,11 @@
 #include "audio_queue.h"
 #include "sdu_queue.h"
 
+enum audio_encoder_frame_duration {
+	AUDIO_ENCODER_FRAME_7_5_MS,
+	AUDIO_ENCODER_FRAME_10MS,
+};
+
 /**
  * @brief Callback function signature for SDU completion
  *
@@ -46,19 +51,18 @@ typedef void (*audio_encoder_sdu_cb_t)(void *context, uint32_t capture_timestamp
  * @param stack Stack memory area for encoder thread. Must be statically allocated using
  * K_THREAD_STACK_DEFINE.
  * @param stacksize Size in bytes of stack memory area
- * @param sdu_queue_l SDU queue for left channel (or only channel in case of mono mode)
- * @param sdu_queue_r SDU queue for right channel (in case of mono mode, may be NULL, or if it is
- * provided then the data sent will be a duplicate of the left channel)
+ * @param p_sdu_queues Pointer to list of SDU queues for channels
+ * @param num_queues SDU queue count on the give list
  * @param audio_queue Audio queue to take audio blocks from
+ * @param frame_duration Frame duration @ref enum audio_encoder_frame_duration
  *
  * @retval Created audio encoder instance if successful
  * @retval NULL on failure
  */
-struct audio_encoder *audio_encoder_create(bool mono, uint32_t sampling_frequency,
-					   k_thread_stack_t *stack, size_t stacksize,
-					   struct sdu_queue *sdu_queue_l,
-					   struct sdu_queue *sdu_queue_r,
-					   struct audio_queue *audio_queue);
+struct audio_encoder *audio_encoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
+					   size_t stacksize, struct sdu_queue *p_sdu_queues[],
+					   size_t num_queues, struct audio_queue *audio_queue,
+					   enum audio_encoder_frame_duration frame_duration);
 
 /**
  * @brief Register a callback to be called on completion of each encoded frame

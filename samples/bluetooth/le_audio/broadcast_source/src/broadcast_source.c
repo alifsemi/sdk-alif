@@ -34,13 +34,13 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 #define MICROSECONDS_PER_SECOND 1000000
 
 #if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
-#define FRAMES_PER_SECOND       100
+#define FRAMES_PER_SECOND 100
 #else
 #error "Unsupported configuration"
 #endif
 
-#define I2S_NODE      DT_ALIAS(i2s_bus)
-#define CODEC_NODE    DT_ALIAS(audio_codec)
+#define I2S_NODE   DT_ALIAS(i2s_bus)
+#define CODEC_NODE DT_ALIAS(audio_codec)
 
 const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
 const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
@@ -77,8 +77,6 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 static int audio_datapath_init(void)
 {
 	int ret;
-	bool mono_mode = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_SOURCE_MONO);
-	/* uint8_t mult = mono_mode ? 1 : 2; */
 
 	if (!device_is_ready(i2s_dev)) {
 		LOG_WRN("I2S device is not ready");
@@ -96,18 +94,26 @@ static int audio_datapath_init(void)
 		sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME);
 	__ASSERT(sdu_queue_l, "Failed to create left SDU queue");
 
+#if !CONFIG_ALIF_BLE_AUDIO_SOURCE_MONO
 	sdu_queue_r =
 		sdu_queue_create(SDU_QUEUE_LENGTH, CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME);
 	__ASSERT(sdu_queue_r, "Failed to create right SDU queue");
-
+#endif
 	/* we need to receive both channels even if we are in mono mode */
 	audio_queue = audio_queue_create(AUDIO_QUEUE_LENGTH,
 					 2 * CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND);
 	__ASSERT(audio_queue, "Failed to create audio queue");
 
-	audio_encoder = audio_encoder_create(mono_mode, CONFIG_ALIF_BLE_AUDIO_FS_HZ, encoder_stack,
-					     CONFIG_LC3_ENCODER_STACK_SIZE, sdu_queue_l,
-					     sdu_queue_r, audio_queue);
+	enum audio_encoder_frame_duration const frame_duration =
+		IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS) ? AUDIO_ENCODER_FRAME_10MS
+								      : AUDIO_ENCODER_FRAME_7_5_MS;
+	struct sdu_queue *queues[] = {
+		sdu_queue_l,
+		sdu_queue_r,
+	};
+	audio_encoder = audio_encoder_create(CONFIG_ALIF_BLE_AUDIO_FS_HZ, encoder_stack,
+					     CONFIG_LC3_ENCODER_STACK_SIZE, queues,
+					     ARRAY_SIZE(queues), audio_queue, frame_duration);
 	__ASSERT(audio_encoder, "Failed to create audio encoder");
 
 	ret = audio_source_i2s_configure(i2s_dev, audio_queue,
@@ -275,16 +281,17 @@ static int broadcast_source_configure_group(void)
 	 * statically allocated
 	 */
 	static bap_cfg_t sgrp_cfg = {
-		.param = {.location_bf = 0, /* Location is unspecified at subgroup level */
-			  .frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
-			  .frame_dur = BAP_FRAME_DUR_10MS,
-			  .frames_sdu = 0, /* 0 is unspecified, data will not be placed in BASE */
+		.param = {
+				.location_bf = 0, /* Location is unspecified at subgroup level */
+				.frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
+				.frame_dur = BAP_FRAME_DUR_10MS,
+				.frames_sdu =
+					0, /* 0 is unspecified, data will not be placed in BASE */
 			},
 		.add_cfg.len = 0,
 	};
 
-	sgrp_cfg.param.sampling_freq =
-		bap_sampling_freq_from_hz(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
+	sgrp_cfg.param.sampling_freq = bap_sampling_freq_from_hz(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
 
 	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
 	 * statically allocated

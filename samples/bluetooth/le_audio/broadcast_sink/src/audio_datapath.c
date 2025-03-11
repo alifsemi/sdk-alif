@@ -109,8 +109,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	}
 
 	size_t audio_queue_len_us = pres_delay_us + AUDIO_QUEUE_MARGIN_US;
-	size_t audio_queue_len_blocks =
-		audio_queue_len_us / MICROSECONDS_PER_FRAME;
+	size_t audio_queue_len_blocks = audio_queue_len_us / MICROSECONDS_PER_FRAME;
 
 	env.audio_queue = audio_queue_create(audio_queue_len_blocks, AUDIO_BLOCK_SAMPLES);
 	if (env.audio_queue == NULL) {
@@ -118,17 +117,22 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		return -ENOMEM;
 	}
 
+	enum audio_decoder_frame_duration const frame_duration =
+		IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS) ? AUDIO_DECODER_FRAME_10MS
+								      : AUDIO_DECODER_FRAME_7_5_MS;
+	struct sdu_queue *queues[] = {
+		env.sdu_queue_l,
+		env.sdu_queue_r,
+	};
 	env.decoder = audio_decoder_create(CONFIG_ALIF_BLE_AUDIO_FS_HZ, decoder_stack,
-					   CONFIG_LC3_DECODER_STACK_SIZE, env.sdu_queue_l,
-					   env.sdu_queue_r, env.audio_queue);
-
+					   CONFIG_LC3_DECODER_STACK_SIZE, queues,
+					   ARRAY_SIZE(queues), env.audio_queue, frame_duration);
 	if (env.decoder == NULL) {
 		LOG_ERR("Failed to create audio decoder");
 		return -ENOMEM;
 	}
 
-	int ret = audio_sink_i2s_configure(cfg->i2s_dev, env.audio_queue,
-					   MICROSECONDS_PER_FRAME);
+	int ret = audio_sink_i2s_configure(cfg->i2s_dev, env.audio_queue, MICROSECONDS_PER_FRAME);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to configure audio sink I2S, err %d", ret);

@@ -70,7 +70,8 @@ static void on_dp_transfer_complete(gapi_isooshm_dp_t *dp, gapi_isooshm_sdu_buf_
 	recv_next_sdu(datapath);
 }
 
-struct iso_datapath_ctoh *iso_datapath_ctoh_create(uint8_t stream_lid, struct sdu_queue *sdu_queue)
+struct iso_datapath_ctoh *iso_datapath_ctoh_create(uint8_t const stream_lid,
+						   struct sdu_queue *sdu_queue)
 {
 	if (sdu_queue == NULL) {
 		LOG_ERR("Invalid parameter");
@@ -78,7 +79,7 @@ struct iso_datapath_ctoh *iso_datapath_ctoh_create(uint8_t stream_lid, struct sd
 	}
 
 	struct iso_datapath_ctoh *datapath =
-		(struct iso_datapath_ctoh *)calloc(sizeof(struct iso_datapath_ctoh), 1);
+		(struct iso_datapath_ctoh *)calloc(1, sizeof(struct iso_datapath_ctoh));
 
 	if (datapath == NULL) {
 		LOG_ERR("Failed to allocate data path");
@@ -97,7 +98,7 @@ struct iso_datapath_ctoh *iso_datapath_ctoh_create(uint8_t stream_lid, struct sd
 
 	ret = gapi_isooshm_dp_bind(&datapath->dp, stream_lid, GAPI_DP_DIRECTION_OUTPUT);
 	if (ret != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to bind datapath with err %u", ret);
+		LOG_ERR("Failed to bind datapath (stream_lid %u) with err %u", stream_lid, ret);
 		iso_datapath_ctoh_delete(datapath);
 		return NULL;
 	}
