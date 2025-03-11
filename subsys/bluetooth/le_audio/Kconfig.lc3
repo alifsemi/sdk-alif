@@ -32,22 +32,4 @@ config LC3_DECODER_STACK_SIZE
 	help
 	  Stack size for LC3 decoder thread.
 
-choice
-	prompt "Choose BAP frame duration"
-	default ALIF_LC3_FRAME_DURATION_10MS if ALIF_BLE_AUDIO_FRAME_DURATION_10MS
-
-	config ALIF_LC3_FRAME_DURATION_7_5MS
-	bool "7.5ms"
-	config ALIF_LC3_FRAME_DURATION_10MS
-	bool "10ms"
-
-endchoice
-
-config ALIF_LC3_FRAME_DURATION_MS_X100
-	int
-	default 750  if ALIF_LC3_FRAME_DURATION_7_5MS
-	default 1000 if ALIF_LC3_FRAME_DURATION_10MS
-	help
-	  Numerical representation of the enum values of LC3 frame duration
-
 endif # ALIF_LC3

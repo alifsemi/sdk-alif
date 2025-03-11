@@ -56,12 +56,14 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 	(void)p3;
 
 	int ret;
+	struct audio_block *audio;
+	gapi_isooshm_sdu_buf_t *p_sdu;
+	size_t const half_audio_block_samples = dec->audio_queue->audio_block_samples / 2;
 	uint16_t last_sdu_seq = 0;
 
 	while (!dec->thread_abort) {
 		/* Get a free audio block to decode into */
-		struct audio_block *audio = NULL;
-
+		audio = NULL;
 		ret = k_mem_slab_alloc(&dec->audio_queue->slab, (void **)&audio, K_FOREVER);
 		__ASSERT(ret == 0, "mem slab alloc failed");
 
@@ -74,12 +76,10 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 			/* Left channel should be decoded into first half of audio buffer,
 			 * right channel into second half
 			 */
-			int16_t *audio_data =
-				(i == 0) ? audio->buf
-					 : (audio->buf + dec->audio_queue->audio_block_samples / 2);
+			int16_t *const p_audio_data = audio->buf + half_audio_block_samples * i;
 
 			/* Get an SDU */
-			gapi_isooshm_sdu_buf_t *p_sdu = NULL;
+			p_sdu = NULL;
 
 			ret = k_msgq_get(&dec->sdu_queue[i]->msgq, &p_sdu, K_FOREVER);
 			__ASSERT(ret == 0, "msgq get failed");
@@ -92,7 +92,7 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 				break;
 			}
 
-			uint8_t bad_frame = (p_sdu->status != ISOOSHM_SDU_STATUS_VALID);
+			uint8_t const bad_frame = (p_sdu->status != ISOOSHM_SDU_STATUS_VALID);
 
 			if (bad_frame) {
 				LOG_WRN("Bad frame received, SDU status: %u", p_sdu->status);
@@ -102,7 +102,7 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 
 			ret = lc3_api_decode_frame(&dec->lc3_cfg, dec->lc3_decoder[i], p_sdu->data,
 						   p_sdu->sdu_len, bad_frame, &bec_detect,
-						   audio_data, dec->lc3_scratch);
+						   p_audio_data, dec->lc3_scratch);
 			__ASSERT(ret == 0, "LC3 decoding failed on channel %d with err %d", i, ret);
 
 			if (bec_detect) {
@@ -118,13 +118,12 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 
 		/* If the right channel is not present, copy the data from the left channel */
 		if (!dec->sdu_queue[1]) {
-			int16_t *dst = audio->buf + (dec->audio_queue->audio_block_samples / 2);
+			int16_t *dst = audio->buf + half_audio_block_samples;
 
-			memcpy(dst, audio->buf,
-			       (dec->audio_queue->audio_block_samples / 2) * sizeof(int16_t));
+			memcpy(dst, audio->buf, half_audio_block_samples * sizeof(int16_t));
 		}
 
-		uint32_t timestamp = audio->timestamp;
+		uint32_t const timestamp = audio->timestamp;
 
 		/* Push the audio data to queue */
 		ret = k_msgq_put(&dec->audio_queue->msgq, (void **)&audio, K_FOREVER);
@@ -144,10 +143,11 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 	LOG_DBG("Decoder thread finished");
 }
 
-struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
-					   size_t stacksize, struct sdu_queue *sdu_queue_l,
-					   struct sdu_queue *sdu_queue_r,
-					   struct audio_queue *audio_queue)
+struct audio_decoder *audio_decoder_create(uint32_t const sampling_frequency,
+					   k_thread_stack_t *stack, size_t const stacksize,
+					   struct sdu_queue *p_sdu_queues[],
+					   size_t const num_queues, struct audio_queue *audio_queue,
+					   enum audio_decoder_frame_duration const frame_duration)
 {
 	if (!stack) {
 		LOG_ERR("Thread stack must be provided");
@@ -159,25 +159,37 @@ struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread
 		return NULL;
 	}
 
-	if (!sdu_queue_l) {
+	if (!p_sdu_queues || !num_queues) {
 		LOG_ERR("At least one SDU queue must be provided");
 		return NULL;
 	}
 
-	struct audio_decoder *dec = (struct audio_decoder *)calloc(sizeof(struct audio_decoder), 1);
+	if (CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS < num_queues) {
+		LOG_ERR("Too many queues!");
+		return NULL;
+	}
+
+	struct audio_decoder *dec = (struct audio_decoder *)calloc(1, sizeof(struct audio_decoder));
 
 	if (!dec) {
 		LOG_ERR("Failed to allocate audio decoder");
 		return NULL;
 	}
 
-	dec->sdu_queue[0] = sdu_queue_l;
-	dec->sdu_queue[1] = sdu_queue_r;
+	uint8_t num_valid = 0;
+
+	for (uint8_t iter = 0; iter < num_queues; iter++) {
+		num_valid += !!p_sdu_queues[iter];
+		dec->sdu_queue[iter] = p_sdu_queues[iter];
+	}
 	dec->audio_queue = audio_queue;
 
+	uint32_t const duration = (AUDIO_DECODER_FRAME_10MS == frame_duration)
+					  ? FRAME_DURATION_10_MS
+					  : FRAME_DURATION_7_5_MS;
+
 	/* Configure LC3 codec and allocate required memory */
-	int ret = lc3_api_configure(
-		&dec->lc3_cfg, (int32_t)sampling_frequency, CONFIG_ALIF_LC3_FRAME_DURATION_MS_X100);
+	int ret = lc3_api_configure(&dec->lc3_cfg, (int32_t)sampling_frequency, duration);
 
 	if (ret) {
 		LOG_ERR("Failed to configure LC3 codec, err %d", ret);
@@ -185,7 +197,7 @@ struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread
 		return NULL;
 	}
 
-	size_t scratch_size = lc3_api_decoder_scratch_size(&dec->lc3_cfg);
+	size_t const scratch_size = lc3_api_decoder_scratch_size(&dec->lc3_cfg);
 
 	dec->lc3_scratch = (int32_t *)malloc(scratch_size);
 	if (!dec->lc3_scratch) {
@@ -194,11 +206,9 @@ struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread
 		return NULL;
 	}
 
-	size_t status_size = lc3_api_decoder_status_size(&dec->lc3_cfg);
+	size_t const status_size = lc3_api_decoder_status_size(&dec->lc3_cfg);
 
-	int channel_count = !sdu_queue_r ? 1 : 2;
-
-	for (int i = 0; i < channel_count; i++) {
+	for (int i = 0; i < num_valid; i++) {
 		dec->lc3_decoder[i] = (lc3_decoder_t *)malloc(sizeof(lc3_decoder_t));
 		if (!dec->lc3_decoder[i]) {
 			LOG_ERR("Failed to allocate LC3 decoder");
@@ -275,17 +285,11 @@ int audio_decoder_delete(struct audio_decoder *decoder)
 	k_thread_join(&decoder->thread, K_FOREVER);
 
 	for (int i = 0; i < ARRAY_SIZE(decoder->lc3_decoder); i++) {
-		if (decoder->lc3_decoder[i]) {
-			free(decoder->lc3_decoder[i]);
-		}
-		if (decoder->lc3_status[i]) {
-			free(decoder->lc3_status[i]);
-		}
+		free(decoder->lc3_decoder[i]);
+		free(decoder->lc3_status[i]);
 	}
 
-	if (decoder->lc3_scratch) {
-		free(decoder->lc3_scratch);
-	}
+	free(decoder->lc3_scratch);
 
 	/* Free linked list of callbacks */
 	while (decoder->cb_list) {

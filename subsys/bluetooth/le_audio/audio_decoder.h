@@ -15,6 +15,11 @@
 #include "audio_queue.h"
 #include "sdu_queue.h"
 
+enum audio_decoder_frame_duration {
+	AUDIO_DECODER_FRAME_7_5_MS,
+	AUDIO_DECODER_FRAME_10MS,
+};
+
 /**
  * @brief Callback function signature for SDU completion
  *
@@ -42,17 +47,18 @@ typedef void (*audio_decoder_sdu_cb_t)(void *context, uint32_t timestamp, uint16
  * @param stack Stack memory area for decoder thread. Must be statically allocated using
  * K_THREAD_STACK_DEFINE.
  * @param stacksize Size in bytes of stack memory area
- * @param sdu_queue_l SDU queue for left channel (or only channel in case of mono mode)
- * @param sdu_queue_r SDU queue for right channel (can be NULL in case of mono mode)
+ * @param p_sdu_queues Pointer to list of SDU queues for channels
+ * @param num_queues SDU queue count on the give list
  * @param audio_queue Audio queue to push decoded audio data to
+ * @param frame_duration Frame duration @ref enum audio_decoder_frame_duration
  *
  * @retval Created audio decoder instance if successful
  * @retval NULL on failure
  */
 struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
-				      size_t stacksize, struct sdu_queue *sdu_queue_l,
-				      struct sdu_queue *sdu_queue_r,
-				      struct audio_queue *audio_queue);
+					   size_t stacksize, struct sdu_queue *p_sdu_queues[],
+					   size_t num_queues, struct audio_queue *audio_queue,
+					   enum audio_decoder_frame_duration frame_duration);
 
 /**
  * @brief Register a callback to be called on completion of each decoded frame
@@ -63,8 +69,8 @@ struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_decoder_register_cb(struct audio_decoder *decoder,
-			audio_decoder_sdu_cb_t cb, void *context);
+int audio_decoder_register_cb(struct audio_decoder *decoder, audio_decoder_sdu_cb_t cb,
+			      void *context);
 
 /**
  * @brief Stop and delete an audio decoder instance
