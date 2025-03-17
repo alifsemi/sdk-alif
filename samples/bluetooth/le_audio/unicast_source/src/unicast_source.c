@@ -8,28 +8,12 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/init.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/random/random.h>
-#include "bluetooth/le_audio/audio_source_i2s.h"
-#include "bluetooth/le_audio/audio_queue.h"
-#include "bluetooth/le_audio/audio_encoder.h"
-#include "bluetooth/le_audio/sdu_queue.h"
-#include "bluetooth/le_audio/iso_datapath_htoc.h"
-#include "bluetooth/le_audio/presentation_compensation.h"
 
-#include "alif_ble.h"
-#include "gaf_cli.h"
 #include "gaf_scan.h"
 #include "bap_capa_cli.h"
 #include "bap_uc_cli.h"
-#include "bap_uc_cfg.h"
-#include "co_utils.h"
-#include "tmap.h"
-#include "gapc.h"
-
-#include "gapi_isooshm.h"
+#include "ke_mem.h"
 
 #include "main.h"
 #include "unicast_source.h"
@@ -39,21 +23,23 @@
 LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
 
 #define STREAM_SINK_ASE_MAX_CNT   2
-#define STREAM_SOURCE_ASE_MAX_CNT 0
+#define STREAM_SOURCE_ASE_MAX_CNT 1
 #define STREAM_SINK_PAC_MAX_CNT   5
 #define STREAM_SOURCE_PAC_MAX_CNT 2
 
 #define DISCOVER_PACS_BEFORE_ASCS 1
 #define BUTTON_ENABLED            0
 
+#define CONFIGURE_ALL_FROM_CMP_EVT 1
+
 #define SCAN_DURATION_SEC     5
 /** See enum gaf_scan_cfg_bf for more information */
 #define SCAN_CONFIG_BITS      (GAF_SCAN_CFG_ASCS_REQ_BIT /*| GAF_SCAN_CFG_TMAS_REQ_BIT*/)
 #define PRESENTATION_DELAY_US (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000)
-#define CONTROL_DELAY_US      10000
+#define CONTROL_DELAY_US      100
 #define DATA_PATH_CONFIG      DATA_PATH_ISOOSHM
 #define MAX_TIMING_LATENCY_MS 40
-#define STREAM_CIS_ID_BASE    (0U)
+#define STREAM_CIS_ID_BASE    0
 #define STREAM_PHY_TYPE       BAP_UC_TGT_PHY_2M
 
 /** This can be removed when the i2s driver is updated to support dynamic sample rate */
@@ -154,11 +140,6 @@ struct unicast_source_env {
 	struct pac_capa pacs_source[STREAM_SOURCE_PAC_MAX_CNT];
 	uint8_t nb_pacs_sink;
 	uint8_t nb_pacs_source;
-
-	/** Data Path ID */
-	uint8_t dp_id;
-	/** Codec ID */
-	gaf_codec_id_t codec_id;
 };
 
 static struct unicast_source_env unicast_env;
@@ -236,29 +217,74 @@ static uint32_t bap_sampling_freq_bitmask_to_hz(uint32_t const bitmask)
 	return bap_sampling_freq_index_to_hz((!bitmask) ? 0 : 32 - __builtin_clz(bitmask));
 }
 
+static void *get_ase_config_by_id(size_t ase_lid)
+{
+	if (ase_lid == GAF_INVALID_LID) {
+		return NULL;
+	}
+	if (ase_lid < ARRAY_SIZE(unicast_env.ase_sink)) {
+		return &unicast_env.ase_sink[ase_lid];
+	}
+	ase_lid -= ARRAY_SIZE(unicast_env.ase_sink);
+	if (ase_lid < ARRAY_SIZE(unicast_env.ase_source)) {
+		return &unicast_env.ase_source[ase_lid];
+	}
+	return NULL;
+}
+
 /* ---------------------------------------------------------------------------------------- */
 
-static void *get_best_stream(void)
+static void *get_best_stream(struct pac_capa *p_pac_base, size_t count)
 {
 	struct pac_capa *p_pac = NULL;
 #if !I2S_BUS_SAMPLE_RATE
 	uint32_t sampling_freq_hz = 0;
 #endif
-	for (size_t iter = 0; iter < unicast_env.nb_pacs_sink; iter++) {
+	while (count--) {
 		if (
 #if !I2S_BUS_SAMPLE_RATE
-			sampling_freq_hz < unicast_env.pacs_sink[iter].sampling_freq_hz
+			sampling_freq_hz < p_pac_base[count].sampling_freq_hz
 #else
-			I2S_BUS_SAMPLE_RATE == unicast_env.pacs_sink[iter].sampling_freq_hz
+			I2S_BUS_SAMPLE_RATE == p_pac_base[count].sampling_freq_hz
 #endif
 		) {
 #if !I2S_BUS_SAMPLE_RATE
-			sampling_freq_hz = unicast_env.pacs_sink[iter].sampling_freq_hz;
+			sampling_freq_hz = p_pac_base[count].sampling_freq_hz;
 #endif
-			p_pac = &unicast_env.pacs_sink[iter];
+			p_pac = &p_pac_base[count];
 		}
 	}
 	return p_pac;
+}
+
+static void *bap_config_alloc_and_init(enum bap_frame_dur const frame_dur,
+				       struct pac_capa const *const p_pac,
+				       uint32_t const location_bf)
+{
+	/* Allocate config buffer
+	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
+	 */
+	struct bap_cfg *p_config = ke_malloc_user((sizeof(*p_config) + 8), KE_MEM_PROFILE);
+
+	__ASSERT(p_config, "Failed to allocate memory for codec capability");
+
+	/* TODO: SDU size bigger than 84B cause issues with encoding */
+	p_config->param.location_bf = location_bf;
+	p_config->param.frame_octet = ROUND_UP(84, sizeof(uint32_t));
+	p_config->param.sampling_freq = bap_sampling_freq_from_hz(p_pac->sampling_freq_hz);
+	p_config->param.frame_dur = frame_dur;
+	p_config->param.frames_sdu = p_pac->max_frames_sdu;
+	p_config->add_cfg.len = 0;
+
+	if (p_pac->frame_octet_min == p_pac->frame_octet_max) {
+		p_config->param.frame_octet = p_pac->frame_octet_max;
+	} else if (p_pac->frame_octet_max < p_config->param.frame_octet) {
+		p_config->param.frame_octet = p_pac->frame_octet_max;
+	} else if (p_config->param.frame_octet < p_pac->frame_octet_min) {
+		p_config->param.frame_octet = p_pac->frame_octet_min;
+	}
+
+	return p_config;
 }
 
 static void configure_streams(struct k_work *p_job)
@@ -276,7 +302,7 @@ static void configure_streams(struct k_work *p_job)
 		return;
 	}
 
-	struct pac_capa *p_pac = get_best_stream();
+	struct pac_capa *p_pac = get_best_stream(unicast_env.pacs_sink, unicast_env.nb_pacs_sink);
 
 	if (!p_pac) {
 		LOG_WRN("Unable to find a valid PAC");
@@ -310,31 +336,13 @@ static void configure_streams(struct k_work *p_job)
 
 	err = bap_uc_cli_create_group(1 + UNICAST_CLIENT_GROUP_TYPE_MEDIA, &grp_param,
 				      &unicast_env.group_lid[type]);
-	if (GAF_ERR_NO_ERROR != err) {
+	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Failed to create group! error %u", err);
 		return;
 	}
 
 	LOG_INF("ASE group %u created", unicast_env.group_lid[type]);
 
-	struct bap_cfg codec_cfg = {
-		/* TODO: SDU size bigger than 84B cause issues with encoding */
-		.param.frame_octet = ROUND_UP(84, sizeof(uint32_t)),
-		.param.sampling_freq = bap_sampling_freq_from_hz(p_pac->sampling_freq_hz),
-		.param.frame_dur = frame_dur,
-		.param.frames_sdu = p_pac->max_frames_sdu,
-		.param.location_bf = 0,
-		.add_cfg.len = 0,
-	};
-#if 1
-	if (p_pac->frame_octet_min == p_pac->frame_octet_max) {
-		codec_cfg.param.frame_octet = p_pac->frame_octet_max;
-	} else if (p_pac->frame_octet_max < codec_cfg.param.frame_octet) {
-		codec_cfg.param.frame_octet = p_pac->frame_octet_max;
-	} else if (codec_cfg.param.frame_octet < p_pac->frame_octet_min) {
-		codec_cfg.param.frame_octet = p_pac->frame_octet_min;
-	}
-#endif
 	gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
 
 	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
@@ -344,21 +352,22 @@ static void configure_streams(struct k_work *p_job)
 			continue;
 		}
 
-		p_ase->number_of_octets = codec_cfg.param.frame_octet;
+		struct bap_cfg *p_config = bap_config_alloc_and_init(
+			frame_dur, p_pac, CO_BIT(GAF_LOC_FRONT_LEFT_POS + iter));
+
+		p_ase->number_of_octets = p_config->param.frame_octet;
 		p_ase->ase_lid = iter;
 		p_ase->cis_id = (UNICAST_CLIENT_GROUP_TYPE_MEDIA << 2) + STREAM_CIS_ID_BASE + iter;
 
-		codec_cfg.param.location_bf = CO_BIT(GAF_LOC_FRONT_LEFT_POS + iter);
-
 		LOG_DBG("Codec setup: conidx %u, ase_instance_idx %u, ase_lid %u, octets %uB",
 			p_ase->conidx, p_ase->ase_instance_idx, p_ase->ase_lid,
-			codec_cfg.param.frame_octet);
+			p_config->param.frame_octet);
 
 		err = bap_uc_cli_configure_codec(p_ase->conidx, p_ase->ase_instance_idx,
 						 p_ase->ase_lid, DATA_PATH_CONFIG, &codec_id,
 						 BAP_UC_TGT_LATENCY_RELIABLE, STREAM_PHY_TYPE,
-						 CONTROL_DELAY_US, &codec_cfg);
-		if (GAF_ERR_NO_ERROR != err) {
+						 CONTROL_DELAY_US, p_config);
+		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("Failed to configure codec! error %u", err);
 			return;
 		}
@@ -395,7 +404,7 @@ static void configure_qos(struct k_work *p_job)
 		LOG_DBG("ASE %u, CIS %u QoS configing...", p_ase->ase_lid, p_ase->cis_id);
 		err = bap_uc_cli_configure_qos(p_ase->ase_lid, unicast_env.group_lid[type],
 					       p_ase->cis_id, &qos_cfg);
-		if (GAF_ERR_NO_ERROR != err) {
+		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("ASE %u, CIS %u Failed to configure qos! error %u", p_ase->ase_lid,
 				p_ase->cis_id, err);
 			continue;
@@ -410,8 +419,8 @@ static void enable_streaming(struct k_work *const p_job)
 {
 	ARG_UNUSED(p_job);
 
-	bap_cfg_metadata_t cfg_metadata = {
-		.param.context_bf = BAP_CONTEXT_TYPE_UNSPECIFIED_BIT,
+	bap_cfg_metadata_t const cfg_metadata = {
+		.param.context_bf = BAP_CONTEXT_TYPE_MEDIA_BIT,
 		.add_metadata.len = 0,
 	};
 	uint16_t err;
@@ -427,11 +436,12 @@ static void enable_streaming(struct k_work *const p_job)
 
 		LOG_INF("ASE %u enabling...!", p_ase->ase_lid);
 		err = bap_uc_cli_enable(p_ase->ase_lid, &cfg_metadata);
-		if (GAF_ERR_NO_ERROR != err) {
+		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("Failed to enable ASE %u! error %u", p_ase->ase_lid, err);
 			continue;
 		}
 		p_ase->state_bitmask = mask | ASE_STATE_ENABLED;
+		/* wait_bap_complete(); */
 	}
 }
 
@@ -456,17 +466,15 @@ static void disable_streaming(struct k_work *const p_job)
 
 		LOG_INF("ASE %u disabling...", p_ase->ase_lid);
 		err = bap_uc_cli_disable(p_ase->ase_lid);
-		if (GAF_ERR_NO_ERROR != err) {
+		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("Failed to disable ASE %u! error %u", p_ase->ase_lid, err);
 			continue;
 		}
 		wait_bap_complete();
 		p_ase->state_bitmask = mask & ~(ASE_STATE_STREAMING | ASE_STATE_ENABLED);
 
-/* TODO: just stop...??? */
-#if 0
-		audio_datapath_cleanup_source();
-#endif
+		/* TODO: just stop...??? */
+		/* audio_datapath_cleanup_source(); */
 	}
 }
 
@@ -476,8 +484,10 @@ static K_WORK_DEFINE(disable_job, disable_streaming);
 static void configure_datapath(struct k_work *p_job)
 {
 	ARG_UNUSED(p_job);
-	k_sleep(K_MSEC(500));
+
 	int retval;
+
+	k_sleep(K_MSEC(20));
 
 	if (unicast_env.data_path_configured) {
 		LOG_ERR("Data path already configured!");
@@ -489,15 +499,17 @@ static void configure_datapath(struct k_work *p_job)
 	retval = audio_datapath_start_source();
 	__ASSERT(retval == 0, "Failed to start datapath source");
 
+	ARG_UNUSED(retval);
+
 	unicast_env.data_path_configured = true;
 }
 
 /* ---------------------------------------------------------------------------------------- */
 /** GAF Client callbacks */
 
-static void applet_gaf_scanning_cb_cmp_evt(uint8_t const cmd_type, uint16_t const status)
+static void on_gaf_scanning_cb_cmp_evt(uint8_t const cmd_type, uint16_t const status)
 {
-	__ASSERT(GAF_ERR_NO_ERROR == status, "status %u, cmd_type %u", status, cmd_type);
+	__ASSERT(status == GAF_ERR_NO_ERROR, "status %u, cmd_type %u", status, cmd_type);
 	if (cmd_type == GAF_SCAN_CMD_TYPE_STOP) {
 		LOG_INF("GAF scanning stopped");
 	} else if (cmd_type == GAF_SCAN_CMD_TYPE_START) {
@@ -508,7 +520,7 @@ static void applet_gaf_scanning_cb_cmp_evt(uint8_t const cmd_type, uint16_t cons
 	}
 }
 
-static void applet_gaf_scanning_cb_stopped(uint8_t const reason)
+static void on_gaf_scanning_cb_stopped(uint8_t const reason)
 {
 	static const char *const reason_str[] = {
 		"Requested by Upper Layer",
@@ -519,17 +531,24 @@ static void applet_gaf_scanning_cb_stopped(uint8_t const reason)
 	LOG_DBG("GAF scanning stopped. Reason: %s", reason_str[reason]);
 
 	if (reason == GAF_SCAN_STOP_REASON_TIMEOUT) {
-		gaf_scan_start(SCAN_CONFIG_BITS, SCAN_DURATION_SEC, GAP_PHY_1MBPS);
 	} else if (reason == GAF_SCAN_STOP_REASON_UL) {
-		connect_to_device(&unicast_env.peripheral_info.addr);
+		if (unicast_env.peripheral_info.addr.addr_type != 0xff) {
+			connect_to_device(&unicast_env.peripheral_info.addr);
+			return;
+		}
 	}
+
+	/* TODO / FIXME: Assert after 12 scan rounds! */
+	uint16_t status = gaf_scan_start(SCAN_CONFIG_BITS, SCAN_DURATION_SEC, GAP_PHY_1MBPS);
+
+	__ASSERT(status == GAF_ERR_NO_ERROR, "Error %u starting scan", status);
 }
 
-static void applet_gaf_scanning_cb_report(const gap_bdaddr_t *p_addr, uint8_t const info_bf,
-					  const gaf_adv_report_air_info_t *p_air_info,
-					  uint8_t const flags, uint16_t const appearance,
-					  uint16_t const tmap_roles, const atc_csis_rsi_t *p_rsi,
-					  uint16_t const length, const uint8_t *p_data)
+static void on_gaf_scanning_cb_report(const gap_bdaddr_t *p_addr, uint8_t const info_bf,
+				      const gaf_adv_report_air_info_t *p_air_info,
+				      uint8_t const flags, uint16_t const appearance,
+				      uint16_t const tmap_roles, const atc_csis_rsi_t *p_rsi,
+				      uint16_t const length, const uint8_t *p_data)
 {
 	const uint8_t *p_reported_name;
 	uint8_t name_length = 0;
@@ -546,7 +565,7 @@ static void applet_gaf_scanning_cb_report(const gap_bdaddr_t *p_addr, uint8_t co
 	}
 
 	/* Check that peripheral name matches */
-	if (0 != memcmp(p_reported_name, peripheral_name, sizeof(peripheral_name) - 1)) {
+	if (memcmp(p_reported_name, peripheral_name, sizeof(peripheral_name) - 1)) {
 		return;
 	}
 	memcpy(unicast_env.peripheral_info.device_name, p_reported_name, name_length);
@@ -554,19 +573,19 @@ static void applet_gaf_scanning_cb_report(const gap_bdaddr_t *p_addr, uint8_t co
 	unicast_env.peripheral_info.addr = *p_addr;
 	unicast_env.peripheral_info.info_flags = info_bf;
 
-	if (CHECKB(info_bf, GAF_SCAN_REPORT_INFO_RSI)) {
+	if (info_bf & GAF_SCAN_REPORT_INFO_RSI_BIT) {
 		memcpy(&unicast_env.peripheral_info.rsi, p_rsi,
 		       sizeof(unicast_env.peripheral_info.rsi));
 	}
 
-	if (CHECKB(info_bf, GAF_SCAN_REPORT_INFO_ANNOUNCEMENT)) {
+	if (info_bf & GAF_SCAN_REPORT_INFO_ANNOUNCEMENT_BIT) {
 		LOG_DBG("Announcement received");
 	}
 }
 
-static void applet_gaf_scanning_cb_announcement(const gap_bdaddr_t *const p_addr,
-						uint8_t const type, uint32_t const context_bf,
-						const gaf_ltv_t *const p_metadata)
+static void on_gaf_scanning_cb_announcement(const gap_bdaddr_t *const p_addr, uint8_t const type,
+					    uint32_t const context_bf,
+					    const gaf_ltv_t *const p_metadata)
 {
 	if (unicast_env.peripheral_info.addr.addr_type <= GAP_ADDR_RAND) {
 		LOG_INF("Device found, name: %s, addr: %s", unicast_env.peripheral_info.device_name,
@@ -578,17 +597,17 @@ static void applet_gaf_scanning_cb_announcement(const gap_bdaddr_t *const p_addr
 
 /* Set of callback function for communication with GAF Scanning module */
 static const struct gaf_scan_cb gaf_scan_callbacks = {
-	.cb_cmp_evt = applet_gaf_scanning_cb_cmp_evt,
-	.cb_stopped = applet_gaf_scanning_cb_stopped,
-	.cb_report = applet_gaf_scanning_cb_report,
-	.cb_announcement = applet_gaf_scanning_cb_announcement,
+	.cb_cmp_evt = on_gaf_scanning_cb_cmp_evt,
+	.cb_stopped = on_gaf_scanning_cb_stopped,
+	.cb_report = on_gaf_scanning_cb_report,
+	.cb_announcement = on_gaf_scanning_cb_announcement,
 };
 
 /* ---------------------------------------------------------------------------------------- */
 /** BAP Unicast Client callbacks */
 
 static void on_bap_uc_cli_cmp_evt(uint8_t const cmd_type, uint16_t const status,
-				  uint8_t const con_lid, uint8_t const ase_info,
+				  uint8_t const con_lid, uint8_t const ase_lid,
 				  uint8_t const char_type)
 {
 	static const char *const cmd_type_str[] = {"DISCOVER",  "CONFIGURE_CODEC", "CONFIGURE_QOS",
@@ -596,11 +615,18 @@ static void on_bap_uc_cli_cmp_evt(uint8_t const cmd_type, uint16_t const status,
 						   "RELEASE",   "GET_QUALITY",     "SET_CFG",
 						   "GET_STATE", "GROUP_REMOVE",    "CIS_CONTROL"};
 
-	LOG_DBG("BAP command '%s' completed status:%u, con_lid:%u, ase_info:%u, char_type:%u",
-		cmd_type < ARRAY_SIZE(cmd_type_str) ? cmd_type_str[cmd_type] : "??", status,
-		con_lid, ase_info, char_type);
+	if (status != GAF_ERR_NO_ERROR) {
+		LOG_ERR("BAP command '%s' failed with status %u",
+			cmd_type < ARRAY_SIZE(cmd_type_str) ? cmd_type_str[cmd_type] : "??",
+			status);
+		return;
+	}
 
-	__ASSERT(GAF_ERR_NO_ERROR == status, "BAC Unicast Client comamnd failed!");
+	LOG_DBG("BAP command '%s' completed status:%u, con_lid:%u, ase_lid:%u, char_type:%u",
+		cmd_type < ARRAY_SIZE(cmd_type_str) ? cmd_type_str[cmd_type] : "??", status,
+		con_lid, ase_lid, char_type);
+
+	struct unicast_client_ase *p_ase = get_ase_config_by_id(ase_lid);
 
 	switch (cmd_type) {
 	case BAP_UC_CLI_CMD_TYPE_DISCOVER: {
@@ -611,21 +637,31 @@ static void on_bap_uc_cli_cmp_evt(uint8_t const cmd_type, uint16_t const status,
 		uint16_t const err =
 			bap_capa_cli_discover(con_lid, GATT_INVALID_HDL, GATT_INVALID_HDL);
 
-		if (GAF_ERR_NO_ERROR != err) {
+		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("PACS discovery start failed. Error:%u", err);
 		}
 #endif
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_CONFIGURE_CODEC: {
-		bap_ready_sem_give();
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_CONFIGURE_QOS: {
-		bap_ready_sem_give();
+		if (p_ase) {
+			p_ase->state_bitmask |= ASE_STATE_QOS_CONFIGURED;
+
+			if (ase_lid == (unicast_env.nb_ases_sink - 1)) {
+				k_work_submit_to_queue(&worker_queue, &enable_job);
+			}
+			bap_ready_sem_give();
+		}
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_ENABLE: {
+		if (p_ase) {
+			p_ase->state_bitmask |= ASE_STATE_ENABLED;
+			bap_ready_sem_give();
+		}
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_UPDATE_METADATA: {
@@ -687,11 +723,6 @@ static void on_bap_uc_cli_bond_data(uint8_t const con_lid,
 			p_char->desc_hdl);
 	}
 
-	/* TODO: save bond data */
-#if 0
-	storage_store(SETTINGS_NAME_BOND_ASCS, p_ascs_info, size);
-#endif
-
 	unicast_env.nb_ases_sink = MIN(p_ascs_info->nb_ases_sink, ARRAY_SIZE(unicast_env.ase_sink));
 	unicast_env.nb_ases_source =
 		MIN(p_ascs_info->nb_ases_src, ARRAY_SIZE(unicast_env.ase_source));
@@ -700,8 +731,7 @@ static void on_bap_uc_cli_bond_data(uint8_t const con_lid,
 static void on_bap_uc_cli_error(uint8_t const ase_lid, uint8_t const opcode, uint8_t const rsp_code,
 				uint8_t const reason)
 {
-	LOG_ERR("ACSC error! ase_lid %u, opcode %u, rsp_code %u, reason %u", ase_lid, opcode,
-		rsp_code, reason);
+	LOG_ERR("ASE %u opcode: %u, rsp_code: %u, reason: %u", ase_lid, opcode, rsp_code, reason);
 }
 
 static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const event,
@@ -727,24 +757,11 @@ static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const even
 		/* TODO: implement disconnect handling if connection is lost... if the GAF does not
 		 * handle it automatically
 		 */
-#if 0
-#if 0
-		if (GAF_INVALID_LID != ase_lid_sink) {
-			/* bap_uc_cli_disable(ase_lid_sink); */
-			bap_uc_cli_release(ase_lid_sink);
-		}
-		if (GAF_INVALID_LID != ase_lid_src) {
-			/* bap_uc_cli_disable(ase_lid_src); */
-			bap_uc_cli_release(ase_lid_src);
-		}
-#else
-		k_work_submit_to_queue(&worker_queue, &disable_job);
-#endif
-#endif
+		/* k_work_submit_to_queue(&worker_queue, &disable_job); */
 		return;
 	}
 
-	if (GAP_INVALID_CONHDL != conhdl) {
+	if (conhdl != GAP_INVALID_CONHDL) {
 		/* state is established */
 		LOG_DBG("  GROUP: sync_delay_us:%u, tlatency_m2s_us:%u, tlatency_s2m_us:%u, "
 			"iso_intv_frames:%u",
@@ -760,7 +777,11 @@ static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const even
 		unicast_env.datapath_config.pres_delay_us = p_cig_cfg->tlatency_m2s_us;
 	}
 
-	struct unicast_client_ase *p_ase = &unicast_env.ase_sink[ase_lid_sink];
+	struct unicast_client_ase *p_ase = get_ase_config_by_id(ase_lid_sink);
+
+	if (!p_ase) {
+		return;
+	}
 
 	switch (event) {
 	case BAP_UC_CLI_CIS_EVENT_ASE_BOUND: {
@@ -769,10 +790,12 @@ static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const even
 		int retval =
 			audio_datapath_channel_create_source(p_ase->number_of_octets, stream_lid);
 		__ASSERT(retval == 0, "Failed to create datapath channel");
+		ARG_UNUSED(retval);
 		break;
 	}
 	case BAP_UC_CLI_CIS_EVENT_ASE_UNBOUND: {
 		/* An ASE has been unbound from the Stream */
+		p_ase->state_bitmask = ASE_STATE_ZERO;
 		break;
 	}
 	case BAP_UC_CLI_CIS_EVENT_ESTABLISHED: {
@@ -785,7 +808,8 @@ static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const even
 		break;
 	}
 	case BAP_UC_CLI_CIS_EVENT_DISCONNECTED: {
-		/* CIS has been disconnected or has been lost */
+		/* CIS has been disconnected or connection has been lost */
+		p_ase->state_bitmask = ~(ASE_STATE_STREAMING | ASE_STATE_ENABLED);
 		break;
 	}
 	};
@@ -801,22 +825,22 @@ static void on_bap_uc_cli_state_empty(uint8_t const con_lid, uint8_t const ase_i
 	LOG_DBG("ASE state '%s': con_lid:%u, ase_inst_idx:%u, ase_lid:%u", states_str[state],
 		con_lid, ase_instance_idx, ase_lid);
 
+	struct unicast_client_ase *const p_ase =
+		get_ase_config_by_id((ase_lid == GAF_INVALID_LID) ? ase_instance_idx : ase_lid);
+
 	switch (state) {
 	case BAP_UC_ASE_STATE_IDLE: {
-		/* IDLE is reported after discovery (connected) */
-		if (ase_instance_idx < ARRAY_SIZE(unicast_env.ase_sink)) {
-			struct unicast_client_ase *p_ase = &unicast_env.ase_sink[ase_instance_idx];
-
-			if (p_ase->state_bitmask & ASE_STATE_INITIALIZED) {
-				/* Already initialized */
-				break;
-			}
+		if (!p_ase) {
+			break;
+		}
+		if (con_lid != p_ase->conidx && ase_instance_idx != p_ase->ase_instance_idx) {
+			/* Initialize ASE state */
 			p_ase->conidx = con_lid;
 			p_ase->ase_instance_idx = ase_instance_idx;
-			p_ase->ase_lid = ase_lid;
+			p_ase->ase_lid = GAF_INVALID_LID;
 			p_ase->cis_id = GAF_INVALID_LID;
 			p_ase->stream_lid = GAF_INVALID_LID;
-			p_ase->state_bitmask = ASE_STATE_INITIALIZED;
+			p_ase->state_bitmask = ASE_STATE_ZERO;
 		}
 		break;
 	}
@@ -889,14 +913,18 @@ static void on_bap_uc_cli_state_codec(uint8_t const con_lid, uint8_t const ase_i
 		bap_sampling_freq_index_to_hz(p_cfg->param.sampling_freq);
 	unicast_env.datapath_config.frame_duration_is_10ms = p_cfg->param.frame_dur;
 
-	__ASSERT(ase_lid < ARRAY_SIZE(unicast_env.ase_sink), "Invalid ASE ID");
+	struct unicast_client_ase *const p_ase = get_ase_config_by_id(ase_lid);
 
-	struct unicast_client_ase *p_ase = &unicast_env.ase_sink[ase_lid];
+	if (!p_ase) {
+		return;
+	}
 
 	__ASSERT(p_ase->ase_lid == ase_lid, "ASE LID mismatch");
 
 	p_ase->state_bitmask |= ASE_STATE_CODEC_CONFIGURED;
 	p_ase->retx_number = p_qos_req->retx_nb;
+
+	bap_ready_sem_give();
 
 	/* QoS configuration must be done after all codec configurations... for some reason */
 	if (ase_lid == (unicast_env.nb_ases_sink - 1)) {
@@ -908,19 +936,11 @@ static void on_bap_uc_cli_state_codec(uint8_t const con_lid, uint8_t const ase_i
 
 static void on_bap_uc_cli_state_qos(uint8_t const ase_lid, const bap_qos_cfg_t *const p_qos_cfg)
 {
-	LOG_DBG("ASE %u QoS configured.", ase_lid);
-
-	__ASSERT(ase_lid < ARRAY_SIZE(unicast_env.ase_sink), "Invalid ASE ID");
-
-	struct unicast_client_ase *p_ase = &unicast_env.ase_sink[ase_lid];
-
-	__ASSERT(p_ase->ase_lid == ase_lid, "ASE LID mismatch");
-
-	p_ase->state_bitmask |= ASE_STATE_QOS_CONFIGURED;
-
-	if (ase_lid == (unicast_env.nb_ases_sink - 1)) {
-		k_work_submit_to_queue(&worker_queue, &enable_job);
-	}
+	LOG_DBG("ASE %u QoS configured: pres_delay:%uus, trans_latency_max:%ums, retx_nb %u, "
+		"framing:%u, phy:%u, max_sdu_size:%u, sdu_intv_us:%u",
+		ase_lid, p_qos_cfg->pres_delay_us, p_qos_cfg->trans_latency_max_ms,
+		p_qos_cfg->retx_nb, p_qos_cfg->framing, p_qos_cfg->phy, p_qos_cfg->max_sdu_size,
+		p_qos_cfg->sdu_intv_us);
 }
 
 static void on_bap_uc_cli_state_metadata(uint8_t const ase_lid, uint8_t const state,
@@ -1008,12 +1028,12 @@ static void on_bap_capa_client_cb_cmp_evt(uint8_t const cmd_type, uint16_t statu
 	LOG_DBG("BAP Capabilities completed: cmd:%s, status:%u, conlid:%u, pac_lid:%u",
 		cmd_str[cmd_type], status, con_lid, pac_lid);
 
-	__ASSERT(GAF_ERR_NO_ERROR == status, "BAP Capa Client cmd failed!");
+	__ASSERT(status == GAF_ERR_NO_ERROR, "BAP Capa Client cmd failed!");
 
 	if (BAP_CAPA_CLI_CMD_TYPE_DISCOVER == cmd_type) {
 #if DISCOVER_PACS_BEFORE_ASCS
 		status = bap_uc_cli_discover(con_lid, GATT_MIN_HDL, GATT_MAX_HDL);
-		if (GAF_ERR_NO_ERROR != status) {
+		if (status != GAF_ERR_NO_ERROR) {
 			LOG_ERR("ACSC discovery start failed. Error:%u", status);
 		}
 #else
@@ -1036,21 +1056,9 @@ static void on_bap_capa_client_cb_bond_data(uint8_t const con_lid,
 
 	unicast_env.nb_pacs_sink = p_pacs_info->nb_pacs_sink;
 	unicast_env.nb_pacs_source = p_pacs_info->nb_pacs_src;
-
-/* TODO: handle bond data */
-#if 0
-	for (uint8_t iter = 0; iter < nb_chars; iter++) {
-		bap_capa_cli_pacs_char_t const *const p_char = &p_pacs_info->char_info[iter];
-
-		LOG_DBG("  PAC %u, val_hdl:%u, desc_hdl:%u", iter, p_char->val_hdl,
-			p_char->desc_hdl);
-	}
-
-	storage_store(SETTINGS_NAME_BOND_PACS, p_pacs_info, size);
-#endif
 }
 
-static void on_bap_capa_client_cb_record(uint8_t const con_lid, uint8_t const pac_lid,
+static void on_bap_capa_client_cb_record(uint8_t const con_lid, uint8_t pac_lid,
 					 uint8_t const record_lid, uint8_t const nb_records,
 					 const gaf_codec_id_t *const p_codec_id,
 					 const bap_capa_ptr_t *const p_capa,
@@ -1076,30 +1084,22 @@ static void on_bap_capa_client_cb_record(uint8_t const con_lid, uint8_t const pa
 		p_capa->param.frame_octet_max, p_capa->param.max_frames_sdu,
 		p_metadata->param.context_bf);
 
-	static size_t index;
+	struct pac_capa *p_pac;
 
-	if (!pac_lid && !record_lid) {
-		/* Reset the index */
-		index = 0;
+	if (unicast_env.nb_pacs_sink <= pac_lid) {
+		pac_lid -= unicast_env.nb_pacs_sink;
+		__ASSERT(pac_lid < ARRAY_SIZE(unicast_env.pacs_source), "Too many source PACs");
+		p_pac = &unicast_env.pacs_source[pac_lid];
+	} else {
+		__ASSERT(pac_lid < ARRAY_SIZE(unicast_env.pacs_sink), "Too many sink PACs");
+		p_pac = &unicast_env.pacs_sink[pac_lid];
 	}
-
-	if ((ARRAY_SIZE(unicast_env.pacs_sink) + ARRAY_SIZE(unicast_env.pacs_source)) <= index) {
-		LOG_WRN("No space for a new record! ignored...");
-		return;
-	}
-
-	struct pac_capa *const p_pac = (pac_lid < unicast_env.nb_pacs_sink)
-					       ? &unicast_env.pacs_sink[index]
-					       : &unicast_env.pacs_source[index];
 
 	p_pac->sampling_freq_hz = sampling_freq_hz;
 	p_pac->frame_duration_bf = p_capa->param.frame_dur_bf;
 	p_pac->frame_octet_min = p_capa->param.frame_octet_min;
 	p_pac->frame_octet_max = p_capa->param.frame_octet_max;
 	p_pac->max_frames_sdu = p_capa->param.max_frames_sdu;
-
-	/* Increase index for next PAC */
-	index++;
 }
 
 static void on_bap_capa_client_cb_location(uint8_t const con_lid, uint8_t const direction,
@@ -1206,6 +1206,11 @@ int unicast_source_configure(void)
 {
 	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
 		unicast_env.ase_sink[iter].conidx = GAP_INVALID_CONIDX;
+		unicast_env.ase_sink[iter].ase_instance_idx = GAF_INVALID_LID;
+	}
+	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_source); iter++) {
+		unicast_env.ase_source[iter].conidx = GAP_INVALID_CONIDX;
+		unicast_env.ase_source[iter].ase_instance_idx = GAF_INVALID_LID;
 	}
 	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.group_lid); iter++) {
 		unicast_env.group_lid[iter] = GAF_INVALID_LID;
@@ -1218,27 +1223,28 @@ int unicast_source_configure(void)
 	configure_button();
 
 	struct bap_uc_cli_cfg bap_cli_cfg = {
-		/* Configuration bit field */
-		.cfg_bf = 0,
+		/* Configuration bit field. @ref enum bap_uc_cli_cfg_bf */
+		.cfg_bf = BAP_UC_CLI_CFG_RELIABLE_WR_BIT,
 		/* Number of ASE configurations that can be maintained
 		 * Shall be at larger than 0
 		 */
-		.nb_ases_cfg = ARRAY_SIZE(unicast_env.ase_sink),
+		.nb_ases_cfg =
+			ARRAY_SIZE(unicast_env.ase_sink) + ARRAY_SIZE(unicast_env.ase_source),
 		/* Preferred MTU
 		 * Values from 0 to 63 are equivalent to 64
 		 */
-		.pref_mtu = 0,
+		.pref_mtu = 120,
 		/* Timeout duration in seconds for reception of notification for ASE Control Point
 		 * characteristic and for
 		 * some notifications of ASE characteristic
 		 * From 1s to 5s, 0 means 1s
 		 */
-		.timeout_s = 2,
+		.timeout_s = 3,
 	};
 	uint16_t err;
 
 	err = bap_uc_cli_configure(&bap_cli_cbs, &bap_cli_cfg);
-	if (GAF_ERR_NO_ERROR != err) {
+	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Error %u configuring BAP client", err);
 		return -1;
 	}
@@ -1249,14 +1255,14 @@ int unicast_source_configure(void)
 	};
 
 	err = bap_capa_cli_configure(&bap_capa_cli_callbacks, &capa_cli_cfg);
-	if (GAF_ERR_NO_ERROR != err) {
+	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Error %u configuring BAP capa client", err);
 		return -1;
 	}
 	LOG_DBG("BAP capa client configured");
 
 	err = gaf_scan_configure(&gaf_scan_callbacks);
-	if (GAF_ERR_NO_ERROR != err) {
+	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Error %u configuring GAF scanning", err);
 		return -1;
 	}
@@ -1270,7 +1276,7 @@ int unicast_source_scan_start(void)
 	uint16_t err;
 
 	err = gaf_scan_start(SCAN_CONFIG_BITS, SCAN_DURATION_SEC, GAP_PHY_1MBPS);
-	if (GAF_ERR_NO_ERROR != err) {
+	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Error %u starting scan", err);
 		return -1;
 	}
@@ -1290,7 +1296,7 @@ int unicast_source_discover(uint8_t const con_lid)
 	err = bap_uc_cli_discover(con_lid, GATT_MIN_HDL, GATT_MAX_HDL);
 #endif
 
-	if (GAF_ERR_NO_ERROR != err) {
+	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Unicast client discovery start failed. Error:%u", err);
 		return -1;
 	}

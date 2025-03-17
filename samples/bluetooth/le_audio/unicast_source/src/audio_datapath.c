@@ -34,7 +34,7 @@ LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 /* TODO: Enable for bidirectional audio data */
 #define AUDIO_DECODER_PATH 0
 
-static struct audio_datapath {
+struct audio_datapath {
 	const struct device *i2s_dev;
 	const struct device *codec_dev;
 	/* const struct device *mclk_dev; */
@@ -54,7 +54,9 @@ static struct audio_datapath {
 		struct audio_queue *p_audio_queue;
 	} decoder;
 #endif
-} env;
+};
+
+static struct audio_datapath env;
 
 #if AUDIO_ENCODER_PATH
 K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
