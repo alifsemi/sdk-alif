@@ -45,8 +45,6 @@ int storage_init(void)
 		LOG_ERR("settings_subsys_init() failed (err %d)", err);
 		return err;
 	}
-
-	LOG_INF("Settings loaded successfully");
 	return 0;
 }
 

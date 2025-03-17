@@ -10,7 +10,6 @@
 #ifndef _UNICAST_SINK_H
 #define _UNICAST_SINK_H
 
-
 /**
  * @brief Configure LE audio unicast sink functionality
  *
@@ -21,9 +20,11 @@ int unicast_sink_init(void);
 /**
  * @brief Start the LE audio unicast advertising
  *
+ * @param p_address Pointer to the client device address for directed advertising
+ *
  * @return 0 on success
  */
-int unicast_sink_adv_start(void);
+int unicast_sink_adv_start(void const * const p_address);
 
 /**
  * @brief Stop the advertising

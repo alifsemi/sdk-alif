@@ -10,6 +10,8 @@
 #ifndef _MAIN_H
 #define _MAIN_H
 
-int connect_to_device(const struct gap_bdaddr *p_peer_addr);
+#include "gap.h"
+
+int connect_to_device(const gap_bdaddr_t *p_peer_addr);
 
 #endif /* _MAIN_H */
