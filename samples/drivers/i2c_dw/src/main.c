@@ -28,7 +28,7 @@
 int start_i2c_transfer(void)
 {
 	uint8_t tx_data[4];
-	uint8_t rx_data[1];
+	uint8_t rx_data[4];
 	int ret = 0;
 	struct i2c_msg msgs[2];
 
@@ -55,7 +55,7 @@ int start_i2c_transfer(void)
 	 * Data to be received to this buffer
 	 */
 	msgs[1].buf = rx_data;
-	msgs[1].len = 1U;
+	msgs[1].len = 4U;
 	msgs[1].flags = I2C_MSG_READ | I2C_MSG_STOP;
 	while (1) {
 
@@ -74,8 +74,11 @@ int start_i2c_transfer(void)
 			printk("error on Reception with : %d\n", ret);
 			return ret;
 		}
-		printk("Master received Data 0x%x From Slave\n",
-			msgs[1].buf[0]);
+		printk("Master received following data from the Slave:");
+		for(int index = 0; index < msgs[1].len; index++) {
+			printk("0x%x ", msgs[1].buf[index]);
+		}
+		printk("\n");
 	}
 }
 
@@ -100,6 +103,42 @@ int i2c_target_read_processed_cb(struct i2c_target_config *config, uint8_t *val)
 	printk("Read processed_cb called\n");
 	return 0;
 }
+
+#ifdef CONFIG_I2C_TARGET_BUFFER_MODE
+static uint8_t write_buf[4];
+
+int i2c_target_buf_read_requested_cb(struct i2c_target_config *config, uint8_t **val, uint32_t *len)
+{
+	uint32_t count = 0;
+	uint32_t idx;
+
+	*len = 4;
+
+	printk("Read requested from Master\n");
+	printk("Slave is sending the following data:");
+	for (idx = 0; idx < *len; idx++) {
+		write_buf[idx] = ++count;
+		printk("0x%x ", write_buf[idx]);
+	}
+	printk("\n");
+
+	*val = write_buf;
+
+	return 0;
+}
+
+void i2c_target_buf_write_received_cb(struct i2c_target_config *config,
+		uint8_t *data_buf, uint32_t len)
+{
+	uint32_t idx;
+
+	printk("Received %d bytes from master: ", len);
+	for (idx = 0; idx < len; idx++) {
+		printk("0x%x ", data_buf[idx]);
+	}
+	printk("\n");
+}
+#endif
 
 /* Registering the i2c instance as slave
  * passing the i2c_target_config structure with call back apis
@@ -126,6 +165,10 @@ int main(void)
 		.read_requested = &i2c_target_read_requested_cb,
 		.write_received = &i2c_target_write_received_cb,
 		.read_processed = &i2c_target_read_processed_cb,
+#ifdef CONFIG_I2C_TARGET_BUFFER_MODE
+		.buf_write_received = &i2c_target_buf_write_received_cb,
+		.buf_read_requested = &i2c_target_buf_read_requested_cb,
+#endif
 	};
 	struct i2c_target_config tcfg = {
 		.callbacks = &i2c_t_cb
