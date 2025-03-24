@@ -399,8 +399,8 @@ int audio_datapath_create_sink(struct audio_datapath_config *cfg)
 	env.decoder.p_decoder = audio_decoder_create(
 		cfg->sampling_rate_hz, decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE,
 		env.decoder.sdu_queue, num_valid_queues_dec, env.decoder.p_audio_queue,
-		cfg->frame_duration_is_10ms ? AUDIO_DECODER_FRAME_10MS
-					    : AUDIO_DECODER_FRAME_7_5_MS);
+		cfg->frame_duration_is_10ms ? AUDIO_FRAME_DURATION_10MS
+					    : AUDIO_FRAME_DURATION_7P5MS);
 
 	if (env.decoder.p_decoder == NULL) {
 		LOG_ERR("Failed to create audio decoder");

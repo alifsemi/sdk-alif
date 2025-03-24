@@ -8,6 +8,7 @@
  */
 
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/__assert.h>
 #include "bluetooth/le_audio/sdu_queue.h"
 #include "bluetooth/le_audio/audio_queue.h"
 #include "bluetooth/le_audio/iso_datapath_ctoh.h"
@@ -18,19 +19,10 @@
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
-#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
-#define FRAMES_PER_SECOND 100
-#else
-#error "Unsupported configuration"
-#endif
-
 #define SDU_QUEUE_LENGTH          4
 #define AUDIO_QUEUE_MARGIN_US     20000
 #define CHANNEL_COUNT             2
-#define AUDIO_BLOCK_SAMPLES       (CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND * CHANNEL_COUNT)
 #define MIN_PRESENTATION_DELAY_US 30000
-#define MICROSECONDS_PER_SECOND   1000000
-#define MICROSECONDS_PER_FRAME    (MICROSECONDS_PER_SECOND / FRAMES_PER_SECOND)
 
 struct audio_datapath {
 	struct sdu_queue *sdu_queue_l;
@@ -65,18 +57,54 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 }
 #endif
 
+static size_t frame_len_us(enum audio_frame_duration fd)
+{
+	switch (fd) {
+	case AUDIO_FRAME_DURATION_7P5MS:
+		return 750 * 1000;
+	case AUDIO_FRAME_DURATION_10MS:
+		return 10 * 1000;
+	default:
+		__ASSERT(false, "Unknown frame duration");
+		LOG_ERR("Unknown frame duration");
+		return 0;
+	}
+}
+
+/**
+ * @brief Calculate the number of samples in an audio block
+ *
+ * @param[in] cfg Pointer to the audio datapath configuration
+ *
+ * @return The number of samples in an audio block
+ *
+ * This is calculated as the sampling rate in Hz divided by the number of frames
+ * per second, multiplied by the number of channels (1 for mono, 2 for stereo)
+ */
+static size_t samples_in_audio_block(struct audio_datapath_config *cfg)
+{
+	int channels = cfg->stereo ? 2 : 1;
+	int frames_in_sec = (1000 * 1000) / frame_len_us(cfg->bap.frame_duration);
+
+	return cfg->bap.fs / frames_in_sec * channels;
+}
+
 int audio_datapath_create(struct audio_datapath_config *cfg)
 {
 	if (cfg == NULL) {
+		__ASSERT(false, "Datapath configuration missing");
 		return -EINVAL;
 	}
+
+	size_t audio_frame_us = frame_len_us(cfg->bap.frame_duration);
+	size_t audio_block_samples = samples_in_audio_block(cfg);
 
 	/* Presentation delay less than a certain value is impossible due to latency of audio
 	 * datapath
 	 */
 	uint32_t pres_delay_us = MAX(cfg->pres_delay_us, MIN_PRESENTATION_DELAY_US);
 
-	env.sdu_queue_l = sdu_queue_create(SDU_QUEUE_LENGTH, cfg->octets_per_frame);
+	env.sdu_queue_l = sdu_queue_create(SDU_QUEUE_LENGTH, cfg->bap.frame_octets);
 	if (env.sdu_queue_l == NULL) {
 		LOG_ERR("Failed to create SDU queue (left)");
 		return -ENOMEM;
@@ -92,7 +120,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	}
 
 	if (cfg->stereo) {
-		env.sdu_queue_r = sdu_queue_create(SDU_QUEUE_LENGTH, cfg->octets_per_frame);
+		env.sdu_queue_r = sdu_queue_create(SDU_QUEUE_LENGTH, cfg->bap.frame_octets);
 		if (env.sdu_queue_r == NULL) {
 			LOG_ERR("Failed to create SDU queue (right)");
 			return -ENOMEM;
@@ -109,30 +137,27 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	}
 
 	size_t audio_queue_len_us = pres_delay_us + AUDIO_QUEUE_MARGIN_US;
-	size_t audio_queue_len_blocks = audio_queue_len_us / MICROSECONDS_PER_FRAME;
+	size_t audio_queue_len_blocks = audio_queue_len_us / audio_frame_us;
 
-	env.audio_queue = audio_queue_create(audio_queue_len_blocks, AUDIO_BLOCK_SAMPLES);
+	env.audio_queue = audio_queue_create(audio_queue_len_blocks, audio_block_samples);
 	if (env.audio_queue == NULL) {
 		LOG_ERR("Failed to create audio queue");
 		return -ENOMEM;
 	}
 
-	enum audio_decoder_frame_duration const frame_duration =
-		IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS) ? AUDIO_DECODER_FRAME_10MS
-								      : AUDIO_DECODER_FRAME_7_5_MS;
 	struct sdu_queue *queues[] = {
 		env.sdu_queue_l,
 		env.sdu_queue_r,
 	};
-	env.decoder = audio_decoder_create(CONFIG_ALIF_BLE_AUDIO_FS_HZ, decoder_stack,
-					   CONFIG_LC3_DECODER_STACK_SIZE, queues,
-					   ARRAY_SIZE(queues), env.audio_queue, frame_duration);
+	env.decoder = audio_decoder_create(
+		cfg->bap.fs, decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE, queues,
+		ARRAY_SIZE(queues), env.audio_queue, cfg->bap.frame_duration);
 	if (env.decoder == NULL) {
 		LOG_ERR("Failed to create audio decoder");
 		return -ENOMEM;
 	}
 
-	int ret = audio_sink_i2s_configure(cfg->i2s_dev, env.audio_queue, MICROSECONDS_PER_FRAME);
+	int ret = audio_sink_i2s_configure(cfg->i2s_dev, env.audio_queue, audio_frame_us);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to configure audio sink I2S, err %d", ret);
