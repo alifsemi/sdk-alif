@@ -12,12 +12,21 @@
 
 #include <zephyr/types.h>
 #include <zephyr/device.h>
+#include "bluetooth/le_audio/audio_tofromh.h"
+
+struct audio_bap_config {
+	uint32_t fs;                  /* Sampling frequency in Hz */
+	uint16_t frame_octets;        /* Length of a codec frame in octets */
+	enum audio_frame_duration frame_duration; /* Audio frame duration */
+	enum audio_location location; /* Audio location */
+	uint8_t sdu_frames;           /* Number of frames per SDU */
+};
 
 struct audio_datapath_config {
 	const struct device *i2s_dev;
 	/* const struct device *mclk_dev; */
 	uint32_t pres_delay_us;
-	uint16_t octets_per_frame;
+	struct audio_bap_config bap;
 	bool stereo;
 };
 

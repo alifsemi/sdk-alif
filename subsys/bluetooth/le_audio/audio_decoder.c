@@ -147,7 +147,7 @@ struct audio_decoder *audio_decoder_create(uint32_t const sampling_frequency,
 					   k_thread_stack_t *stack, size_t const stacksize,
 					   struct sdu_queue *p_sdu_queues[],
 					   size_t const num_queues, struct audio_queue *audio_queue,
-					   enum audio_decoder_frame_duration const frame_duration)
+					   enum audio_frame_duration const frame_duration)
 {
 	if (!stack) {
 		LOG_ERR("Thread stack must be provided");
@@ -184,7 +184,7 @@ struct audio_decoder *audio_decoder_create(uint32_t const sampling_frequency,
 	}
 	dec->audio_queue = audio_queue;
 
-	uint32_t const duration = (AUDIO_DECODER_FRAME_10MS == frame_duration)
+	uint32_t const duration = (AUDIO_FRAME_DURATION_10MS == frame_duration)
 					  ? FRAME_DURATION_10_MS
 					  : FRAME_DURATION_7_5_MS;
 

@@ -11,6 +11,7 @@ zephyr_library()
 zephyr_library_sources(
     audio_encoder.c
     audio_decoder.c
+    audio_tofromh.c
     sdu_queue.c
     audio_queue.c
     audio_source_i2s.c
