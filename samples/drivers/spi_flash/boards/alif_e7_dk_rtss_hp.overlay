@@ -5,7 +5,7 @@
 
 / {
 	aliases {
-		spi-flash0 = &ospi1;
+		spi-flash0 = &ospi_flash;
 	};
 };
 &ospi1 {
