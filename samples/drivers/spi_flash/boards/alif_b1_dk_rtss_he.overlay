@@ -12,7 +12,7 @@
  */
 /{
 	aliases {
-		spi-flash0 = &ospi0;
+		spi-flash0 = &ospi_flash;
 	};
 };
 

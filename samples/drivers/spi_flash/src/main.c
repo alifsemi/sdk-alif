@@ -18,9 +18,9 @@ const struct flash_parameters *flash_param;
 
 void single_sector_test(const struct device *flash_dev)
 {
-	const uint16_t expected[] = {0x55, 0xaa, 0x66, 0x99};
+	const uint8_t expected[] = {0x55, 0xaa, 0x66, 0x99};
 	const size_t len = ARRAY_SIZE(expected);
-	uint16_t buf[len];
+	uint8_t buf[len];
 	int rc;
 	int i, e_count = 0;
 
@@ -71,7 +71,7 @@ void single_sector_test(const struct device *flash_dev)
 void erase_test(const struct device *dev, uint32_t len)
 {
 	int ret = 0, i = 0, count = 0;
-	uint16_t r_buf[BUFF_SIZE] = {0};
+	uint8_t r_buf[BUFF_SIZE] = {0};
 
 	printf("\nTest 2: Flash Full Erase\n");
 
@@ -91,7 +91,7 @@ void erase_test(const struct device *dev, uint32_t len)
 
 	/* Verify the read data */
 	for (i = 0; i < BUFF_SIZE; i++) {
-		if (r_buf[i] != (flash_param->erase_value << 8 | flash_param->erase_value)) {
+		if (r_buf[i] != flash_param->erase_value) {
 			count++;
 		}
 	}
@@ -103,8 +103,8 @@ void multi_page_test(const struct device *flash_dev)
 {
 	int rc, i, e_count = 0;
 
-	uint16_t w_buf[BUFF_SIZE] = {0};
-	uint16_t r_buf[BUFF_SIZE] = {0};
+	uint8_t w_buf[BUFF_SIZE] = {0};
+	uint8_t r_buf[BUFF_SIZE] = {0};
 
 	const size_t len = ARRAY_SIZE(w_buf);
 
@@ -121,7 +121,7 @@ void multi_page_test(const struct device *flash_dev)
 	}
 
 	for (i = 0; i < BUFF_SIZE; i++) {
-		w_buf[i] = (256 + i) % 65536;
+		w_buf[i] = i % 256;
 	}
 
 	printf("\nTest 3: Flash write\n");
@@ -164,13 +164,13 @@ void multi_sector_test(const struct device *flash_dev)
 {
 	int rc, i, e_count = 0;
 
-	uint16_t w_buf[BUFF_SIZE] = {0};
-	uint16_t r_buf[BUFF_SIZE] = {0};
+	uint8_t w_buf[BUFF_SIZE] = {0};
+	uint8_t r_buf[BUFF_SIZE] = {0};
 
 	const size_t len = ARRAY_SIZE(w_buf);
 
 	for (i = 0; i < BUFF_SIZE; i++) {
-		w_buf[i] = (512 + i) % 65536;
+		w_buf[i] =  i % 256;
 	}
 
 	printf("\nTest 4: write sector %d\n", SPI_FLASH_SECTOR_4_OFFSET);
@@ -271,7 +271,7 @@ void multi_sector_test(const struct device *flash_dev)
 
 	/* Verify the read data */
 	for (i = 0; i < BUFF_SIZE; i++) {
-		if (r_buf[i] != (flash_param->erase_value << 8 | flash_param->erase_value)) {
+		if (r_buf[i] != flash_param->erase_value) {
 			count_1++;
 		}
 	}
@@ -292,7 +292,7 @@ void multi_sector_test(const struct device *flash_dev)
 
 	/* Verify the read data */
 	for (i = 0; i < BUFF_SIZE; i++) {
-		if (r_buf[i] != (flash_param->erase_value << 8 | flash_param->erase_value)) {
+		if (r_buf[i] != flash_param->erase_value) {
 			count_2++;
 		}
 	}
@@ -310,7 +310,8 @@ void xip_test(const struct device *flash_dev)
 {
 	uint8_t i;
 	uint32_t xip_r[64] = {0}, fls_r[64] = {0}, cnt;
-	uint32_t *ptr = (uint32_t *)DT_PROP_BY_IDX(DT_ALIAS(spi_flash0), xip_base_address, 0);
+	uint32_t *ptr = (uint32_t *)DT_PROP_BY_IDX(DT_PARENT(DT_ALIAS(spi_flash0)),
+						xip_base_address, 0);
 	int32_t rc, e_count = 0;
 
 	printf("\nTest 5: XiP Read\n");
@@ -323,7 +324,7 @@ void xip_test(const struct device *flash_dev)
 
 	printf("Read from Flash cmd while XiP Mode turnned on\n\n");
 
-	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, fls_r, cnt * sizeof(uint16_t));
+	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, fls_r, cnt * sizeof(uint8_t));
 	if (rc != 0) {
 		printf("Flash read failed! %d\n", rc);
 		return;
