@@ -235,6 +235,25 @@ static void on_bap_bc_src_info(uint8_t grp_lid, const gapi_bg_config_t *p_bg_cfg
 static const bap_bc_src_cb_t bap_bc_src_cbs = {.cb_cmp_evt = on_bap_bc_src_cmp_evt,
 					       .cb_info = on_bap_bc_src_info};
 
+static int get_adv_param(bap_bc_adv_param_t *p_adv_param)
+{
+	p_adv_param->adv_intv_min_slot = 160;
+	p_adv_param->adv_intv_max_slot = 160;
+	p_adv_param->ch_map = ADV_ALL_CHNLS_EN;
+	p_adv_param->phy_prim = GAPM_PHY_TYPE_LE_1M;
+	p_adv_param->phy_second = GAPM_PHY_TYPE_LE_2M;
+	p_adv_param->adv_sid = 1;
+#if CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
+	p_adv_param->max_tx_pwr = -2;
+#else
+	p_adv_param->tx_pwr = -2;
+	p_adv_param->own_addr_type = GAPM_STATIC_ADDR;
+	p_adv_param->max_skip = 0;
+	p_adv_param->send_tx_pwr = false;
+#endif
+	return 0;
+}
+
 static int broadcast_source_configure_group(void)
 {
 	const bap_bc_grp_param_t grp_param = {.sdu_intv_us = 10000,
@@ -248,15 +267,14 @@ static int broadcast_source_configure_group(void)
 
 	const gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
 
-	const bap_bc_adv_param_t adv_param = {
-		.adv_intv_min_slot = 160,
-		.adv_intv_max_slot = 160,
-		.ch_map = ADV_ALL_CHNLS_EN,
-		.phy_prim = GAPM_PHY_TYPE_LE_1M,
-		.phy_second = GAPM_PHY_TYPE_LE_2M,
-		.adv_sid = 1,
-		.max_tx_pwr = -2,
-	};
+	bap_bc_adv_param_t adv_param;
+
+	int ret = get_adv_param(&adv_param);
+
+	if (ret) {
+		LOG_ERR("Failed to get advertising parameters, err %d", ret);
+		return -1;
+	}
 
 	const bap_bc_per_adv_param_t per_adv_param = {
 		.adv_intv_min_frame = 160,

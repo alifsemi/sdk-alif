@@ -12,13 +12,9 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/types.h>
+#include "bluetooth/le_audio/audio_tofromh.h"
 #include "audio_queue.h"
 #include "sdu_queue.h"
-
-enum audio_decoder_frame_duration {
-	AUDIO_DECODER_FRAME_7_5_MS,
-	AUDIO_DECODER_FRAME_10MS,
-};
 
 /**
  * @brief Callback function signature for SDU completion
@@ -58,7 +54,7 @@ typedef void (*audio_decoder_sdu_cb_t)(void *context, uint32_t timestamp, uint16
 struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
 					   size_t stacksize, struct sdu_queue *p_sdu_queues[],
 					   size_t num_queues, struct audio_queue *audio_queue,
-					   enum audio_decoder_frame_duration frame_duration);
+					   enum audio_frame_duration frame_duration);
 
 /**
  * @brief Register a callback to be called on completion of each decoded frame
