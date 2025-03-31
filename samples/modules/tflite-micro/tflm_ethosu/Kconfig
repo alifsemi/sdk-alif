@@ -9,4 +9,8 @@ config TENSORFLOW_LITE_MICRO
 	bool
 	default y
 
+config ETHOS_U_AXI0_ONLY
+	bool "Only use AXI0 port on the Ethos"
+	default false
+
 source "Kconfig.zephyr"
