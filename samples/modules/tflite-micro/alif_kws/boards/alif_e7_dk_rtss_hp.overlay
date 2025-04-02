@@ -13,3 +13,8 @@
 		i2s-mic = &i2s3;
 	};
 };
+
+&ospi1 {
+	bus-speed = <100000000>;
+	status = "okay";
+};

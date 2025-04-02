@@ -8,13 +8,7 @@
  *
  */
 
-/ {
-	aliases {
-		i2s-mic = &i2s3;
-	};
-};
-
-&ospi1 {
-	bus-speed = <100000000>;
+&ospi0 {
+	bus-speed = <40000000>;
 	status = "okay";
 };

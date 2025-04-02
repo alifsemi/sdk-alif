@@ -13,3 +13,13 @@
 		i2s-mic = &i2s2;
 	};
 };
+
+/* i2s1 default pinmux conflicts with ospi0 */
+&i2s1 {
+	status = "disabled";
+};
+
+&ospi0 {
+	bus-speed = <40000000>;
+	status = "okay";
+};
