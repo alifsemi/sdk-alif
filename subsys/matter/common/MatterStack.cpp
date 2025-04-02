@@ -9,6 +9,7 @@
 
 #include "MatterStack.h"
 #include "AppTask.h"
+#include "MatterUi.h"
 #include "BLEManagerImpl.h"
 #include "FabricTableDelegate.h"
 
@@ -103,6 +104,9 @@ void MatterStack::matter_internal_init()
 		Instance().sInitResult = Instance().dev_init_cb();
 		VerifyInitResultOrReturn(Instance().sInitResult, "Device post init fail");
 	}
+
+	// Init led status
+	MatterStack::LedStatusUpdate(reinterpret_cast<intptr_t>(this));	
 }
 
 void MatterStack::InitInternal(intptr_t class_ptr)
@@ -114,6 +118,29 @@ void MatterStack::InitInternal(intptr_t class_ptr)
 	entry->signal_condition();
 }
 
+void MatterStack::LedStatusUpdate(intptr_t class_ptr)
+{
+	MatterStack *entry = reinterpret_cast<MatterStack *>(class_ptr);
+	int led_period = 0;
+
+	if (entry->sIsThreadProvisioned) {
+		if (!entry->sIsThreadAttached) {
+			led_period = 500;
+		} else if (entry->sHaveBLEConnections) {
+			led_period = 300;
+		}
+
+	} else {
+		if (entry->sHaveBLEConnections) {
+			led_period = 700;
+		} else {
+			led_period = 1000;
+		}
+	}
+	/* Update Boot period or do short Led Blink Indication */
+	MatterUi::Instance().StatusLedTimerSet(led_period);
+}
+
 void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
 {
 	MatterStack *entry = reinterpret_cast<MatterStack *>(arg);
@@ -122,6 +149,9 @@ void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
 	case DeviceEventType::kCHIPoBLEAdvertisingChange:
 		entry->sHaveBLEConnections = ConnectivityMgr().NumBLEConnections() != 0;
 		LOG_INF("BLE connection state %d", Instance().sHaveBLEConnections);
+		break;
+	case DeviceEventType::kOperationalNetworkEnabled:
+		LOG_INF("Network Enabled");
 		break;
 
 	case DeviceEventType::kDnssdInitialized:
@@ -151,9 +181,18 @@ void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
 		break;
 
 	case DeviceEventType::kCommissioningComplete:
-		LOG_INF("Commission complet node ide %lld, fabid %d",
-			event->CommissioningComplete.nodeId,
-			event->CommissioningComplete.fabricIndex);
+		matter_stack_fabric_add(event, entry->sHaveCommission);
+		if (entry->sHaveCommission) {
+			LOG_INF("Commission complete node ide %lld, fabric %d",
+				event->CommissioningComplete.nodeId,
+				event->CommissioningComplete.fabricIndex);
+			entry->sHaveCommission = false;
+		} else {
+			LOG_INF("Commission complete for data flow node ide %lld, fabric %d",
+				event->CommissioningComplete.nodeId,
+				event->CommissioningComplete.fabricIndex);
+		}
+
 		break;
 
 	case DeviceEventType::kServiceProvisioningChange:
@@ -167,12 +206,28 @@ void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
 			event->FailSafeTimerExpired.fabricIndex,
 			event->FailSafeTimerExpired.addNocCommandHasBeenInvoked,
 			event->FailSafeTimerExpired.updateNocCommandHasBeenInvoked);
+			matter_stack_fabric_remove(event->FailSafeTimerExpired.fabricIndex);
 		break;
+	case DeviceEventType::kCHIPoBLEConnectionEstablished:
+		LOG_INF("BLE connection establishment");
+		entry->sHaveCommission = true;
+	break;
+	case DeviceEventType::kCHIPoBLEConnectionClosed:
+		LOG_INF("BLE connection closed");
+		entry->sHaveBLEConnections = ConnectivityMgr().NumBLEConnections() != 0;
+		entry->sHaveCommission = false;
+	break;
+	case DeviceEventType::kServerReady:
+		LOG_INF("Server Init Complete");
+	break;
 
 	default:
 		LOG_INF("Unhandled event types: %d", event->Type);
 		break;
 	}
+
+	// Set Status led indication
+	MatterStack::LedStatusUpdate(arg);
 }
 
 CHIP_ERROR MatterStack::matter_stack_init(DevInit device_init_cb)
@@ -205,4 +260,72 @@ CHIP_ERROR MatterStack::matter_stack_start()
 	}
 	wait_condition();
 	return sInitResult;
+}
+
+void MatterStack::matter_stack_fabric_add(const chip::DeviceLayer::ChipDeviceEvent *event,
+					  bool commission_fabric)
+{
+	struct CommissioningFabricTable *entry = NULL;
+
+	for (int i = 0; i < MATTER_FABRIC_TABLE_MAX_SIZE; i++) {
+		if (Instance().fabricTable[i].in_use &&
+
+		    Instance().fabricTable[i].fabricIndex ==
+			    event->CommissioningComplete.fabricIndex) {
+			entry = &Instance().fabricTable[i];
+			break;
+		}
+	}
+
+	if (!entry) {
+		for (int i = 0; i < MATTER_FABRIC_TABLE_MAX_SIZE; i++) {
+			if (!Instance().fabricTable[i].in_use) {
+				entry = &Instance().fabricTable[i];
+				break;
+			}
+		}
+	}
+
+	if (entry) {
+		entry->in_use = true;
+		entry->commission = commission_fabric;
+		entry->fabricIndex = event->CommissioningComplete.fabricIndex;
+		entry->nodeId = event->CommissioningComplete.nodeId;
+	}
+}
+
+void MatterStack::matter_stack_fabric_remove(FabricIndex fabricIndex)
+{
+	struct CommissioningFabricTable *entry = NULL;
+
+	for (int i=0; i < MATTER_FABRIC_TABLE_MAX_SIZE; i++) {
+		if (!Instance().fabricTable[i].in_use || Instance().fabricTable[i].fabricIndex != fabricIndex) {
+			continue;
+		}
+		entry = &Instance().fabricTable[i];
+		break;
+	}
+	
+	if (entry) {
+		entry->in_use = false;
+		entry->fabricIndex = 0;
+		entry->nodeId = 0;
+	}
+}
+
+void MatterStack::matter_stack_fabric_print()
+{
+	for (int i = 0; i < MATTER_FABRIC_TABLE_MAX_SIZE; i++) {
+		if (!fabricTable[i].in_use) {
+			continue;
+		}
+		LOG_INF("Fabric session complete node ide %lld, fabric %d admin session %u",
+			fabricTable[i].nodeId, fabricTable[i].fabricIndex,
+			fabricTable[i].commission);
+	}
+}
+
+void MatterStack::StatusLedBlink()
+{
+	LedStatusUpdate(reinterpret_cast<intptr_t>(this));
 }

@@ -30,6 +30,15 @@ using namespace ::chip::app;
 using namespace ::chip::Credentials;
 using namespace ::chip::DeviceLayer;
 
+struct CommissioningFabricTable {
+	uint64_t nodeId;
+	FabricIndex fabricIndex;
+	bool in_use;
+	bool commission;
+};
+
+#define MATTER_FABRIC_TABLE_MAX_SIZE 2
+
 class MatterStack
 {
       private:
@@ -44,14 +53,21 @@ class MatterStack
 		sIsThreadEnabled = false;
 		sIsThreadAttached = false;
 		sHaveBLEConnections = false;
+		sHaveCommission = false;
+		for (int i=0; i< MATTER_FABRIC_TABLE_MAX_SIZE;i++) {
+			fabricTable[i].in_use = false;
+			fabricTable[i].commission = false;
+		}
 	}
 	struct k_mutex sInitMutex;
 	struct k_condvar sInitCondVar;
+	struct CommissioningFabricTable fabricTable[MATTER_FABRIC_TABLE_MAX_SIZE];
 	bool ready;
 	bool sIsThreadProvisioned;
 	bool sIsThreadEnabled;
 	bool sIsThreadAttached;
 	bool sHaveBLEConnections;
+	bool sHaveCommission;
 	CHIP_ERROR sInitResult;
 
 #if CONFIG_CHIP_FACTORY_DATA
@@ -81,10 +97,15 @@ class MatterStack
 	// Need to be used static because these functions are registered to Matter scheduler
 	static void InitInternal(intptr_t class_ptr);
 	static void ChipEventHandler(const chip::DeviceLayer::ChipDeviceEvent *event, intptr_t arg);
+	static void LedStatusUpdate(intptr_t class_ptr);
+	static void matter_stack_fabric_add(const chip::DeviceLayer::ChipDeviceEvent *event, bool commission_fabric);
+	static void matter_stack_fabric_remove(FabricIndex fabricIndex);
 
       public:
 	CHIP_ERROR matter_stack_init(DevInit device_init_cb);
 	CHIP_ERROR matter_stack_start();
+	void matter_stack_fabric_print();
+	void StatusLedBlink();
 
 	static MatterStack &Instance()
 	{
