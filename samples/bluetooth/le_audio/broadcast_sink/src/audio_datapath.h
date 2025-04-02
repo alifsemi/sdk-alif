@@ -12,13 +12,15 @@
 
 #include <zephyr/types.h>
 #include <zephyr/device.h>
-#include "bluetooth/le_audio/audio_tofromh.h"
+#include "bluetooth/le_audio/audio_utils.h"
+#include "bap.h"
+#include "gaf.h"
 
 struct audio_bap_config {
-	uint32_t fs;                  /* Sampling frequency in Hz */
+	enum bap_sampling_freq sampling_freq; /* Sampling frequency */
 	uint16_t frame_octets;        /* Length of a codec frame in octets */
-	enum audio_frame_duration frame_duration; /* Audio frame duration */
-	enum audio_location location; /* Audio location */
+	enum bap_frame_dur frame_duration; /* Audio frame duration */
+	enum gaf_loc_bf location;          /* Audio location */
 	uint8_t sdu_frames;           /* Number of frames per SDU */
 };
 

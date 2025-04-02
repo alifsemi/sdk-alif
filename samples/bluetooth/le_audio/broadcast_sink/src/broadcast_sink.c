@@ -14,7 +14,7 @@
 #include <zephyr/sys/__assert.h>
 #include <string.h>
 
-#include "bluetooth/le_audio/audio_tofromh.h"
+#include "bluetooth/le_audio/audio_utils.h"
 
 #include "alif_lc3.h"
 #include "bap_bc_sink.h"
@@ -343,9 +343,9 @@ static void on_bap_bc_scan_subgroup_report(uint8_t pa_lid, uint8_t sgrp_id, uint
 		sink_env.datapath_cfg_valid = false;
 	}
 
-	sink_env.datapath_cfg.bap.location = audio_gaf_loc_to_location(p_cfg->param.location_bf);
+	sink_env.datapath_cfg.bap.location = p_cfg->param.location_bf;
 	sink_env.datapath_cfg.bap.frame_octets = p_cfg->param.frame_octet;
-	sink_env.datapath_cfg.bap.fs = audio_bap_sampling_freq_to_hz(p_cfg->param.sampling_freq);
+	sink_env.datapath_cfg.bap.sampling_freq = p_cfg->param.sampling_freq;
 	sink_env.datapath_cfg.bap.frame_duration = p_cfg->param.frame_dur;
 	sink_env.datapath_cfg.bap.sdu_frames = p_cfg->param.frames_sdu;
 }

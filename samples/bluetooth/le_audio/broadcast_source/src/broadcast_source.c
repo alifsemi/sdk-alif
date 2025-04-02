@@ -14,11 +14,13 @@
 #include <zephyr/random/random.h>
 #include "bluetooth/le_audio/audio_source_i2s.h"
 #include "bluetooth/le_audio/audio_queue.h"
+#include "bluetooth/le_audio/audio_utils.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 #include "bluetooth/le_audio/sdu_queue.h"
 #include "bluetooth/le_audio/iso_datapath_htoc.h"
 #include "bluetooth/le_audio/presentation_compensation.h"
 #include "alif_lc3.h"
+#include "lc3_api.h"
 #include "bap.h"
 #include "bap_bc.h"
 #include "bap_bc_src.h"
@@ -104,9 +106,9 @@ static int audio_datapath_init(void)
 					 2 * CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND);
 	__ASSERT(audio_queue, "Failed to create audio queue");
 
-	enum audio_encoder_frame_duration const frame_duration =
-		IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS) ? AUDIO_ENCODER_FRAME_10MS
-								      : AUDIO_ENCODER_FRAME_7_5_MS;
+	lc3_frame_duration_t frame_duration = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS)
+						      ? FRAME_DURATION_10_MS
+						      : FRAME_DURATION_7_5_MS;
 	struct sdu_queue *queues[] = {
 		sdu_queue_l,
 		sdu_queue_r,
@@ -114,6 +116,7 @@ static int audio_datapath_init(void)
 	audio_encoder = audio_encoder_create(CONFIG_ALIF_BLE_AUDIO_FS_HZ, encoder_stack,
 					     CONFIG_LC3_ENCODER_STACK_SIZE, queues,
 					     ARRAY_SIZE(queues), audio_queue, frame_duration);
+
 	__ASSERT(audio_encoder, "Failed to create audio encoder");
 
 	ret = audio_source_i2s_configure(i2s_dev, audio_queue,
@@ -130,24 +133,6 @@ static int audio_datapath_init(void)
 	return 0;
 }
 SYS_INIT(audio_datapath_init, APPLICATION, 0);
-
-static int bap_sampling_freq_from_hz(uint32_t sampling_freq_hz)
-{
-	switch (sampling_freq_hz) {
-	case 8000:
-		return BAP_SAMPLING_FREQ_8000HZ;
-	case 16000:
-		return BAP_SAMPLING_FREQ_16000HZ;
-	case 24000:
-		return BAP_SAMPLING_FREQ_24000HZ;
-	case 32000:
-		return BAP_SAMPLING_FREQ_32000HZ;
-	case 48000:
-		return BAP_SAMPLING_FREQ_48000HZ;
-	default:
-		return BAP_SAMPLING_FREQ_UNKNOWN;
-	}
-}
 
 static void audio_datapath_start(uint8_t sgrp_lid)
 {
@@ -302,14 +287,22 @@ static int broadcast_source_configure_group(void)
 		.param = {
 				.location_bf = 0, /* Location is unspecified at subgroup level */
 				.frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
-				.frame_dur = BAP_FRAME_DUR_10MS,
+				.frame_dur = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS)
+						     ? BAP_FRAME_DUR_10MS
+						     : BAP_FRAME_DUR_7_5MS,
 				.frames_sdu =
 					0, /* 0 is unspecified, data will not be placed in BASE */
 			},
 		.add_cfg.len = 0,
 	};
+	/* Convert to sampling frequency */
+	sgrp_cfg.param.sampling_freq = audio_hz_to_bap_sampling_freq(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
 
-	sgrp_cfg.param.sampling_freq = bap_sampling_freq_from_hz(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
+	/* Validate sampling frequency conversion */
+	if (sgrp_cfg.param.sampling_freq == BAP_SAMPLING_FREQ_UNKNOWN) {
+		LOG_ERR("Unsupported sampling frequency: %u Hz", CONFIG_ALIF_BLE_AUDIO_FS_HZ);
+		return -1;
+	}
 
 	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
 	 * statically allocated

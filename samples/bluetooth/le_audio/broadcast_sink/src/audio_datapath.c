@@ -57,12 +57,12 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 }
 #endif
 
-static size_t frame_len_us(enum audio_frame_duration fd)
+static size_t frame_len_us(enum bap_frame_dur fd)
 {
 	switch (fd) {
-	case AUDIO_FRAME_DURATION_7P5MS:
+	case BAP_FRAME_DUR_7_5MS:
 		return 750 * 1000;
-	case AUDIO_FRAME_DURATION_10MS:
+	case BAP_FRAME_DUR_10MS:
 		return 10 * 1000;
 	default:
 		__ASSERT(false, "Unknown frame duration");
@@ -86,7 +86,7 @@ static size_t samples_in_audio_block(struct audio_datapath_config *cfg)
 	int channels = cfg->stereo ? 2 : 1;
 	int frames_in_sec = (1000 * 1000) / frame_len_us(cfg->bap.frame_duration);
 
-	return cfg->bap.fs / frames_in_sec * channels;
+	return audio_bap_sampling_freq_to_hz(cfg->bap.sampling_freq) / frames_in_sec * channels;
 }
 
 int audio_datapath_create(struct audio_datapath_config *cfg)
@@ -150,8 +150,9 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		env.sdu_queue_r,
 	};
 	env.decoder = audio_decoder_create(
-		cfg->bap.fs, decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE, queues,
-		ARRAY_SIZE(queues), env.audio_queue, cfg->bap.frame_duration);
+		audio_bap_sampling_freq_to_hz(cfg->bap.sampling_freq), decoder_stack,
+		CONFIG_LC3_DECODER_STACK_SIZE, queues, ARRAY_SIZE(queues), env.audio_queue,
+		audio_bap_frame_dur_to_lc3_frame_dur(cfg->bap.frame_duration));
 	if (env.decoder == NULL) {
 		LOG_ERR("Failed to create audio decoder");
 		return -ENOMEM;

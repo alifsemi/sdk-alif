@@ -14,11 +14,7 @@
 #include <zephyr/types.h>
 #include "audio_queue.h"
 #include "sdu_queue.h"
-
-enum audio_encoder_frame_duration {
-	AUDIO_ENCODER_FRAME_7_5_MS,
-	AUDIO_ENCODER_FRAME_10MS,
-};
+#include "lc3_api.h"
 
 /**
  * @brief Callback function signature for SDU completion
@@ -62,7 +58,7 @@ typedef void (*audio_encoder_sdu_cb_t)(void *context, uint32_t capture_timestamp
 struct audio_encoder *audio_encoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
 					   size_t stacksize, struct sdu_queue *p_sdu_queues[],
 					   size_t num_queues, struct audio_queue *audio_queue,
-					   enum audio_encoder_frame_duration frame_duration);
+					   lc3_frame_duration_t frame_duration);
 
 /**
  * @brief Register a callback to be called on completion of each encoded frame
