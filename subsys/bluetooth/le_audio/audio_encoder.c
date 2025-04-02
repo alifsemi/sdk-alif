@@ -9,16 +9,18 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/check.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 
 #include <stdlib.h>
 
-#include "alif_lc3.h"
+#include "lc3_api.h"
 #include "audio_queue.h"
 #include "sdu_queue.h"
 #include "gapi_isooshm.h"
 #include "audio_encoder.h"
+#include "audio_utils.h"
 
 LOG_MODULE_REGISTER(audio_encoder, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
@@ -168,7 +170,7 @@ struct audio_encoder *audio_encoder_create(uint32_t const sampling_frequency,
 					   k_thread_stack_t *stack, size_t const stacksize,
 					   struct sdu_queue *p_sdu_queues[],
 					   size_t const num_queues, struct audio_queue *audio_queue,
-					   enum audio_encoder_frame_duration const frame_duration)
+					   lc3_frame_duration_t frame_duration)
 {
 	if (!stack) {
 		LOG_ERR("Thread stack must be provided");
@@ -190,6 +192,12 @@ struct audio_encoder *audio_encoder_create(uint32_t const sampling_frequency,
 		return NULL;
 	}
 
+	CHECKIF(!((frame_duration == FRAME_DURATION_10_MS) ||
+		  (frame_duration == FRAME_DURATION_7_5_MS))) {
+		LOG_ERR("Invalid frame duration!");
+		return NULL;
+	}
+
 	struct audio_encoder *enc = calloc(1, sizeof(*enc));
 
 	if (!enc) {
@@ -206,12 +214,8 @@ struct audio_encoder *audio_encoder_create(uint32_t const sampling_frequency,
 	enc->mono = (num_valid == 1);
 	enc->audio_queue = audio_queue;
 
-	uint32_t const duration = (AUDIO_ENCODER_FRAME_10MS == frame_duration)
-					  ? FRAME_DURATION_10_MS
-					  : FRAME_DURATION_7_5_MS;
-
 	/* Configure LC3 codec and allocate required memory */
-	int ret = lc3_api_configure(&enc->lc3_cfg, (int32_t)sampling_frequency, duration);
+	int ret = lc3_api_configure(&enc->lc3_cfg, (int32_t)sampling_frequency, frame_duration);
 
 	if (ret) {
 		LOG_ERR("Failed to configure LC3 codec, err %d", ret);
