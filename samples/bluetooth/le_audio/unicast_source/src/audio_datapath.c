@@ -20,6 +20,7 @@
 #include "bluetooth/le_audio/presentation_compensation.h"
 #include "bluetooth/le_audio/sdu_queue.h"
 #include "alif_lc3.h"
+#include "lc3_api.h"
 #include "audio_datapath.h"
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
@@ -203,8 +204,7 @@ int audio_datapath_create_source(struct audio_datapath_config *cfg)
 	env.encoder.p_encoder = audio_encoder_create(
 		cfg->sampling_rate_hz, encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE,
 		env.encoder.sdu_queue, num_valid_queues_enc, env.encoder.p_audio_queue,
-		cfg->frame_duration_is_10ms ? AUDIO_ENCODER_FRAME_10MS
-					    : AUDIO_ENCODER_FRAME_7_5_MS);
+		cfg->frame_duration_is_10ms ? FRAME_DURATION_10_MS : FRAME_DURATION_7_5_MS);
 	if (env.encoder.p_encoder == NULL) {
 		LOG_ERR("Failed to create audio encoder");
 		return -ENOMEM;

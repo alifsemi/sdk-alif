@@ -9,12 +9,14 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/sys/check.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 
 #include <stdlib.h>
 
 #include "alif_lc3.h"
+#include "lc3_api.h"
 #include "audio_queue.h"
 #include "sdu_queue.h"
 #include "gapi_isooshm.h"
@@ -103,7 +105,11 @@ static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 			ret = lc3_api_decode_frame(&dec->lc3_cfg, dec->lc3_decoder[i], p_sdu->data,
 						   p_sdu->sdu_len, bad_frame, &bec_detect,
 						   p_audio_data, dec->lc3_scratch);
-			__ASSERT(ret == 0, "LC3 decoding failed on channel %d with err %d", i, ret);
+			if (ret != 0) {
+				LOG_ERR("LC3 decoding failed on channel %d with err %d", i, ret);
+				/* Fill with silence on decode error */
+				memset(p_audio_data, 0, half_audio_block_samples * sizeof(int16_t));
+			}
 
 			if (bec_detect) {
 				LOG_WRN("Corrupted input frame is detected");
@@ -147,7 +153,7 @@ struct audio_decoder *audio_decoder_create(uint32_t const sampling_frequency,
 					   k_thread_stack_t *stack, size_t const stacksize,
 					   struct sdu_queue *p_sdu_queues[],
 					   size_t const num_queues, struct audio_queue *audio_queue,
-					   enum audio_frame_duration const frame_duration)
+					   lc3_frame_duration_t frame_duration)
 {
 	if (!stack) {
 		LOG_ERR("Thread stack must be provided");
@@ -169,6 +175,12 @@ struct audio_decoder *audio_decoder_create(uint32_t const sampling_frequency,
 		return NULL;
 	}
 
+	CHECKIF(!((frame_duration == FRAME_DURATION_10_MS) ||
+		  (frame_duration == FRAME_DURATION_7_5_MS))) {
+		LOG_ERR("Invalid frame duration!");
+		return NULL;
+	}
+
 	struct audio_decoder *dec = (struct audio_decoder *)calloc(1, sizeof(struct audio_decoder));
 
 	if (!dec) {
@@ -184,12 +196,8 @@ struct audio_decoder *audio_decoder_create(uint32_t const sampling_frequency,
 	}
 	dec->audio_queue = audio_queue;
 
-	uint32_t const duration = (AUDIO_FRAME_DURATION_10MS == frame_duration)
-					  ? FRAME_DURATION_10_MS
-					  : FRAME_DURATION_7_5_MS;
-
 	/* Configure LC3 codec and allocate required memory */
-	int ret = lc3_api_configure(&dec->lc3_cfg, (int32_t)sampling_frequency, duration);
+	int ret = lc3_api_configure(&dec->lc3_cfg, (int32_t)sampling_frequency, frame_duration);
 
 	if (ret) {
 		LOG_ERR("Failed to configure LC3 codec, err %d", ret);
