@@ -25,13 +25,14 @@ using namespace chip;
 using namespace chip::app;
 using namespace chip::app::Clusters;
 
-void LightSwitch::Init(chip::EndpointId aLightDimmerSwitchEndpoint)
+void LightSwitch::Init(chip::EndpointId aLightDimmerSwitchEndpoint, chip::EndpointId aLightGenericSwitchEndpointId)
 {
 	BindingHandler::GetInstance().Init();
 
 	/* Enable shell commands */
 	SwitchCommands::RegisterSwitchCommands();
 	mLightSwitchEndpoint = aLightDimmerSwitchEndpoint;
+	mLightGenericSwitchEndpointId = aLightGenericSwitchEndpointId;
 }
 
 void LightSwitch::LightControl(Action mAction)
@@ -230,4 +231,29 @@ void LightSwitch::LightSwitchChangedHandler(const EmberBindingTableEntry &bindin
 		LOG_ERR("Invalid binding type %d command data", binding.type);
 		break;
 	}
+}
+
+void LightSwitch::GenericSwitchInitialPress()
+{
+    DeviceLayer::SystemLayer().ScheduleLambda([this] {
+        // Press moves Position from 0 (idle) to 1 (press)
+        uint8_t newPosition = 1;
+
+        Clusters::Switch::Attributes::CurrentPosition::Set(mLightGenericSwitchEndpointId, newPosition);
+        // InitialPress event takes newPosition as event data
+        Clusters::SwitchServer::Instance().OnInitialPress(mLightGenericSwitchEndpointId, newPosition);
+    });
+}
+
+void LightSwitch::GenericSwitchReleasePress()
+{
+    DeviceLayer::SystemLayer().ScheduleLambda([this] {
+        // Release moves Position from 1 (press) to 0 (idle)
+        uint8_t previousPosition = 1;
+        uint8_t newPosition      = 0;
+
+        Clusters::Switch::Attributes::CurrentPosition::Set(mLightGenericSwitchEndpointId, newPosition);
+        // ShortRelease event takes previousPosition as event data
+        Clusters::SwitchServer::Instance().OnShortRelease(mLightGenericSwitchEndpointId, previousPosition);
+    });
 }

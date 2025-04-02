@@ -48,6 +48,7 @@ target_sources(app PRIVATE
                src/ShellCommands.cpp
                ${ALIF_COMMON}/binding/BindingHandler.cpp
                ${ALIF_COMMON}/common/MatterStack.cpp
+               ${ALIF_COMMON}/common/MatterUi.cpp
                ${ALIF_COMMON}/common/FabricTableDelegate.cpp)
               
 

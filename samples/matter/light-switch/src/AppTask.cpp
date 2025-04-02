@@ -11,6 +11,7 @@
 #include "AppConfig.h"
 #include "LightSwitch.h"
 #include "MatterStack.h"
+#include "MatterUi.h"
 
 #include <DeviceInfoProviderImpl.h>
 #include <app/TestEventTriggerDelegate.h>
@@ -38,6 +39,7 @@ using namespace ::chip::DeviceLayer;
 namespace
 {
 constexpr EndpointId kLightDimmerSwitchEndpointId = 1;
+constexpr EndpointId kLightGenericSwitchEndpointId = 2;
 constexpr EndpointId kLightEndpointId = 1;
 
 constexpr int kAppEventQueueSize = 10;
@@ -46,18 +48,41 @@ K_MSGQ_DEFINE(sAppEventQueue, sizeof(AppEvent), kAppEventQueueSize, alignof(AppE
 
 Identify sIdentify = {kLightEndpointId, AppTask::IdentifyStartHandler, AppTask::IdentifyStopHandler,
 		      Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
+Identify sIdentifyGen = {kLightGenericSwitchEndpointId, AppTask::IdentifyStartHandler, AppTask::IdentifyStopHandler,
+			Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
 
 chip::DeviceLayer::DeviceInfoProviderImpl gExampleDeviceInfoProvider;
 
 CHIP_ERROR DevInit()
 {
-	LightSwitch::GetInstance().Init(kLightDimmerSwitchEndpointId);
+	LightSwitch::GetInstance().Init(kLightDimmerSwitchEndpointId, kLightGenericSwitchEndpointId);
 	gExampleDeviceInfoProvider.SetStorageDelegate(
 		&Server::GetInstance().GetPersistentStorage());
 	chip::DeviceLayer::SetDeviceInfoProvider(&gExampleDeviceInfoProvider);
+	MatterUi::Instance().Init(AppTask::ButtonUpdateHandler);
 	return CHIP_NO_ERROR;
 }
 } // namespace
+
+void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
+{
+	if (has_changed & 1) {
+		/* Press Button Update  toggle led when state goes to 0*/
+		if (!(button_state & 1)) {
+			MatterStack::Instance().StatusLedBlink();
+			LightSwitch::GetInstance().LightControl(LightSwitch::Action::Toggle);
+		}
+
+	} else if (has_changed & 2) {
+		/* Generic functional button */
+		if (button_state & 2) {
+			/* Set Anchor time */
+			LOG_INF("SW1 press");
+		} else {
+			LOG_INF("SW1 released");
+		}
+	}
+}
 
 void AppTask::PostEvent(AppEvent * aEvent)
 {
@@ -130,10 +155,6 @@ CHIP_ERROR AppTask::Init()
 {
 	/* Initialize Matter stack */
 	ReturnErrorOnFailure(MatterStack::Instance().matter_stack_init(DevInit));
-
-	/* Init Light switch endpoint */
-	
-	
 
 	/* Start Matter sheduler */
 	ReturnErrorOnFailure(MatterStack::Instance().matter_stack_start());

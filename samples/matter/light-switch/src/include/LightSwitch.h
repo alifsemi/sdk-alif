@@ -22,9 +22,11 @@ class LightSwitch
 		Off     /// Turn off light on lighting-app device
 	};
 
-	void Init(chip::EndpointId aLightDimmerSwitchEndpoint);
+	void Init(chip::EndpointId aLightDimmerSwitchEndpoint, chip::EndpointId aLightGenericSwitchEndpointId);
 	void LightControl(Action);
 	void LightDimmControl(uint16_t brigtness);
+	void GenericSwitchInitialPress();
+	void GenericSwitchReleasePress();
 	static void LightSwitchChangedHandler(const EmberBindingTableEntry &binding,
 					      chip::OperationalDeviceProxy *deviceProxy,
 					      BindingHandler::BindingData &bindingData);
@@ -46,4 +48,5 @@ class LightSwitch
 	constexpr static auto kMaximumBrightness = 254;
 
 	chip::EndpointId mLightSwitchEndpoint;
+	chip::EndpointId mLightGenericSwitchEndpointId;
 };
