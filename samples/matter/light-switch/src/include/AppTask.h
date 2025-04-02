@@ -35,10 +35,12 @@ class AppTask
 	CHIP_ERROR StartApp();
 	static void IdentifyStartHandler(Identify *);
 	static void IdentifyStopHandler(Identify *);
+	static void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed);
 
       private:
 
 	CHIP_ERROR Init();
+	
 	static void PostEvent(AppEvent * event);
     	static void DispatchEvent(const AppEvent * event);
     	static void GetEvent(AppEvent * aEvent);

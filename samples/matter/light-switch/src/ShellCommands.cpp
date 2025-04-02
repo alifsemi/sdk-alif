@@ -8,6 +8,7 @@
  */
 
 #include "ShellCommands.h"
+#include "MatterStack.h"
 #include "LightSwitch.h"
 #include <platform/CHIPDeviceLayer.h>
 
@@ -45,6 +46,7 @@ static CHIP_ERROR LightComandHandler(int argc, char **argv)
 static CHIP_ERROR BindTablePrint(int argc, char **argv)
 {
 	BindingHandler::GetInstance().PrintTable();
+	MatterStack::Instance().matter_stack_fabric_print();
 	return CHIP_NO_ERROR;
 }
 
@@ -53,7 +55,7 @@ void RegisterSwitchCommands(void)
 	static const shell_command_t sLightCommand = {
 		LightComandHandler, "light", "Light test commands. Usage: light [on|off|toggle]"};
 	static const shell_command_t sTableCommand = {BindTablePrint, "table",
-						      "Print light binding table. Usage: table"};
+						      "Print light binding table and Fabric table user data. Usage: table"};
 
 	Engine::Root().RegisterCommands(&sLightCommand, 1);
 	Engine::Root().RegisterCommands(&sTableCommand, 1);
