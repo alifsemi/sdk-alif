@@ -9,7 +9,7 @@
  */
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
-#include <zephyr/drivers/mhuv2_ipm.h>
+#include <zephyr/drivers/ipm.h>
 
 #define ITERATIONS 10
 const struct device *mhu1_r;
@@ -18,30 +18,42 @@ const struct device *mhu1_s;
 static volatile bool msg_sent;
 static volatile bool msg_received;
 
-static void recv_cb(const struct device *mhuv2_ipmdev, uint32_t *user_data)
+static void recv_cb(const struct device *mhuv2_ipmdev, void *user_data,
+		uint32_t id, volatile void *data)
 {
-	printk("MSG received is 0x%x\n", *user_data);
+	ARG_UNUSED(mhuv2_ipmdev);
+	ARG_UNUSED(data);
+
+	printk("RTSS-HP: MSG rcvd on ch:%d is 0x%x\n", id, *((uint32_t *)user_data));
 	msg_received = true;
 }
 
-static void send_cb(const struct device *mhuv2_ipmdev, uint32_t *user_data)
+static void send_cb(const struct device *mhuv2_ipmdev, void *user_data,
+		uint32_t id, volatile void *data)
 {
-	printk("data sent\n");
+	ARG_UNUSED(mhuv2_ipmdev);
+	ARG_UNUSED(user_data);
+	ARG_UNUSED(data);
+
+	printk("RTSS-HP: MSG sent on Ch:%d\n", id);
 	msg_sent = true;
 }
 
 static void send(void)
 {
 	uint32_t set_mhu = 0xFACEFACE;
+	int wait = 0;
+	int size = 4;
 
 	msg_received = false;
 	msg_sent = false;
-	mhuv2_ipm_send(mhu1_s, 0, &set_mhu);
+
+	ipm_send(mhu1_s, wait, 0, &set_mhu, size);
 	while (!msg_sent)
 		;
 	msg_sent = false;
 	set_mhu = 0xFADEFADE;
-	mhuv2_ipm_send(mhu1_s, 1, &set_mhu);
+	ipm_send(mhu1_s, wait, 1, &set_mhu, size);
 	while (!msg_sent)
 		;
 	msg_sent = false;
@@ -61,8 +73,13 @@ int main(void)
 		printk("MHU devices not ready\n");
 		return -1;
 	}
-	mhuv2_ipm_rb(mhu1_r, recv_cb, &recv_data);
-	mhuv2_ipm_rb(mhu1_s, send_cb, NULL);
+
+	ipm_register_callback(mhu1_r, recv_cb, &recv_data);
+	ipm_register_callback(mhu1_s, send_cb, NULL);
+
+	/* Enable Rx MHU interrupt */
+	ipm_set_enabled(mhu1_r, true);
+
 	/* wait until receiver gets ready */
 	k_sleep(K_MSEC(500));
 	while (i < ITERATIONS) {
@@ -72,5 +89,8 @@ int main(void)
 			;
 		++i;
 	}
+	/* Disable Rx MHU interrupt */
+	ipm_set_enabled(mhu1_r, false);
+
 	return 0;
 }
