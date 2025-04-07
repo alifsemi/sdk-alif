@@ -19,7 +19,7 @@
 #include "sdu_queue.h"
 
 /**
- * @brief Create an instance of isochronous datapath in host --> controller direction
+ * @brief Create an instance of isochronous datapath and bind it to a stream
  *
  * @param stream_lid The stream local ID on the controller to bind with
  * @param sdu_queue The SDU queue to pull SDUs from
@@ -30,7 +30,41 @@
  * @retval NULL on failure
  */
 struct iso_datapath_htoc *iso_datapath_htoc_create(uint8_t stream_lid, struct sdu_queue *sdu_queue,
-					      bool timing_master_channel);
+						   bool timing_master_channel);
+
+/**
+ * @brief Initialize an instance of isochronous datapath from host to controller (source)
+ *
+ * @param stream_lid The stream local ID on the controller to bind with
+ * @param sdu_queue The SDU queue to pull SDUs from
+ * @param timing_master_channel true if this channel is the "master" channel used to control
+ * presentation delay
+ *
+ * @retval The created ISO datapath instance if successful
+ * @retval NULL on failure
+ */
+struct iso_datapath_htoc *iso_datapath_htoc_init(uint8_t stream_lid, struct sdu_queue *sdu_queue,
+						 bool timing_master_channel);
+
+/**
+ * @brief Bind the datapath to the controller
+ *
+ * @param datapath The datapath instance to bind
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int iso_datapath_htoc_bind(struct iso_datapath_htoc *datapath);
+
+/**
+ * @brief Unbind the datapath from the controller
+ *
+ * @param datapath The datapath instance to unbind
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int iso_datapath_htoc_unbind(struct iso_datapath_htoc *datapath);
 
 /**
  * @brief Notify iso datapath that a new SDU is available

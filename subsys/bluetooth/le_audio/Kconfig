@@ -18,20 +18,6 @@ module = BLE_AUDIO
 module-str = ble-audio
 source "subsys/logging/Kconfig.template.log_config"
 
-config ALIF_BLE_AUDIO_SOURCE_MONO
-	bool "Mono mode"
-	help
-		In mono mode the application will only record a single (left) channel from the I2S, encode
-		this channel once, but send out the encoded SDUs on both left and right broadcast
-		isochronous streams.
-
-		This means that to a sink device it appears as though both left and right channels are
-		present, which is sometimes required for compatibility.
-
-		But only one LC3 encoder is needed which saves on memory and runtime, plus this could also
-		be useful in a case where the source of the audio data (e.g. microphone) only outputs a
-		single channel.
-
 choice
 	prompt "Choose BAP frame duration"
 	default ALIF_BLE_AUDIO_FRAME_DURATION_10MS
@@ -72,7 +58,6 @@ config ALIF_BLE_AUDIO_FS_HZ
 config ALIF_BLE_AUDIO_NMB_CHANNELS
 	int "Number of audio channels"
 	range 1 2
-	default 2 if ALIF_BLE_AUDIO_SOURCE_MONO
 	default 2
 	help
 	  Number of audio channels
@@ -162,6 +147,35 @@ config AUDIO_CLOCK_DIVIDER
 	default 1
 	help
 	Clock divider ratio between the audio PLL and the I2S MCLK signal
+
+config ALIF_BLE_AUDIO_SDU_QUEUE_LENGTH
+	int "CIS or BIS stream SDU queue length"
+	range 6 64
+	default 12
+
+config ALIF_BLE_AUDIO_PRESENTATION_DELAY_QUEUE_MARGIN
+	int "Safety margin to be added to presentation delay"
+	range 5 100
+	default 20
+	help
+	  Safety margin extra in milliseconds.
+
+config ALIF_BLE_AUDIO_MIN_PRESENTATION_DELAY_MS
+	int "Minimum presentation delay in milliseconds"
+	range 5 100
+	default 30
+	help
+	  Minimum presentation delay in milliseconds.
+
+config ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_ENABLED
+	bool "Enable transmission delay"
+	default n
+
+config ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_MS
+	depends on ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_ENABLED
+	int "Use timed transmission delay in milliseconds"
+	range 0 100
+	default 30
 
 rsource "Kconfig.lc3"
 rsource "Kconfig.presentation_compensation"

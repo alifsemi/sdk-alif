@@ -17,10 +17,6 @@
 		audio-codec = &wm8904;
 		i2s-bus = &i2s0;
 	};
-
-	soc {
-
-	};
 };
 
 &i2c1 {
@@ -47,9 +43,8 @@
 &pinctrl {
 	pinctrl_i2c1: pinctrl_i2c1 {
 		group0 {
-			/* Note: defined pinmux names are wrong so just setting numbers directly */
-			pinmux = < PINMUX_PIN(PIN_P7_3, 4) >, /* I2C1 SCL DEVKIT*/
-				< PINMUX_PIN(PIN_P7_2, 4) >; /* I2C1 SDA DEVKIT*/
+			pinmux = < PIN_P7_2__I2C1_SDA_C >,
+				 < PIN_P7_3__I2C1_SCL_C >;
 			read_enable = < 0x1 >;
 		};
 	};
@@ -57,18 +52,19 @@
 	pinctrl_i2s0: pinctrl_i2s0 {
 		group0 {
 			/* Note: defined pinmux names are wrong so just setting numbers directly */
-			pinmux = <PINMUX_PIN(PIN_P2_4, 2)>, /* I2S0 SDI A  */
-				<PINMUX_PIN(PIN_P2_5, 2)>, /* I2S0 SDO A  */
-				<PINMUX_PIN(PIN_P1_7, 3)>, /* I2S0 WS A   */
-				<PINMUX_PIN(PIN_P1_6, 3)>; /* I2S0 SCLK A */
+			pinmux = < PINMUX_PIN(PIN_P2_4, 2) >, /* I2S0 SDI A  */
+				 < PINMUX_PIN(PIN_P2_5, 2) >, /* I2S0 SDO A  */
+				 < PIN_P1_7__I2S0_WS_A >,
+				 < PIN_P1_6__I2S0_SCLK_A >;
 		};
 	};
 
 	pinctrl_i2c0: pinctrl_i2c0 {
 		group0 {
 			pinmux = <PIN_P2_4__I2C0_SCL_B>,
-				<PIN_P2_5__I2C0_SDA_B>;
+				 <PIN_P2_5__I2C0_SDA_B>;
 			read_enable = <0x1>;
 		};
 	};
+
 };

@@ -558,7 +558,8 @@ static int ble_stack_configure(uint8_t const role)
 		.gatt_start_hdl = 0,
 		.att_cfg = 0,
 		.sugg_max_tx_octets = GAP_LE_MAX_OCTETS,
-		.sugg_max_tx_time = GAP_LE_MAX_TIME,
+		/* Use the minimum transmission time to minimize latency */
+		.sugg_max_tx_time = GAP_LE_MIN_TIME,
 		.tx_pref_phy = GAP_PHY_LE_2MBPS,
 		.rx_pref_phy = GAP_PHY_LE_2MBPS,
 		.tx_path_comp = 0,

@@ -8,21 +8,89 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/sys/__assert.h>
 #include <zephyr/sys/check.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
-
+#include <zephyr/drivers/gpio.h>
 #include <stdlib.h>
 
-#include "lc3_api.h"
-#include "audio_queue.h"
-#include "sdu_queue.h"
+#include "alif_lc3.h"
 #include "gapi_isooshm.h"
-#include "audio_encoder.h"
-#include "audio_utils.h"
+
+#include "bluetooth/le_audio/audio_source_i2s.h"
+#include "bluetooth/le_audio/iso_datapath_htoc.h"
+#include "bluetooth/le_audio/audio_encoder.h"
+
+#define AUDIO_QUEUE_MARGIN_US     (CONFIG_ALIF_BLE_AUDIO_PRESENTATION_DELAY_QUEUE_MARGIN * 1000)
+#define MIN_PRESENTATION_DELAY_US (CONFIG_ALIF_BLE_AUDIO_MIN_PRESENTATION_DELAY_MS * 1000)
 
 LOG_MODULE_REGISTER(audio_encoder, CONFIG_BLE_AUDIO_LOG_LEVEL);
+
+#define GPIO_TEST0_NODE DT_ALIAS(encoder_test0)
+#define GPIO_TEST1_NODE DT_ALIAS(encoder_test1)
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE) || DT_NODE_EXISTS(GPIO_TEST1_NODE)
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+static const struct gpio_dt_spec test_pin0 = GPIO_DT_SPEC_GET_OR(GPIO_TEST0_NODE, gpios, {0});
+#endif
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+static const struct gpio_dt_spec test_pin1 = GPIO_DT_SPEC_GET_OR(GPIO_TEST1_NODE, gpios, {0});
+#endif
+
+static int init_test_pin(const struct gpio_dt_spec *const p_pin)
+{
+	if (!p_pin->port) {
+		return -ENODEV;
+	}
+	if (!gpio_is_ready_dt(p_pin)) {
+		LOG_WRN("Test pin is not ready");
+		return -ENODEV;
+	}
+	if (gpio_pin_configure_dt(p_pin, GPIO_OUTPUT_ACTIVE)) {
+		LOG_ERR("Failed to configure test pin");
+		return -EIO;
+	}
+	gpio_pin_set_dt(p_pin, 0);
+	LOG_INF("Encoder test pin %u initialized", p_pin->pin);
+	return 0;
+}
+
+static inline void toggle_test_pin(const struct gpio_dt_spec *const p_pin)
+{
+	if (!p_pin->port) {
+		return;
+	}
+	gpio_pin_toggle_dt(p_pin);
+}
+
+static inline void set_test_pin(const struct gpio_dt_spec *const p_pin, int const val)
+{
+	if (!p_pin->port) {
+		return;
+	}
+	gpio_pin_set_dt(p_pin, !!val);
+}
+#endif
+
+/* Initialisation to perform pre-main */
+static int audio_encoder_init(void)
+{
+	int ret = alif_lc3_init();
+
+	if (ret) {
+		LOG_ERR("Failed to initialise LC3 codec");
+		return ret;
+	}
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	init_test_pin(&test_pin0);
+#endif
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+	init_test_pin(&test_pin1);
+#endif
+	return 0;
+}
+SYS_INIT(audio_encoder_init, APPLICATION, 0);
 
 struct cb_list {
 	audio_encoder_sdu_cb_t cb;
@@ -30,217 +98,237 @@ struct cb_list {
 	struct cb_list *next;
 };
 
-struct audio_encoder {
-	/* Flag set to true if encoder only uses a single channel */
-	bool mono;
-
-	/* Encoder thread */
-	struct k_thread thread;
-	k_thread_stack_t *stack;
-	k_tid_t tid;
-	bool thread_abort;
-
-	/* LC3 configuration, encoder instances and scratch memory */
-	lc3_cfg_t lc3_cfg;
-	lc3_encoder_t *lc3_encoder[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
-	int32_t *lc3_scratch;
-
-	/* Linked list of registered callbacks */
-	struct cb_list *cb_list;
-
+struct channel_data {
 	/* Input and output queues */
-	struct sdu_queue *sdu_queue[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
-	struct audio_queue *audio_queue;
+	struct sdu_queue *sdu_queue;
+	struct iso_datapath_htoc *iso_dp;
+	lc3_encoder_t *lc3_encoder;
 };
 
-static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
+struct audio_encoder {
+	volatile bool thread_abort;
+	struct audio_queue *audio_queue;
+	struct channel_data channel[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
+	/* LC3 configuration, encoder instances and scratch memory */
+	lc3_cfg_t lc3_cfg;
+	int32_t *lc3_scratch;
+	/* Linked list of registered callbacks */
+	struct cb_list *cb_list;
+	/* Encoder thread */
+	struct k_thread thread;
+	k_tid_t tid;
+};
+
+K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
+
+__ramfunc static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 {
 	struct audio_encoder *enc = (struct audio_encoder *)p1;
 	(void)p2;
 	(void)p3;
 
+	LOG_INF("Encoder thread started");
+
 	int ret;
-	gapi_isooshm_sdu_buf_t *p_sdu_l = NULL;
-	gapi_isooshm_sdu_buf_t *p_sdu_r = NULL;
-	struct sdu_queue *const p_sdu_queue_l = enc->sdu_queue[0];
-	struct sdu_queue *const p_sdu_queue_r = enc->sdu_queue[1];
-	struct audio_queue *const p_audio_queue = enc->audio_queue;
-	size_t const half_audio_block_samples = p_audio_queue->audio_block_samples / 2;
+	size_t iter;
+	gapi_isooshm_sdu_buf_t *p_sdu;
+	struct sdu_queue *p_sdu_queue;
+	struct k_mem_slab *const p_audio_queue_slab = &enc->audio_queue->slab;
+	struct k_msgq *const p_audio_msg_queue = &enc->audio_queue->msgq;
+	struct audio_block *audio;
 	/* Sequence number applied to each outging SDU clipped to uint16_t */
 	size_t sdu_seq = 0;
-	bool const mono = enc->mono;
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 0);
+#endif
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+	set_test_pin(&test_pin1, 0);
+#endif
 
 	while (!enc->thread_abort) {
-		p_sdu_l = NULL;
-		p_sdu_r = NULL;
 
-		/* Allocate left SDU (always present) and encode audio into it */
-		ret = k_mem_slab_alloc(&p_sdu_queue_l->slab, (void *)&p_sdu_l, K_FOREVER);
-		__ASSERT(ret == 0, "Failed to get memory from slab");
-
-		/* Allocate right SDU (present in stereo mode) and encode audio into it */
-		if (likely(p_sdu_queue_r)) {
-			ret = k_mem_slab_alloc(&p_sdu_queue_r->slab, (void *)&p_sdu_r, K_FOREVER);
-			__ASSERT(ret == 0, "Failed to get memory from slab");
+		/* Get the next audio block */
+		audio = NULL;
+		ret = k_msgq_get(p_audio_msg_queue, &audio, K_FOREVER);
+		if (ret) {
+			k_sleep(K_MSEC(2));
+			LOG_ERR("Failed to get audio block");
+			continue;
 		}
 
-get_audio:
-		/* Get the next audio block */
-		struct audio_block *audio = NULL;
-
-		ret = k_msgq_get(&p_audio_queue->msgq, &audio, K_FOREVER);
-		__ASSERT(ret == 0, "msgq get failed");
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+		set_test_pin(&test_pin1, 1);
+#endif
 
 		/* A NULL audio block can be sent to the queue to wake up and abort thread. Continue
 		 * and check thread abort flag.
 		 */
-		if (unlikely(!audio)) {
+		if (!audio) {
 			if (enc->thread_abort) {
 				LOG_WRN("Thread aborted");
 				break;
 			}
-			goto get_audio;
+			continue;
 		}
 
-		/* Encode left */
-		ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[0], audio->buf,
-					   p_sdu_l->data, p_sdu_queue_l->payload_size,
-					   enc->lc3_scratch);
-		__ASSERT(ret == 0, "LC3 encoding failed");
-
-		p_sdu_l->sdu_len = p_sdu_queue_l->payload_size;
-		p_sdu_l->has_timestamp = false;
-		p_sdu_l->seq_num = sdu_seq;
-
-		/* If only left channel */
-		if (unlikely(!p_sdu_queue_r)) {
-			goto enc_done;
-		}
-
-		p_sdu_r->sdu_len = p_sdu_queue_r->payload_size;
-		p_sdu_r->has_timestamp = false;
-		p_sdu_r->seq_num = sdu_seq;
-
-		/* Mono mode, copy from left to right */
-		if (mono) {
-			memcpy(p_sdu_r->data, p_sdu_l->data, p_sdu_queue_r->payload_size);
-			goto enc_done;
-		}
-
-		/* Encode right */
-		int16_t *audio_data = audio->buf + half_audio_block_samples;
-
-		ret = lc3_api_encode_frame(&enc->lc3_cfg, enc->lc3_encoder[1], audio_data,
-					   p_sdu_r->data, p_sdu_queue_r->payload_size,
-					   enc->lc3_scratch);
-		__ASSERT(ret == 0, "LC3 encoding failed");
-
-enc_done:
-		/* Temporarily store capture timestamp for callbacks */
 		uint32_t const capture_timestamp = audio->timestamp;
 
-		k_mem_slab_free(&p_audio_queue->slab, audio);
+		size_t const num_channels = MIN(ARRAY_SIZE(enc->channel), audio->num_channels);
 
-		/* Send left */
-		ret = k_msgq_put(&p_sdu_queue_l->msgq, &p_sdu_l, K_FOREVER);
-		__ASSERT(ret == 0, "msgq put failed");
+		iter = num_channels;
+		while (iter--) {
+			struct channel_data *const channel = &enc->channel[iter];
 
-		/* Send right */
-		if (likely(p_sdu_r)) {
-			ret = k_msgq_put(&p_sdu_queue_r->msgq, &p_sdu_r, K_FOREVER);
-			__ASSERT(ret == 0, "msgq put failed");
+			p_sdu = NULL;
+			p_sdu_queue = channel->sdu_queue;
+
+			if (!p_sdu_queue) {
+				continue;
+			}
+			size_t const sdu_len = p_sdu_queue->payload_size;
+
+			/* Allocate SDU and encode audio into it */
+			ret = k_mem_slab_alloc(&p_sdu_queue->slab, (void *)&p_sdu, K_FOREVER);
+			if (ret || !p_sdu) {
+				LOG_ERR("Failed to get memory from slab");
+				continue;
+			}
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+			set_test_pin(&test_pin0, 1);
+#endif
+			ret = lc3_api_encode_frame(&enc->lc3_cfg, channel->lc3_encoder,
+						   audio->channels[iter], p_sdu->data, sdu_len,
+						   enc->lc3_scratch);
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+			set_test_pin(&test_pin0, 0);
+#endif
+			if (ret) {
+				k_mem_slab_free(&p_sdu_queue->slab, p_sdu);
+				LOG_ERR("LC3 encoding failed, err %d", ret);
+				continue;
+			}
+
+			p_sdu->sdu_len = sdu_len;
+			p_sdu->seq_num = sdu_seq;
+			p_sdu->has_timestamp = !!capture_timestamp;
+			p_sdu->timestamp = capture_timestamp;
+
+			ret = k_msgq_put(&p_sdu_queue->msgq, &p_sdu, K_FOREVER);
+			if (ret) {
+				k_mem_slab_free(&p_sdu_queue->slab, p_sdu);
+				LOG_ERR("Failed to put SDU to msgq, err %d", ret);
+			}
+		}
+
+		k_mem_slab_free(p_audio_queue_slab, audio);
+
+		iter = num_channels;
+		while (iter--) {
+			/* Notify datapath that SDUs are completed. This also triggers next read
+			 * if last one was failed for some reason.
+			 */
+			iso_datapath_htoc_notify_sdu_available(enc->channel[iter].iso_dp,
+							       capture_timestamp, sdu_seq);
 		}
 
 		/* Notify listeners that a block is completed */
 		struct cb_list *cb_item = enc->cb_list;
 
 		while (cb_item) {
-			if (cb_item->cb) {
-				cb_item->cb(cb_item->context, capture_timestamp, sdu_seq);
-			}
+			cb_item->cb(cb_item->context, capture_timestamp, sdu_seq);
 			cb_item = cb_item->next;
 		}
 
 		/* Increment sequence number for next SDU */
 		sdu_seq++;
+
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+		set_test_pin(&test_pin1, 0);
+#endif
 	}
 }
 
-struct audio_encoder *audio_encoder_create(uint32_t const sampling_frequency,
-					   k_thread_stack_t *stack, size_t const stacksize,
-					   struct sdu_queue *p_sdu_queues[],
-					   size_t const num_queues, struct audio_queue *audio_queue,
-					   lc3_frame_duration_t frame_duration)
+struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *params)
 {
-	if (!stack) {
-		LOG_ERR("Thread stack must be provided");
+	int ret;
+	struct audio_encoder *enc;
+
+	if (!params) {
+		LOG_ERR("Audio encoder parameters must be provided");
 		return NULL;
 	}
 
-	if (!audio_queue) {
-		LOG_ERR("Audio queue must be provided");
-		return NULL;
-	}
-
-	if (!p_sdu_queues || !num_queues) {
-		LOG_ERR("At least one SDU queue must be provided");
-		return NULL;
-	}
-
-	if (CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS < num_queues) {
+	if (ARRAY_SIZE(enc->channel) < params->num_queues) {
 		LOG_ERR("Too many queues!");
 		return NULL;
 	}
 
-	CHECKIF(!((frame_duration == FRAME_DURATION_10_MS) ||
-		  (frame_duration == FRAME_DURATION_7_5_MS))) {
-		LOG_ERR("Invalid frame duration!");
-		return NULL;
-	}
-
-	struct audio_encoder *enc = calloc(1, sizeof(*enc));
+	enc = calloc(1, sizeof(*enc));
 
 	if (!enc) {
 		LOG_ERR("Failed to allocate audio encoder");
 		return NULL;
 	}
 
-	uint8_t num_valid = 0;
-
-	for (uint8_t iter = 0; iter < num_queues; iter++) {
-		num_valid += !!p_sdu_queues[iter];
-		enc->sdu_queue[iter] = p_sdu_queues[iter];
+	for (uint8_t iter = 0; iter < params->num_queues; iter++) {
+		enc->channel[iter].sdu_queue = params->p_sdu_queues[iter];
 	}
-	enc->mono = (num_valid == 1);
-	enc->audio_queue = audio_queue;
+
+	/* Presentation delay less than a certain value is impossible due to latency of audio
+	 * datapath
+	 */
+	uint32_t const buffer_len_us = MIN(params->audio_buffer_len_us, MIN_PRESENTATION_DELAY_US);
+	size_t const audio_queue_len_blocks =
+		1 + (buffer_len_us + AUDIO_QUEUE_MARGIN_US) / params->frame_duration_us;
+
+	enc->audio_queue = audio_queue_create(audio_queue_len_blocks, params->sampling_rate_hz,
+					      params->frame_duration_us);
+
+	if (!enc->audio_queue) {
+		free(enc);
+		LOG_ERR("Failed to create audio queue");
+		return NULL;
+	}
+
+	ret = audio_source_i2s_configure(params->i2s_dev, enc->audio_queue);
+	if (ret != 0) {
+		LOG_ERR("Failed to configure audio source I2S, err %d", ret);
+		audio_encoder_delete(enc);
+		return NULL;
+	}
+
+	uint32_t const lc3_duration =
+		params->frame_duration_us == 10000 ? FRAME_DURATION_10_MS : FRAME_DURATION_7_5_MS;
 
 	/* Configure LC3 codec and allocate required memory */
-	int ret = lc3_api_configure(&enc->lc3_cfg, (int32_t)sampling_frequency, frame_duration);
-
+	ret = lc3_api_configure(&enc->lc3_cfg, params->sampling_rate_hz, lc3_duration);
 	if (ret) {
 		LOG_ERR("Failed to configure LC3 codec, err %d", ret);
 		audio_encoder_delete(enc);
 		return NULL;
 	}
 
-	size_t scratch_size = lc3_api_encoder_scratch_size(&enc->lc3_cfg);
-
-	enc->lc3_scratch = (int32_t *)malloc(scratch_size);
+	enc->lc3_scratch = malloc(lc3_api_encoder_scratch_size(&enc->lc3_cfg));
 	if (!enc->lc3_scratch) {
 		LOG_ERR("Failed to allocate encoder scratch memory");
 		audio_encoder_delete(enc);
 		return NULL;
 	}
 
-	for (int i = 0; i < num_queues; i++) {
-		enc->lc3_encoder[i] = (lc3_encoder_t *)malloc(sizeof(lc3_encoder_t));
-		if (!enc->lc3_encoder[i]) {
+	for (int i = 0; i < ARRAY_SIZE(enc->channel); i++) {
+		lc3_encoder_t *lc3_encoder;
+
+		enc->channel[i].lc3_encoder = lc3_encoder = malloc(sizeof(*lc3_encoder));
+
+		if (!lc3_encoder) {
 			LOG_ERR("Failed to allocate LC3 encoder");
 			audio_encoder_delete(enc);
 			return NULL;
 		}
 
-		ret = lc3_api_initialise_encoder(&enc->lc3_cfg, enc->lc3_encoder[i]);
+		ret = lc3_api_initialise_encoder(&enc->lc3_cfg, lc3_encoder);
 		if (ret) {
 			LOG_ERR("Failed to initialise LC3 encoder %d, err %d", i, ret);
 			audio_encoder_delete(enc);
@@ -249,8 +337,9 @@ struct audio_encoder *audio_encoder_create(uint32_t const sampling_frequency,
 	}
 
 	/* Create and start thread */
-	enc->tid = k_thread_create(&enc->thread, stack, stacksize, audio_encoder_thread_func, enc,
-				   NULL, NULL, CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY, 0, K_NO_WAIT);
+	enc->tid = k_thread_create(&enc->thread, encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE,
+				   audio_encoder_thread_func, enc, NULL, NULL,
+				   CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY + 1, 0, K_NO_WAIT);
 	if (!enc->tid) {
 		LOG_ERR("Failed to create encoder thread");
 		audio_encoder_delete(enc);
@@ -262,14 +351,87 @@ struct audio_encoder *audio_encoder_create(uint32_t const sampling_frequency,
 	return enc;
 }
 
-int audio_encoder_register_cb(struct audio_encoder *encoder, audio_encoder_sdu_cb_t cb,
-			      void *context)
+int audio_encoder_add_channel(struct audio_encoder *const encoder, size_t const octets_per_frame,
+			      size_t const channel_id)
+{
+	if (!encoder) {
+		return -EINVAL;
+	}
+
+	if (channel_id >= ARRAY_SIZE(encoder->channel)) {
+		return -EINVAL;
+	}
+
+	struct sdu_queue *queue = encoder->channel[channel_id].sdu_queue;
+	struct iso_datapath_htoc *iso_dp = encoder->channel[channel_id].iso_dp;
+
+	sdu_queue_delete(queue);
+	iso_datapath_htoc_delete(iso_dp);
+
+	encoder->channel[channel_id].sdu_queue = queue =
+		sdu_queue_create(CONFIG_ALIF_BLE_AUDIO_SDU_QUEUE_LENGTH, octets_per_frame);
+	if (!queue) {
+		LOG_ERR("Failed to create SDU queue (index %u)", channel_id);
+		return -ENOMEM;
+	}
+
+	encoder->channel[channel_id].iso_dp = iso_dp =
+		iso_datapath_htoc_init(channel_id, queue, 0 /*channel_id == 0*/);
+	if (!iso_dp) {
+		LOG_ERR("Failed to create ISO datapath (index %u)", channel_id);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+int audio_encoder_start_channel(struct audio_encoder *const encoder, size_t const channel_id)
+{
+	if (!encoder) {
+		return -EINVAL;
+	}
+
+	if (channel_id >= ARRAY_SIZE(encoder->channel)) {
+		return -EINVAL;
+	}
+
+	int ret = iso_datapath_htoc_bind(encoder->channel[channel_id].iso_dp);
+
+	if (ret) {
+		LOG_ERR("Failed to bind ISO datapath (index %u)", channel_id);
+		return ret;
+	}
+
+	audio_source_i2s_start();
+
+	return 0;
+}
+
+int audio_encoder_stop_channel(struct audio_encoder *const encoder, size_t const channel_id)
+{
+	if (!encoder) {
+		return -EINVAL;
+	}
+
+	if (channel_id >= ARRAY_SIZE(encoder->channel)) {
+		return -EINVAL;
+	}
+
+	iso_datapath_htoc_unbind(encoder->channel[channel_id].iso_dp);
+
+	audio_source_i2s_stop();
+
+	return 0;
+}
+
+int audio_encoder_register_cb(struct audio_encoder *const encoder, audio_encoder_sdu_cb_t const cb,
+			      void *const context)
 {
 	if (!encoder || !cb) {
 		return -EINVAL;
 	}
 
-	struct cb_list *cb_item = (struct cb_list *)malloc(sizeof(struct cb_list));
+	struct cb_list *cb_item = malloc(sizeof(*cb_item));
 
 	if (!cb_item) {
 		return -ENOMEM;
@@ -290,6 +452,10 @@ int audio_encoder_delete(struct audio_encoder *encoder)
 		return -EINVAL;
 	}
 
+	for (size_t iter = 0; iter < ARRAY_SIZE(encoder->channel); iter++) {
+		audio_encoder_stop_channel(encoder, iter);
+	}
+
 	/* Signal to thread that it should abort */
 	encoder->thread_abort = true;
 	void *dummy_queue_item = NULL;
@@ -299,11 +465,15 @@ int audio_encoder_delete(struct audio_encoder *encoder)
 	/* Join thread before freeing anything */
 	k_thread_join(&encoder->thread, K_FOREVER);
 
-	for (int i = 0; i < ARRAY_SIZE(encoder->lc3_encoder); i++) {
-		free(encoder->lc3_encoder[i]);
+	for (size_t iter = 0; iter < ARRAY_SIZE(encoder->channel); iter++) {
+		iso_datapath_htoc_delete(encoder->channel[iter].iso_dp);
+		sdu_queue_delete(encoder->channel[iter].sdu_queue);
+		free(encoder->channel[iter].lc3_encoder);
 	}
 
 	free(encoder->lc3_scratch);
+
+	audio_queue_delete(encoder->audio_queue);
 
 	/* Free linked list of callbacks */
 	while (encoder->cb_list) {

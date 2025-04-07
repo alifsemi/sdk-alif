@@ -20,7 +20,7 @@
 
 LOG_MODULE_REGISTER(audio_tofromh, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
-uint32_t audio_bap_sampling_freq_to_hz(enum bap_sampling_freq freq)
+uint32_t audio_bap_sampling_freq_to_hz(enum bap_sampling_freq const freq)
 {
 	switch (freq) {
 	case BAP_SAMPLING_FREQ_8000HZ: /* BAP_SAMPLING_FREQ_MIN implicitly set to 8000Hz */
@@ -56,7 +56,7 @@ uint32_t audio_bap_sampling_freq_to_hz(enum bap_sampling_freq freq)
 	}
 }
 
-enum bap_sampling_freq audio_hz_to_bap_sampling_freq(uint32_t rate)
+enum bap_sampling_freq audio_hz_to_bap_sampling_freq(uint32_t const rate)
 {
 	switch (rate) {
 	case 8000:
