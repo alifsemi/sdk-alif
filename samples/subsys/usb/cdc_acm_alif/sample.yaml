@@ -1,0 +1,8 @@
+sample:
+  name: CDC ACM USB
+tests:
+  sample.usb_device_next.cdc-acm:
+    depends_on: usbd
+    tags: usb
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/m55_hp
