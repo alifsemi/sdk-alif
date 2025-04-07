@@ -10,28 +10,16 @@
 #ifndef _AUDIO_DATAPATH_H
 #define _AUDIO_DATAPATH_H
 
+#include <zephyr/types.h>
+
 #define I2S_NODE   DT_ALIAS(i2s_bus)
 #define CODEC_NODE DT_ALIAS(audio_codec)
 
-/* Other sampling rates and frame rates are not supported */
-#define AUDIO_FRAMES_PER_SECOND 100
-
 struct audio_datapath_config {
 	uint32_t pres_delay_us;
-	uint16_t sampling_rate_hz;
+	uint32_t sampling_rate_hz;
 	bool frame_duration_is_10ms;
 };
-
-/**
- * @brief Create the audio datapath channel
- *
- * @param[in] octets_per_frame Number of data per frame
- * @param[in] ch_index Index of the channel to be created
- *
- * @retval 0 if successful
- * @retval Negative error code on failure
- */
-int audio_datapath_create_channel(size_t const octets_per_frame, uint8_t const ch_index);
 
 /**
  * @brief Create the audio datapath
@@ -43,18 +31,39 @@ int audio_datapath_create_channel(size_t const octets_per_frame, uint8_t const c
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_create(struct audio_datapath_config *cfg);
+int audio_datapath_create(struct audio_datapath_config const *cfg);
 
 /**
- * @brief Start the audio datapath
+ * @brief Create the audio datapath channel
  *
- * This starts reception of the first SDU over the ISO datapath, which when received starts off the
- * operation of the rest of the datapath.
+ * @param[in] octets_per_frame Number of data per frame
+ * @param[in] ch_index Index of the channel to be created
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_start(void);
+int audio_datapath_create_channel(size_t octets_per_frame, uint8_t ch_index);
+
+/**
+ * @brief Start a channel
+ *
+ * @param ch_index Index of the channel to start
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_start_channel(uint8_t ch_index);
+
+/**
+ * @brief Stop a channel
+ *
+ * @param decoder Audio decoder instance to stop channel for
+ * @param channel_id Channel ID to stop
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_stop_channel(uint8_t ch_index);
 
 /**
  * @brief Clean up the audio datapath

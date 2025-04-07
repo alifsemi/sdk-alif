@@ -20,13 +20,11 @@
  *
  * @param dev I2S device to use
  * @param audio_queue Audio queue that data will be retrieved from
- * @param us_per_block Length of each audio block in microseconds
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio_queue,
-			     uint32_t us_per_block);
+int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio_queue);
 
 /**
  * @brief Notify audio sink that a new buffer is available containing audio data

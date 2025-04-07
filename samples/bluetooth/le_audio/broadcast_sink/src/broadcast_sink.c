@@ -16,7 +16,6 @@
 
 #include "bluetooth/le_audio/audio_utils.h"
 
-#include "alif_lc3.h"
 #include "bap_bc_sink.h"
 #include "bap_bc_scan.h"
 #include "audio_datapath.h"
@@ -61,8 +60,8 @@ struct broadcast_sink_env {
 	bool datapath_cfg_valid;
 };
 
-#define I2S_NODE      DT_ALIAS(i2s_bus)
-#define CODEC_NODE    DT_ALIAS(audio_codec)
+#define I2S_NODE   DT_ALIAS(i2s_bus)
+#define CODEC_NODE DT_ALIAS(audio_codec)
 /* #define MCLK_GEN_NODE DT_ALIAS(mclk_gen) */
 
 BUILD_ASSERT(!DT_PROP(I2S_NODE, mono_mode), "I2S must be configured in stereo mode");
@@ -78,16 +77,24 @@ static struct broadcast_sink_env sink_env;
 /* Initialisation to perform pre-main */
 static int broadcast_sink_init(void)
 {
-	int ret = alif_lc3_init();
-
-	__ASSERT(ret == 0, "Failed to initialise LC3 codec");
+	bool ready;
 
 	/* Check all devices are ready */
-	__ASSERT(device_is_ready(i2s_dev), "I2S is not ready");
-	__ASSERT(device_is_ready(codec_dev), "Audio codec is not ready");
+	ready = device_is_ready(i2s_dev);
+	if (!ready) {
+		LOG_ERR("I2S is not ready");
+		return -1;
+	}
+
+	ready = device_is_ready(codec_dev);
+	if (!ready) {
+		LOG_ERR("Audio codec is not ready");
+		return -1;
+	}
+
 	/* __ASSERT(device_is_ready(mclk_gen_dev), "MCLK device is not ready"); */
 
-	return ret;
+	return 0;
 }
 SYS_INIT(broadcast_sink_init, APPLICATION, 0);
 
@@ -247,14 +254,14 @@ static void on_bap_bc_scan_public_bcast(const bap_adv_id_t *p_adv_id,
 		broadcast_name[broadcast_name_len] = '\0';
 		LOG_INF("Broadcast name %s", broadcast_name);
 
-		correct_stream = (0 == memcmp(CONFIG_BROADCAST_NAME, broadcast_name,
-				  broadcast_name_len));
+		correct_stream =
+			(0 == memcmp(CONFIG_BROADCAST_NAME, broadcast_name, broadcast_name_len));
 	}
 	LOG_HEXDUMP_DBG(p_metadata, metadata_len, "metadata: ");
 
 	/* If we found a non-encrypted public broadcast, synchronise to this */
-	if (correct_stream && !(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT)
-		&& !public_broadcast_found) {
+	if (correct_stream && !(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT) &&
+	    !public_broadcast_found) {
 		LOG_INF("Synchronising to public broadcast");
 		public_broadcast_found = true;
 
@@ -343,11 +350,10 @@ static void on_bap_bc_scan_subgroup_report(uint8_t pa_lid, uint8_t sgrp_id, uint
 		sink_env.datapath_cfg_valid = false;
 	}
 
-	sink_env.datapath_cfg.bap.location = p_cfg->param.location_bf;
-	sink_env.datapath_cfg.bap.frame_octets = p_cfg->param.frame_octet;
-	sink_env.datapath_cfg.bap.sampling_freq = p_cfg->param.sampling_freq;
-	sink_env.datapath_cfg.bap.frame_duration = p_cfg->param.frame_dur;
-	sink_env.datapath_cfg.bap.sdu_frames = p_cfg->param.frames_sdu;
+	sink_env.datapath_cfg.octets_per_frame = p_cfg->param.frame_octet;
+	sink_env.datapath_cfg.frame_duration_is_10ms = p_cfg->param.frame_dur == BAP_FRAME_DUR_10MS;
+	sink_env.datapath_cfg.sampling_rate_hz =
+		audio_bap_sampling_freq_to_hz(p_cfg->param.sampling_freq);
 }
 
 static void assign_audio_channel(uint8_t stream_count, uint8_t stream_pos, uint16_t loc_bf)
@@ -370,7 +376,6 @@ static void assign_audio_channel(uint8_t stream_count, uint8_t stream_pos, uint1
 #endif
 		LOG_INF("Stream index %u is right channel", stream_pos);
 		sink_env.right_channel_pos = stream_pos;
-		sink_env.datapath_cfg.stereo = true;
 	}
 }
 

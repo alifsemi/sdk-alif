@@ -22,16 +22,30 @@ config PERIPHERAL_NAME
 
 config LE_AUDIO_PRESENTATION_DELAY_MS
 	int "Presentation delay in ms"
-	default 40
+	default 10
 	help
-	  LE audio presentation delay in ms. For the audio source use-case, this is defined as the
-	  time in ms from the start of recording an audio frame, to the SDU reference anchor point
-	  at which the SDU containing the same audio frame is sent over BLE. The absolute minimum
-	  possible presentation delay would be the frame length (10 ms) plus the encoding time of
-	  the frame, since it is impossible to send the frame before it has been fully recorded and
-	  encoded. But some margin should be added on top of this to account for any overhead and
-	  timing variations due to other activities of the software occurring while recording and
-	  encoding the audio.
+	  LE audio preferred target presentation delay in ms. This is only the
+	  target value and the final presentation delay may be different due
+	  to the reported min and max values by the acceptor (server).
+
+choice
+	prompt "Choose audio target latency"
+	default LE_AUDIO_LATENCY_RELIABLE
+
+	config LE_AUDIO_LATENCY_LOWER
+	bool "Lower latency"
+	config LE_AUDIO_LATENCY_BALANCED
+	bool "Balanced latency and reliability"
+	config LE_AUDIO_LATENCY_RELIABLE
+	bool "Reliable latency"
+endchoice
+
+config LE_AUDIO_TARGET_LATENCY
+	int
+	range 1 3
+	default 1 if LE_AUDIO_LATENCY_LOWER
+	default 2 if LE_AUDIO_LATENCY_BALANCED
+	default 3 if LE_AUDIO_LATENCY_RELIABLE
 
 menu "Logging"
 
@@ -49,6 +63,6 @@ source "subsys/logging/Kconfig.template.log_config"
 
 endmenu # "Logging"
 
-endmenu # "Alif Bluetooth LE Audio Broadcast Source"
+endmenu # "Alif Bluetooth LE Audio Unicast Source"
 
 source "Kconfig.zephyr"

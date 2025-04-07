@@ -39,7 +39,7 @@ struct i2s_sync_data {
 	struct i2s_sync_channel rx;
 };
 
-struct i2s_sync_config {
+struct i2s_sync_config_priv {
 	struct i2s_t *paddr;
 	void (*irq_config)(const struct device *dev);
 #ifdef CONFIG_PINCTRL
@@ -70,7 +70,7 @@ static int i2s_register_cb(const struct device *dev, enum i2s_dir dir, i2s_sync_
 	return 0;
 }
 
-static void i2s_transmitter_start(const struct i2s_sync_config *dev_cfg)
+__ramfunc static void i2s_transmitter_start(const struct i2s_sync_config_priv *dev_cfg)
 {
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -80,13 +80,14 @@ static void i2s_transmitter_start(const struct i2s_sync_config *dev_cfg)
 	/* Should immediately get interrupt during which FIFO is filled */
 }
 
-static int i2s_send(const struct device *dev, void *buf, size_t len)
+__ramfunc static int i2s_send(const struct device *dev, void *buf, size_t len)
 {
 	if ((buf == NULL) || (len == 0)) {
 		return -EINVAL;
 	}
 
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -116,7 +117,7 @@ static int i2s_send(const struct device *dev, void *buf, size_t len)
 	return 0;
 }
 
-static void i2s_receiver_start(const struct i2s_sync_config *dev_cfg)
+__ramfunc static void i2s_receiver_start(const struct i2s_sync_config_priv *dev_cfg)
 {
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -125,13 +126,14 @@ static void i2s_receiver_start(const struct i2s_sync_config *dev_cfg)
 	i2s_rx_block_enable(i2s);
 }
 
-static int i2s_recv(const struct device *dev, void *buf, size_t len)
+__ramfunc static int i2s_recv(const struct device *dev, void *buf, size_t len)
 {
 	if ((buf == NULL) || (len == 0)) {
 		return -EINVAL;
 	}
 
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -178,7 +180,8 @@ static void channel_disable(struct i2s_sync_channel *chn)
 
 static void i2s_disable_tx(const struct device *dev)
 {
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -194,7 +197,8 @@ static void i2s_disable_tx(const struct device *dev)
 
 static void i2s_disable_rx(const struct device *dev)
 {
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -228,9 +232,26 @@ static int i2s_disable(const struct device *dev, enum i2s_dir dir)
 	return 0;
 }
 
+static int i2s_get_config(const struct device *dev, struct i2s_sync_config *cfg)
+{
+	if (!dev || !cfg) {
+		return -EINVAL;
+	}
+
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
+
+	cfg->sample_rate = dev_cfg->sample_rate;
+	cfg->bit_depth = dev_cfg->bit_depth;
+	cfg->channel_count = dev_cfg->channel_count;
+
+	return 0;
+}
+
 static int enable_clock(const struct device *dev)
 {
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 
 	i2s_select_clock_source(dev_cfg->paddr);
 	i2s_enable_sclk_aon(dev_cfg->paddr);
@@ -242,7 +263,7 @@ static int enable_clock(const struct device *dev)
 	return 0;
 }
 
-static int configure_clock_source(const struct i2s_sync_config *dev_cfg)
+static int configure_clock_source(const struct i2s_sync_config_priv *dev_cfg)
 {
 	/* Bit clock should be equal to channel_count * bit_depth * sample_rate */
 	uint32_t bclk = 2U * dev_cfg->bit_depth * dev_cfg->sample_rate;
@@ -269,7 +290,8 @@ static int configure_clock_source(const struct i2s_sync_config *dev_cfg)
 static int i2s_sync_init(const struct device *dev)
 {
 	int ret;
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
 	__ASSERT(dev_cfg->bit_depth == 16, "Bit depth other than 16 is not yet supported");
@@ -322,9 +344,9 @@ static int i2s_sync_init(const struct device *dev)
 	return 0;
 }
 
-static void i2s_sync_tx_isr_handler(const struct device *dev)
+__ramfunc static void i2s_sync_tx_isr_handler(const struct device *dev)
 {
-	const struct i2s_sync_config *dev_cfg = (struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg = (struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	int16_t *buf = (int16_t *)dev_data->tx.buf;
@@ -383,9 +405,9 @@ static void i2s_sync_tx_isr_handler(const struct device *dev)
 	}
 }
 
-static void i2s_sync_rx_isr_handler(const struct device *dev)
+__ramfunc static void i2s_sync_rx_isr_handler(const struct device *dev)
 {
-	const struct i2s_sync_config *dev_cfg = (struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg = (struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	int16_t *buf = (int16_t *)dev_data->rx.buf;
@@ -444,9 +466,10 @@ static void i2s_sync_rx_isr_handler(const struct device *dev)
 	}
 }
 
-static void i2s_sync_isr(const struct device *dev)
+__ramfunc static void i2s_sync_isr(const struct device *dev)
 {
-	const struct i2s_sync_config *dev_cfg = (const struct i2s_sync_config *)dev->config;
+	const struct i2s_sync_config_priv *dev_cfg =
+		(const struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = (struct i2s_sync_data *)dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
@@ -461,8 +484,11 @@ static void i2s_sync_isr(const struct device *dev)
 	}
 }
 
-static const struct i2s_sync_driver_api i2s_sync_api = {
-	.register_cb = i2s_register_cb, .send = i2s_send, .recv = i2s_recv, .disable = i2s_disable};
+static const struct i2s_sync_driver_api i2s_sync_api = {.register_cb = i2s_register_cb,
+							.send = i2s_send,
+							.recv = i2s_recv,
+							.disable = i2s_disable,
+							.get_config = i2s_get_config};
 
 #define I2S_SYNC_DEFINE(inst)                                                                      \
 	static void i2s_sync_irq_config_func_##inst(const struct device *dev)                      \
@@ -473,11 +499,11 @@ static const struct i2s_sync_driver_api i2s_sync_api = {
 	}                                                                                          \
 	IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, pinctrl_0), (PINCTRL_DT_INST_DEFINE(inst)));        \
 	static struct i2s_sync_data i2s_sync_data_##inst;                                          \
-	static const struct i2s_sync_config i2s_sync_config_##inst = {                             \
+	static const struct i2s_sync_config_priv i2s_sync_config_##inst = {                        \
 		.paddr = (struct i2s_t *)DT_INST_REG_ADDR(inst),                                   \
 		.irq_config = i2s_sync_irq_config_func_##inst,                                     \
 		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, pinctrl_0),                                 \
-			   (.pincfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),))                     \
+			   (.pincfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),))                      \
 			.sample_rate = DT_INST_PROP(inst, sample_rate),                            \
 		.bit_depth = DT_INST_PROP(inst, bit_depth),                                        \
 		.channel_count = DT_INST_PROP(inst, mono_mode) ? 1 : 2,                            \

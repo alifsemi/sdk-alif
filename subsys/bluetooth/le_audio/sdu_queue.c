@@ -34,11 +34,16 @@ struct sdu_queue *sdu_queue_create(size_t item_count, size_t payload_size)
 	}
 
 	/* malloc should give a minimum of 4-byte alignment, but confirm this */
-	__ASSERT(IS_PTR_ALIGNED(hdr->buf, 4), "SDU buffer is not 4-byte aligned");
+	if (!IS_PTR_ALIGNED(hdr->buf, 4)) {
+		free(hdr);
+		LOG_ERR("SDU buffer is not 4-byte aligned");
+		return NULL;
+	}
 
 	int ret = k_mem_slab_init(&hdr->slab, hdr->buf, padded_size, item_count);
 
 	if (ret) {
+		free(hdr);
 		LOG_ERR("Failed to initialise SDU queue mem slab");
 		return NULL;
 	}

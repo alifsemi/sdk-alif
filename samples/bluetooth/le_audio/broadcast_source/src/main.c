@@ -30,7 +30,8 @@ static const gapm_config_t gapm_cfg = {
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
 	.att_cfg = 0,
-	.sugg_max_tx_octets = GAP_LE_MIN_OCTETS,
+	.sugg_max_tx_octets = GAP_LE_MAX_OCTETS,
+	/* Use the minimum transmission time to minimize latency */
 	.sugg_max_tx_time = GAP_LE_MIN_TIME,
 	.tx_pref_phy = GAP_PHY_ANY,
 	.rx_pref_phy = GAP_PHY_ANY,

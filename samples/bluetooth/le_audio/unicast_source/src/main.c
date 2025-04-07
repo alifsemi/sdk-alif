@@ -465,51 +465,43 @@ int connect_to_device(const gap_bdaddr_t *p_peer_addr)
 		return -EINVAL;
 	}
 
-	/* Scan interval (N * 0.625 ms) = 100ms
-	 * Scan window (N * 0.625 ms) = 50ms
-	 */
-#if BLE_SUBRATING
-	/* Use 15ms connection interval */
-#define CONN_INTERVAL 12
-#define CE_LEN_MIN    1
-#define CE_LEN_MAX    1
-#else
-#define CONN_INTERVAL 48
-#define CE_LEN_MIN    5
-#define CE_LEN_MAX    10
-#endif
+#define CONN_INTERVAL_MIN 24                      /* 24 * 1.25 ms = 30ms */
+#define CONN_INTERVAL_MAX (CONN_INTERVAL_MIN + 8) /* 32 * 1.25 ms = 40ms */
+#define CE_LEN_MIN        1
+#define CE_LEN_MAX        3
+#define SUPERVISION_MS    5000
 
 	gapm_le_init_param_t const init_params = {
 		.prop = (GAPM_INIT_PROP_1M_BIT | GAPM_INIT_PROP_2M_BIT),
 		.conn_to = 100, /* Timeout in 10ms units = 1 second */
 		.scan_param_1m = {
-				.scan_intv = 160,
-				.scan_wd = 80,
-			},
+			.scan_intv = 160, /* (N * 0.625 ms) = 100ms */
+			.scan_wd = 80,    /* (N * 0.625 ms) = 40ms */
+		},
 		.conn_param_1m = {
-				.conn_intv_min = CONN_INTERVAL,
-				.conn_intv_max = CONN_INTERVAL,
-				.conn_latency = 0,
-				.supervision_to = 100,
-				.ce_len_min = CE_LEN_MIN,
-				.ce_len_max = CE_LEN_MAX,
-			},
+			.conn_intv_min = CONN_INTERVAL_MIN,
+			.conn_intv_max = CONN_INTERVAL_MAX,
+			.conn_latency = 0,
+			.supervision_to = SUPERVISION_MS / 10,
+			.ce_len_min = CE_LEN_MIN,
+			.ce_len_max = CE_LEN_MAX,
+		},
 		.conn_param_2m = {
-				.conn_intv_min = CONN_INTERVAL,
-				.conn_intv_max = CONN_INTERVAL,
-				.conn_latency = 0,
-				.supervision_to = 100,
-				.ce_len_min = CE_LEN_MIN,
-				.ce_len_max = CE_LEN_MAX,
-			},
+			.conn_intv_min = CONN_INTERVAL_MIN,
+			.conn_intv_max = CONN_INTERVAL_MAX,
+			.conn_latency = 0,
+			.supervision_to = SUPERVISION_MS / 10,
+			.ce_len_min = CE_LEN_MIN,
+			.ce_len_max = CE_LEN_MAX,
+		},
 		.conn_param_coded = {
-				.conn_intv_min = CONN_INTERVAL,
-				.conn_intv_max = CONN_INTERVAL,
-				.conn_latency = 0,
-				.supervision_to = 100,
-				.ce_len_min = CE_LEN_MIN,
-				.ce_len_max = CE_LEN_MAX,
-			},
+			.conn_intv_min = CONN_INTERVAL_MIN,
+			.conn_intv_max = CONN_INTERVAL_MAX,
+			.conn_latency = 0,
+			.supervision_to = SUPERVISION_MS / 10,
+			.ce_len_min = CE_LEN_MIN,
+			.ce_len_max = CE_LEN_MAX,
+		},
 		.peer_addr = *p_peer_addr,
 	};
 
@@ -600,7 +592,8 @@ static int ble_stack_configure(uint8_t const role)
 		.gatt_start_hdl = 0,
 		.att_cfg = 0,
 		.sugg_max_tx_octets = GAP_LE_MAX_OCTETS,
-		.sugg_max_tx_time = GAP_LE_MAX_TIME,
+		/* Use the minimum transmission time to minimize latency */
+		.sugg_max_tx_time = GAP_LE_MIN_TIME,
 		.tx_pref_phy = GAP_PHY_ANY,
 		.rx_pref_phy = GAP_PHY_ANY,
 		.tx_path_comp = 0,

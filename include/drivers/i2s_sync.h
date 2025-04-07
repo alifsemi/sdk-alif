@@ -28,6 +28,12 @@ enum i2s_sync_status {
 	I2S_SYNC_STATUS_OVERRUN,
 };
 
+struct i2s_sync_config {
+	uint32_t sample_rate;
+	uint32_t bit_depth;
+	uint8_t channel_count;
+};
+
 typedef void (*i2s_sync_cb_t)(const struct device *dev, enum i2s_sync_status status);
 
 typedef int (*i2s_sync_api_register_cb_t)(const struct device *dev, enum i2s_dir dir,
@@ -35,12 +41,14 @@ typedef int (*i2s_sync_api_register_cb_t)(const struct device *dev, enum i2s_dir
 typedef int (*i2s_sync_api_send_t)(const struct device *dev, void *buf, size_t len);
 typedef int (*i2s_sync_api_recv_t)(const struct device *dev, void *buf, size_t len);
 typedef int (*i2s_sync_api_disable_t)(const struct device *dev, enum i2s_dir dir);
+typedef int (*i2s_sync_api_get_config_t)(const struct device *dev, struct i2s_sync_config *cfg);
 
 __subsystem struct i2s_sync_driver_api {
 	i2s_sync_api_register_cb_t register_cb;
 	i2s_sync_api_send_t send;
 	i2s_sync_api_recv_t recv;
 	i2s_sync_api_disable_t disable;
+	i2s_sync_api_get_config_t get_config;
 };
 
 /**
@@ -48,9 +56,10 @@ __subsystem struct i2s_sync_driver_api {
  * device.
  *
  * @param dev Pointer to the device structure for the driver instance
+ * @param dir Direction to register the callback for.
  * @param cb Callback to be called on I2S transaction completion
  *
- * @retval 0 if successful
+ * @retval 0 if successful, negative error on failure
  */
 __syscall int i2s_sync_register_cb(const struct device *dev, enum i2s_dir dir, i2s_sync_cb_t cb);
 
@@ -69,7 +78,7 @@ static inline int z_impl_i2s_sync_register_cb(const struct device *dev, enum i2s
  * @param buf Pointer to data to be transmitted
  * @param len Size in bytes of data to be transmitted
  *
- * @retval 0 if successful
+ * @retval 0 if successful, negative error on failure
  */
 __syscall int i2s_sync_send(const struct device *dev, void *buf, size_t len);
 
@@ -87,7 +96,7 @@ static inline int z_impl_i2s_sync_send(const struct device *dev, void *buf, size
  * @param buf Pointer to buffer for received data to be placed in
  * @param len Size of receive buffer in bytes
  *
- * @retval 0 if successful
+ * @retval 0 if successful, negative error on failure
  */
 __syscall int i2s_sync_recv(const struct device *dev, void *buf, size_t len);
 
@@ -104,7 +113,7 @@ static inline int z_impl_i2s_sync_recv(const struct device *dev, void *buf, size
  * @param dev Pointer to the device structure for the driver instance
  * @param dir Direction(s) to disable, may be I2S_DIR_TX, I2S_DIR_RX or I2S_DIR_BOTH
  *
- * @return 0 if successful
+ * @return 0 if successful, negative error on failure
  */
 __syscall int i2s_sync_disable(const struct device *dev, enum i2s_dir dir);
 
@@ -113,6 +122,23 @@ static inline int z_impl_i2s_sync_disable(const struct device *dev, enum i2s_dir
 	const struct i2s_sync_driver_api *api = (const struct i2s_sync_driver_api *)dev->api;
 
 	return api->disable(dev, dir);
+}
+
+/**
+ * @brief Get I2S config parameters
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param cfg Pointer to the i2s_sync_config structure to be filled with the I2S config parameters
+ *
+ * @return 0 if successful, negative error on failure
+ */
+__syscall int i2s_sync_get_config(const struct device *dev, struct i2s_sync_config *cfg);
+
+static inline int z_impl_i2s_sync_get_config(const struct device *dev, struct i2s_sync_config *cfg)
+{
+	const struct i2s_sync_driver_api *api = (const struct i2s_sync_driver_api *)dev->api;
+
+	return api->get_config(dev, cfg);
 }
 
 #include <syscalls/i2s_sync.h>

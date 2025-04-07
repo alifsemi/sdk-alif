@@ -10,7 +10,8 @@
 #include <zephyr/sys/util.h>
 #include "audio_i2s_common.h"
 
-int audio_i2s_timing_apply_correction(struct audio_i2s_timing *timing, int32_t correction_us)
+__ramfunc int audio_i2s_timing_apply_correction(struct audio_i2s_timing *timing,
+						int32_t const correction_us)
 {
 	if (timing == NULL) {
 		return -EINVAL;
@@ -40,7 +41,7 @@ int audio_i2s_timing_apply_correction(struct audio_i2s_timing *timing, int32_t c
 	return 0;
 }
 
-int32_t audio_i2s_get_sample_correction(struct audio_i2s_timing *timing)
+__ramfunc int32_t audio_i2s_get_sample_correction(struct audio_i2s_timing *timing)
 {
 	if (timing == NULL) {
 		return 0;

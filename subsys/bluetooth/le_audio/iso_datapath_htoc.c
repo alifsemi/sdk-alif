@@ -7,6 +7,7 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 #include <stdlib.h>
 #include "gapi_isooshm.h"
@@ -15,12 +16,61 @@
 
 LOG_MODULE_REGISTER(iso_datapath_htoc, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#define GPIO_TEST0_NODE DT_ALIAS(htoc_test0)
+#define GPIO_TEST1_NODE DT_ALIAS(htoc_test1)
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE) || DT_NODE_EXISTS(GPIO_TEST1_NODE)
+static const struct gpio_dt_spec test_pin0 = GPIO_DT_SPEC_GET_OR(GPIO_TEST0_NODE, gpios, {0});
+static const struct gpio_dt_spec test_pin1 = GPIO_DT_SPEC_GET_OR(GPIO_TEST1_NODE, gpios, {0});
+
+static int init_test_pin(const struct gpio_dt_spec *const p_pin)
+{
+	if (!p_pin->port) {
+		return -ENODEV;
+	}
+	if (!gpio_is_ready_dt(p_pin)) {
+		LOG_WRN("Test pin is not ready");
+		return -ENODEV;
+	}
+	if (gpio_pin_configure_dt(p_pin, GPIO_OUTPUT_ACTIVE)) {
+		LOG_ERR("Failed to configure test pin");
+		return -EIO;
+	}
+	gpio_pin_set_dt(p_pin, 0);
+	LOG_INF("HTOC test pin %u initialized", p_pin->pin);
+	return 0;
+}
+
+static inline void toggle_test_pin(const struct gpio_dt_spec *const p_pin)
+{
+	if (!p_pin->port) {
+		return;
+	}
+	gpio_pin_toggle_dt(p_pin);
+}
+
+static inline void set_test_pin(const struct gpio_dt_spec *const p_pin, int const val)
+{
+	if (!p_pin->port) {
+		return;
+	}
+	gpio_pin_set_dt(p_pin, !!val);
+}
+
+/* Initialisation to perform pre-main */
+static int iso_datapath_htoc_preinit(void)
+{
+	init_test_pin(&test_pin0);
+	init_test_pin(&test_pin1);
+	return 0;
+}
+SYS_INIT(iso_datapath_htoc_preinit, APPLICATION, 0);
+#endif
+
 struct iso_datapath_htoc {
+	uint32_t stream_id;
 	gapi_isooshm_dp_t dp;
 	struct sdu_queue *sdu_queue;
-	gapi_isooshm_sdu_buf_t *current_sdu;
-	uint32_t sdu_underrun_count;
-	uint32_t sdu_sent_count;
 	struct k_msgq sdu_timing_msgq;
 	uint8_t *sdu_timing_msgq_buffer;
 	uint16_t last_sdu_seq;
@@ -33,58 +83,86 @@ struct sdu_timing_info {
 	uint16_t seq_num;
 };
 
-static void finish_last_sdu(struct iso_datapath_htoc *datapath)
+__ramfunc static void send_next_sdu(struct iso_datapath_htoc *const datapath)
 {
-	if (datapath->current_sdu != NULL) {
-		k_mem_slab_free(&datapath->sdu_queue->slab, datapath->current_sdu);
-		datapath->current_sdu = NULL;
-	}
-}
+	void *p_sdu = NULL;
+	int ret = k_msgq_get(&datapath->sdu_queue->msgq, (void *)&p_sdu, K_NO_WAIT);
 
-static void send_next_sdu(struct iso_datapath_htoc *datapath)
-{
-	int ret = k_msgq_get(&datapath->sdu_queue->msgq, (void *)&datapath->current_sdu, K_NO_WAIT);
-
-	if (ret) {
+	if (ret || !p_sdu) {
 		datapath->awaiting_sdu = true;
-		datapath->sdu_underrun_count++;
 		return;
 	}
 
-	uint16_t err = gapi_isooshm_dp_set_buf(&datapath->dp, datapath->current_sdu);
+	ret = gapi_isooshm_dp_set_buf(&datapath->dp, p_sdu);
 
-	if (err) {
-		LOG_ERR("Failed to set next ISO buffer, err %u", err);
-		datapath->awaiting_sdu = true;
+	if (!ret) {
+		return;
 	}
 
-	datapath->sdu_sent_count++;
+	/* Free current current block (just ignore) and wait next trigger for retry */
+	k_mem_slab_free(&datapath->sdu_queue->slab, p_sdu);
+	datapath->awaiting_sdu = true;
+
+	LOG_ERR("Failed to set next ISO buffer, err %u", ret);
 }
 
-static void on_dp_transfer_complete(gapi_isooshm_dp_t *dp, gapi_isooshm_sdu_buf_t *buf)
+__ramfunc static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
+					      gapi_isooshm_sdu_buf_t *const buf)
 {
-	struct iso_datapath_htoc *datapath = CONTAINER_OF(dp, struct iso_datapath_htoc, dp);
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 1);
+#endif
 
-	finish_last_sdu(datapath);
+	struct iso_datapath_htoc *const datapath = CONTAINER_OF(dp, struct iso_datapath_htoc, dp);
+
 	send_next_sdu(datapath);
+
+	if (buf) {
+		k_mem_slab_free(&datapath->sdu_queue->slab, buf);
+	}
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 0);
+#endif
 }
 
-struct iso_datapath_htoc *iso_datapath_htoc_create(uint8_t stream_lid, struct sdu_queue *sdu_queue,
-					      bool timing_master_channel)
+struct iso_datapath_htoc *iso_datapath_htoc_create(uint8_t const stream_lid,
+						   struct sdu_queue *sdu_queue,
+						   bool const timing_master_channel)
 {
-	if (sdu_queue == NULL) {
+
+	struct iso_datapath_htoc *datapath =
+		iso_datapath_htoc_init(stream_lid, sdu_queue, timing_master_channel);
+
+	if (!datapath) {
+		return NULL;
+	}
+
+	if (iso_datapath_htoc_bind(datapath)) {
+		iso_datapath_htoc_delete(datapath);
+		return NULL;
+	}
+
+	return datapath;
+}
+
+struct iso_datapath_htoc *iso_datapath_htoc_init(uint8_t const stream_lid,
+						 struct sdu_queue *const sdu_queue,
+						 bool const timing_master_channel)
+{
+	if (!sdu_queue) {
 		LOG_ERR("Invalid parameter");
 		return NULL;
 	}
 
-	struct iso_datapath_htoc *datapath =
-		(struct iso_datapath_htoc *)calloc(1, sizeof(struct iso_datapath_htoc));
+	struct iso_datapath_htoc *datapath = calloc(1, sizeof(*datapath));
 
-	if (datapath == NULL) {
+	if (!datapath) {
 		LOG_ERR("Failed to allocate data path");
 		return NULL;
 	}
 
+	datapath->stream_id = stream_lid;
 	datapath->sdu_queue = sdu_queue;
 	datapath->timing_master_channel = timing_master_channel;
 
@@ -107,7 +185,7 @@ struct iso_datapath_htoc *iso_datapath_htoc_create(uint8_t stream_lid, struct sd
 		datapath->last_sdu_seq = UINT16_MAX;
 	}
 
-	uint16_t ret = gapi_isooshm_dp_init(&datapath->dp, on_dp_transfer_complete);
+	uint16_t const ret = gapi_isooshm_dp_init(&datapath->dp, on_dp_transfer_complete);
 
 	if (ret != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Failed to init datapath with err %u", ret);
@@ -115,36 +193,73 @@ struct iso_datapath_htoc *iso_datapath_htoc_create(uint8_t stream_lid, struct sd
 		return NULL;
 	}
 
-	ret = gapi_isooshm_dp_bind(&datapath->dp, stream_lid, GAPI_DP_DIRECTION_INPUT);
+	return datapath;
+}
+
+int iso_datapath_htoc_bind(struct iso_datapath_htoc *const datapath)
+{
+	if (!datapath) {
+		return -EINVAL;
+	}
+
+	uint16_t const ret =
+		gapi_isooshm_dp_bind(&datapath->dp, datapath->stream_id, GAPI_DP_DIRECTION_INPUT);
+
 	if (ret != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Failed to bind datapath with err %u", ret);
-		iso_datapath_htoc_delete(datapath);
-		return NULL;
+		return -ENOEXEC;
 	}
 
 	/* Flag that datapath is waiting for first SDU */
 	datapath->awaiting_sdu = true;
 
-	return datapath;
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 0);
+#endif
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+	set_test_pin(&test_pin1, 0);
+#endif
+
+	return 0;
 }
 
-static void store_sdu_timing_info(struct iso_datapath_htoc *iso_dp, uint32_t capture_timestamp,
-				  uint16_t sdu_seq)
+int iso_datapath_htoc_unbind(struct iso_datapath_htoc *const datapath)
+{
+	if (!datapath) {
+		return -EINVAL;
+	}
+
+	datapath->awaiting_sdu = false;
+
+	gapi_isooshm_sdu_buf_t *pending_buffer = NULL;
+
+	gapi_isooshm_dp_unbind(&datapath->dp, &pending_buffer);
+
+	if (pending_buffer) {
+		/* Free the buffer that was pending in the datapath */
+		k_mem_slab_free(&datapath->sdu_queue->slab, pending_buffer);
+	}
+
+	return 0;
+}
+
+__ramfunc static void store_sdu_timing_info(struct iso_datapath_htoc *iso_dp,
+					    uint32_t capture_timestamp, uint16_t sdu_seq)
 {
 	struct sdu_timing_info info = {
 		.seq_num = sdu_seq,
 		.capture_timestamp = capture_timestamp,
 	};
 
-	int ret = k_msgq_put(&iso_dp->sdu_timing_msgq, &info, K_NO_WAIT);
+	int const ret = k_msgq_put(&iso_dp->sdu_timing_msgq, &info, K_NO_WAIT);
 
 	if (ret) {
 		LOG_ERR("Failed to put SDU timing to msgq, err %d", ret);
 	}
 }
 
-static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t sdu_seq,
-			  struct sdu_timing_info *info)
+__ramfunc static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t sdu_seq,
+				    struct sdu_timing_info *info)
 {
 	/* Loop through SDU queue until we either find a matching SDU or we know that the matching
 	 * SDU does not exist in the queue
@@ -164,7 +279,7 @@ static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t sdu_seq,
 			return 0;
 		}
 
-		if (((int32_t)sdu_seq) - info->seq_num > 0) {
+		if (((int32_t)sdu_seq - info->seq_num) > 0) {
 			/* Timing info matches a previous SDU. Pop from queue and move on to next */
 			k_msgq_get(&iso_dp->sdu_timing_msgq, info, K_NO_WAIT);
 		} else {
@@ -175,15 +290,20 @@ static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t sdu_seq,
 	}
 }
 
-void iso_datapath_htoc_notify_sdu_available(void *datapath, uint32_t capture_timestamp,
-					    uint16_t sdu_seq)
+__ramfunc void iso_datapath_htoc_notify_sdu_available(void *const datapath,
+						      uint32_t const capture_timestamp,
+						      uint16_t const sdu_seq)
 {
 	if (datapath == NULL) {
 		LOG_ERR("null datapath");
 		return;
 	}
 
-	struct iso_datapath_htoc *iso_dp = (struct iso_datapath_htoc *)datapath;
+#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
+	toggle_test_pin(&test_pin1);
+#endif
+
+	struct iso_datapath_htoc *const iso_dp = datapath;
 
 	if (iso_dp->awaiting_sdu) {
 		iso_dp->awaiting_sdu = false;
@@ -201,9 +321,8 @@ void iso_datapath_htoc_notify_sdu_available(void *datapath, uint32_t capture_tim
 
 	/* Get timing info of the last SDU that was sent by controller */
 	gapi_isooshm_sdu_sync_t sync_info;
-	uint16_t err = gapi_isooshm_dp_get_sync(&iso_dp->dp, &sync_info);
 
-	if (err) {
+	if (gapi_isooshm_dp_get_sync(&iso_dp->dp, &sync_info)) {
 		/* No SDU has been processed by the controller yet */
 		return;
 	}
@@ -216,9 +335,8 @@ void iso_datapath_htoc_notify_sdu_available(void *datapath, uint32_t capture_tim
 	iso_dp->last_sdu_seq = sync_info.seq_num;
 
 	struct sdu_timing_info capture_info;
-	int ret = get_sdu_timing(iso_dp, sync_info.seq_num, &capture_info);
 
-	if (ret) {
+	if (get_sdu_timing(iso_dp, sync_info.seq_num, &capture_info)) {
 		/* Timing info not found for this SDU */
 		return;
 	}
@@ -231,15 +349,12 @@ void iso_datapath_htoc_notify_sdu_available(void *datapath, uint32_t capture_tim
 
 int iso_datapath_htoc_delete(struct iso_datapath_htoc *datapath)
 {
-	if (datapath == NULL) {
+	if (!datapath) {
 		return -EINVAL;
 	}
 
-	if (datapath->sdu_timing_msgq_buffer != NULL) {
-		free(datapath->sdu_timing_msgq_buffer);
-	}
-
-	gapi_isooshm_dp_unbind(&datapath->dp, NULL);
+	iso_datapath_htoc_unbind(datapath);
+	free(datapath->sdu_timing_msgq_buffer);
 	free(datapath);
 
 	return 0;
