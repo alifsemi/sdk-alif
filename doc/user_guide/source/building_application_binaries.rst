@@ -92,7 +92,7 @@ Fetch the SDK source from the `main` branch:
 
    mkdir sdk-alif
    cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif.git --mr main
+   west init -m https://github.com/alifsemi/sdk-alif.git --mr v1.2-zas-branch
    west update
 
 2. Build an Application
