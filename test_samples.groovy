@@ -23,6 +23,8 @@ def zephyr_init() {
             cp /media/share/jenkins_share/zephyrproject_sdk_alif.tar.gz .
             tar xf zephyrproject_sdk_alif.tar.gz
             cd zephyrproject/alif
+            git status
+            git clean -fd
             git pull
             if [[ -v CHANGE_ID ]]; then
               git branch -D pr-\${CHANGE_ID} || true
@@ -41,8 +43,7 @@ def zephyr_init() {
             . venv/bin/activate
             eval `ssh-agent -s`
             west init zephyrproject -m git@github.com:alifsemi/sdk-alif.git
-            cd zephyrproject/
-            cd alif
+            cd zephyrproject/alif
             west update
             west zephyr-export
             pip install -r scripts/requirements.txt
