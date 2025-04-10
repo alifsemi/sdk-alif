@@ -17,15 +17,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
 
 set(PLATFORM_DRIVERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/hal/source/platform/zephyr)
 
-if (CONFIG_ETHOS_U_AXI0_ONLY)
-target_compile_definitions(ethosu_core_driver PRIVATE
-    NPU_QCONFIG=1
-    NPU_REGIONCFG_0=1
-    NPU_REGIONCFG_1=0
-    NPU_REGIONCFG_2=1
-    )
-endif()
-
 add_subdirectory(src/math)
 add_subdirectory(src/application/api/common)
 add_subdirectory(src/application/api/use_case/kws)
