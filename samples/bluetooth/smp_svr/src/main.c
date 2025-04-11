@@ -21,6 +21,11 @@
 #include "gapm_le_adv.h"
 #include "co_endian.h"
 #include "gatt_db.h"
+#include "batt_svc.h"
+#include "shared_control.h"
+
+extern void service_conn(struct shared_control *ctrl);
+struct shared_control ctrl = { false, 0, 0 };
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -265,6 +270,7 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_peer_addr->addr[2], p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
 	env.conidx = conidx;
+	ctrl.connected = true;
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -283,6 +289,8 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	env.conidx = GAP_INVALID_CONIDX;
 	env.ntf_cfg = PRF_CLI_STOP_NTFIND;
 	k_sem_give(&env.ntf_sem);
+
+	ctrl.connected = false;
 
 	rc = utils_start_adv();
 	if (rc != GAP_ERR_NO_ERROR) {
@@ -309,11 +317,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 		LOG_ERR("Failed to send appearance error: %u", rc);
 		return;
 	}
-}
-
-static void on_ctrl_hw_error(enum co_error hw_err_code)
-{
-	LOG_ERR("hw_err_code: %u", hw_err_code);
 }
 
 static void on_cb_event_sent(uint8_t conidx, uint8_t user_lid, uint16_t metainfo, uint16_t status)
@@ -499,7 +502,11 @@ static uint16_t utils_create_adv(void)
 	static const gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
+		.tx_pwr = 0,
+#else
 		.max_tx_pwr = 0,
+#endif /* CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
 				.adv_intv_min = 160,
@@ -557,7 +564,20 @@ static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		LOG_ERR("Failed to set device name, error: %u", rc);
 		return;
 	}
+
+	config_battery_service();
 }
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
+static void on_ctrl_hw_error(uint32_t metainfo, uint8_t code)
+{
+	LOG_ERR("hw_err_code: %u", code);
+}
+#else
+static void on_ctrl_hw_error(enum co_error hw_err_code)
+{
+	LOG_ERR("hw_err_code: %u", hw_err_code);
+}
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 static uint16_t utils_config_gapm(void)
 {
@@ -565,9 +585,9 @@ static uint16_t utils_config_gapm(void)
 		.role = GAP_ROLE_LE_PERIPHERAL,
 		.pairing_mode = GAPM_PAIRING_DISABLE,
 		.pairing_min_req_key_size = 0,
-		.privacy_cfg = 0,
+		.privacy_cfg = GAPM_PRIV_CFG_PRIV_EN_BIT,
 		.renew_dur = 1500,
-		.private_identity.addr = {0, 0, 0, 0, 0, 0},
+		.private_identity.addr = {0xC0, 0x01, 0x23, 0x45, 0x67, 0x89},
 		.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.gap_start_hdl = 0,
 		.gatt_start_hdl = 0,
@@ -597,7 +617,20 @@ static uint16_t utils_config_gapm(void)
 	};
 
 	static const gapc_le_config_cb_t gapc_le_cfg_cbs = {};
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
+	static const gapm_cb_t gapm_err_cbs = {
+		.cb_hw_error = on_ctrl_hw_error,
+	};
 
+	static const gapm_callbacks_t gapm_cbs = {
+		.p_con_req_cbs = &gapc_con_cbs,
+		.p_sec_cbs = &gapc_sec_cbs,
+		.p_info_cbs = &gapc_con_inf_cbs,
+		.p_le_config_cbs = &gapc_le_cfg_cbs,
+		.p_gapm_cbs = &gapm_err_cbs,
+	};
+
+#else
 	static const gapm_err_info_config_cb_t gapm_err_cbs = {
 		.ctrl_hw_error = on_ctrl_hw_error,
 	};
@@ -609,6 +642,7 @@ static uint16_t utils_config_gapm(void)
 		.p_le_config_cbs = &gapc_le_cfg_cbs,
 		.p_err_info_config_cbs = &gapm_err_cbs,
 	};
+#endif /* CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 	return gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 }
@@ -747,9 +781,13 @@ int main(void)
 		return -1;
 	}
 
+	/* Share connection info */
+	service_conn(&ctrl);
+
 	LOG_INF("Waiting for SMP requests...");
 	while (1) {
 		k_sleep(K_SECONDS(1));
+		battery_process();
 	}
 
 	return 0;
