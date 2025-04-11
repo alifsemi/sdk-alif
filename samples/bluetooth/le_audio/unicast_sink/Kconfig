@@ -14,18 +14,23 @@ config BLE_DEVICE_NAME
 	help
 	  Device name to be included in advertising packets
 
-config LE_AUDIO_PRESENTATION_DELAY_MS
-	int "Presentation delay in ms"
-	default 30
+config MAXIMUM_PRESENTATION_DELAY_US
+	int "Maximum available presentation delay in microseconds"
+	range 40000 100000
+	default 40000
 	help
-	  LE audio presentation delay in ms. For the audio source use-case, this is defined as the
-	  time in ms from the start of recording an audio frame, to the SDU reference anchor point
-	  at which the SDU containing the same audio frame is sent over BLE. The absolute minimum
-	  possible presentation delay would be the frame length (10 ms) plus the encoding time of
-	  the frame, since it is impossible to send the frame before it has been fully recorded and
-	  encoded. But some margin should be added on top of this to account for any overhead and
-	  timing variations due to other activities of the software occurring while recording and
-	  encoding the audio.
+	  Maximum presentation delay must be at least 40ms.
+	  There is no actual maximum value but 100ms is
+	  used to set something which is long enough.
+	  See LE Audio specification for more information.
+
+config MINIMUM_PRESENTATION_DELAY_US
+	int "Minimum available presentation delay in microseconds"
+	range 1000 20000
+	default 7500
+	help
+	  Minimum presentation delay to compensate for
+	  the audio processing delay.
 
 menu "Logging"
 

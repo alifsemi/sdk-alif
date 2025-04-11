@@ -8,46 +8,24 @@
  */
 
 #include <zephyr/logging/log.h>
-#include "bluetooth/le_audio/sdu_queue.h"
-#include "bluetooth/le_audio/audio_queue.h"
-#include "bluetooth/le_audio/iso_datapath_ctoh.h"
 #include "bluetooth/le_audio/audio_decoder.h"
-#include "bluetooth/le_audio/audio_sink_i2s.h"
 #include "bluetooth/le_audio/presentation_compensation.h"
 #include "audio_datapath.h"
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
-#if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
-#define FRAMES_PER_SECOND 100
-#else
-#error "Unsupported configuration"
-#endif
-
-#define SDU_QUEUE_LENGTH          4
-#define AUDIO_QUEUE_MARGIN_US     20000
-#define CHANNEL_COUNT             2
-#define AUDIO_BLOCK_SAMPLES       (CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND * CHANNEL_COUNT)
-#define MIN_PRESENTATION_DELAY_US 30000
-#define MICROSECONDS_PER_SECOND   1000000
-#define MICROSECONDS_PER_FRAME    (MICROSECONDS_PER_SECOND / FRAMES_PER_SECOND)
-
 struct audio_datapath {
-	struct sdu_queue *sdu_queue_l;
-	struct sdu_queue *sdu_queue_r;
-	struct iso_datapath_ctoh *iso_dp_l;
-	struct iso_datapath_ctoh *iso_dp_r;
-	struct audio_queue *audio_queue;
 	struct audio_decoder *decoder;
+	size_t octets_per_frame;
 };
 
-K_THREAD_STACK_DEFINE(decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE);
-
 static struct audio_datapath env;
-static uint16_t last_sdu;
 
+#if CONFIG_APP_PRINT_STATS
 static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 {
+	static uint16_t last_sdu;
+
 	if (last_sdu && (last_sdu + 1 < sdu_seq)) {
 		LOG_INF("SDU sequence number jumps, last: %u, now: %u", last_sdu, sdu_seq);
 	}
@@ -57,6 +35,7 @@ static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 		LOG_INF("SDU sequence number %u", sdu_seq);
 	}
 }
+#endif
 
 #ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
 void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
@@ -68,75 +47,25 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 int audio_datapath_create(struct audio_datapath_config *cfg)
 {
 	if (cfg == NULL) {
+		__ASSERT(false, "Datapath configuration missing");
 		return -EINVAL;
 	}
 
-	/* Presentation delay less than a certain value is impossible due to latency of audio
-	 * datapath
-	 */
-	uint32_t pres_delay_us = MAX(cfg->pres_delay_us, MIN_PRESENTATION_DELAY_US);
+	env.octets_per_frame = cfg->octets_per_frame;
 
-	env.sdu_queue_l = sdu_queue_create(SDU_QUEUE_LENGTH, cfg->octets_per_frame);
-	if (env.sdu_queue_l == NULL) {
-		LOG_ERR("Failed to create SDU queue (left)");
-		return -ENOMEM;
-	}
-
-	/* Stream LID is zero based on the assumption that the left channel is started first, and no
-	 * other datapaths are already running concurrently to this module
-	 */
-	env.iso_dp_l = iso_datapath_ctoh_create(0, env.sdu_queue_l);
-	if (env.iso_dp_l == NULL) {
-		LOG_ERR("Failed to create ISO datapath (left)");
-		return -ENOMEM;
-	}
-
-	if (cfg->stereo) {
-		env.sdu_queue_r = sdu_queue_create(SDU_QUEUE_LENGTH, cfg->octets_per_frame);
-		if (env.sdu_queue_r == NULL) {
-			LOG_ERR("Failed to create SDU queue (right)");
-			return -ENOMEM;
-		}
-
-		/* Stream LID is one based on the assumption that the right channel is started
-		 * second, and no other datapaths are already running concurrently to this module
-		 */
-		env.iso_dp_r = iso_datapath_ctoh_create(1, env.sdu_queue_r);
-		if (env.iso_dp_r == NULL) {
-			LOG_ERR("Failed to create ISO datapath (right)");
-			return -ENOMEM;
-		}
-	}
-
-	size_t audio_queue_len_us = pres_delay_us + AUDIO_QUEUE_MARGIN_US;
-	size_t audio_queue_len_blocks = audio_queue_len_us / MICROSECONDS_PER_FRAME;
-
-	env.audio_queue = audio_queue_create(audio_queue_len_blocks, AUDIO_BLOCK_SAMPLES);
-	if (env.audio_queue == NULL) {
-		LOG_ERR("Failed to create audio queue");
-		return -ENOMEM;
-	}
-
-	enum audio_decoder_frame_duration const frame_duration =
-		IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS) ? AUDIO_DECODER_FRAME_10MS
-								      : AUDIO_DECODER_FRAME_7_5_MS;
-	struct sdu_queue *queues[] = {
-		env.sdu_queue_l,
-		env.sdu_queue_r,
+	struct audio_decoder_params const dec_params = {
+		.i2s_dev = cfg->i2s_dev,
+		.frame_duration_us = cfg->frame_duration_is_10ms ? 10000 : 7500,
+		.sampling_rate_hz = cfg->sampling_rate_hz,
+		.pres_delay_us = cfg->pres_delay_us,
 	};
-	env.decoder = audio_decoder_create(CONFIG_ALIF_BLE_AUDIO_FS_HZ, decoder_stack,
-					   CONFIG_LC3_DECODER_STACK_SIZE, queues,
-					   ARRAY_SIZE(queues), env.audio_queue, frame_duration);
+
+	audio_decoder_delete(env.decoder);
+
+	env.decoder = audio_decoder_create(&dec_params);
 	if (env.decoder == NULL) {
 		LOG_ERR("Failed to create audio decoder");
 		return -ENOMEM;
-	}
-
-	int ret = audio_sink_i2s_configure(cfg->i2s_dev, env.audio_queue, MICROSECONDS_PER_FRAME);
-
-	if (ret != 0) {
-		LOG_ERR("Failed to configure audio sink I2S, err %d", ret);
-		return ret;
 	}
 
 	/* TODO: Change MCLK to use alif clock control */
@@ -165,46 +94,52 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	 */
 #endif
 
-	ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
-	if (ret != 0) {
-		LOG_ERR("Failed to register decoder cb, err %d", ret);
-		return ret;
-	}
-	/* Add callback(s) to notify ISO datapath(s) */
-	ret = audio_decoder_register_cb(env.decoder, iso_datapath_ctoh_notify_sdu_done,
-					env.iso_dp_l);
-	if (ret != 0) {
-		LOG_ERR("Failed to register decoder cb, err %d", ret);
-		return ret;
-	}
+#if CONFIG_APP_PRINT_STATS
+	int ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
 
-	if (env.iso_dp_r) {
-		ret = audio_decoder_register_cb(env.decoder, iso_datapath_ctoh_notify_sdu_done,
-						env.iso_dp_r);
-		if (ret != 0) {
-			LOG_ERR("Failed to register decoder cb, err %d", ret);
-			return ret;
-		}
-	}
-
-	/* Add a callback to notify audio sink */
-	ret = audio_decoder_register_cb(env.decoder, audio_sink_i2s_notify_buffer_available, NULL);
 	if (ret != 0) {
 		LOG_ERR("Failed to register decoder cb, err %d", ret);
 		return ret;
 	}
+#endif
 
 	LOG_INF("Created audio datapath");
 
 	return 0;
 }
 
+int audio_datapath_create_channel(size_t const octets_per_frame, uint8_t const ch_index)
+{
+	int ret = audio_decoder_add_channel(env.decoder, octets_per_frame, ch_index);
+
+	if (ret) {
+		LOG_ERR("Failed to create channel %u, err %d", ch_index, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+int audio_datapath_start_channel(uint8_t const ch_index)
+{
+	int ret = audio_decoder_start_channel(env.decoder, ch_index);
+
+	if (ret) {
+		LOG_ERR("Failed to start channel %u, err %d", ch_index, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
 int audio_datapath_start(void)
 {
-	/* Notify that first buffer is available to start reception */
-	iso_datapath_ctoh_notify_sdu_done(env.iso_dp_l, 0, 0);
-	if (env.iso_dp_r) {
-		iso_datapath_ctoh_notify_sdu_done(env.iso_dp_r, 0, 0);
+	for (int iter = 0; iter < CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS; iter++) {
+		audio_datapath_create_channel(env.octets_per_frame, iter);
+	}
+
+	for (int iter = 0; iter < CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS; iter++) {
+		audio_datapath_start_channel(iter);
 	}
 
 	LOG_INF("Audio datapath started");
@@ -214,32 +149,8 @@ int audio_datapath_start(void)
 
 int audio_datapath_cleanup(void)
 {
-	/* Stop and cleanup decoder thread first as it references other modules */
-	if (env.decoder) {
-		audio_decoder_delete(env.decoder);
-	}
-
-	/* Then delete ISO DP to stop any incoming SDUs */
-	if (env.iso_dp_l) {
-		iso_datapath_ctoh_delete(env.iso_dp_l);
-	}
-
-	if (env.iso_dp_r) {
-		iso_datapath_ctoh_delete(env.iso_dp_r);
-	}
-
-	/* Then clean up queues */
-	if (env.sdu_queue_l) {
-		sdu_queue_delete(env.sdu_queue_l);
-	}
-
-	if (env.sdu_queue_r) {
-		sdu_queue_delete(env.sdu_queue_r);
-	}
-
-	if (env.audio_queue) {
-		audio_queue_delete(env.audio_queue);
-	}
+	audio_decoder_delete(env.decoder);
+	env.decoder = NULL;
 
 	LOG_INF("Removed audio datapath");
 

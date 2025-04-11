@@ -16,13 +16,12 @@
 #include "tmap.h"
 #include "ke_mem.h"
 
+#include "bluetooth/le_audio/audio_utils.h"
+
 #include "unicast_sink.h"
 #include "audio_datapath.h"
 
 LOG_MODULE_REGISTER(unicast_sink, CONFIG_UNICAST_SINK_LOG_LEVEL);
-
-/** Default presentation delay in microseconds */
-#define PRESENTATION_DELAY_US (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000u)
 
 /** Default location for sink. Comment this for mono stream support */
 #define LOCATION_SINK (GAF_LOC_FRONT_LEFT_BIT | GAF_LOC_FRONT_RIGHT_BIT)
@@ -37,6 +36,11 @@ LOG_MODULE_REGISTER(unicast_sink, CONFIG_UNICAST_SINK_LOG_LEVEL);
 /** Number of simultaneous connections supported */
 #define MAX_NUMBER_OF_CONNECTIONS 1
 #define CONTROL_DELAY_US          100
+
+/* Smallest retx number which can be used is 8 for now */
+#define RETX_NUMBER              8 /* 13 */
+/* Smallest tmax which can be used is 40ms for now */
+#define MAX_TRANSPORT_LATENCY_MS 30
 
 #define ADV_SET_LOCAL_IDX     0
 #define ADV_CONFIG            (GAPM_ADV_MODE_GEN_DISC | GAF_ADV_CFG_GENERAL_ANNOUNCEMENT_BIT)
@@ -64,8 +68,8 @@ struct ase_config {
 	uint8_t nb_datapaths;
 	/** SDU size */
 	uint8_t frame_octet;
-	/** Data path is configured */
-	bool data_path_configured;
+	/* Max SDU size */
+	uint8_t max_sdu_size;
 	/** Data path configuration */
 	struct audio_datapath_config datapath_config;
 };
@@ -73,9 +77,6 @@ struct ase_config {
 struct unicast_env {
 	/** Advertising is ongoing */
 	bool advertising_ongoing;
-	/** Bit field allowing to know if a procedure has been completed for an ASE */
-	uint8_t ase_done_bf;
-
 	/** ASE configuration (Sink direction) */
 	struct ase_config ase_config_sink;
 	/** ASE configuration (Source direction) */
@@ -149,61 +150,6 @@ static const char *location_name[GAF_LOC_RIGHT_SURROUND_POS + 1] = {
 
 K_KERNEL_STACK_DEFINE(worker_task_stack, WORKER_STACK_SIZE);
 static struct k_work_q worker_queue;
-
-/* ---------------------------------------------------------------------------------------- */
-
-static uint32_t sampling_freq_index_to_hz(uint32_t const index)
-{
-	switch (index) {
-	case BAP_SAMPLING_FREQ_8000HZ:
-		return 8000;
-	case BAP_SAMPLING_FREQ_16000HZ:
-		return 16000;
-	case BAP_SAMPLING_FREQ_24000HZ:
-		return 24000;
-	case BAP_SAMPLING_FREQ_32000HZ:
-		return 32000;
-	case BAP_SAMPLING_FREQ_44100HZ:
-		return 44100;
-	case BAP_SAMPLING_FREQ_48000HZ:
-		return 48000;
-	default:
-		break;
-	}
-	__ASSERT(0, "Invalid sampling frequency!");
-}
-
-/* ---------------------------------------------------------------------------------------- */
-
-#define START_FROM_STREMING 1
-
-static inline void stop_audio_datapath(void)
-{
-	audio_datapath_cleanup();
-	unicast_env.ase_config_sink.data_path_configured = false;
-}
-
-static void job_start_audio_datapath(struct k_work *p_job)
-{
-	ARG_UNUSED(p_job);
-
-#if !START_FROM_STREMING
-	k_sleep(K_MSEC(5));
-#endif
-	if (unicast_env.ase_config_sink.data_path_configured) {
-		return;
-	}
-	if (audio_datapath_create(&unicast_env.ase_config_sink.datapath_config) < 0) {
-		stop_audio_datapath();
-		LOG_ERR("Failed to create audio datapath");
-		return;
-	}
-
-	audio_datapath_start();
-	unicast_env.ase_config_sink.data_path_configured = true;
-}
-
-static K_WORK_DEFINE(start_audio_job, job_start_audio_datapath);
 
 /* ---------------------------------------------------------------------------------------- */
 /* GAF advertising */
@@ -302,15 +248,15 @@ static void on_unicast_server_cb_ase_state(uint8_t const ase_lid, uint8_t const 
 
 	switch (state) {
 	case BAP_UC_ASE_STATE_IDLE: {
-		unicast_env.ase_done_bf |= CO_BIT(ase_lid);
+		audio_datapath_cleanup();
 		break;
 	}
 	case BAP_UC_ASE_STATE_QOS_CONFIGURED: {
 		unicast_env.ase_config_sink.nb_datapaths++;
+		audio_datapath_create(&unicast_env.ase_config_sink.datapath_config);
 		break;
 	}
 	case BAP_UC_ASE_STATE_ENABLING: {
-		audio_datapath_create_channel(unicast_env.ase_config_sink.frame_octet, ase_lid);
 		break;
 	}
 	case BAP_UC_ASE_STATE_RELEASING: {
@@ -321,12 +267,7 @@ static void on_unicast_server_cb_ase_state(uint8_t const ase_lid, uint8_t const 
 		break;
 	}
 	case BAP_UC_ASE_STATE_STREAMING: {
-#if START_FROM_STREMING
-		/* Start audio path when last ASE is ready */
-		if ((unicast_env.ase_config_sink.nb_datapaths - 1) == ase_lid) {
-			k_work_submit_to_queue(&worker_queue, &start_audio_job);
-		}
-#endif
+		audio_datapath_start_channel(ase_lid);
 		break;
 	}
 	default: {
@@ -335,10 +276,10 @@ static void on_unicast_server_cb_ase_state(uint8_t const ase_lid, uint8_t const 
 	}
 }
 
-static void on_unicast_server_cb_cis_state(const uint8_t stream_lid, const uint8_t conidx,
-					   const uint8_t ase_lid_sink, const uint8_t ase_lid_src,
-					   const uint8_t cig_id, const uint8_t cis_id,
-					   const uint16_t conhdl, gapi_ug_config_t *const p_cig_cfg,
+static void on_unicast_server_cb_cis_state(uint8_t const stream_lid, uint8_t const conidx,
+					   uint8_t const ase_lid_sink, uint8_t const ase_lid_src,
+					   uint8_t const cig_id, uint8_t const cis_id,
+					   uint16_t const conhdl, gapi_ug_config_t *const p_cig_cfg,
 					   gapi_us_config_t *const p_cis_cfg)
 {
 	LOG_DBG("CIS %d state - handle:0x%04X, cig_id:%d, stream_lid:%d, ASE lid sink:%u,source:%u",
@@ -353,41 +294,66 @@ static void on_unicast_server_cb_cis_state(const uint8_t stream_lid, const uint8
 		"iso_intv_frames:%u",
 		p_cig_cfg->sync_delay_us, p_cig_cfg->tlatency_m2s_us, p_cig_cfg->tlatency_s2m_us,
 		p_cig_cfg->iso_intv_frames);
-	LOG_DBG("  STREAM: sync_delay_us:%u, Max PDU m2s:%u/s2m:%u, PHY m2s:%u/s2m:%u, flush to "
-		"m2s:%u/s2m:%u, nse:%u",
+	LOG_DBG("  STREAM: sync_delay_us:%u, Max PDU m2s:%u/s2m:%u, PHY m2s:%u/s2m:%u, "
+		"flush to m2s:%u/s2m:%u, burst nbr m2s:%u/s2m:%u, nse:%u",
 		p_cis_cfg->sync_delay_us, p_cis_cfg->max_pdu_m2s, p_cis_cfg->max_pdu_s2m,
 		p_cis_cfg->phy_m2s, p_cis_cfg->phy_s2m, p_cis_cfg->ft_m2s, p_cis_cfg->ft_s2m,
-		p_cis_cfg->nse);
+		p_cis_cfg->bn_m2s, p_cis_cfg->bn_s2m, p_cis_cfg->nse);
 
 	unicast_env.ase_config_sink.datapath_config.pres_delay_us = p_cig_cfg->tlatency_m2s_us;
+	unicast_env.ase_config_sink.max_sdu_size = p_cis_cfg->max_pdu_m2s;
+	unicast_env.ase_config_src.max_sdu_size = p_cis_cfg->max_pdu_s2m;
 }
 
-static void on_unicast_server_cb_configure_codec_req(uint8_t conidx, uint8_t ase_instance_idx,
-						     uint8_t ase_lid, uint8_t tgt_latency,
-						     uint8_t tgt_phy, gaf_codec_id_t *p_codec_id,
-						     const bap_cfg_ptr_t *p_cfg)
+static void
+on_unicast_server_cb_configure_codec_req(uint8_t const conidx, uint8_t const ase_instance_idx,
+					 uint8_t const ase_lid, uint8_t const tgt_latency,
+					 uint8_t const tgt_phy, gaf_codec_id_t *const p_codec_id,
+					 const bap_cfg_ptr_t *const p_cfg)
 {
 	size_t const config_len = p_cfg->p_add_cfg ? p_cfg->p_add_cfg->len : 0;
 	size_t const size = sizeof(bap_cfg_t) + config_len;
-	uint8_t const ase_lid_cfm = ase_lid == GAF_INVALID_LID ? ase_instance_idx : ase_lid;
+	uint_fast8_t const ase_lid_cfm = ase_lid == GAF_INVALID_LID ? ase_instance_idx : ase_lid;
 	/* Allocate codec configuration buffer
 	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
 	 */
-	bap_cfg_t *p_ase_codec_cfg = ke_malloc_user(size, KE_MEM_PROFILE);
+	bap_cfg_t *p_ase_codec_cfg = NULL;
+
+	/* Preferred QoS settings reported to Initiator (client) */
 	bap_qos_req_t qos_req = {
-		.pres_delay_min_us = 7500,
-		.pres_delay_max_us = 40000,
-		.pref_pres_delay_min_us = 7500,
-		.pref_pres_delay_max_us = 40000,
-		.trans_latency_max_ms = 30,
-		.framing = 0,
-		.phy_bf = (GAP_PHY_LE_1MBPS | GAP_PHY_LE_2MBPS),
+		/* Presentation delay max must be at least 40ms.
+		 * Minimum depends on the sink capabilities to process the audio
+		 */
+		.pres_delay_min_us = CONFIG_MINIMUM_PRESENTATION_DELAY_US,
+		.pres_delay_max_us = CONFIG_MAXIMUM_PRESENTATION_DELAY_US,
+		.pref_pres_delay_min_us = CONFIG_MINIMUM_PRESENTATION_DELAY_US,
+		.pref_pres_delay_max_us = CONFIG_MAXIMUM_PRESENTATION_DELAY_US,
+#if MAX_TRANSPORT_LATENCY_MS
+		.trans_latency_max_ms = MAX_TRANSPORT_LATENCY_MS,
+#else
+		/* Transport latency maximum according to LE audio specification */
+		.trans_latency_max_ms = (tgt_latency == BAP_UC_TGT_LATENCY_LOWER) ? 20 : 40 /*100*/,
+#endif
+		.framing = ISO_UNFRAMED_MODE,                    /** @ref enum iso_frame */
+		.phy_bf = (GAP_PHY_LE_1MBPS | GAP_PHY_LE_2MBPS), /** @ref enum gap_phy */
+#if RETX_NUMBER
+		.retx_nb = RETX_NUMBER,
+#else
+		/* Retransmission number according to LE audio specification */
 		.retx_nb = (tgt_latency == BAP_UC_TGT_LATENCY_LOWER) ? 5 : 13,
+#endif
 	};
 
-	LOG_DBG("ASE %u Configure Codec requested (ASE instance idx %d, conidx %u)", ase_lid_cfm,
-		ase_instance_idx, conidx);
+	LOG_DBG("ASE %u Configure Codec requested (ASE instance idx %d, conidx %u). tgt_latency: "
+		"%u, tgt_phy: %u",
+		ase_lid_cfm, ase_instance_idx, conidx, tgt_latency, tgt_phy);
 
+	if (tgt_phy < BAP_UC_TGT_PHY_1M || tgt_phy > BAP_UC_TGT_PHY_2M) {
+		LOG_ERR("  Invalid PHY %u", tgt_phy);
+		goto bap_codec_config_cfm;
+	}
+
+	p_ase_codec_cfg = ke_malloc_user(size, KE_MEM_PROFILE);
 	if (!p_ase_codec_cfg) {
 		goto bap_codec_config_cfm;
 	}
@@ -399,10 +365,9 @@ static void on_unicast_server_cb_configure_codec_req(uint8_t conidx, uint8_t ase
 		sampling_freq_name[p_cfg->param.sampling_freq],
 		frame_dur_name[p_cfg->param.frame_dur], p_cfg->param.frame_octet, p_name);
 
-	/* Set initial presentation delay */
-	unicast_env.ase_config_sink.datapath_config.pres_delay_us = PRESENTATION_DELAY_US;
+	unicast_env.ase_config_sink.datapath_config.pres_delay_us = qos_req.pres_delay_max_us;
 	unicast_env.ase_config_sink.datapath_config.sampling_rate_hz =
-		sampling_freq_index_to_hz(p_cfg->param.sampling_freq);
+		audio_bap_sampling_freq_to_hz(p_cfg->param.sampling_freq);
 	unicast_env.ase_config_sink.datapath_config.frame_duration_is_10ms = p_cfg->param.frame_dur;
 	unicast_env.ase_config_sink.frame_octet = p_cfg->param.frame_octet;
 
@@ -426,7 +391,18 @@ bap_codec_config_cfm:
 static void on_unicast_server_cb_configure_qos_req(uint8_t const ase_lid, uint8_t const stream_lid,
 						   const bap_qos_cfg_t *const p_qos_cfg)
 {
-	bap_uc_srv_configure_qos_cfm(ase_lid, BAP_UC_CP_RSP_CODE_SUCCESS, 0);
+	uint_fast8_t rsp_code = BAP_UC_CP_RSP_CODE_SUCCESS;
+	uint8_t reason = 0;
+
+	if (p_qos_cfg->pres_delay_us < CONFIG_MINIMUM_PRESENTATION_DELAY_US ||
+	    p_qos_cfg->pres_delay_us > CONFIG_MAXIMUM_PRESENTATION_DELAY_US) {
+		rsp_code = BAP_UC_CP_RSP_CODE_UNSUPPORTED_CFG_PARAM;
+		reason = BAP_UC_CP_REASON_PRES_DELAY;
+	}
+
+	unicast_env.ase_config_sink.datapath_config.pres_delay_us = p_qos_cfg->pres_delay_us;
+
+	bap_uc_srv_configure_qos_cfm(ase_lid, rsp_code, reason);
 	LOG_DBG("Configure QoS requested (ASE %d)", ase_lid);
 }
 #endif
@@ -434,6 +410,7 @@ static void on_unicast_server_cb_configure_qos_req(uint8_t const ase_lid, uint8_
 static void on_unicast_server_cb_enable_req(uint8_t const ase_lid,
 					    bap_cfg_metadata_ptr_t *const p_metadata)
 {
+	uint8_t rsp_code = BAP_UC_CP_RSP_CODE_INSUFFICIENT_RESOURCES;
 	size_t const metadata_len =
 		p_metadata->p_add_metadata ? p_metadata->p_add_metadata->len : 0;
 	size_t const size = sizeof(bap_cfg_metadata_t) + metadata_len;
@@ -449,12 +426,15 @@ static void on_unicast_server_cb_enable_req(uint8_t const ase_lid,
 			memcpy(&p_ase_metadata->add_metadata, p_metadata->p_add_metadata,
 			       sizeof(p_ase_metadata->add_metadata.len) + metadata_len);
 		}
+
+		rsp_code = BAP_UC_CP_RSP_CODE_SUCCESS;
 	}
 
-	bap_uc_srv_enable_cfm(ase_lid,
-			      !!p_ase_metadata ? BAP_UC_CP_RSP_CODE_SUCCESS
-					       : BAP_UC_CP_RSP_CODE_INSUFFICIENT_RESOURCES,
-			      0, p_ase_metadata);
+	if (audio_datapath_create_channel(unicast_env.ase_config_sink.frame_octet, ase_lid)) {
+		rsp_code = BAP_UC_CP_RSP_CODE_UNSPECIFIED_ERROR;
+	}
+
+	bap_uc_srv_enable_cfm(ase_lid, rsp_code, 0, p_ase_metadata);
 
 	LOG_DBG("Enable requested (ASE %d), context_bf:%u", ase_lid, p_metadata->param.context_bf);
 }
@@ -511,15 +491,12 @@ static void on_unicast_server_cb_dp_update_req(uint8_t const ase_lid, bool const
 	}
 
 	if (!start) {
-		stop_audio_datapath();
+		audio_datapath_stop_channel(ase_lid);
 		return;
 	}
-	if ((unicast_env.ase_config_sink.nb_datapaths - 1) != ase_lid) {
-		return;
-	}
-#if !START_FROM_STREMING
-	k_work_submit_to_queue(&worker_queue, &start_audio_job);
-#endif
+
+	/* TODO: unable to bind a stream from here */
+	/* audio_datapath_start_channel(ase_lid); */
 }
 
 static const struct bap_uc_srv_cb bap_uc_srv_cb = {
@@ -602,7 +579,7 @@ enum capa_type {
 	CAPA_TYPE_48_10MS_2_BIT = BIT(CAPA_TYPE_48_10MS_2),
 };
 
-/** Alloc and initialize the codec capability */
+/** Alloc and initialize the capability record */
 static inline void *bap_capa_record_alloc_and_init(enum capa_type const type_bit)
 {
 	/* Allocate capa record buffer
@@ -610,7 +587,11 @@ static inline void *bap_capa_record_alloc_and_init(enum capa_type const type_bit
 	 */
 	bap_capa_t *p_capa = ke_malloc_user(BAP_CAPA_SIZE, KE_MEM_PROFILE);
 
-	__ASSERT(p_capa, "Failed to allocate memory for codec capability");
+	if (!p_capa) {
+		__ASSERT(0, "Failed to allocate memory for capability record");
+		LOG_ERR("Failed to allocate memory for capability record");
+		return NULL;
+	}
 
 	switch (type_bit) {
 	case CAPA_TYPE_16_7_5MS_BIT:
@@ -676,7 +657,10 @@ static inline void *bap_capa_record_alloc_and_init(enum capa_type const type_bit
 		break;
 	}
 	default: {
+		ke_free(p_capa);
 		__ASSERT(0, "Invalid capability type");
+		LOG_ERR("Invalid capability type");
+		p_capa = NULL;
 	}
 	}
 
@@ -777,9 +761,6 @@ static void add_capa_reconds(uint32_t codec_bitmap, uint32_t *const p_pac_lid,
 		return;
 	}
 
-	__ASSERT(p_pac_lid, "p_pac_lid is NULL");
-	__ASSERT(p_record_id, "p_record_id is NULL");
-
 	bap_capa_t *p_capa;
 	gaf_codec_id_t const codec_id = GAF_CODEC_ID_LC3;
 	size_t nb_records = 0;
@@ -795,9 +776,16 @@ static void add_capa_reconds(uint32_t codec_bitmap, uint32_t *const p_pac_lid,
 			nb_records = 0;
 		}
 		p_capa = bap_capa_record_alloc_and_init(bit);
+		if (!p_capa) {
+			return;
+		}
 		err = bap_capa_srv_set_record(pac_lid, record_id, &codec_id, p_capa, NULL);
-		__ASSERT(err == GAF_ERR_NO_ERROR, "BAP capability record %u add failed! error:%u",
-			 record_id, err);
+		if (err != GAF_ERR_NO_ERROR) {
+			__ASSERT(0, "BAP capability record %u add failed! error:%u", record_id,
+				 err);
+			LOG_ERR("BAP capability record %u add failed! error:%u", record_id, err);
+			return;
+		}
 		codec_bitmap &= ~bit;
 		nb_records++;
 		record_id++;
@@ -854,7 +842,10 @@ static int configure_bap_capabilities(uint32_t const loc_bf_sink, uint32_t const
 	}
 
 	/* Sanity check that BAP capability server is ready */
-	__ASSERT(bap_capa_srv_is_configured(), "BAP capability server is not ready!");
+	if (!bap_capa_srv_is_configured()) {
+		LOG_ERR("BAP capability server is not ready!");
+		return -1;
+	}
 
 	LOG_DBG("BAP capability server is configured");
 
@@ -893,7 +884,7 @@ int unicast_sink_init(void)
 			(unicast_env.ase_config_sink.nb_ases + unicast_env.ase_config_src.nb_ases) *
 			MAX_NUMBER_OF_CONNECTIONS,
 		.cfg_bf = 0,
-		.pref_mtu = 0,
+		.pref_mtu = GAP_LE_MAX_OCTETS,
 		.shdl = GATT_INVALID_HDL,
 	};
 
@@ -904,7 +895,11 @@ int unicast_sink_init(void)
 	}
 
 	/* Sanity check that BAP capability server is ready */
-	__ASSERT(bap_uc_srv_is_configured(), "BAP unicast server is not ready!");
+	if (!bap_uc_srv_is_configured()) {
+		LOG_ERR("BAP unicast server is not ready!");
+		return -1;
+	}
+
 	LOG_DBG("BAP unicast server is configured");
 
 	return configure_bap_capabilities(LOCATION_SINK, LOCATION_SOURCE);

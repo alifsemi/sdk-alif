@@ -15,9 +15,13 @@
 #include "audio_queue.h"
 #include "sdu_queue.h"
 
-enum audio_decoder_frame_duration {
-	AUDIO_DECODER_FRAME_7_5_MS,
-	AUDIO_DECODER_FRAME_10MS,
+struct audio_decoder_params {
+	const struct device *i2s_dev;
+	uint32_t pres_delay_us;
+	uint32_t frame_duration_us;
+	uint32_t sampling_rate_hz;
+	size_t num_queues;
+	struct sdu_queue *p_sdu_queues[];
 };
 
 /**
@@ -44,21 +48,47 @@ typedef void (*audio_decoder_sdu_cb_t)(void *context, uint32_t timestamp, uint16
  * module should be update to use dynamically allocated stacks at the point where the targeted
  * Zephyr version is updated to include this feature.
  *
- * @param stack Stack memory area for decoder thread. Must be statically allocated using
- * K_THREAD_STACK_DEFINE.
- * @param stacksize Size in bytes of stack memory area
- * @param p_sdu_queues Pointer to list of SDU queues for channels
- * @param num_queues SDU queue count on the give list
- * @param audio_queue Audio queue to push decoded audio data to
- * @param frame_duration Frame duration @ref enum audio_decoder_frame_duration
+ * @param params Audio decoder configuration parameters
  *
  * @retval Created audio decoder instance if successful
  * @retval NULL on failure
  */
-struct audio_decoder *audio_decoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
-					   size_t stacksize, struct sdu_queue *p_sdu_queues[],
-					   size_t num_queues, struct audio_queue *audio_queue,
-					   enum audio_decoder_frame_duration frame_duration);
+struct audio_decoder *audio_decoder_create(struct audio_decoder_params const *params);
+
+/**
+ * @brief Add a channel to the decoder
+ *
+ * @param decoder Audio decoder instance to add channel to
+ * @param channel_id Channel ID to add
+ * @param queue SDU queue for the channel
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_decoder_add_channel(struct audio_decoder *decoder, size_t octets_per_frame,
+			      size_t channel_id);
+
+/**
+ * @brief Start a channel
+ *
+ * @param decoder Audio decoder instance to start channel for
+ * @param channel_id Channel ID to start
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_decoder_start_channel(struct audio_decoder *decoder, size_t channel_id);
+
+/**
+ * @brief Stop a channel
+ *
+ * @param decoder Audio decoder instance to stop channel for
+ * @param channel_id Channel ID to stop
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_decoder_stop_channel(struct audio_decoder *decoder, size_t channel_id);
 
 /**
  * @brief Register a callback to be called on completion of each decoded frame

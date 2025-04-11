@@ -18,10 +18,17 @@
 #ifndef BUF_ATTRIBUTES_HPP
 #define BUF_ATTRIBUTES_HPP
 
+#include <zephyr/devicetree.h>
+
 #define BYTE_ALIGNMENT              16
 #define ALIGNMENT_REQ               aligned(BYTE_ALIGNMENT)
 #define ACTIVATION_BUF_SECTION      section(CONFIG_ACTIVATION_BUF_SECTION)
+
+#if CONFIG_MODEL_IN_EXT_FLASH
+#define MODEL_SECTION               section(".alif_extflash_" DT_PROP(DT_NODELABEL(ext_flash_xip), zephyr_memory_region))
+#else
 #define MODEL_SECTION               section(CONFIG_MODEL_SECTION)
+#endif
 
 #define MAKE_ATTRIBUTE(x)           __attribute__((ALIGNMENT_REQ, x))
 #define MODEL_TFLITE_ATTRIBUTE      MAKE_ATTRIBUTE(MODEL_SECTION)

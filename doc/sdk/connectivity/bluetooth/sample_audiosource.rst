@@ -40,8 +40,6 @@ Additionally there is need to set:
 	# be possible to configure heap for picolibc
 	CONFIG_NEWLIB_LIBC=y
 
-	CONFIG_ALIF_BLE_AUDIO_SOURCE_MONO=n
-
 	# Driver support for audio
 	CONFIG_I2S=y
 	CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL=n

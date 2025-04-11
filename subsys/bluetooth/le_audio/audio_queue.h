@@ -12,15 +12,37 @@
 
 #include <zephyr/kernel.h>
 
+/* Max supported sampling rate is 48kHz.
+ * 10ms frame has 480 bytes and 7.5ms has 360 bytes.
+ */
+#define MAX_SAMPLES_PER_AUDIO_BLOCK 480
+#define MAX_NUMBER_OF_CHANNELS 2
+
+typedef int16_t pcm_sample_t;
+
 struct audio_block {
 	uint32_t timestamp;
-	int16_t buf[]; /* 16-bit signed PCM values */
+	/** Number of audio channels in this block */
+	size_t num_channels;
+	/** 16-bit signed PCM values */
+	union {
+		pcm_sample_t channels[MAX_NUMBER_OF_CHANNELS]
+				     [MAX_SAMPLES_PER_AUDIO_BLOCK];
+		struct {
+			pcm_sample_t buf_left[MAX_SAMPLES_PER_AUDIO_BLOCK];
+#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
+			pcm_sample_t buf_right[MAX_SAMPLES_PER_AUDIO_BLOCK];
+#endif
+		};
+	};
 };
 
 struct audio_queue {
 	size_t item_count;
 	size_t item_size;
-	size_t audio_block_samples;
+	uint16_t audio_block_samples;
+	uint16_t frame_duration_us;
+	size_t sampling_freq_hz;
 	struct k_mem_slab slab;
 	struct k_msgq msgq;
 	uint8_t buf[];
@@ -34,14 +56,15 @@ struct audio_queue {
  * source use case is an exception where all parameters can be fixed at compile time).
  *
  * @param item_count Number of audio blocks in the queue
- * @param audio_block_samples Number of samples in each audio block (considering both channels if
- * stereo, so this parameter would be 200 for a stereo stream with 100 samples per channel per
- * block)
+ * @param number_of_channels Number of channels in the audio stream
+ * @param sampling_freq_hz Sampling frequency in Hz
+ * @param frame_duration Frame duration. @ref enum audio_queue_duration
  *
  * @retval Pointer to created audio queue header if successful
  * @retval NULL if an error occurred
  */
-struct audio_queue *audio_queue_create(size_t item_count, size_t audio_block_samples);
+struct audio_queue *audio_queue_create(size_t item_count, size_t sampling_freq_hz,
+				       size_t frame_duration_us);
 
 /**
  * @brief Delete an audio queue that was previously dynamically allocated

@@ -11,5 +11,6 @@ menu "Alif SDK subsystems"
 rsource "ieee802154/Kconfig"
 rsource "bluetooth/Kconfig"
 rsource "powermgr/Kconfig"
+rsource "modules/ethosu/Kconfig"
 
 endmenu

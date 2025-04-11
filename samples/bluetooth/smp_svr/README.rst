@@ -42,17 +42,67 @@ bootloader uses fixed addresses for image slots.
 Flashing the Binaries
 *********************
 
-To flash the binaries to the specified MRAM addresses, gdb can be used.
+Use the Alif SETools to flash the bootloader and the signed user application.
 
-1. Flash the MCUboot bootloader:
-   .. code-block:: console
 
-      restore build/mcuboot/zephyr/zephyr.bin binary 0x80000000
+Copy the bootloader and signed user application from the build directory:
 
-2. Flash the signed SMP application:
-   .. code-block:: console
+.. code-block:: console
 
-      restore build/smp_svr/zephyr/zephyr.signed.bin binary 0x80010000
+   <ZEPHYR_ROOT>/build/mcuboot/zephyr/zephyr.bin
+   <ZEPHYR_ROOT>/build/smp_svr/zephyr/zephyr.signed.bin
+
+To your SETools build directory:
+
+.. code-block:: console
+
+   <SETOOLS_ROOT>/build/images/zephyr.bin
+   <SETOOLS_ROOT>/build/images/zephyr.signed.bin
+
+Create SETools configuration file in:
+
+.. code-block:: console
+
+   <SETOOLS_ROOT>/build/config/balletto_smp_svr.json
+
+With the following contents:
+
+.. code-block:: console
+
+   {
+      "DEVICE": {
+         "disabled" : false,
+         "binary": "app-device-config.json",
+         "version" : "0.5.00",
+         "signed": true
+      },
+      "mcuboot": {
+         "disabled": false,
+         "binary": "zephyr.bin",
+         "version" : "1.0.0",
+         "signed": true,
+         "mramAddress": "0x80000000",
+         "cpu_id": "M55_HE",
+         "flags": ["boot"]
+      },
+      "smp_svr": {
+         "disabled": false,
+         "binary": "zephyr.signed.bin",
+         "version": "1.0.0",
+         "signed": false,
+         "mramAddress": "0x80010000",
+         "cpu_id": "M55_HE",
+         "flags": []
+      }
+   }
+
+Finally use SETools to flash the images:
+
+.. code-block:: console
+
+   app-gen-toc -f build/config/balletto_smp_svr.json
+   app-write-mram -p
+
 
 Updating the Image Using the mcumgr Tool
 ****************************************
@@ -60,30 +110,35 @@ Updating the Image Using the mcumgr Tool
 The mcumgr command-line tool supports BLE only on Linux and macOS.
 
 1. Upload the new firmware image:
+
    .. code-block:: console
 
       mcumgr -conntype ble --connstring ctlr_name=hci0,peer_name='ALIF_SMP' \
          image upload build/smp_svr/zephyr/zephyr.signed.bin
 
 2. List the available images to confirm the upload:
+
    .. code-block:: console
 
       mcumgr -conntype ble --connstring ctlr_name=hci0,peer_name='ALIF_SMP' \
          image list
 
 3. Test the new image:
+
    .. code-block:: console
 
       mcumgr -conntype ble --connstring ctlr_name=hci0,peer_name='ALIF_SMP' \
          image test <slot1_image_hash>
 
 4. Reset the device to test the new image:
+
    .. code-block:: console
 
       mcumgr -conntype ble --connstring ctlr_name=hci0,peer_name='ALIF_SMP' \
          reset
 
 5. Confirm the new image if it works as expected:
+
    .. code-block:: console
 
       mcumgr -conntype ble --connstring ctlr_name=hci0,peer_name='ALIF_SMP' \

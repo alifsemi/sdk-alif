@@ -12,12 +12,16 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/types.h>
-#include "audio_queue.h"
-#include "sdu_queue.h"
+#include "bluetooth/le_audio/audio_queue.h"
+#include "bluetooth/le_audio/sdu_queue.h"
 
-enum audio_encoder_frame_duration {
-	AUDIO_ENCODER_FRAME_7_5_MS,
-	AUDIO_ENCODER_FRAME_10MS,
+struct audio_encoder_params {
+	const struct device *i2s_dev;
+	uint32_t audio_buffer_len_us;
+	uint32_t frame_duration_us;
+	uint32_t sampling_rate_hz;
+	size_t num_queues;
+	struct sdu_queue *p_sdu_queues[];
 };
 
 /**
@@ -44,25 +48,47 @@ typedef void (*audio_encoder_sdu_cb_t)(void *context, uint32_t capture_timestamp
  * module should be update to use dynamically allocated stacks at the point where the targeted
  * Zephyr version is updated to include this feature.
  *
- * @param mono Flag set to true if the audio input data contains only a single channel. In this
- * case, only a single channel is encoded but it may be sent out on either one or two channels,
- * depending on how many non-NULL SDU queues were provided. Providing two SDU queues may be
- * necessary for compatibility with sink devices which only support stereo audio.
- * @param stack Stack memory area for encoder thread. Must be statically allocated using
- * K_THREAD_STACK_DEFINE.
- * @param stacksize Size in bytes of stack memory area
- * @param p_sdu_queues Pointer to list of SDU queues for channels
- * @param num_queues SDU queue count on the give list
- * @param audio_queue Audio queue to take audio blocks from
- * @param frame_duration Frame duration @ref enum audio_encoder_frame_duration
+ * @param params Audio encoder configuration parameters
  *
  * @retval Created audio encoder instance if successful
  * @retval NULL on failure
  */
-struct audio_encoder *audio_encoder_create(uint32_t sampling_frequency, k_thread_stack_t *stack,
-					   size_t stacksize, struct sdu_queue *p_sdu_queues[],
-					   size_t num_queues, struct audio_queue *audio_queue,
-					   enum audio_encoder_frame_duration frame_duration);
+struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *params);
+
+/**
+ * @brief Add a channel to the audio encoder
+ *
+ * @param encoder Audio encoder instance to add channel to
+ * @param octets_per_frame Octets per frame for the channel
+ * @param channel_id Channel ID
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_encoder_add_channel(struct audio_encoder *encoder, size_t octets_per_frame,
+			      size_t channel_id);
+
+/**
+ * @brief Start a channel
+ *
+ * @param encoder Audio encoder instance to start channel for
+ * @param channel_id Channel ID
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_encoder_start_channel(struct audio_encoder *encoder, size_t channel_id);
+
+/**
+ * @brief Stop a channel
+ *
+ * @param encoder Audio encoder instance to stop channel for
+ * @param channel_id Channel ID
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_encoder_stop_channel(struct audio_encoder *encoder, size_t channel_id);
 
 /**
  * @brief Register a callback to be called on completion of each encoded frame

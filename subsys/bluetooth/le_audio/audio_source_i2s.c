@@ -23,157 +23,320 @@ LOG_MODULE_REGISTER(audio_source_i2s, CONFIG_BLE_AUDIO_LOG_LEVEL);
 #error "Unsupported configuration"
 #endif
 
-#define SAMPLES_IN_BLOCK (CONFIG_ALIF_BLE_AUDIO_FS_HZ / FRAMES_PER_SECOND)
+#if CONFIG_ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_MS
+#define TRANSMISSION_DELAY_US (CONFIG_ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_MS * 1000)
+#else
+#define TRANSMISSION_DELAY_US 0
+#endif
+
+/* Max supported sampling rate is 48kHz.
+ * 10ms frame has 480 bytes and 7.5ms has 360 bytes.
+ */
+#define MAX_SAMPLES_PER_BLOCK 480
+/* Left and right audio channels. */
+#define NUMBER_OF_CHANNELS    2
+
+#include <zephyr/drivers/gpio.h>
+
+#define GPIO_TEST0_NODE DT_ALIAS(source_i2s_test0)
+#define GPIO_TEST1_NODE DT_ALIAS(source_i2s_test1)
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE) || DT_NODE_EXISTS(GPIO_TEST1_NODE)
+static const struct gpio_dt_spec test_pin0 = GPIO_DT_SPEC_GET_OR(GPIO_TEST0_NODE, gpios, {0});
+static const struct gpio_dt_spec test_pin1 = GPIO_DT_SPEC_GET_OR(GPIO_TEST1_NODE, gpios, {0});
+
+static int init_test_pin(const struct gpio_dt_spec *const p_pin)
+{
+	if (!p_pin->port) {
+		return -ENODEV;
+	}
+	if (!gpio_is_ready_dt(p_pin)) {
+		LOG_WRN("Test pin is not ready");
+		return -ENODEV;
+	}
+	if (gpio_pin_configure_dt(p_pin, GPIO_OUTPUT_ACTIVE)) {
+		LOG_ERR("Failed to configure test pin");
+		return -EIO;
+	}
+	gpio_pin_set_dt(p_pin, 0);
+	LOG_INF("I2S source test pin %u initialized", p_pin->pin);
+	return 0;
+}
+
+static inline void toggle_test_pin(const struct gpio_dt_spec *const p_pin)
+{
+	if (!p_pin->port) {
+		return;
+	}
+	gpio_pin_toggle_dt(p_pin);
+}
+
+static inline void set_test_pin(const struct gpio_dt_spec *const p_pin, int const val)
+{
+	if (!p_pin->port) {
+		return;
+	}
+	gpio_pin_set_dt(p_pin, !!val);
+}
+
+/* Initialisation to perform pre-main */
+static int audio_source_i2s_init(void)
+{
+	init_test_pin(&test_pin0);
+	init_test_pin(&test_pin1);
+	return 0;
+}
+SYS_INIT(audio_source_i2s_init, APPLICATION, 0);
+
+#endif
 
 struct audio_source_i2s {
 	const struct device *dev;
 	struct audio_queue *audio_queue;
-	struct audio_block *current_block;
-	bool awaiting_buffer;
-	uint32_t i2s_overrun_count;
-	uint32_t buffer_not_available_count;
-	uint32_t msgq_dropped_count;
-
 	struct audio_i2s_timing timing;
+	size_t block_samples;
+	size_t number_of_channels;
 	bool drop_next_audio_block;
+	bool ping_pong_buffer;
+	bool started;
+};
+static struct audio_source_i2s audio_source;
+
+struct audio_input_buffer {
+	uint32_t timestamp;
+	pcm_sample_t buf[NUMBER_OF_CHANNELS * MAX_SAMPLES_PER_BLOCK];
+};
+/** Ping pong input buffer for 16-bit PCM samples and two channels */
+static struct audio_input_buffer samples_input_buffer[2];
+
+struct last_block_job {
+	struct k_work work;
+	struct audio_input_buffer *p_block;
 };
 
-static struct audio_source_i2s audio_source;
-static int16_t temp[2 * SAMPLES_IN_BLOCK]; /**< 16-bit PCM samples, two channels sequentially */
+K_KERNEL_STACK_DEFINE(i2s_worker_stack, 2048);
+static struct k_work_q i2s_worker_queue;
 
-static void finish_last_block(void)
+__ramfunc static void finish_last_block(struct k_work *work)
 {
-	/* Size of a PCM sample */
-	const size_t pcm_sample_s = sizeof(audio_source.current_block->buf[0]);
+	struct last_block_job *p_context = CONTAINER_OF(work, struct last_block_job, work);
+	struct audio_input_buffer *p_block = p_context->p_block;
 
-	if (audio_source.current_block == NULL) {
-		return;
-	}
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 1);
+#endif
 
-	if (audio_source.drop_next_audio_block) {
-		audio_source.drop_next_audio_block = false;
-		k_mem_slab_free(&audio_source.audio_queue->slab,
-				audio_source.current_block);
-		audio_source.current_block = NULL;
-		return;
-	}
-
-	/* We need to split the received interleaved audio into left and right channel so
-	 * we create a new block where we do this.
-	 */
-
-	bool stereo_mode = !IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_SOURCE_MONO);
-
-	for (size_t i = 0; i < SAMPLES_IN_BLOCK; i++) {
-		/* Every even sample is for left channel */
-		temp[i] = audio_source.current_block->buf[i * 2];
-
-		if (stereo_mode) {
-			temp[i + SAMPLES_IN_BLOCK] = audio_source.current_block->buf[i * 2 + 1];
-		}
-	}
-
-	/* const size_t block_samples = audio_source.audio_queue->audio_block_samples */
-	const size_t block_samples = stereo_mode ? 2 * SAMPLES_IN_BLOCK : SAMPLES_IN_BLOCK;
-
-	memcpy(audio_source.current_block->buf, temp, block_samples * pcm_sample_s);
-
+	struct audio_block *p_audiobuf = NULL;
 	int ret =
-		k_msgq_put(&audio_source.audio_queue->msgq, &audio_source.current_block, K_NO_WAIT);
-		audio_source.current_block = NULL;
+		k_mem_slab_alloc(&audio_source.audio_queue->slab, (void **)&p_audiobuf, K_NO_WAIT);
 
-	if (ret) {
-		audio_source.msgq_dropped_count++;
+	if (ret || !p_audiobuf) {
+		/* No buffer available, just drop it */
+		LOG_ERR("Audio queue is empty, dropping frame");
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+		set_test_pin(&test_pin0, 0);
+#endif
+		return;
 	}
+
+	bool const has_right_channel = audio_source.number_of_channels > 1;
+
+	/* Populate the capture timestamp of the block */
+	p_audiobuf->timestamp = p_block->timestamp;
+	p_audiobuf->num_channels = 1 + has_right_channel;
+
+#if CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL
+	size_t const block_samples = audio_source.block_samples;
+
+	size_t const num_of_block_bytes = block_samples * sizeof(p_block->buf[0]);
+	/* Copy left buffer */
+	memcpy(p_audiobuf->channels[0], p_block->buf, num_of_block_bytes);
+#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
+	if (has_right_channel) {
+		/* Copy right buffer */
+		memcpy(p_audiobuf->channels[1], p_block->buf + block_samples, num_of_block_bytes);
+	}
+#endif
+
+#else /* CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL */
+	size_t const input_block_samples = audio_source.timing.samples_per_block;
+
+	pcm_sample_t const *p_input = p_block->buf;
+	/* Loop input samples and copy sequentially.
+	 * Every even sample is for left channel.
+	 */
+	pcm_sample_t *p_out_left = p_audiobuf->channels[0];
+#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
+	pcm_sample_t *p_out_right = p_audiobuf->channels[1];
+#endif
+	for (size_t iter = 0; iter < input_block_samples; iter++) {
+		if (likely(has_right_channel) && iter & 1) {
+#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
+			*p_out_right++ = *p_input++;
+#endif
+			continue;
+		}
+		*p_out_left++ = *p_input++;
+	}
+#endif /* CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL */
+
+	if (k_msgq_put(&audio_source.audio_queue->msgq, &p_audiobuf, K_NO_WAIT)) {
+		/* Failed to put into queue */
+		k_mem_slab_free(&audio_source.audio_queue->slab, p_audiobuf);
+		LOG_ERR("Audio msg queue is full, frame dropped");
+	}
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 0);
+#endif
 }
 
-static void recv_next_block(const struct device *dev, uint32_t timestamp)
+static struct last_block_job finish_last_block_job = {
+	.work = Z_WORK_INITIALIZER(finish_last_block),
+	.p_block = NULL,
+};
+
+__ramfunc static void recv_next_block(const struct device *dev, uint32_t timestamp)
 {
-	int ret = k_mem_slab_alloc(&audio_source.audio_queue->slab,
-				   (void **)&audio_source.current_block, K_NO_WAIT);
+	bool const ping_pong = audio_source.ping_pong_buffer ^ true;
 
-	if (ret) {
-		/* If there is no available buffer to receive into, disable the I2S receiver and
-		 * flag that we are awaiting a buffer to become available
-		 */
-		i2s_sync_disable(dev, I2S_DIR_RX);
-		audio_source.awaiting_buffer = true;
-		audio_source.buffer_not_available_count++;
-		return;
-	}
+	audio_source.ping_pong_buffer = ping_pong;
 
-	int32_t correction_samples = audio_i2s_get_sample_correction(NULL);
+	struct audio_input_buffer *const p_buffer = &samples_input_buffer[ping_pong];
 
-	size_t rx_count;
-	size_t rx_offset;
+	/* TODO: implement timing fix if needed... Always zero for now so ignore adjustment code! */
+#if CORRECTION_SAMPLES_ENABLED
+	const int32_t correction_samples = audio_i2s_get_sample_correction(NULL);
 
-	if (correction_samples == 0) {
-		/* Receive a full block */
-		rx_count = audio_source.audio_queue->audio_block_samples;
-		rx_offset = 0;
-	} else if (correction_samples < 0) {
+	/* Receive a full block by default */
+	size_t rx_count = audio_source.timing.samples_per_block;
+	size_t rx_offset = 0;
+
+	if (correction_samples < 0) {
 		/* Drop some samples, by receiving the amount of samples to drop and then dropping
 		 * the whole buffer
 		 */
 		rx_count = -correction_samples;
-		rx_offset = 0;
 		audio_source.drop_next_audio_block = true;
-	} else {
+	} else if (correction_samples > 0) {
 		/* Insert some zeros at the start of the current block, and receive into the rest of
 		 * the block
 		 */
-		rx_count = audio_source.audio_queue->audio_block_samples - correction_samples;
+		rx_count -= correction_samples;
 		rx_offset = correction_samples;
 	}
 
-	/* Populate the capture timestamp of the block */
-	audio_source.current_block->timestamp = timestamp;
-	i2s_sync_recv(dev, audio_source.current_block->buf + rx_offset, rx_count * sizeof(int16_t));
-
-	/* LOG_INF("start of i2s buf %04x", (audio_source.current_block->buf)[1]); */
-
-	/* Fill any offset in the buffer with zeros, and adjust timestamp accordingly */
 	if (rx_offset) {
-		memset(audio_source.current_block->buf, 0, rx_offset * sizeof(int16_t));
-		audio_source.current_block->timestamp -= audio_i2s_samples_to_us(
-			correction_samples, audio_source.timing.us_per_block,
-			audio_source.timing.samples_per_block);
+		/* Fill any offset in the buffer with zeros, and adjust timestamp accordingly */
+		memset(p_buffer->buf, 0, rx_offset * sizeof(p_buffer->buf[0]));
+		timestamp -= audio_i2s_samples_to_us(correction_samples,
+						     audio_source.timing.us_per_block,
+						     audio_source.timing.samples_per_block);
 	}
+#else
+	size_t const rx_count = audio_source.timing.samples_per_block;
+	size_t const rx_offset = 0;
+#endif
+
+	/* I2S with DMA? */
+	i2s_sync_recv(dev, p_buffer->buf + rx_offset, rx_count * sizeof(p_buffer->buf[0]));
+
+#if CONFIG_ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_ENABLED
+	p_buffer->timestamp = timestamp + TRANSMISSION_DELAY_US;
+#else
+	p_buffer->timestamp = 0;
+#endif
 }
 
-static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status)
+__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status)
 {
 	/* Capture timestamp before doing anything else to reduce jitter */
-	uint32_t time_now = gapi_isooshm_dp_get_local_time();
+	const uint32_t time_now = gapi_isooshm_dp_get_local_time();
 
-	finish_last_block();
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 1);
+#endif
+
+	finish_last_block_job.p_block = &samples_input_buffer[audio_source.ping_pong_buffer];
+
 	recv_next_block(dev, time_now);
 
+	/* TODO: handle I2S errors when DMA is enabled!
 	if (status != I2S_SYNC_STATUS_OK) {
-		audio_source.i2s_overrun_count++;
+		LOG_ERR(" I2S RX error %d", status);
 	}
+	*/
+
+	if (audio_source.drop_next_audio_block || !finish_last_block_job.p_block) {
+		audio_source.drop_next_audio_block = false;
+	} else {
+		k_work_submit_to_queue(&i2s_worker_queue, &finish_last_block_job.work);
+	}
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 0);
+#endif
 }
 
-int audio_source_i2s_configure(const struct device *dev, struct audio_queue *audio_queue,
-			       uint32_t us_per_block)
+int audio_source_i2s_configure(const struct device *dev, struct audio_queue *audio_queue)
 {
-	if ((dev == NULL) || (audio_queue == NULL)) {
+	if (!dev || !audio_queue) {
 		return -EINVAL;
 	}
 
+	/* TODO: Configure I2S here to match requested audio path configuration! */
+	struct i2s_sync_config i2s_cfg;
+
+	if (i2s_sync_get_config(dev, &i2s_cfg)) {
+		LOG_ERR("Failed to get I2S config");
+		return -EIO;
+	}
+
+	if (i2s_cfg.channel_count > NUMBER_OF_CHANNELS) {
+		LOG_ERR("Invalid I2S channel count %u", i2s_cfg.channel_count);
+		return -EINVAL;
+	}
+
+	if (i2s_cfg.sample_rate != audio_queue->sampling_freq_hz) {
+		LOG_ERR("Invalid I2S sample rate %u", i2s_cfg.sample_rate);
+		return -EINVAL;
+	}
+
+	/* Calculate sample count per block depending on the frame duration (7.5ms or 10ms) */
+	size_t const block_samples = audio_queue->frame_duration_us == 10000
+					     ? (i2s_cfg.sample_rate * 10) / 1000
+					     : (i2s_cfg.sample_rate * 75) / 10000;
+
+	size_t const samples_per_full_block = i2s_cfg.channel_count * block_samples;
+
+	if (samples_per_full_block > ARRAY_SIZE(samples_input_buffer[0].buf)) {
+		LOG_ERR("Invalid I2S block size %u", samples_per_full_block);
+		return -EINVAL;
+	}
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin0, 0);
+#endif
+
+	/* Shutdown existing stream and wait for start */
+	i2s_sync_disable(dev, I2S_DIR_RX);
+
 	audio_source.dev = dev;
 	audio_source.audio_queue = audio_queue;
+	audio_source.number_of_channels = i2s_cfg.channel_count;
+	audio_source.block_samples = block_samples;
+	audio_source.ping_pong_buffer = false;
+	audio_source.started = false;
 	audio_source.timing.correction_us = 0;
-	audio_source.timing.us_per_block = us_per_block;
-	audio_source.timing.samples_per_block = audio_queue->audio_block_samples;
+	audio_source.timing.us_per_block = audio_queue->frame_duration_us;
+	audio_source.timing.samples_per_block = samples_per_full_block;
 
-	/* Maximum positive correction is slightly less than a full audio block (cannot receive zero
-	 * samples)
+	/* Maximum positive correction is slightly less than a full audio block
+	 * (cannot receive zero samples)
 	 */
-	audio_source.timing.max_single_correction = audio_queue->audio_block_samples - 2;
+	audio_source.timing.max_single_correction = samples_per_full_block - 2;
 
 	/* Minimum negative correction is one full audio block */
-	audio_source.timing.min_single_correction = -audio_queue->audio_block_samples;
+	audio_source.timing.min_single_correction = -samples_per_full_block;
 
 	int ret = i2s_sync_register_cb(dev, I2S_DIR_RX, on_i2s_complete);
 
@@ -182,30 +345,56 @@ int audio_source_i2s_configure(const struct device *dev, struct audio_queue *aud
 		return ret;
 	}
 
-	/* Flag that audio source has not started yet */
-	audio_source.awaiting_buffer = true;
+	static bool thread_started;
+
+	if (thread_started) {
+		return 0;
+	}
+
+	k_work_queue_start(&i2s_worker_queue, i2s_worker_stack,
+			   K_KERNEL_STACK_SIZEOF(i2s_worker_stack),
+			   CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY - 1, NULL);
+	k_thread_name_set(&i2s_worker_queue.thread, "audio_source_i2s");
+	thread_started = true;
 
 	return 0;
 }
 
-void audio_source_i2s_notify_buffer_available(void *param, uint32_t timestamp, uint16_t sdu_seq)
+void audio_source_i2s_start(void)
 {
-	(void)param;
-	(void)timestamp;
-	(void)sdu_seq;
-
-	if (!audio_source.awaiting_buffer) {
+	if (!audio_source.dev) {
+		LOG_ERR("I2S source not configured");
 		return;
 	}
 
-	/* Kick off the I2S receive operation */
-	uint32_t time_now = gapi_isooshm_dp_get_local_time();
+	if (audio_source.started) {
+		return;
+	}
 
-	audio_source.awaiting_buffer = false;
+	audio_source.started = true;
+
+	/* Kick the I2S receive operation */
+	const uint32_t time_now = gapi_isooshm_dp_get_local_time();
+
 	recv_next_block(audio_source.dev, time_now);
 }
 
-void audio_source_i2s_apply_timing_correction(int32_t correction_us)
+void audio_source_i2s_stop(void)
+{
+	if (!audio_source.dev) {
+		LOG_ERR("I2S source not configured");
+		return;
+	}
+
+	if (!audio_source.started) {
+		return;
+	}
+
+	i2s_sync_disable(audio_source.dev, I2S_DIR_RX);
+	audio_source.started = false;
+}
+
+__ramfunc void audio_source_i2s_apply_timing_correction(int32_t const correction_us)
 {
 	audio_i2s_timing_apply_correction(&audio_source.timing, correction_us);
 }

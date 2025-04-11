@@ -17,8 +17,9 @@ struct audio_datapath_config {
 	const struct device *i2s_dev;
 	/* const struct device *mclk_dev; */
 	uint32_t pres_delay_us;
+	uint32_t sampling_rate_hz;
 	uint16_t octets_per_frame;
-	bool stereo;
+	bool frame_duration_is_10ms;
 };
 
 /**
