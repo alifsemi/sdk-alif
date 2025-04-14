@@ -128,6 +128,15 @@ struct audio_decoder {
 
 K_THREAD_STACK_DEFINE(decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE);
 
+#if !CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL
+/* Audio output data must be in "interleaved" format meaning that every even pcm data is left
+ * channel and every odd is right channel.
+ * Temporary buffer is needed to handle LC3 output per input channel.
+ */
+static pcm_sample_t pcm_temp_buffer[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS]
+				   [MAX_SAMPLES_PER_AUDIO_BLOCK];
+#endif
+
 __ramfunc static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 {
 	struct audio_decoder *dec = (struct audio_decoder *)p1;
@@ -165,10 +174,9 @@ __ramfunc static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 		}
 
 		timestamp = 0;
+		num_channels = 0;
 
 get_next_sdus:
-
-		num_channels = 0;
 
 		iter = ARRAY_SIZE(dec->channel);
 
@@ -199,11 +207,15 @@ get_next_sdus:
 				continue;
 			}
 
+#if CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL
 			/* Left channel should be decoded into first half of audio buffer,
 			 * right channel into second half
 			 */
 			pcm_sample_t *const p_audio_data =
 				audio->buf_left + audio_block_samples * iter;
+#else
+			pcm_sample_t *const p_audio_data = pcm_temp_buffer[iter];
+#endif
 
 			bool const bad_frame = (p_sdu->status != GAPI_ISOOSHM_SDU_STATUS_VALID);
 
@@ -250,6 +262,7 @@ get_next_sdus:
 			goto get_next_sdus;
 		}
 
+#if CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL
 		if (num_channels != (LEFT_CH + RIGHT_CH)) {
 #if SEND_SAME_DATA_IN_START_UP
 			pcm_sample_t *p_dst, *p_src;
@@ -263,7 +276,7 @@ get_next_sdus:
 			}
 			memcpy(p_dst, p_src, audio_block_samples * sizeof(pcm_sample_t));
 
-#else
+#else /* !SEND_SAME_DATA_IN_START_UP */
 			if (num_channels & LEFT_CH) {
 				pcm_sample_t *p_dst = audio->buf_left + audio_block_samples;
 
@@ -282,8 +295,34 @@ get_next_sdus:
 				memset(audio->buf_left, 0,
 				       audio_block_samples * sizeof(pcm_sample_t));
 			}
-#endif
+#endif /* SEND_SAME_DATA_IN_START_UP */
 		}
+
+#else /* !CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL */
+		/* fill the audio buffer with proper data format */
+		pcm_sample_t *p_audio_out = audio->buf_left;
+
+		if (num_channels != (LEFT_CH + RIGHT_CH)) {
+			pcm_sample_t sample;
+			pcm_sample_t const *p_in =
+				(num_channels & LEFT_CH) ? pcm_temp_buffer[0] : pcm_temp_buffer[1];
+
+			iter = audio_block_samples;
+			while (iter--) {
+				sample = *p_in++;
+				*p_audio_out++ = sample;
+				*p_audio_out++ = sample;
+			}
+		} else {
+			for (size_t sample = 0; sample < audio_block_samples; sample++) {
+				*p_audio_out++ = pcm_temp_buffer[0][sample];
+#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
+				*p_audio_out++ = pcm_temp_buffer[1][sample];
+#endif
+			}
+		}
+
+#endif /* CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL */
 
 #if DT_NODE_EXISTS(GPIO_TEST1_NODE)
 		if ((last_sdu_seq % 128) == 0) {

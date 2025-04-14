@@ -441,6 +441,9 @@ static void enable_streaming(struct k_work *const p_job)
 {
 	ARG_UNUSED(p_job);
 
+	/* Small delay is needed due to lower layer latency */
+	k_sleep(K_MSEC(5));
+
 	bap_cfg_metadata_t const cfg_metadata = {
 		.param.context_bf = BAP_CONTEXT_TYPE_MEDIA_BIT,
 		.add_metadata.len = 0,
