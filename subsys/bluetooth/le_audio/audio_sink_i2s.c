@@ -143,8 +143,11 @@ __ramfunc static void send_next_block(const struct device *dev, uint32_t const t
 	audio_sink.current_block = block;
 }
 
-__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status)
+__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status,
+				      void *p_block)
 {
+	ARG_UNUSED(p_block);
+
 #if DT_NODE_EXISTS(GPIO_TEST0_NODE)
 	set_test_pin(&test_pin0, 0);
 #endif

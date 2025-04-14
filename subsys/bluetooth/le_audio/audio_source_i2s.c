@@ -237,7 +237,6 @@ __ramfunc static void recv_next_block(const struct device *dev, uint32_t timesta
 	size_t const rx_offset = 0;
 #endif
 
-	/* I2S with DMA? */
 	i2s_sync_recv(dev, p_buffer->buf + rx_offset, rx_count * sizeof(p_buffer->buf[0]));
 
 #if CONFIG_ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_ENABLED
@@ -247,7 +246,8 @@ __ramfunc static void recv_next_block(const struct device *dev, uint32_t timesta
 #endif
 }
 
-__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status)
+__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status,
+				      void *block)
 {
 	/* Capture timestamp before doing anything else to reduce jitter */
 	const uint32_t time_now = gapi_isooshm_dp_get_local_time();
@@ -256,19 +256,12 @@ __ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_st
 	set_test_pin(&test_pin0, 1);
 #endif
 
-	finish_last_block_job.p_block = &samples_input_buffer[audio_source.ping_pong_buffer];
-
 	recv_next_block(dev, time_now);
 
-	/* TODO: handle I2S errors when DMA is enabled!
-	if (status != I2S_SYNC_STATUS_OK) {
-		LOG_ERR(" I2S RX error %d", status);
-	}
-	*/
-
-	if (audio_source.drop_next_audio_block || !finish_last_block_job.p_block) {
+	if (audio_source.drop_next_audio_block || !block) {
 		audio_source.drop_next_audio_block = false;
 	} else {
+		finish_last_block_job.p_block = CONTAINER_OF(block, struct audio_input_buffer, buf);
 		k_work_submit_to_queue(&i2s_worker_queue, &finish_last_block_job.work);
 	}
 

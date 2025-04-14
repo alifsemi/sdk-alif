@@ -352,14 +352,24 @@ static inline void i2s_rx_fifo_clear(struct i2s_t *i2s)
 	i2s->RFF = _VAL2FLD(I2S_RFF_RXCHFR, 1U);
 }
 
+static inline void i2s_set_tx_trigger_level_value(struct i2s_t *i2s, uint32_t const level)
+{
+	i2s->TFCR = _VAL2FLD(I2S_TFCR_TXCHET, level);
+}
+
 static inline void i2s_set_tx_trigger_level(struct i2s_t *i2s)
 {
-	i2s->TFCR = _VAL2FLD(I2S_TFCR_TXCHET, I2S_FIFO_TRG_LEVEL);
+	i2s_set_tx_trigger_level_value(i2s, I2S_FIFO_TRG_LEVEL);
+}
+
+static inline void i2s_set_rx_trigger_level_value(struct i2s_t *i2s, uint32_t const level)
+{
+	i2s->RFCR = _VAL2FLD(I2S_RFCR_RXCHDT, level);
 }
 
 static inline void i2s_set_rx_trigger_level(struct i2s_t *i2s)
 {
-	i2s->RFCR = _VAL2FLD(I2S_RFCR_RXCHDT, I2S_FIFO_TRG_LEVEL);
+	i2s_set_rx_trigger_level_value(i2s, I2S_FIFO_TRG_LEVEL);
 }
 
 static inline enum i2s_wlen_t wlen_to_reg_val(uint32_t wlen)
@@ -421,6 +431,11 @@ static inline void i2s_tx_interrupt_enable(struct i2s_t *i2s)
 {
 	/* Un-mask the relevant interrupt */
 	i2s->IMR &= ~(I2S_IMR_TXFEM_Msk | I2S_IMR_TXFOM_Msk);
+}
+
+static inline void i2s_tx_overrun_interrupt_enable(struct i2s_t *i2s)
+{
+	i2s->IMR &= ~I2S_IMR_TXFOM_Msk;
 }
 
 static inline void i2s_tx_overrun_interrupt_disable(struct i2s_t *i2s)
@@ -532,6 +547,27 @@ static inline void i2s_write_left_tx(struct i2s_t *i2s, uint32_t data)
 static inline void i2s_write_right_tx(struct i2s_t *i2s, uint32_t data)
 {
 	i2s->RTHR = data;
+}
+
+
+static inline void i2s_tx_dma_enable(struct i2s_t *i2s)
+{
+	i2s->DMACR |= I2S_DMACR_DMAEN_TXBLOCK_Msk;
+}
+
+static inline void i2s_tx_dma_disable(struct i2s_t *i2s)
+{
+	i2s->DMACR &= ~I2S_DMACR_DMAEN_TXBLOCK_Msk;
+}
+
+static inline void i2s_rx_dma_enable(struct i2s_t *i2s)
+{
+	i2s->DMACR |= I2S_DMACR_DMAEN_RXBLOCK_Msk;
+}
+
+static inline void i2s_rx_dma_disable(struct i2s_t *i2s)
+{
+	i2s->DMACR &= ~I2S_DMACR_DMAEN_RXBLOCK_Msk;
 }
 
 #endif /* _DRIVER_I2S_SYNC_INT_H */

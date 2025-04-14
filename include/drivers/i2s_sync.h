@@ -26,6 +26,8 @@
 enum i2s_sync_status {
 	I2S_SYNC_STATUS_OK = 0,
 	I2S_SYNC_STATUS_OVERRUN,
+	I2S_SYNC_STATUS_RX_ERROR,
+	I2S_SYNC_STATUS_TX_ERROR,
 };
 
 struct i2s_sync_config {
@@ -34,7 +36,7 @@ struct i2s_sync_config {
 	uint8_t channel_count;
 };
 
-typedef void (*i2s_sync_cb_t)(const struct device *dev, enum i2s_sync_status status);
+typedef void (*i2s_sync_cb_t)(const struct device *dev, enum i2s_sync_status status, void *buffer);
 
 typedef int (*i2s_sync_api_register_cb_t)(const struct device *dev, enum i2s_dir dir,
 					  i2s_sync_cb_t cb);
