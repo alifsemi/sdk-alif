@@ -90,3 +90,4 @@ UseTab: ForContinuationAndIndentation
 WhitespaceSensitiveMacros:
   - STRINGIFY
   - Z_STRINGIFY
+IndentGotoLabels: false
