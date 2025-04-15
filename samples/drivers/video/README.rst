@@ -6,7 +6,7 @@ Video Sample
 Overview
 ********
 
-This sample can be used to capture frame using MT9M114 and ARX3A0 camera sensors, and store it to
+This sample can be used to capture frame using Parallel-bus or CSI camera sensors, and store it to
 the memory. The functional behaviour is:
 
 * Camera sensor will send out frames along with synchronisation signals either to CAM/LPCAM
@@ -32,6 +32,13 @@ Supported Targets
 * alif_e7_dk_rtss_he
 * alif_e1c_dk_rtss_he
 * alif_b1_dk_rtss_he
+
+Tested Sensors
+**************
+
+* MT9M114 (Parallel)
+* ARX3A0 (CSI)
+* HM0360 (CSI)
 
 Sample Output
 *************
