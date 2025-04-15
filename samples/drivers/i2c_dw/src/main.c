@@ -9,6 +9,7 @@
  */
 
 #include <errno.h>
+#include <stdlib.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/device.h>
@@ -101,6 +102,37 @@ int i2c_target_read_processed_cb(struct i2c_target_config *config, uint8_t *val)
 	return 0;
 }
 
+#ifdef CONFIG_I2C_TARGET_BUFFER_MODE
+int i2c_target_buf_read_requested_cb(struct i2c_target_config *config, uint8_t **val, uint32_t *len)
+{
+	uint32_t count = 0;
+	uint32_t idx;
+
+	*len = 1;
+	*val = malloc(*len * sizeof(uint8_t));
+
+	printk("Read requested from Master and send: ");
+	for (idx = 0; idx < *len; idx++) {
+		(*val)[idx] = ++count;
+		printk("0x%x ", (*val)[idx]);
+	}
+	printk("from slave\n");
+
+	return 0;
+}
+void i2c_target_buf_write_received_cb(struct i2c_target_config *config,
+		uint8_t *data_buf, uint32_t len)
+{
+	uint32_t idx;
+
+	printk("Received %d bytes in slave: ", len);
+	for (idx = 0; idx < len; idx++) {
+		printk("0x%x ", data_buf[idx]);
+	}
+	printk("\n");
+}
+#endif
+
 /* Registering the i2c instance as slave
  * passing the i2c_target_config structure with call back apis
  */
@@ -126,6 +158,10 @@ int main(void)
 		.read_requested = &i2c_target_read_requested_cb,
 		.write_received = &i2c_target_write_received_cb,
 		.read_processed = &i2c_target_read_processed_cb,
+#ifdef CONFIG_I2C_TARGET_BUFFER_MODE
+		.buf_write_received = &i2c_target_buf_write_received_cb,
+		.buf_read_requested = &i2c_target_buf_read_requested_cb,
+#endif
 	};
 	struct i2c_target_config tcfg = {
 		.callbacks = &i2c_t_cb
