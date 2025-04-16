@@ -12,7 +12,7 @@
 };
 
 &lpcmp {
-        status = "disabled";
+	status = "disabled";
 };
 
 &cmp0 {
