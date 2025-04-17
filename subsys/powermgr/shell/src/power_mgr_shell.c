@@ -18,6 +18,11 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 
+/* This shell does not use UART but if this is used with HCI/AHI UART shell app,
+ * the baudrate must match with UART's one.
+ */
+#define DEFAULT_BAUDRATE 1000000
+
 static bool param_get_flag(size_t argc, char **argv, char *p_flag)
 {
 	if (p_flag && argc) {
@@ -32,7 +37,7 @@ static bool param_get_flag(size_t argc, char **argv, char *p_flag)
 
 static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 {
-	int8_t ret = take_es0_into_use();
+	int8_t ret = take_es0_into_use(DEFAULT_BAUDRATE);
 
 	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start ES0 ret:%d\n", ret);
 	return 0;
