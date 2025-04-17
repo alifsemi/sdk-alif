@@ -7,12 +7,16 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-#ifndef BATT_SVC_H
-#define BATT_SVC_H
+#ifndef PRXP_APP_H
+#define PRXP_APP_H
 
-void config_battery_service(void);
-void battery_process(void);
-void update_bass_env(uint16_t ccc_bf_u, bool ready_to_send_u);
-uint16_t get_batt_id(void);
+extern bool config_ready;
+void server_configure(void);
+void get_tx_power(void);
+void ias_process(void);
+void tx_power_read(void);
+void disc_notify(uint16_t reason);
+gapm_callbacks_t append_cbs(gapm_callbacks_t *gapm_append_cbs);
+gapm_le_adv_create_param_t append_adv_param(gapm_le_adv_create_param_t *adv_append_params);
 
-#endif /* BATT_SVC_H */
+#endif /* PRXP_APP_H */
