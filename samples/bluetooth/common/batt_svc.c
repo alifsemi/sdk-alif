@@ -116,6 +116,11 @@ static const bass_cbs_t bass_cb = {
 	.cb_set_cccd_req = on_set_cccd_req,
 	.cb_sent = on_sent,
 };
+
+uint16_t get_batt_id(void)
+{
+	return GATT_SVC_BATTERY;
+}
 #else
 
 static void on_bass_batt_level_upd_cmp(uint16_t status)
@@ -147,6 +152,11 @@ static const bass_cb_t bass_cb = {
 	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
 	.cb_bond_data_upd = on_bass_bond_data_upd,
 };
+
+uint16_t get_batt_id(void)
+{
+	return GATT_SVC_BATTERY_SERVICE;
+}
 #endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 void config_battery_service(void)
@@ -228,3 +238,4 @@ void service_conn(struct shared_control *ctrl)
 {
 	s_shared_ptr = ctrl;
 }
+
