@@ -41,7 +41,7 @@ if (ZEPHYR_BASE / "VERSION").exists():
 
 # Project information
 project = f"Getting Started with Zephyr Alif SDK"
-copyright = f"2024, Alif Semiconductor"
+copyright = f"2024-2025, Alif Semiconductor"
 author = " "
 
 # General configuration
