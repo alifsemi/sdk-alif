@@ -92,8 +92,22 @@ Fetch the SDK source from the `main` branch:
 
    mkdir sdk-alif
    cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif.git --mr main
+   west init -m https://github.com/alifsemi/sdk-alif.git --mr ${revision}
    west update
+
+Replace ``${revision}`` with any SDK revision (branch/tag/commit SHA) you wish to achieve. This can be ``main`` if you want the latest state, or any commit SHA or tag.
+
+**Syntax:**
+
+.. code-block:: bash
+
+   west init -m <URL> --mr <REVISION>
+
+**Example:**
+
+.. code-block:: bash
+
+   west init -m https://github.com/alifsemi/sdk-alif.git --mr v1.2.0
 
 2. Build an Application
 ***********************
