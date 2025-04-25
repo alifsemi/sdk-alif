@@ -11,6 +11,8 @@
 
 #include "AppConfig.h"
 #include "MatterStack.h"
+#include "MatterUi.h"
+#include "PWMDevice.h"
 
 #include <DeviceInfoProviderImpl.h>
 #include <app-common/zap-generated/attributes/Accessors.h>
@@ -27,6 +29,8 @@
 #include <system/SystemClock.h>
 
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/pwm.h>
 #include <zephyr/logging/log.h>
 
 LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
@@ -59,6 +63,8 @@ DeferredAttributePersistenceProvider
 				    Span<DeferredAttribute>(&gCurrentLevelPersister, 1),
 				    System::Clock::Milliseconds32(5000));
 
+const struct pwm_dt_spec sLightPwmDevice = PWM_DT_SPEC_GET(DT_ALIAS(pwm_led0));
+
 } // namespace
 
 CHIP_ERROR AppTask::DevInit()
@@ -72,7 +78,7 @@ CHIP_ERROR AppTask::DevInit()
 	uint8_t maxLightLevel = kDefaultMaxLevel;
 	Clusters::LevelControl::Attributes::MaxLevel::Get(kLightEndpointId, &maxLightLevel);
 
-	int ret = Instance().mPWMDevice.Init(NULL, minLightLevel, maxLightLevel, maxLightLevel);
+	int ret = Instance().mPWMDevice.Init(&sLightPwmDevice, minLightLevel, maxLightLevel, maxLightLevel);
 	if (ret != 0) {
 		return chip::System::MapErrorZephyr(ret);
 	}
@@ -84,8 +90,31 @@ CHIP_ERROR AppTask::DevInit()
 		&Server::GetInstance().GetPersistentStorage());
 	chip::DeviceLayer::SetDeviceInfoProvider(&gExampleDeviceInfoProvider);
 	app::SetAttributePersistenceProvider(&gDeferredAttributePersister);
+	MatterUi::Instance().Init(AppTask::ButtonUpdateHandler);
 
 	return CHIP_NO_ERROR;
+}
+
+void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
+{
+	if (has_changed & 1) {
+		/* Press Button Update  toggle led when state goes to 0*/
+		if ((button_state & 1)) {
+			LOG_INF("SW0 press");
+		} else {
+			LOG_INF("SW0 released");
+		}
+
+	} else if (has_changed & 2) {
+		/* Generic functional button */
+		if (button_state & 2) {
+			/* Set Anchor time */
+			LOG_INF("SW1 press");
+		} else {
+			/*  */
+			LOG_INF("SW1 released");
+		}
+	}
 }
 
 void AppTask::PostEvent(AppEvent *aEvent)
