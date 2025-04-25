@@ -47,6 +47,7 @@ target_sources(app PRIVATE
                src/ZclCallbacks.cpp
                ${ALIF_COMMON}/pwmdevice/PWMDevice.cpp
                ${ALIF_COMMON}/common/MatterStack.cpp
+               ${ALIF_COMMON}/common/MatterUi.cpp
                ${ALIF_COMMON}/common/FabricTableDelegate.cpp)
               
 
