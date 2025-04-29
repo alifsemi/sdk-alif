@@ -28,9 +28,11 @@
 #include <zephyr/drivers/gpio.h>
 
 #define LED0_NODE	DT_ALIAS(led0)
+#define LED2_NODE	DT_ALIAS(led2)
 #define SW0_NODE	DT_ALIAS(sw0)
 
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
 static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios,
 							      {0});
 
@@ -81,6 +83,8 @@ enum service_att_list {
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 static uint8_t adv_actv_idx;
 static struct service_env env;
+static bool led_state;
+static uint8_t led_cnt;
 
 /* Load name from configuration file */
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
@@ -174,6 +178,9 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
 		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
+	led_state = false;
+	led_cnt = 0;
+	gpio_pin_set_dt(&led2, led_state);
 	conn_status = BT_CONN_STATE_CONNECTED;
 }
 
@@ -195,6 +202,9 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
+	led_state = false;
+	led_cnt = 0;
+	gpio_pin_set_dt(&led0, 0);
 	conn_status = BT_CONN_STATE_DISCONNECTED;
 }
 
@@ -506,9 +516,9 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 				       sizeof(env.char1_val));
 				LOG_DBG("TOGGLE LED, state %d", env.char1_val);
 				if (env.char1_val) {
-					gpio_pin_set_dt(&led, 1);
+					gpio_pin_set_dt(&led0, 1);
 				} else {
-					gpio_pin_set_dt(&led, 0);
+					gpio_pin_set_dt(&led0, 0);
 				}
 			}
 			break;
@@ -645,20 +655,37 @@ int main(void)
 
 	LOG_DBG("Init complete!\n");
 
-	/* Configure LED */
-	if (!gpio_is_ready_dt(&led)) {
-		LOG_ERR("led is not ready!");
+	/* Configure LED 0 */
+	if (!gpio_is_ready_dt(&led0)) {
+		LOG_ERR("led0 is not ready!");
 		return 0;
 	}
 
-	res = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
+	res = gpio_pin_configure_dt(&led0, GPIO_OUTPUT_ACTIVE);
 	if (res < 0) {
-		LOG_ERR("led configure failed");
+		LOG_ERR("led0 configure failed");
 		return 0;
 	}
 
 	/* LED initial state */
-	gpio_pin_set_dt(&led, 0);
+	gpio_pin_set_dt(&led0, 0);
+
+	/* Configure LED 2 */
+	if (!gpio_is_ready_dt(&led2)) {
+		LOG_ERR("led2 is not ready!");
+		return 0;
+	}
+
+	res = gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE);
+	if (res < 0) {
+		LOG_ERR("led2 configure failed");
+		return 0;
+	}
+
+	/* LED initial state */
+	gpio_pin_set_dt(&led2, 0);
+	led_state = false;
+	led_cnt = 0;
 
 	/* Configure button */
 	if (!gpio_is_ready_dt(&button)) {
@@ -672,10 +699,18 @@ int main(void)
 		return 0;
 	}
 
+
 	while (1) {
 		k_sleep(K_MSEC(100));
 
-		if ((conn_status == BT_CONN_STATE_CONNECTED)
+		if (conn_status != BT_CONN_STATE_CONNECTED) {
+			led_cnt++;
+			if (led_cnt >= 10) {
+				led_cnt = 0;
+				led_state = !led_state;
+				gpio_pin_set_dt(&led2, led_state);
+			}
+		} else if ((conn_status == BT_CONN_STATE_CONNECTED)
 		&& (env.ntf_cfg == PRF_CLI_START_NTF)
 		&& (!env.ntf_ongoing)) {
 			err = service_notification_send(UINT32_MAX,
