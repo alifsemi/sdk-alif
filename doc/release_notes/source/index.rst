@@ -27,8 +27,8 @@ Document History
       - Updated the document to incorporate E1C and Balletto.
     * - 1.2
       - Updated the document to include I3C, CAN FD and Touch screen
-
-
+    * - 1.3
+      - Updated the document to include DAC12, UTimer Counter, QDEC and SDMMC
 
 Indices and tables
 ==================
