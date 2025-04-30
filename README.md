@@ -8,17 +8,16 @@ The SDK is designed to help developers configure, build, and deploy real-time ap
 
 The **User Guide** offers detailed instructions on setting up, building, and deploying applications on Alif devices using the Zephyr RTOS.
 
-Access the latest version of the guide at: [Alif Zephyr SDK User Guide](https://github.com/alifsemi/sdk-alif/releases/download/v1.2.0/user_guide.pdf).
+Access the latest version of the guide at: [Alif Zephyr SDK User Guide](https://github.com/alifsemi/sdk-alif/releases/download/v1.3.0/user_guide.pdf).
 
 ## Release Notes
 
 Stay updated with the latest changes:
 
 - **New Features**: Explore the latest additions and capabilities in the current release.
-- **Fixed Bugs**: Review resolved issues for improved performance and stability.
 - **Known Issues**: Be aware of current limitations or potential challenges during development.
 
-For complete details on the latest released version, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v1.2.0/release_notes.pdf).
+For complete details on the latest released version, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v1.3.0/release_notes.pdf).
 
 ## Getting the Alif SDK
 

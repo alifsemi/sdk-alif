@@ -60,7 +60,7 @@ The following toolchains have been tested for the SDK application:
      - `LLVM Download`_
 
 Software Components
-===================
+-------------------
 
 The following are the software components used in the latest release.
 
@@ -121,6 +121,12 @@ List of Supported Peripheral Devices and Features
 - **PWM (Pulse Width Modulation)**:
   Alif UTIMER IP generates up to 24 simultaneous PWM signals across 12 channels.
 
+- **Quadrature Decoder (QDEC)**:
+  Alif UTIMER IP on Ensemble Devkit supports QDEC mode for precise rotary encoder position tracking.
+
+- **UTimer Counter**:
+  Alif UTIMER IP on Ensemble Devkit supports counter mode for precise event or clock pulse counting, enabling frequency measurement, event counting, and timer-based scheduling.
+
 - **LPPDM (Low Power Pulse Density Modulation)**:
   Supports up to eight PDM microphones, converting 1-bit PDM to 16-bit PCM audio.
 
@@ -141,6 +147,9 @@ List of Supported Peripheral Devices and Features
 
 - **ADC (Analog-to-Digital Converter)**:
   Features ADC12 (12-bit, 8 channels) and ADC24 (24-bit, 4 differential channels) for analog-to-digital conversion.
+
+- **DAC 12 (Digital to Analog Converter)**:
+  Features a DAC12 module that converts 12-bit digital values to analog voltages, with a 0 V to 1.8 V output range in Low-Power mode.
 
 - **LPTimer (Low-Power Timer)**:
   A 32-bit timer in the M55 core for precise low-power timing.
@@ -172,6 +181,9 @@ List of Supported Peripheral Devices and Features
 - **I3C (Improved Inter-Integrated Circuit)**:
   A next-gen interface with dynamic addressing and multi-master support.
 
+- **SDMMC (Secure Digital Multimedia Card)**:
+  Alif SDMMC driver supports eMMC/SD interfaces.
+
 Known Issues
 ------------
 
@@ -188,38 +200,6 @@ Known Issues
    - CMOS/CSI configured for RAW10, but Camera controller uses RAW8; RAW8 rework needed.
    - Untested with LLVM.
 9. No LPCMP sample application.
-
-Peripheral Device Issues
-------------------------
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 80
-
-   * - Alif-ID
-     - Description
-   * - PSBT 189
-     - UART driver cannot configure odd, mark, or space parity.
-   * - PSBT 465
-     - Warnings during driver builds with LLVM in Zephyr v3.3.
-   * - PSBT 876
-     - SPI data mismatch across test cases on Ensemble-E7.
-   * - PSBT 880
-     - UART data corruption at 2500000 bps on Ensemble-E7.
-   * - PSBT 881
-     - Touchscreen fails when booting from OSPI on Ensemble-E7.
-   * - PSBT 882
-     - Touchscreen driver lacks multi-touch support on Ensemble-E7.
-   * - PSBT 891
-     - Console prints limited to one core when booting from TCM on Ensemble-E7.
-   * - PSBT 894
-     - MCUboot fails to find a bootable image on Ensemble-E7.
-   * - PSBT 898
-     - Warnings with GCC, ArmCLang, or LLVM on Ensemble-E7.
-   * - PSBT 900
-     - Warnings in entropy app with ArmClang/LLVM during MRAM booting on Ensemble-E7.
-   * - PSBT 901
-     - CMake warning with ArmClang on Ensemble-E7.
 
 External References
 -------------------
