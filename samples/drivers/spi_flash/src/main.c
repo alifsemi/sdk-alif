@@ -324,7 +324,8 @@ void xip_test(const struct device *flash_dev)
 
 	printf("Read from Flash cmd while XiP Mode turnned on\n\n");
 
-	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, fls_r, cnt * sizeof(uint8_t));
+	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET,
+				fls_r, cnt * sizeof(uint32_t));
 	if (rc != 0) {
 		printf("Flash read failed! %d\n", rc);
 		return;
