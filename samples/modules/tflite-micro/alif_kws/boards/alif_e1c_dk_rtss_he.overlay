@@ -20,6 +20,6 @@
 };
 
 &ospi0 {
-	bus-speed = <40000000>;
+	bus-speed = <80000000>;
 	status = "okay";
 };
