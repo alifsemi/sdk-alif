@@ -23,6 +23,7 @@ class LightSwitch
 	};
 
 	void Init(chip::EndpointId aLightDimmerSwitchEndpoint, chip::EndpointId aLightGenericSwitchEndpointId);
+	void LightOnOffServerControl(Action);
 	void LightControl(Action);
 	void LightDimmControl(uint16_t brigtness);
 	void GenericSwitchInitialPress();
