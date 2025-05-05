@@ -17,6 +17,7 @@ const struct device *mhu1_s;
 
 static volatile bool msg_sent;
 static volatile bool msg_received;
+static uint32_t tx_msg;
 
 static void recv_cb(const struct device *mhuv2_ipmdev, void *user_data,
 		uint32_t id, volatile void *data)
@@ -35,25 +36,25 @@ static void send_cb(const struct device *mhuv2_ipmdev, void *user_data,
 	ARG_UNUSED(user_data);
 	ARG_UNUSED(data);
 
-	printk("RTSS-HP: MSG sent on Ch:%d\n", id);
+	printk("RTSS-HP: MSG sent on Ch:%d is 0x%x\n", id, tx_msg);
 	msg_sent = true;
 }
 
 static void send(void)
 {
-	uint32_t set_mhu = 0xF00DF00D;
 	int wait = 0;
 	int size = 4;
 
 	msg_received = false;
-	msg_sent = false;
+	msg_sent     = false;
+	tx_msg       = 0xF00DF00D;
 
-	ipm_send(mhu1_s, wait, 0, &set_mhu, size);
+	ipm_send(mhu1_s, wait, 0, &tx_msg, size);
 	while (!msg_sent)
 		;
-	msg_sent = false;
-	set_mhu = 0xCAFECAFE;
-	ipm_send(mhu1_s, wait, 1, &set_mhu, size);
+	msg_sent    = false;
+	tx_msg      = 0xCAFECAFE;
+	ipm_send(mhu1_s, wait, 1, &tx_msg, size);
 	while (!msg_sent)
 		;
 	msg_sent = false;
