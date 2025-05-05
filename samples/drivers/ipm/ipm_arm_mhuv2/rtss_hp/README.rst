@@ -54,7 +54,6 @@ Sample output
 *************
 
 .. code-block:: none
-   *** Booting Zephyr OS build zas-v1.2-25-gbaa643aa4a0e ***
     !!!Read board config using SE Services!!!
     Device part number is 46080
     Revision is SES B4 v1.102.0 Nov  8 2024 17:52:19
@@ -87,47 +86,16 @@ Sample output
 
 Sample output
 *************
+    sample MHU0 output between RTSS_HP and RTSS_HE
 
 .. code-block:: none
-    *** Booting Zephyr OS build zas-v1.2-25-gbaa643aa4a0e ***
     RTSS-HP RTSS-HE MHU 0 example on alif_e7_devkit
-    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG sent on Ch:0 is 0x12345678
     RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG sent on Ch:1 is 0xa5a5fafa
     RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
+    RTSS-HP: MSG sent on Ch:0 is 0x12345678
     RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
+    RTSS-HP: MSG sent on Ch:1 is 0xa5a5fafa
     RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
-    RTSS-HP: MSG sent on Ch:0
-    RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
-    RTSS-HP: MSG sent on Ch:1
-    RTSS-HP: MSG rcvd on ch:1 is 0xbeadbead
+    ...
