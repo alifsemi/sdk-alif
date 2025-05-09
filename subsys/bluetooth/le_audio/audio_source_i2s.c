@@ -9,6 +9,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/__assert.h>
 #include <zephyr/sys/util.h>
 #include "drivers/i2s_sync.h"
 #include "gapi_isooshm.h"
@@ -289,10 +290,8 @@ int audio_source_i2s_configure(const struct device *dev, struct audio_queue *aud
 		return -EINVAL;
 	}
 
-	if (i2s_cfg.sample_rate != audio_queue->sampling_freq_hz) {
-		LOG_ERR("Invalid I2S sample rate %u", i2s_cfg.sample_rate);
-		return -EINVAL;
-	}
+	__ASSERT(i2s_cfg.sample_rate == audio_queue->sampling_freq_hz,
+		 "Audio queue and I2S sample rate mismatch");
 
 	/* Calculate sample count per block depending on the frame duration (7.5ms or 10ms) */
 	size_t const block_samples = audio_queue->frame_duration_us == 10000

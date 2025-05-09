@@ -27,8 +27,7 @@ config LC3_ENCODER_STACK_SIZE
 
 config LC3_DECODER_STACK_SIZE
 	int "Stack size for LC3 decoder thread"
-	default 3072 if ALIF_BLE_AUDIO_FS_48KHZ
-	default 2048
+	default 3072
 	help
 	  Stack size for LC3 decoder thread.
 
