@@ -9,6 +9,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/__assert.h>
 #include <zephyr/sys/util.h>
 #include "drivers/i2s_sync.h"
 #include "gapi_isooshm.h"
@@ -191,6 +192,8 @@ int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio
 	}
 
 	if (i2s_cfg.sample_rate != audio_queue->sampling_freq_hz) {
+		__ASSERT(i2s_cfg.sample_rate == audio_queue->sampling_freq_hz,
+			 "Audio queue and I2S sample rate mismatch");
 		LOG_ERR("Invalid I2S sample rate %u", i2s_cfg.sample_rate);
 		return -EINVAL;
 	}
