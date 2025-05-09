@@ -70,6 +70,8 @@ void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 		/* Press Button Update  toggle led when state goes to 0*/
 		if (!(button_state & 1)) {
 			MatterStack::Instance().StatusLedBlink();
+			/* Toggle Light onOff server state */
+			LightSwitch::GetInstance().LightOnOffServerControl(LightSwitch::Action::Toggle);
 			LightSwitch::GetInstance().LightControl(LightSwitch::Action::Toggle);
 		}
 
@@ -78,8 +80,10 @@ void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 		if (button_state & 2) {
 			/* Set Anchor time */
 			LOG_INF("SW1 press");
+			LightSwitch::GetInstance().GenericSwitchInitialPress();
 		} else {
 			LOG_INF("SW1 released");
+			LightSwitch::GetInstance().GenericSwitchReleasePress();
 		}
 	}
 }

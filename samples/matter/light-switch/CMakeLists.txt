@@ -18,8 +18,6 @@ project(matter-lighting-switch)
 
 set(CHIP_ROOT ${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR})
 set(ALIF_COMMON ${ZEPHYR_SDK_ALIF_MODULE_DIR}/subsys/matter)
-set(ALIF_PLATFORM ${CHIP_ROOT}/examples/platform/alif)
-set(LIGHTING_COMMON ${CHIP_ROOT}/examples/light-switch-app/light-switch-common)
 set(MATTER_GEN_DIR ${CHIP_ROOT}/zzz_generated/)
 
 include(${ZEPHYR_CONNECTEDHOMEIP_MODULE_DIR}/config/alif/app/enable-gnu-std.cmake)
@@ -33,13 +31,11 @@ target_compile_options(app PRIVATE -Werror -Wno-error=maybe-uninitialized)
 
 target_include_directories(app PRIVATE
                            src/include
-                           ${LIGHTING_COMMON}
                            ${MATTER_GEN_DIR}
                            ${MATTER_GEN_DIR}/app-common
                            ${MATTER_GEN_DIR}/light-switch-app
                            ${ALIF_COMMON}/common
-                           ${ALIF_COMMON}/binding
-                           ${ALIF_PLATFORM}/app/include)
+                           ${ALIF_COMMON}/binding)
 
 target_sources(app PRIVATE
                src/main.cpp
@@ -54,5 +50,5 @@ target_sources(app PRIVATE
 
 chip_configure_data_model(app
     INCLUDE_SERVER
-    ZAP_FILE ${LIGHTING_COMMON}/light-switch-app.zap
+    ZAP_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/light-switch-app.zap
 )

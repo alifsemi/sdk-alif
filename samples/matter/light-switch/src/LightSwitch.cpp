@@ -16,6 +16,7 @@
 #include <app/util/binding-table.h>
 #include <controller/InvokeInteraction.h>
 #include <app/clusters/switch-server/switch-server.h>
+#include <app/clusters/on-off-server/on-off-server.h>
 
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <zephyr/logging/log.h>
@@ -32,7 +33,27 @@ void LightSwitch::Init(chip::EndpointId aLightDimmerSwitchEndpoint, chip::Endpoi
 	/* Enable shell commands */
 	SwitchCommands::RegisterSwitchCommands();
 	mLightSwitchEndpoint = aLightDimmerSwitchEndpoint;
-	mLightGenericSwitchEndpointId = aLightGenericSwitchEndpointId;
+	mLightGenericSwitchEndpointId = aLightGenericSwitchEndpointId;	
+}
+
+void LightSwitch::LightOnOffServerControl(Action mAction)
+{
+	chip::CommandId command;
+
+	switch (mAction) {
+	case Action::Toggle:
+		command = Clusters::OnOff::Commands::Toggle::Id;
+		break;
+	case Action::On:
+		command = Clusters::OnOff::Commands::On::Id;
+		break;
+
+	default:
+		command = Clusters::OnOff::Commands::Off::Id;
+		break;
+	}
+
+	OnOffServer::Instance().setOnOffValue(mLightSwitchEndpoint, command, false);
 }
 
 void LightSwitch::LightControl(Action mAction)
