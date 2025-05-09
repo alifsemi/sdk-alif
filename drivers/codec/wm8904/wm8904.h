@@ -10,7 +10,34 @@
 #ifndef _DRIVER_WM8904_H
 #define _DRIVER_WM8904_H
 
-#include <zephyr/sys/util_macro.h>
+#include <zephyr/device.h>
+#include <zephyr/drivers/i2c.h>
+#include <zephyr/drivers/clock_control.h>
+#include <zephyr/audio/codec.h>
+
+/*
+ * R20 (0x14) - Clock Rates 0
+ */
+#define CLK_RTE0_SYSCLK_SRC_Pos  10 /* SYSCLK_SRC */
+#define CLK_RTE0_SYSCLK_SRC_Msk  0x0C00
+#define CLK_RTE0_SYSCLK_SRC_FLL  (0b10 << CLK_RTE0_SYSCLK_SRC_Pos)
+#define CLK_RTE0_SYSCLK_SRC_MCLK (0b01 << CLK_RTE0_SYSCLK_SRC_Pos)
+#define CLK_RTE0_SYSCLK_SRC_OSC  (0b00 << CLK_RTE0_SYSCLK_SRC_Pos)
+
+#define CLK_RTE0_MCLK_DIV_Pos 1 /* MCLK_DIV */
+#define CLK_RTE0_MCLK_DIV_Msk 0x0006
+#define CLK_RTE0_MCLK_DIV_6   (0b11 << CLK_RTE0_MCLK_DIV_Pos)
+#define CLK_RTE0_MCLK_DIV_3   (0b10 << CLK_RTE0_MCLK_DIV_Pos)
+#define CLK_RTE0_MCLK_DIV_1_5 (0b01 << CLK_RTE0_MCLK_DIV_Pos)
+#define CLK_RTE0_MCLK_DIV_1   (0b00 << CLK_RTE0_MCLK_DIV_Pos)
+
+/* Driver configuration */
+struct wm8904_driver_config {
+	struct i2c_dt_spec i2c;
+	uint8_t clock_source;
+	const struct device *mclk_dev;
+	clock_control_subsys_t mclk_name;
+};
 
 #define WM8904_DEV_ID 0x8904
 
