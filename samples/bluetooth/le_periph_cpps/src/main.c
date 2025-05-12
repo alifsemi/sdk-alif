@@ -43,6 +43,8 @@ K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
+static uint16_t current_value;
+
 /**
  * Bluetooth stack configuration
  */
@@ -146,11 +148,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
-}
-
 /* server callbacks */
 
 static void on_meas_send_complete(uint16_t status)
@@ -178,14 +175,17 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val
 static void on_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
 			   const union cpp_ctnl_pt_req_val *p_value)
 {
+	/* Not supported by this sample application */
 }
 
 static void on_cb_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
+	/* Not supported by this sample application */
 }
 
 static void on_vector_send_cmp(uint16_t status)
 {
+	/* Not supported by this sample application */
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -207,6 +207,28 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+static void on_gapm_err(uint32_t metainfo, uint8_t code)
+{
+	LOG_ERR("gapm error %d", code);
+}
+static const gapm_cb_t gapm_err_cbs = {
+	.cb_hw_error = on_gapm_err,
+};
+
+static const gapm_callbacks_t gapm_cbs = {
+	.p_con_req_cbs = &gapc_con_cbs,
+	.p_sec_cbs = &gapc_sec_cbs,
+	.p_info_cbs = &gapc_con_inf_cbs,
+	.p_le_config_cbs = &gapc_le_cfg_cbs,
+	.p_bt_config_cbs = NULL, /* BT classic so not required */
+	.p_gapm_cbs = &gapm_err_cbs,
+};
+#else
+static void on_gapm_err(enum co_error err)
+{
+	LOG_ERR("gapm error %d", err);
+}
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
 };
@@ -219,6 +241,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_bt_config_cbs = NULL, /* BT classic so not required */
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 /*      profile callbacks */
 static const cpps_cb_t cpps_cb = {
@@ -325,7 +348,6 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -352,7 +374,11 @@ static uint16_t create_advertising(void)
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+		.tx_pwr = 0,
+#else
 		.max_tx_pwr = 0,
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
 			.adv_intv_min = 160, /* 100 ms */
@@ -396,12 +422,9 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		return;
 	}
 
-	server_configure();
-
 	LOG_DBG("gapm process completed successfully");
 
-	/* After configuration completed, create an advertising activity */
-	create_advertising();
+	k_sem_give(&init_sem);
 }
 
 /*  Generate and send dummy data*/
@@ -433,13 +456,15 @@ uint16_t read_sensor_value(uint16_t current_value)
 	return current_value;
 }
 
-void process_measurement(uint16_t measurement)
+void service_process(void)
 {
+	current_value = read_sensor_value(current_value);
+
 	switch (conn_status) {
 	case BT_CONN_STATE_CONNECTED:
 		if (READY_TO_SEND) {
 
-			send_measurement(measurement);
+			send_measurement(current_value);
 			READY_TO_SEND = false;
 		}
 
@@ -456,7 +481,6 @@ void process_measurement(uint16_t measurement)
 int main(void)
 {
 	uint16_t err;
-	uint16_t current_value = 1;
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -468,15 +492,17 @@ int main(void)
 	}
 
 	LOG_DBG("Waiting for init...\n");
+
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
 
+	server_configure();
+
+	create_advertising();
+
 	while (1) {
 		k_sleep(K_SECONDS(TX_INTERVAL));
-
-		current_value = read_sensor_value(current_value);
-
-		process_measurement(current_value);
+		service_process();
 	}
 }
