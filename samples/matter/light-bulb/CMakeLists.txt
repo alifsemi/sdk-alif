@@ -38,13 +38,14 @@ target_include_directories(app PRIVATE
                            ${MATTER_GEN_DIR}/app-common
                            ${MATTER_GEN_DIR}/lighting-app
                            ${ALIF_COMMON}/common
-                           ${ALIF_COMMON}/pwmdevice
-                           ${ALIF_PLATFORM}/app/include)
+                           ${ALIF_COMMON}/icd
+                           ${ALIF_COMMON}/pwmdevice)
 
 target_sources(app PRIVATE
                src/main.cpp
                src/AppTask.cpp
                src/ZclCallbacks.cpp
+               ${ALIF_COMMON}/icd/icdHandler.cpp
                ${ALIF_COMMON}/pwmdevice/PWMDevice.cpp
                ${ALIF_COMMON}/common/MatterStack.cpp
                ${ALIF_COMMON}/common/MatterUi.cpp
@@ -53,5 +54,5 @@ target_sources(app PRIVATE
 
 chip_configure_data_model(app
     INCLUDE_SERVER
-    ZAP_FILE ${LIGHTING_COMMON}/lighting-app.zap
+    ZAP_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/lighting-app.zap
 )

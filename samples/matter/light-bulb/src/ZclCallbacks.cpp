@@ -50,18 +50,5 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath &a
 
 void emberAfOnOffClusterInitCallback(EndpointId endpoint)
 {
-	Protocols::InteractionModel::Status status;
-	bool storedValue;
-
-	// Read storedValue on/off value
-	status = Attributes::OnOff::Get(endpoint, &storedValue);
-	if (status == Protocols::InteractionModel::Status::Success) {
-		// Set actual state to the cluster state that was last persisted
-		AppTask::Instance().GetPWMDevice().InitiateAction(
-			storedValue ? PWMDevice::ON_ACTION : PWMDevice::OFF_ACTION,
-			static_cast<int32_t>(AppEventType::Lighting),
-			reinterpret_cast<uint8_t *>(&storedValue));
-	}
-
-	AppTask::Instance().UpdateClusterState();
+	/* Device init will handle Cluster  */
 }
