@@ -22,3 +22,7 @@
 &lpuart {
 	status = "okay";
 };
+
+ns: &ns {
+	status = "okay";
+};
