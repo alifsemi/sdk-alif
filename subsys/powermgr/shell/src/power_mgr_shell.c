@@ -8,6 +8,8 @@
  */
 
 #include <zephyr/shell/shell.h>
+#include <zephyr/drivers/pinctrl.h>
+#include <zephyr/dt-bindings/pinctrl/balletto-pinctrl.h>
 #include <es0_power_manager.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -92,6 +94,18 @@ static int cmd_uart(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+const pinctrl_soc_pin_t pinctrl_hci_a_ext[] = {PIN_P3_6__EXT_RTS_A | 0x10000, /*Receiver enabled*/
+					       PIN_P3_7__EXT_CTS_A | 0x10000, /*Receiver enabled*/
+					       PIN_P4_0__EXT_RX_A | 0x10000,  /*Receiver enabled*/
+					       PIN_P4_1__EXT_TX_A | 0x10000,  /*Receiver enabled*/
+					       PIN_P4_2__EXT_TRACE_A};
+
+const pinctrl_soc_pin_t pinctrl_hci_b_ext[] = {PIN_P8_3__EXT_RTS_B | 0x10000, /*Receiver enabled*/
+					       PIN_P8_4__EXT_CTS_B | 0x10000, /*Receiver enabled*/
+					       PIN_P8_6__EXT_RX_B | 0x10000,  /*Receiver enabled*/
+					       PIN_P8_7__EXT_TX_B | 0x10000,  /*Receiver enabled*/
+					       PIN_P8_5__EXT_TRACE_B};
+
 static int cmd_hci(const struct shell *shell, size_t argc, char **argv)
 {
 
@@ -100,36 +114,35 @@ static int cmd_hci(const struct shell *shell, size_t argc, char **argv)
 	 * AHI select register is bit 0
 	 * HCI select register is bit 1
 	 * AHI/HCI trace select register is bit 2.
-
-	 * pinmux for B
-	 * 0x10C	RTS
-	 * 0x110	CTS
-	 * 0x114	Trace
-	 * 0x118	RX
-	 * 0x11C	TX
 	 */
-	uint32_t state = 0;
+	uint32_t trace_select = 0x02;
 
 	if (param_get_flag(argc, argv, "--ahi")) {
-		state |= 0x01;
-	}
-	if (param_get_flag(argc, argv, "--hci")) {
-		state |= 0x02;
+		trace_select = 0x01;
 	}
 	if (param_get_flag(argc, argv, "--trace")) {
-		state |= 0x04;
+		trace_select |= 0x04;
 	}
 
-	sys_write32(state, 0x1a605008);
+	if (param_get_flag(argc, argv, "--pinmux_b")) {
+		pinctrl_configure_pins(pinctrl_hci_b_ext, ARRAY_SIZE(pinctrl_hci_b_ext),
+				       PINCTRL_REG_NONE);
+	} else {
+		pinctrl_configure_pins(pinctrl_hci_a_ext, ARRAY_SIZE(pinctrl_hci_a_ext),
+				       PINCTRL_REG_NONE);
+	}
+	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT,
+		      "configuring external UART trace select:0x%x\n", trace_select);
 
+	sys_write32(trace_select, 0x1a605008);
 	return 0;
 }
 
-SHELL_STATIC_SUBCMD_SET_CREATE(sub_cmds, SHELL_CMD_ARG(start, NULL, "es0 start", cmd_start, 1, 10),
-			       SHELL_CMD_ARG(stop, NULL, "es0 stop", cmd_stop, 1, 10),
-			       SHELL_CMD_ARG(uart, NULL, "es0 uart wakeup --sleep --wiggle",
-					     cmd_uart, 1, 10),
-			       SHELL_CMD_ARG(hci, NULL, "Configure ext HCI", cmd_hci, 1, 10),
-			       SHELL_SUBCMD_SET_END);
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_cmds, SHELL_CMD_ARG(start, NULL, "es0 start", cmd_start, 1, 10),
+	SHELL_CMD_ARG(stop, NULL, "es0 stop", cmd_stop, 1, 10),
+	SHELL_CMD_ARG(uart, NULL, "es0 uart wakeup --sleep --wiggle", cmd_uart, 1, 10),
+	SHELL_CMD_ARG(hci, NULL, "Configure ext HCI: --ahi --trace --pinmux_b", cmd_hci, 1, 10),
+	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(pwr, &sub_cmds, "Power management test commands", NULL);
