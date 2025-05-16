@@ -35,6 +35,7 @@ target_include_directories(app PRIVATE
                            ${MATTER_GEN_DIR}/app-common
                            ${MATTER_GEN_DIR}/light-switch-app
                            ${ALIF_COMMON}/common
+                           ${ALIF_COMMON}/icd
                            ${ALIF_COMMON}/binding)
 
 target_sources(app PRIVATE
@@ -42,6 +43,8 @@ target_sources(app PRIVATE
                src/AppTask.cpp
                src/LightSwitch.cpp
                src/ShellCommands.cpp
+               src/ZclCallbacks.cpp
+               ${ALIF_COMMON}/icd/icdHandler.cpp
                ${ALIF_COMMON}/binding/BindingHandler.cpp
                ${ALIF_COMMON}/common/MatterStack.cpp
                ${ALIF_COMMON}/common/MatterUi.cpp
