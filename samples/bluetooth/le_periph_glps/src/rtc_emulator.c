@@ -15,7 +15,7 @@
 struct k_thread rtc_thread_data;
 
 /* Dummy timestamp info */
-static struct prf_date_time device_base_time = {
+static prf_date_time_t device_base_time = {
 	.year = 2024,
 	.month = 1,
 	.day = 1,
