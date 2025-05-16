@@ -10,6 +10,7 @@ set(SDK_ALIF_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 add_subdirectory(drivers)
 add_subdirectory(subsys)
+add_subdirectory(modules)
 
 # Our drivers directory contains syscalls, so must be added to this list
 list(APPEND SYSCALL_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include/drivers)
