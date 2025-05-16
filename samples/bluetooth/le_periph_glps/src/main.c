@@ -31,21 +31,21 @@
 #include "glps_msg.h"
 #include "prf_types.h"
 #include "rtc_emulator.h"
+#include "batt_svc.h"
+#include "shared_control.h"
 
-#include "bass.h"
-#include "bas.h"
+struct shared_control ctrl = { false, 0, 0 };
 
 /* Short interval for demonstration purposes */
 #define TX_INTERVAL	2000 /* in milliseconds */
-#define BATT_INSTANCE	0x00
 #define GLPS_STORE_MAX	0xFFFF
 
 /* Variable to check if peer device is ready to receive data"*/
 static bool READY_TO_SEND;
-static bool READY_TO_SEND_BASS;
 
 static uint16_t seq_num;
 static uint16_t store_idx;
+static prf_sfloat meas_value;
 
 /* Global index to cycle through the values */
 static int current_index;
@@ -124,6 +124,8 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
 		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
+	ctrl.connected = true;
+
 	LOG_DBG("Please enable notifications on peer device..");
 }
 
@@ -144,8 +146,9 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
+	ctrl.connected = false;
+
 	READY_TO_SEND = false;
-	READY_TO_SEND_BASS = false;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -162,11 +165,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 {
 	/* Send 'unknown' appearance */
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
-
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
 }
 
 /* Server callbacks */
@@ -277,31 +275,6 @@ static void racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
 	transfer_in_process = false;
 }
 
-static void on_bass_batt_level_upd_cmp(uint16_t status)
-{
-	READY_TO_SEND_BASS = true;
-}
-
-static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
-{
-	switch (ntf_ind_cfg) {
-	case PRF_CLI_STOP_NTFIND: {
-		LOG_INF("Client requested BASS stop notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND_BASS = false;
-	} break;
-
-	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND: {
-		LOG_INF("Client requested BASS start notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND_BASS = true;
-		LOG_DBG("Sending battery level");
-	}
-	default:{
-	}
-	}
-
-}
-
 /*
  * Security callbacks
  */
@@ -391,6 +364,28 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+static void on_gapm_err(uint32_t metainfo, uint8_t code)
+{
+	LOG_ERR("gapm error %d", code);
+}
+static const gapm_cb_t gapm_err_cbs = {
+	.cb_hw_error = on_gapm_err,
+};
+
+static const gapm_callbacks_t gapm_cbs = {
+	.p_con_req_cbs = &gapc_con_cbs,
+	.p_sec_cbs = &gapc_sec_cbs,
+	.p_info_cbs = &gapc_con_inf_cbs,
+	.p_le_config_cbs = &gapc_le_cfg_cbs,
+	.p_bt_config_cbs = NULL, /* BT classic so not required */
+	.p_gapm_cbs = &gapm_err_cbs,
+};
+#else
+static void on_gapm_err(enum co_error err)
+{
+	LOG_ERR("gapm error %d", err);
+}
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
 };
@@ -403,6 +398,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_bt_config_cbs = NULL, /* BT classic so not required */
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 static const glps_cb_t glps_cb = {
 	.cb_bond_data_upd = on_bond_data_upd,
@@ -411,18 +407,13 @@ static const glps_cb_t glps_cb = {
 	.cb_racp_rsp_send_cmp = racp_rsp_send_cmp,
 };
 
-static const bass_cb_t bass_cb = {
-	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
-	.cb_bond_data_upd = on_bass_bond_data_upd,
-};
-
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_GLUCOSE;
-	uint16_t svc2 = GATT_SVC_BATTERY_SERVICE;
+	uint16_t svc2 = get_batt_id();
 
 	uint8_t num_svc = 2;
 	const size_t device_name_len = sizeof(device_name) - 1;
@@ -512,7 +503,6 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -539,7 +529,11 @@ static uint16_t create_advertising(void)
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
-		.max_tx_pwr = 0,
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+				.tx_pwr = 0,
+#else
+				.max_tx_pwr = 0,
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
 				.adv_intv_min = 160, /* 100 ms */
@@ -579,12 +573,8 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		return;
 	}
 
-	server_configure();
-
 	LOG_DBG("gapm process completed successfully");
-
-	/* After configuration completed, create an advertising activity */
-	create_advertising();
+	k_sem_give(&init_sem);
 }
 
 /* Function to convert glucose concentration in mg/dL to SFLOAT format */
@@ -652,39 +642,16 @@ static void store_measurement(prf_sfloat current_value)
 	seq_num += 1;
 }
 
-
-static void config_battery_service(void)
+static void service_process(void)
 {
-	uint16_t err;
-	struct bass_db_cfg bass_cfg;
-	uint16_t start_hdl = 0;
+	meas_value = read_sensor_value();
 
-	bass_cfg.bas_nb = 1;
-	bass_cfg.features[0] = BAS_BATT_LVL_NTF_SUP;
-
-	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
-}
-
-static void battery_process(void)
-{
-	uint16_t err;
-	/* Fixed value for demonstrating purposes */
-	uint8_t battery_level = 99;
-
-	if (READY_TO_SEND_BASS) {
-		/* Sending dummy battery level to first battery instance*/
-		err = bass_batt_level_upd(BATT_INSTANCE, battery_level);
-
-		if (err) {
-			LOG_ERR("Error %u sending battery level", err);
-		}
-	}
+	store_measurement(meas_value);
 }
 
 int main(void)
 {
 	uint16_t err;
-	prf_sfloat meas_value;
 
 	start_rtc_emulator();
 
@@ -697,21 +664,30 @@ int main(void)
 		return -1;
 	}
 
-	config_battery_service();
-
 	LOG_DBG("Waiting for init...\n");
+
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
+
+	/* Share control structure */
+	service_conn(&ctrl);
+
+	/* Adding battery service */
+	config_battery_service();
+
+	server_configure();
+
+	create_advertising();
+
 	LOG_DBG("Waiting for peer connection...\n");
 
 	while (1) {
 		/* Execute process every 1 second */
 		k_sleep(K_MSEC(TX_INTERVAL));
-
-		meas_value = read_sensor_value();
-
-		store_measurement(meas_value);
+		service_process();
 		battery_process();
 	}
+	/* Should not come here */
+	return -EINVAL;
 }
