@@ -184,6 +184,17 @@ List of Supported Peripheral Devices and Features
 - **SDMMC (Secure Digital Multimedia Card)**:
   Alif SDMMC driver supports eMMC/SD interfaces.
 
+Improvements and Fixes
+----------------------
+
+1. **Linker Workarounds for LLVM/Clang**:
+
+   Added a new linker module that addresses several issues when building with LLVM/Clang:
+
+   - Fixes linker errors caused by exception tables when code spans memory regions far apart in the address space (e.g., MRAM and TCM)
+   - Provides options to discard unwanted exception tables
+   - Eliminates symbol table placement warnings from LLVM's linker
+
 Known Issues
 ------------
 
