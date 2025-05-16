@@ -21,21 +21,24 @@ LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 
 int PWMDevice::Init(const pwm_dt_spec * aPWMDevice, uint8_t aMinLevel, uint8_t aMaxLevel, uint8_t aDefaultLevel)
 {
-    mState     = kState_On;
-    mMinLevel  = aMinLevel;
-    mMaxLevel  = aMaxLevel;
-    mLevel     = aDefaultLevel;
-    mPwmDevice = aPWMDevice;
+	mState = kState_On;
+	mMinLevel = aMinLevel;
+	mMaxLevel = aMaxLevel;
+	mLevel = aDefaultLevel;
+	mPwmDevice = aPWMDevice;
 
     if (!mPwmDevice) {
-        LOG_INF("Virtual PWM led init");
-    } else {
-        if (!device_is_ready(mPwmDevice->dev)) {
-            LOG_ERR("PWM device %s is not ready", mPwmDevice->dev->name);
-            return -ENODEV;
-        }
+        LOG_ERR("NO Driver");
+        return -ENODEV;
     }
 
+	if (!device_is_ready(mPwmDevice->dev)) {
+		LOG_ERR("PWM device %s is not ready", mPwmDevice->dev->name);
+		return -ENODEV;
+	}
+
+    /* Disable Light state at init*/
+    SetLevel(0);
     Set(false);
     return 0;
 }
@@ -102,27 +105,17 @@ void PWMDevice::Set(bool aOn)
 
 void PWMDevice::SuppressOutput()
 {
-    if (mPwmDevice) {
-        pwm_set_pulse_dt(mPwmDevice, 0);
-    } else {
-        LOG_INF("SuppressOutput");
-    }
+    pwm_set_pulse_dt(mPwmDevice, 0);
     
 }
 
 void PWMDevice::ApplyLevel()
 {
-    const uint8_t maxEffectiveLevel = mMaxLevel - mMinLevel;
-    const uint8_t effectiveLevel    = mState == kState_On ? chip::min<uint8_t>(mLevel - mMinLevel, maxEffectiveLevel) : 0;
+	const uint8_t maxEffectiveLevel = mMaxLevel - mMinLevel;
+	const uint8_t effectiveLevel =
+		mState == kState_On ? chip::min<uint8_t>(mLevel - mMinLevel, maxEffectiveLevel) : 0;
 
-    if (!mPwmDevice) {
-	    if (mState == kState_On) {
-		    LOG_INF("PWM Apply state:On");
-	    } else {
-		    LOG_INF("PWM Apply state:Off");
-	    }
-    } else {
-        pwm_set_pulse_dt(mPwmDevice,
-                     static_cast<uint32_t>(static_cast<const uint64_t>(mPwmDevice->period) * effectiveLevel / maxEffectiveLevel));
-    }
+	pwm_set_pulse_dt(mPwmDevice,
+			 static_cast<uint32_t>(static_cast<const uint64_t>(mPwmDevice->period) *
+					       effectiveLevel / maxEffectiveLevel));
 }

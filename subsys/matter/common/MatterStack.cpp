@@ -105,8 +105,7 @@ void MatterStack::matter_internal_init()
 		VerifyInitResultOrReturn(Instance().sInitResult, "Device post init fail");
 	}
 
-	// Init led status
-	MatterStack::LedStatusUpdate(reinterpret_cast<intptr_t>(this));	
+	MatterStateMachineEventTrig();	
 }
 
 void MatterStack::InitInternal(intptr_t class_ptr)
@@ -122,23 +121,36 @@ void MatterStack::LedStatusUpdate(intptr_t class_ptr)
 {
 	MatterStack *entry = reinterpret_cast<MatterStack *>(class_ptr);
 	int led_period = 0;
+	bool ble_led = false;
+	bool single_event = false;
 
 	if (entry->sIsThreadProvisioned) {
-		if (!entry->sIsThreadAttached) {
-			led_period = 500;
-		} else if (entry->sHaveBLEConnections) {
-			led_period = 300;
-		}
-
-	} else {
-		if (entry->sHaveBLEConnections) {
-			led_period = 700;
-		} else {
+		if (!entry->sIsThreadAttached || !entry->sHaveSubcribed ||
+		    entry->sHaveBLEConnections) {
+			led_period = 100;
+		} else if (entry->sHaveSubcribed && !entry->sEndpointSubsripted) {
+			entry->sEndpointSubsripted = true;
+			led_period = 2000;
+			single_event = true;
+		} else if (entry->sIdentifyLed) {
 			led_period = 1000;
+		}
+		ble_led = entry->sHaveBLEConnections;
+	} else {
+		ble_led = true;
+		if (entry->sHaveBLEConnections) {
+			led_period = 100;
+		} else {
+			led_period = 500;
 		}
 	}
 	/* Update Boot period or do short Led Blink Indication */
-	MatterUi::Instance().StatusLedTimerSet(led_period);
+	entry->sLedStatusPeriod = led_period;
+
+	/* Clear a blink flag */
+	entry->sBlinkLed = false;
+
+	MatterUi::Instance().StatusLedTimerStart(led_period, ble_led, single_event);
 }
 
 void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
@@ -178,6 +190,10 @@ void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
 		LOG_INF("Thread State Provisioned %d, enabled %d, Atteched %d",
 			entry->sIsThreadProvisioned, entry->sIsThreadEnabled,
 			entry->sIsThreadAttached);
+		if (!entry->sIsThreadAttached) {
+			entry->sHaveSubcribed = false;
+			entry->sEndpointSubsripted = false;
+		}
 		break;
 
 	case DeviceEventType::kCommissioningComplete:
@@ -227,7 +243,18 @@ void MatterStack::ChipEventHandler(const ChipDeviceEvent *event, intptr_t arg)
 	}
 
 	// Set Status led indication
-	MatterStack::LedStatusUpdate(arg);
+	entry->MatterStateMachineEventTrig();
+}
+
+void MatterStack::MatterStateEventHandler(intptr_t aArg)
+{
+	MatterStack *entry = reinterpret_cast<MatterStack *>(aArg);
+	entry->LedStatusUpdate(aArg);
+}
+
+void MatterStack::MatterStateMachineEventTrig(void)
+{
+	PlatformMgr().ScheduleWork(MatterStateEventHandler, reinterpret_cast<intptr_t>(this));
 }
 
 CHIP_ERROR MatterStack::matter_stack_init(DevInit device_init_cb)
@@ -327,5 +354,27 @@ void MatterStack::matter_stack_fabric_print()
 
 void MatterStack::StatusLedBlink()
 {
-	LedStatusUpdate(reinterpret_cast<intptr_t>(this));
+	if (Instance().sLedStatusPeriod == 0 && !Instance().sBlinkLed) {
+		Instance().sBlinkLed = true;
+		MatterStateMachineEventTrig();
+	}
+}
+
+void MatterStack::IdentifyLedState(bool enable)
+{
+	if (Instance().sIdentifyLed != enable) {
+		Instance().sIdentifyLed = enable;
+		Instance().MatterStateMachineEventTrig();
+	}
+}
+
+void MatterStack::MatterEndpointSubscripted()
+{
+	if (!Instance().sHaveSubcribed) {
+		Instance().sHaveSubcribed = true;
+		Instance().MatterStateMachineEventTrig();
+	} else {
+		Instance().StatusLedBlink();
+	}
+	
 }

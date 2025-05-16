@@ -8,7 +8,6 @@
  */
 
 #pragma once
-
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -54,6 +53,11 @@ class MatterStack
 		sIsThreadAttached = false;
 		sHaveBLEConnections = false;
 		sHaveCommission = false;
+		sHaveSubcribed = false;
+		sEndpointSubsripted =false;
+		sBlinkLed = false;
+		sIdentifyLed = false;
+		sLedStatusPeriod = 500;
 		for (int i=0; i< MATTER_FABRIC_TABLE_MAX_SIZE;i++) {
 			fabricTable[i].in_use = false;
 			fabricTable[i].commission = false;
@@ -67,8 +71,13 @@ class MatterStack
 	bool sIsThreadEnabled;
 	bool sIsThreadAttached;
 	bool sHaveBLEConnections;
+	bool sHaveSubcribed;
+	bool sEndpointSubsripted;
 	bool sHaveCommission;
+	bool sBlinkLed;
+	bool sIdentifyLed;
 	CHIP_ERROR sInitResult;
+	int sLedStatusPeriod;
 
 #if CONFIG_CHIP_FACTORY_DATA
 	chip::DeviceLayer::FactoryDataProvider<chip::DeviceLayer::ExternalFlashFactoryData>
@@ -96,6 +105,7 @@ class MatterStack
 
 	// Need to be used static because these functions are registered to Matter scheduler
 	static void InitInternal(intptr_t class_ptr);
+	static void MatterStateEventHandler(intptr_t aArg);
 	static void ChipEventHandler(const chip::DeviceLayer::ChipDeviceEvent *event, intptr_t arg);
 	static void LedStatusUpdate(intptr_t class_ptr);
 	static void matter_stack_fabric_add(const chip::DeviceLayer::ChipDeviceEvent *event, bool commission_fabric);
@@ -106,6 +116,9 @@ class MatterStack
 	CHIP_ERROR matter_stack_start();
 	void matter_stack_fabric_print();
 	void StatusLedBlink();
+	void IdentifyLedState(bool enable);
+	void MatterEndpointSubscripted();
+	void MatterStateMachineEventTrig(void);
 
 	static MatterStack &Instance()
 	{
