@@ -8,6 +8,7 @@
  */
 
 #include "MatterUi.h"
+#include "MatterStack.h"
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
@@ -24,8 +25,8 @@ static const struct gpio_dt_spec buttons[] = {
 #endif
 };
 
-
 static const struct gpio_dt_spec statusLed = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+static const struct gpio_dt_spec bleLed = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
 
 int MatterUi::ButtonInterruptCtrl(bool enable)
 {
@@ -61,7 +62,7 @@ int MatterUi::ButtonStateRead(void)
 			return 0;
 		}
 		if (pin_state) {
-                        /* Mark Active Button state */
+			/* Mark Active Button state */
 			mask |= 1U << i;
 		}
 	}
@@ -92,18 +93,18 @@ void MatterUi::ButtonWorkerHandler(struct k_work *work)
 	last_button_scan = button_mask;
 
 	if (button_mask != 0) {
-                /* Button still pressed shedule new poll round */
+		/* Button still pressed shedule new poll round */
 		k_work_reschedule(&Instance().buttonWork, K_MSEC(25));
 	} else {
-                 /* All buttons released enable interrupts again */
-                 ButtonInterruptCtrl(true);
+		/* All buttons released enable interrupts again */
+		ButtonInterruptCtrl(true);
 	}
 }
 
 void MatterUi::ButtonEventHandler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-        /* Disable Interrupts */
-        ButtonInterruptCtrl(false);
+	/* Disable Interrupts */
+	ButtonInterruptCtrl(false);
 	/* Button scan process trigger  */
 	k_work_reschedule(&Instance().buttonWork, K_MSEC(1));
 }
@@ -134,7 +135,7 @@ int MatterUi::ButtonInit(void)
 		callback_pin_mask |= BIT(buttons[i].pin);
 	}
 
-        /* Init callback handlers */
+	/* Init callback handlers */
 	gpio_init_callback(&button_cb_data, ButtonEventHandler, callback_pin_mask);
 	for (size_t i = 0; i < ARRAY_SIZE(buttons); i++) {
 		err = gpio_add_callback(buttons[i].port, &button_cb_data);
@@ -163,23 +164,58 @@ int MatterUi::StatusLedInit(void)
 		return err;
 	}
 
-	k_timer_init(&Instance().ledTimer, MatterUi::StatusLedTimer, nullptr);
-	/* LED initial state */
-	gpio_pin_set_dt(&statusLed, 0);
+	return 0;
+}
+
+int MatterUi::BleLedInit(void)
+{
+	/* Configure LED */
+	int err;
+
+	if (!gpio_is_ready_dt(&bleLed)) {
+		LOG_ERR("led is not ready!");
+		return -1;
+	}
+
+	err = gpio_pin_configure_dt(&bleLed, GPIO_OUTPUT_ACTIVE);
+	if (err < 0) {
+		LOG_ERR("led configure failed");
+		return err;
+	}
 
 	return 0;
 }
 
-void MatterUi::StatusLedTimer(k_timer * timer)
+void MatterUi::StatusLedTimer(k_timer *timer)
 {
-	if (Instance().statusTimerPeriodMs) {
-		gpio_pin_toggle_dt(&statusLed);
-		k_timer_start(&Instance().ledTimer, K_MSEC(Instance().statusTimerPeriodMs), K_NO_WAIT);
+	if (Instance().mLedPeriod == 0) {
+		Instance().BleLedSet(false);
+		Instance().StatusLedSet(false);
+		if (Instance().mSingleEvent) {
+			Instance().mSingleEvent = false;
+			MatterStack::Instance().MatterStateMachineEventTrig();
+		}
 	} else {
-		/* Disable led for short blinky */
-		gpio_pin_set_dt(&statusLed, 0);
+		int periodMs = Instance().mLedPeriod;
+		if (Instance().mSingleEvent) {
+			Instance().mLedPeriod = 0;
+			if (Instance().mBleLedActive) {
+				Instance().BleLedSet(true);
+
+			} else {
+				Instance().StatusLedSet(true);
+			}
+		} else {
+			if (Instance().mBleLedActive) {
+				Instance().BleLedTogle();
+
+			} else {
+				Instance().StatusLedTogle();
+			}
+		}
+
+		k_timer_start(&Instance().mLedTimer, K_MSEC(periodMs), K_NO_WAIT);
 	}
-	
 }
 
 bool MatterUi::Init(ButtonHandler buttonHandler)
@@ -188,10 +224,9 @@ bool MatterUi::Init(ButtonHandler buttonHandler)
 	memset(&Instance().buttonWork, 0, sizeof(struct k_work_delayable));
 	Instance().buttonWork = Z_WORK_DELAYABLE_INITIALIZER(ButtonWorkerHandler);
 
-        /* Set Button user calback */
+	/* Set Button user calback */
 	mButtonHandler = buttonHandler;
-	statusTimerPeriodMs = 0;
-        /* Init button */
+	/* Init button */
 	if (ButtonInit()) {
 		return false;
 	}
@@ -199,28 +234,81 @@ bool MatterUi::Init(ButtonHandler buttonHandler)
 	if (StatusLedInit()) {
 		return false;
 	}
+	if (BleLedInit()) {
+		return false;
+	}
+
+	/* LED initial state */
+	Instance().BleLedSet(false);
+	Instance().StatusLedSet(false);
+
+	k_timer_init(&Instance().mLedTimer, MatterUi::StatusLedTimer, nullptr);
 	k_work_reschedule(&buttonWork, K_MSEC(1));
 	return true;
 }
 
-void MatterUi::StatusLedTimerSet(int period_ms)
+void MatterUi::StatusLedSet(bool enable)
 {
-	if (statusTimerPeriodMs == 0) {
-		int set_led_blink_period;
-
-		if (period_ms == 0) {
-			/* Set short Blink */
-			set_led_blink_period = 100;
-		} else {
-			statusTimerPeriodMs = period_ms;
-			set_led_blink_period = period_ms;
-		}
-		/* Enable led state */
+	if (enable) {
 		gpio_pin_set_dt(&statusLed, 1);
-		k_timer_start(&ledTimer, K_MSEC(set_led_blink_period), K_NO_WAIT);
+	} else {
+		gpio_pin_set_dt(&statusLed, 0);
+	}
+}
 
-	} else if (statusTimerPeriodMs != period_ms) {
-		/* Update Period */
-		statusTimerPeriodMs = period_ms;
+void MatterUi::StatusLedTogle()
+{
+	gpio_pin_toggle_dt(&statusLed);
+}
+
+void MatterUi::BleLedSet(bool enable)
+{
+	if (enable) {
+		gpio_pin_set_dt(&bleLed, 1);
+	} else {
+		gpio_pin_set_dt(&bleLed, 0);
+	}
+}
+
+void MatterUi::BleLedTogle()
+{
+	gpio_pin_toggle_dt(&bleLed);
+}
+
+void MatterUi::StatusLedTimerStart(int period_ms, bool ble_led, bool single_event)
+{
+
+	if (mLedPeriod == 0) {
+		int ledTime = 100;
+		mBleLedActive = ble_led;
+
+		if (ble_led) {
+			BleLedSet(true);
+			StatusLedSet(false);
+		} else {
+			BleLedSet(false);
+			StatusLedSet(true);
+		}
+		mLedPeriod = period_ms;
+		if (mLedPeriod) {
+			ledTime = mLedPeriod;
+		}
+		/* Start Timer */
+		mSingleEvent = single_event;
+		k_timer_start(&mLedTimer, K_MSEC(ledTime), K_NO_WAIT);
+	} else {
+		mLedPeriod = period_ms;
+		if (mBleLedActive != ble_led) {
+			mBleLedActive = ble_led;
+			if (ble_led) {
+				BleLedSet(true);
+				StatusLedSet(false);
+
+			} else {
+				BleLedSet(false);
+				StatusLedSet(true);
+			}
+		}
+		mSingleEvent = single_event;
 	}
 }
