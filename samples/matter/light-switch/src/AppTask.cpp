@@ -13,6 +13,9 @@
 #include "MatterStack.h"
 #include "MatterUi.h"
 
+#include "icdHandler.h"
+#include <app/InteractionModelEngine.h>
+
 #include <DeviceInfoProviderImpl.h>
 #include <app/TestEventTriggerDelegate.h>
 #include <app/clusters/identify-server/identify-server.h>
@@ -48,8 +51,8 @@ K_MSGQ_DEFINE(sAppEventQueue, sizeof(AppEvent), kAppEventQueueSize, alignof(AppE
 
 Identify sIdentify = {kLightEndpointId, AppTask::IdentifyStartHandler, AppTask::IdentifyStopHandler,
 		      Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
-Identify sIdentifyGen = {kLightGenericSwitchEndpointId, AppTask::IdentifyStartHandler, AppTask::IdentifyStopHandler,
-			Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
+// Identify sIdentifyGen = {kLightGenericSwitchEndpointId, AppTask::IdentifyStartHandler, AppTask::IdentifyStopHandler,
+// 			Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator};
 
 chip::DeviceLayer::DeviceInfoProviderImpl gExampleDeviceInfoProvider;
 
@@ -69,7 +72,6 @@ void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 	if (has_changed & 1) {
 		/* Press Button Update  toggle led when state goes to 0*/
 		if (!(button_state & 1)) {
-			MatterStack::Instance().StatusLedBlink();
 			/* Toggle Light onOff server state */
 			LightSwitch::GetInstance().LightOnOffServerControl(LightSwitch::Action::Toggle);
 			LightSwitch::GetInstance().LightControl(LightSwitch::Action::Toggle);
@@ -121,7 +123,10 @@ void AppTask::IdentifyStartHandler(Identify *)
 	AppEvent event;
 
 	event.Type = AppEventType::IdentifyStart;
-	event.Handler = [](const AppEvent *) { LOG_INF("Identify start"); };
+	event.Handler = [](const AppEvent *) {
+		LOG_INF("Identify start");
+		MatterStack::Instance().IdentifyLedState(true);
+	};
 	PostEvent(&event);
 }
 
@@ -130,7 +135,10 @@ void AppTask::IdentifyStopHandler(Identify *)
 	AppEvent event;
 
 	event.Type = AppEventType::IdentifyStop;
-	event.Handler = [](const AppEvent *) { LOG_INF("Identify stop"); };
+	event.Handler = [](const AppEvent *) {
+		LOG_INF("Identify stop");
+		MatterStack::Instance().IdentifyLedState(false);
+	};
 	PostEvent(&event);
 }
 
@@ -153,17 +161,17 @@ void AppTask::StartBLEAdvertisementHandler(const AppEvent *)
 	}
 }
 
-
-
 CHIP_ERROR AppTask::Init()
 {
 	/* Initialize Matter stack */
 	ReturnErrorOnFailure(MatterStack::Instance().matter_stack_init(DevInit));
 
+	chip::app::InteractionModelEngine::GetInstance()->RegisterReadHandlerAppCallback(
+		&ICDHandler::Instance());
+
 	/* Start Matter sheduler */
 	ReturnErrorOnFailure(MatterStack::Instance().matter_stack_start());
 
-	
 	return CHIP_NO_ERROR;
 }
 

@@ -13,7 +13,8 @@
 #include "MatterStack.h"
 #include "MatterUi.h"
 #include "PWMDevice.h"
-
+#include "icdHandler.h"
+#include <app/InteractionModelEngine.h>
 #include <DeviceInfoProviderImpl.h>
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app/DeferredAttributePersistenceProvider.h>
@@ -78,12 +79,27 @@ CHIP_ERROR AppTask::DevInit()
 	uint8_t maxLightLevel = kDefaultMaxLevel;
 	Clusters::LevelControl::Attributes::MaxLevel::Get(kLightEndpointId, &maxLightLevel);
 
+	uint8_t current = 0;
+	app::DataModel::Nullable<uint8_t> currentLevel;
+
+	Clusters::LevelControl::Attributes::CurrentLevel::Get(kLightEndpointId, currentLevel);
+	if (!currentLevel.IsNull()) {
+		current = currentLevel.Value();
+	}
+
 	int ret = Instance().mPWMDevice.Init(&sLightPwmDevice, minLightLevel, maxLightLevel, maxLightLevel);
 	if (ret != 0) {
 		return chip::System::MapErrorZephyr(ret);
 	}
 	// Register PWM device init and activate callback's
 	Instance().mPWMDevice.SetCallbacks(ActionInitiated, ActionCompleted);
+	/* Read a stored value */
+	if (current) {
+		AppTask::Instance().GetPWMDevice().InitiateAction(
+			PWMDevice::LEVEL_ACTION,
+			static_cast<int32_t>(AppEventType::Lighting),
+			reinterpret_cast<uint8_t *>(&current));
+	}
 
 	// Init modified persistent storage setup
 	gExampleDeviceInfoProvider.SetStorageDelegate(
@@ -150,7 +166,7 @@ void AppTask::IdentifyStartHandler(Identify *)
 	AppEvent event;
 	event.Type = AppEventType::IdentifyStart;
 	event.Handler = [](const AppEvent *) {
-		Instance().mPWMDevice.SuppressOutput();
+		MatterStack::Instance().IdentifyLedState(true);
 		LOG_INF("Identify start");
 	};
 	PostEvent(&event);
@@ -162,7 +178,7 @@ void AppTask::IdentifyStopHandler(Identify *)
 	event.Type = AppEventType::IdentifyStop;
 	event.Handler = [](const AppEvent *) {
 		LOG_INF("Identify stop");
-		Instance().mPWMDevice.ApplyLevel();
+		MatterStack::Instance().IdentifyLedState(false);
 	};
 	PostEvent(&event);
 }
@@ -211,6 +227,7 @@ void AppTask::ActionInitiated(PWMDevice::Action_t action, int32_t actor)
 	} else if (action == PWMDevice::LEVEL_ACTION) {
 		LOG_INF("Level Action has been initiated");
 	}
+	MatterStack::Instance().StatusLedBlink();
 }
 
 void AppTask::ActionCompleted(PWMDevice::Action_t action, int32_t actor)
@@ -255,7 +272,8 @@ CHIP_ERROR AppTask::Init()
 	/* Initialize Matter stack */
 	ReturnErrorOnFailure(MatterStack::Instance().matter_stack_init(DevInit));
 
-	/* Init Light switch endpoint */
+	chip::app::InteractionModelEngine::GetInstance()->RegisterReadHandlerAppCallback(
+		&ICDHandler::Instance());
 
 	/* Start Matter sheduler */
 	ReturnErrorOnFailure(MatterStack::Instance().matter_stack_start());

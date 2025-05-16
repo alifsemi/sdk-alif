@@ -8,7 +8,7 @@
  */
 
 #include "AppTask.h"
-#include "PWMDevice.h"
+#include "MatterStack.h"
 
 #include <app-common/zap-generated/attributes/Accessors.h>
 #include <app-common/zap-generated/ids/Attributes.h>
@@ -30,25 +30,7 @@ void MatterPostAttributeChangeCallback(const chip::app::ConcreteAttributePath &a
 	AttributeId attributeId = attributePath.mAttributeId;
 
 	if (clusterId == OnOff::Id && attributeId == OnOff::Attributes::OnOff::Id) {
+		MatterStack::Instance().StatusLedBlink();
 		LOG_INF("Cluster OnOff: attribute OnOff set to %u", *value);
-		AppTask::Instance().GetPWMDevice().InitiateAction(
-			*value ? PWMDevice::ON_ACTION : PWMDevice::OFF_ACTION,
-			static_cast<int32_t>(AppEventType::Lighting), value);
-	} else if (clusterId == LevelControl::Id &&
-		   attributeId == LevelControl::Attributes::CurrentLevel::Id) {
-		LOG_INF("Cluster LevelControl: attribute CurrentLevel set to %u", *value);
-		if (AppTask::Instance().GetPWMDevice().IsTurnedOn()) {
-			AppTask::Instance().GetPWMDevice().InitiateAction(
-				PWMDevice::LEVEL_ACTION,
-				static_cast<int32_t>(AppEventType::Lighting), value);
-		} else {
-			LOG_INF("LED is off. Try to use move-to-level-with-on-off "
-				"instead of move-to-level");
-		}
 	}
-}
-
-void emberAfOnOffClusterInitCallback(EndpointId endpoint)
-{
-	/* Device init will handle Cluster  */
 }
