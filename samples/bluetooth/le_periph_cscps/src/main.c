@@ -27,26 +27,33 @@
 #include "prf.h"
 #include "cscps.h"
 #include "cscps_msg.h"
-#include "bass.h"
-#include "bas.h"
+#include "batt_svc.h"
+#include "shared_control.h"
 
-#define BT_CONN_STATE_CONNECTED      0x00
-#define BT_CONN_STATE_DISCONNECTED   0x01
+struct shared_control ctrl = { false, 0, 0 };
+
 #define CSCP_SENSOR_LOCATION_SUPPORT 0x01
-#define BATT_INSTANCE 0x00
-
-static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 /* Variable to check if peer device is ready to receive data"*/
 static bool READY_TO_SEND;
-static bool READY_TO_SEND_BASS;
 
-static uint16_t wheel_evt_time;
+static uint16_t evt_time;
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+static uint16_t current_value;
+static cscp_csc_meas_t p_meas = {
+	.flags = CSCP_MEAS_WHEEL_REV_DATA_PRESENT_BIT |
+		CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
+};
+
+/* Dummy fixed incremental values */
+#define WHEEL_REVS_PER_UPDATE	6	/* e.g. 3 rev/s × 2 s */
+#define CRANK_REVS_PER_UPDATE	3	/* e.g. 90 rpm → 1.5 rev/s × 2 s ≈ 3 rev */
+#define EVENT_TIME_INC_UNITS	2000	/* e.g. 2 secs */
 
 /**
  * Bluetooth stack configuration
@@ -106,7 +113,7 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 
 	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
 
-	conn_status = BT_CONN_STATE_CONNECTED;
+	ctrl.connected = true;
 
 	k_sem_give(&conn_sem);
 
@@ -130,7 +137,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
-	conn_status = BT_CONN_STATE_DISCONNECTED;
+	ctrl.connected = false;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -149,11 +156,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
-}
-
 /* CGMS callbacks */
 
 static void on_meas_send_complete(uint16_t status)
@@ -163,19 +165,23 @@ static void on_meas_send_complete(uint16_t status)
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
 {
-	switch (cfg_val) {
-	case PRF_CLI_STOP_NTFIND:
-		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = false;
-		break;
-	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND:
-		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
-		LOG_DBG("Sending measurements");
-		READY_TO_SEND = true;
-		break;
-	default:
-		break;
+	if (char_code == CSCP_CSCS_CSC_MEAS_CHAR) {
+		switch (cfg_val) {
+		case PRF_CLI_STOP_NTFIND:
+			LOG_INF("Client requested stop notification/indication (conidx: %u)",
+				conidx);
+			READY_TO_SEND = false;
+			break;
+		case PRF_CLI_START_NTF:
+		case PRF_CLI_START_IND:
+			LOG_INF("Client requested start notification/indication (conidx: %u)",
+				conidx);
+			LOG_DBG("Sending measurements");
+			READY_TO_SEND = true;
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -186,29 +192,6 @@ static void on_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
 
 static void on_cb_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
-}
-
-static void on_bass_batt_level_upd_cmp(uint16_t status)
-{
-	READY_TO_SEND_BASS = true;
-}
-
-static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
-{
-	switch (ntf_ind_cfg) {
-	case PRF_CLI_STOP_NTFIND:
-		LOG_INF("Client requested BASS stop notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND_BASS = false;
-		break;
-	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND:
-		LOG_INF("Client requested BASS start notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND_BASS = true;
-		LOG_DBG("Sending battery level");
-		break;
-	default:
-		break;
-	}
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -230,6 +213,28 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+static void on_gapm_err(uint32_t metainfo, uint8_t code)
+{
+	LOG_ERR("gapm error %d", code);
+}
+static const gapm_cb_t gapm_err_cbs = {
+	.cb_hw_error = on_gapm_err,
+};
+
+static const gapm_callbacks_t gapm_cbs = {
+	.p_con_req_cbs = &gapc_con_cbs,
+	.p_sec_cbs = &gapc_sec_cbs,
+	.p_info_cbs = &gapc_con_inf_cbs,
+	.p_le_config_cbs = &gapc_le_cfg_cbs,
+	.p_bt_config_cbs = NULL, /* BT classic so not required */
+	.p_gapm_cbs = &gapm_err_cbs,
+};
+#else
+static void on_gapm_err(enum co_error err)
+{
+	LOG_ERR("gapm error %d", err);
+}
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
 };
@@ -242,6 +247,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_bt_config_cbs = NULL, /* BT classic so not required */
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 /*      profile callbacks */
 static const cscps_cb_t cscps_cb = {
@@ -251,18 +257,13 @@ static const cscps_cb_t cscps_cb = {
 	.cb_ctnl_pt_rsp_send_cmp = on_cb_ctnl_pt_rsp_send_cmp,
 };
 
-static const bass_cb_t bass_cb = {
-	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
-	.cb_bond_data_upd = on_bass_bond_data_upd,
-};
-
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_CYCLING_SPEED_CADENCE;
-	uint16_t svc2 = GATT_SVC_BATTERY_SERVICE;
+	uint16_t svc2 = get_batt_id();
 	uint8_t num_svc = 2;
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
@@ -355,7 +356,6 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -382,14 +382,18 @@ static uint16_t create_advertising(void)
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+		.tx_pwr = 0,
+#else
 		.max_tx_pwr = 0,
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-				.adv_intv_min = 160, /* 100 ms */
-				.adv_intv_max = 800, /* 500 ms */
-				.ch_map = ADV_ALL_CHNLS_EN,
-				.phy = GAPM_PHY_TYPE_LE_1M,
-			},
+			.adv_intv_min = 160, /* 100 ms */
+			.adv_intv_max = 800, /* 500 ms */
+			.ch_map = ADV_ALL_CHNLS_EN,
+			.phy = GAPM_PHY_TYPE_LE_1M,
+		},
 	};
 
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
@@ -425,36 +429,16 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		return;
 	}
 
-	server_configure();
-
 	LOG_DBG("gapm process completed successfully");
 
-	/* After configuration completed, create an advertising activity */
-	create_advertising();
+	/* BLE stack init complete */
+	k_sem_give(&init_sem);
 }
 
-static uint16_t cumul_crk;
-static uint16_t cumul_wheel;
-
 /*  Generate and send dummy data*/
-static void send_measurement(uint16_t current_value)
+static void send_measurement(void)
 {
 	uint16_t err;
-
-	wheel_evt_time += current_value + 2000;
-	/*      Dummy measurements values       */
-	cscp_csc_meas_t p_meas = {
-		.flags = CSCP_MEAS_WHEEL_REV_DATA_PRESENT_BIT |
-			CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
-		/* Moving above 1000 milliseconds */
-		.cumul_wheel_rev = cumul_wheel + 1,
-		.last_wheel_evt_time = wheel_evt_time,
-		.cumul_crank_rev = cumul_crk + 3,
-		.last_crank_evt_time = wheel_evt_time + 2,
-	};
-
-	cumul_crk += 3;
-	cumul_wheel += 1;
 
 	/* Set bit field to all 1's to send notification
 	 * on all connections that are subscribed
@@ -466,7 +450,7 @@ static void send_measurement(uint16_t current_value)
 	}
 }
 
-uint16_t read_sensor_value(uint16_t current_value)
+void read_sensor_value(void)
 {
 	/* Generating dummy values between 1 and 5 */
 	if (current_value >= 3) {
@@ -474,60 +458,32 @@ uint16_t read_sensor_value(uint16_t current_value)
 	} else {
 		current_value++;
 	}
-	return current_value;
+
+	evt_time += current_value + EVENT_TIME_INC_UNITS;
+	/*      Dummy measurements values       */
+	p_meas.cumul_wheel_rev += WHEEL_REVS_PER_UPDATE;
+	p_meas.last_wheel_evt_time = evt_time;
+	p_meas.cumul_crank_rev += CRANK_REVS_PER_UPDATE;
+	p_meas.last_crank_evt_time = evt_time;
 }
 
-void cscps_process(uint16_t measurement)
+void service_process(void)
 {
-	switch (conn_status) {
-	case BT_CONN_STATE_CONNECTED:
+	read_sensor_value();
+	if (ctrl.connected) {
 		if (READY_TO_SEND) {
-			send_measurement(measurement);
+			send_measurement();
 			READY_TO_SEND = false;
 		}
-
-		break;
-	case BT_CONN_STATE_DISCONNECTED:
-		LOG_DBG("Waiting for peer connection\n");
+	} else {
+		LOG_DBG("Waiting for peer connection...\n");
 		k_sem_take(&conn_sem, K_FOREVER);
-
-	default:
-		break;
-	}
-}
-
-static void config_battery_service(void)
-{
-	uint16_t err;
-	struct bass_db_cfg bass_cfg;
-	uint16_t start_hdl = 0;
-
-	bass_cfg.bas_nb = 1;
-	bass_cfg.features[0] = 1;
-
-	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
-}
-
-static void battery_process(void)
-{
-	uint16_t err;
-	/* Fixed value for demonstrating purposes */
-	uint8_t battery_level = 99;
-
-	if (READY_TO_SEND_BASS) {
-		/* Sending dummy battery level to first battery instance*/
-		err = bass_batt_level_upd(BATT_INSTANCE, battery_level);
-
-		if (err) {
-			LOG_ERR("Error %u sending battery level", err);
-		}
 	}
 }
 
 int main(void)
 {
 	uint16_t err;
-	uint16_t current_value = 1;
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -538,22 +494,27 @@ int main(void)
 		return -1;
 	}
 
-	config_battery_service();
-
 	LOG_DBG("Waiting for init...\n");
+
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
 
+	/* Share connection info */
+	service_conn(&ctrl);
+
+	config_battery_service();
+
+	server_configure();
+
+	/* Create an advertising activity */
+	create_advertising();
+
 	while (1) {
-		/* Execute process every 1 second */
 		k_sleep(K_SECONDS(1));
-
-		current_value = read_sensor_value(current_value);
-
-		cscps_process(current_value);
+		service_process();
 		battery_process();
 	}
-
-	return 0;
+	/* Should not come here */
+	return -EINVAL;
 }
