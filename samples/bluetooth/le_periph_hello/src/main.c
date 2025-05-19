@@ -58,6 +58,12 @@ static uint8_t hello_arr_index;
 		(uuid) & 0xFF, (uuid >> 8) & 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0        \
 	}
 
+/* gatt service identifier for advertising */
+static uint16_t gatt_svc_id[8] = {
+	0x3412, 0x7856, 0x1290, 0x3423,
+	0x5645, 0x7867, 0x9089, 0x0000
+};
+
 /* List of attributes in the service */
 enum service_att_list {
 	HELLO_IDX_SERVICE = 0,
@@ -249,12 +255,6 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
-	/* gatt service identifier */
-	uint16_t svc[8] = {
-		0xd123, 0xeabc, 0x785f, 0x1523,
-		0xefde, 0x1212, 0x1523, 0x0000
-	};
-
 	/* Name advertising length */
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
@@ -287,7 +287,7 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	/* Service UUID data */
 	p_data[0] = GATT_UUID_128_LEN + 1;
 	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
-	memcpy(p_data + 2, &svc, sizeof(svc));
+	memcpy(p_data + 2, &gatt_svc_id, sizeof(gatt_svc_id));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf);
