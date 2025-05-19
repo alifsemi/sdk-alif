@@ -35,7 +35,7 @@ struct shared_control ctrl = { false, 0, 0 };
 #define CSCP_SENSOR_LOCATION_SUPPORT 0x01
 
 /* Variable to check if peer device is ready to receive data"*/
-static bool READY_TO_SEND;
+static bool ready_to_send;
 
 static uint16_t evt_time;
 
@@ -160,7 +160,7 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 
 static void on_meas_send_complete(uint16_t status)
 {
-	READY_TO_SEND = true;
+	ready_to_send = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
@@ -170,14 +170,14 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val
 		case PRF_CLI_STOP_NTFIND:
 			LOG_INF("Client requested stop notification/indication (conidx: %u)",
 				conidx);
-			READY_TO_SEND = false;
+			ready_to_send = false;
 			break;
 		case PRF_CLI_START_NTF:
 		case PRF_CLI_START_IND:
 			LOG_INF("Client requested start notification/indication (conidx: %u)",
 				conidx);
 			LOG_DBG("Sending measurements");
-			READY_TO_SEND = true;
+			ready_to_send = true;
 			break;
 		default:
 			break;
@@ -471,9 +471,9 @@ void service_process(void)
 {
 	read_sensor_value();
 	if (ctrl.connected) {
-		if (READY_TO_SEND) {
+		if (ready_to_send) {
 			send_measurement();
-			READY_TO_SEND = false;
+			ready_to_send = false;
 		}
 	} else {
 		LOG_DBG("Waiting for peer connection...\n");
