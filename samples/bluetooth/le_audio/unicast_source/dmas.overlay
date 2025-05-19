@@ -13,9 +13,6 @@
 #define I2S0_DMA_TX_CH  3
 #define I2S0_DMA_TX_REQ 28
 
-/* DMA is not enabled by default due to issue in
- * Zephyr's PL330 driver (mutex)
- */
 &i2s0 {
 	dmas = <&dma2 I2S0_DMA_RX_CH I2S0_DMA_RX_REQ>,
 	       <&dma2 I2S0_DMA_TX_CH I2S0_DMA_TX_REQ>;

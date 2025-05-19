@@ -49,6 +49,9 @@ struct i2s_sync_channel {
 struct i2s_sync_data {
 	struct i2s_sync_channel tx;
 	struct i2s_sync_channel rx;
+	uint32_t sample_rate;
+	uint32_t bit_depth;
+	uint8_t channel_count;
 };
 
 struct i2s_sync_dma_ch {
@@ -140,16 +143,14 @@ __ramfunc static void dma_tx_callback(const struct device *dma_dev, void *p_user
 	LOG_DBG("I2S:%s tx dma callback ch:%d completed", dev->name, channel);
 }
 
-__ramfunc static int i2s_transmitter_start_dma(const struct device *const dev)
+__ramfunc static int i2s_transmitter_start_dma(const struct device *const dev,
+					       size_t const bytes_per_sample)
 {
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	struct i2s_sync_data *dev_data = dev->data;
 	/* DMA Burst size is shifter so 1 means 2 bytes, 2 means 4 bytes. */
-	/* HWRM states that stereo should be possible by one write to TXDMA register.
-	 * This does not seem to work and size must be fixed to 16bits (config value 1)
-	 */
-	const size_t data_size = 1; /* dev_cfg->channel_count; */
+	const size_t data_size = bytes_per_sample - 1;
 	int ret = 0;
 
 #if CONFIG_DCACHE
@@ -226,9 +227,9 @@ __ramfunc static int i2s_send(const struct device *dev, void *buf, size_t len)
 		return -EINPROGRESS;
 	}
 
-	size_t const bytes_per_sample = dev_cfg->bit_depth / 8U;
+	size_t const bytes_per_sample = dev_data->bit_depth / 8U;
 
-	if ((len % (dev_cfg->channel_count * bytes_per_sample)) != 0) {
+	if ((len % (dev_data->channel_count * bytes_per_sample)) != 0) {
 		LOG_ERR("Invalid buffer size");
 		return -EINVAL;
 	}
@@ -238,7 +239,7 @@ __ramfunc static int i2s_send(const struct device *dev, void *buf, size_t len)
 
 	if (dev_cfg->dma_tx.enabled) {
 		/* Configure and start DMA */
-		return i2s_transmitter_start_dma(dev);
+		return i2s_transmitter_start_dma(dev, bytes_per_sample);
 	}
 
 	dev_data->tx.samples = len / bytes_per_sample;
@@ -264,6 +265,10 @@ __ramfunc static void dma_rx_callback(const struct device *dma_dev, void *p_user
 
 	dev_data->rx.buf = NULL;
 
+#if CONFIG_DCACHE
+	sys_cache_data_invd_range(rx_buf, dev_data->rx.block_bytes);
+#endif
+
 	if (dev_data->rx.cb) {
 		enum i2s_sync_status cb_status =
 			status ? I2S_SYNC_STATUS_RX_ERROR : I2S_SYNC_STATUS_OK;
@@ -277,12 +282,14 @@ __ramfunc static void dma_rx_callback(const struct device *dma_dev, void *p_user
 	LOG_DBG("I2S:%s rx dma callback ch:%d completed", dev->name, channel);
 }
 
-__ramfunc static int i2s_receiver_start_dma(const struct device *const dev)
+__ramfunc static int i2s_receiver_start_dma(const struct device *const dev,
+					    size_t const bytes_per_sample)
 {
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	struct i2s_sync_data *dev_data = dev->data;
-	const size_t data_size = dev_cfg->channel_count - 1;
+	/* DMA Burst size is shifter so 1 means 2 bytes, 2 means 4 bytes. */
+	const size_t data_size = bytes_per_sample - 1;
 	int ret = 0;
 
 	struct dma_block_config dma_block_cfg = {
@@ -296,10 +303,6 @@ __ramfunc static int i2s_receiver_start_dma(const struct device *const dev)
 	struct dma_config dma_cfg = {
 		.dma_slot = dev_cfg->dma_rx.request,
 		.channel_direction = PERIPHERAL_TO_MEMORY,
-		/* DMA Burst size is shifter.
-		 *   if data_size is 0, then burst size will be 2 bytes.
-		 *   if data_size is 1, then burst size will be 4 bytes.
-		 */
 		.source_data_size = data_size,
 		.dest_data_size = data_size,
 		.source_burst_length = I2S_FIFO_TRG_LEVEL - 1,
@@ -357,9 +360,9 @@ __ramfunc static int i2s_recv(const struct device *dev, void *buf, size_t len)
 		return -EINPROGRESS;
 	}
 
-	size_t const bytes_per_sample = dev_cfg->bit_depth / 8U;
+	size_t const bytes_per_sample = dev_data->bit_depth / 8U;
 
-	if ((len % (dev_cfg->channel_count * bytes_per_sample)) != 0) {
+	if ((len % (dev_data->channel_count * bytes_per_sample)) != 0) {
 		LOG_ERR("Invalid buffer size");
 		return -EINVAL;
 	}
@@ -369,7 +372,7 @@ __ramfunc static int i2s_recv(const struct device *dev, void *buf, size_t len)
 
 	if (dev_cfg->dma_rx.enabled) {
 		/* Configure DMA RX */
-		return i2s_receiver_start_dma(dev);
+		return i2s_receiver_start_dma(dev, bytes_per_sample);
 	}
 
 	dev_data->rx.samples = len / bytes_per_sample;
@@ -429,7 +432,7 @@ static void i2s_disable_rx(const struct device *dev)
 	channel_disable(&dev_data->rx);
 }
 
-static int i2s_disable(const struct device *dev, enum i2s_dir dir)
+static int i2s_sync_disable_impl(const struct device *dev, enum i2s_dir dir)
 {
 	switch (dir) {
 	case I2S_DIR_TX:
@@ -449,53 +452,123 @@ static int i2s_disable(const struct device *dev, enum i2s_dir dir)
 	return 0;
 }
 
-static int i2s_get_config(const struct device *dev, struct i2s_sync_config *cfg)
+static int i2s_sync_get_config_impl(const struct device *dev, struct i2s_sync_config *cfg)
 {
 	if (!dev || !cfg) {
 		return -EINVAL;
 	}
 
-	const struct i2s_sync_config_priv *dev_cfg = dev->config;
+	struct i2s_sync_data *dev_data = dev->data;
 
-	cfg->sample_rate = dev_cfg->sample_rate;
-	cfg->bit_depth = dev_cfg->bit_depth;
-	cfg->channel_count = dev_cfg->channel_count;
+	cfg->sample_rate = dev_data->sample_rate;
+	cfg->bit_depth = dev_data->bit_depth;
+	cfg->channel_count = dev_data->channel_count;
 
 	return 0;
 }
 
-static int enable_clock(struct i2s_t *i2s)
+static int get_wss_cycles(size_t const bit_depth)
+{
+	switch (bit_depth) {
+	case 16:
+		return WSS_CLOCK_CYCLES_16;
+	case 24:
+		return WSS_CLOCK_CYCLES_24;
+	case 32:
+		return WSS_CLOCK_CYCLES_32;
+	}
+	return -EINVAL;
+}
+
+static int enable_clock(struct i2s_t *i2s, size_t const wss_clock)
 {
 	i2s_select_clock_source(i2s);
 	i2s_enable_sclk_aon(i2s);
 	i2s_enable_module_clk(i2s);
 	i2s_global_enable(i2s);
-	i2s_configure_clk(i2s);
-	i2s_clken(i2s);
+	i2s_disable_clk(i2s);
+	i2s_configure_clk(i2s, wss_clock);
+	i2s_enable_clk(i2s);
 
 	return 0;
 }
 
-static int configure_clock_source(const struct i2s_sync_config_priv *dev_cfg)
+static int configure_clock_source(struct i2s_t *i2s, const uint32_t bit_depth,
+				  const uint32_t sample_rate)
 {
-	/* Bit clock should be equal to channel_count * bit_depth * sample_rate */
-	uint32_t bclk = 2U * dev_cfg->bit_depth * dev_cfg->sample_rate;
-
-	uint32_t div = I2S_CLK_SRC_HZ / bclk;
+	/* Bit clock should be equal to output channel_count * bit_depth * sample_rate */
+	uint32_t const bclk = 2U * bit_depth * sample_rate;
+	uint32_t const div = I2S_CLK_SRC_HZ / bclk;
 
 	if ((div > I2S_CLK_DIVISOR_MAX) || (div < I2S_CLK_DIVISOR_MIN)) {
 		LOG_ERR("Selected I2S sample rate cannot be acheieved, divisor out of range");
 		return -EINVAL;
 	}
 
-	i2s_set_clock_divisor(dev_cfg->paddr, div);
+	i2s_set_clock_divisor(i2s, div);
 
-	uint32_t bclk_real = I2S_CLK_SRC_HZ / div;
+	uint32_t const bclk_real = I2S_CLK_SRC_HZ / div;
 
 	if (bclk_real != bclk) {
 		LOG_WRN("Selected I2S sample rate cannot be achieved, actual BCLK %u, selected %u",
 			bclk_real, bclk);
 	}
+
+	return 0;
+}
+
+static int i2s_sync_configure_impl(const struct device *dev, struct i2s_sync_config const *cfg)
+{
+	if (!dev || !cfg) {
+		return -EINVAL;
+	}
+
+	int const wss_clock = get_wss_cycles(cfg->bit_depth);
+
+	if (wss_clock < 0) {
+		LOG_ERR("Bit depth other than 16, 24 or 32 is not supported");
+		return -EINVAL;
+	}
+
+	int ret;
+	struct i2s_sync_config_priv *dev_cfg = (void *)dev->config;
+	struct i2s_sync_data *const dev_data = dev->data;
+	struct i2s_t *i2s = dev_cfg->paddr;
+
+	/* Disable RX and TX channels (enabled by default) */
+	i2s_rx_channel_disable(i2s);
+	i2s_tx_channel_disable(i2s);
+	i2s_global_disable(i2s);
+	/* Mask (disable) all interrupts */
+	i2s_interrupt_disable_all(i2s);
+
+	ret = enable_clock(i2s, wss_clock);
+	if (ret) {
+		LOG_ERR("Failed to enable clock, err %d", ret);
+		return ret;
+	}
+
+	/* Configure I2S peripheral clock */
+	ret = configure_clock_source(i2s, cfg->bit_depth, cfg->sample_rate);
+	if (ret) {
+		return ret;
+	}
+
+	LOG_DBG("I2S:%s (%p) configured. Clock %u, bits %u", dev->name, i2s, cfg->sample_rate,
+		cfg->bit_depth);
+
+	/* Clear both FIFOs */
+	i2s_tx_fifo_clear(i2s);
+	i2s_rx_fifo_clear(i2s);
+
+	/* Set word length */
+	i2s_set_rx_wlen(i2s, cfg->bit_depth);
+	i2s_set_tx_wlen(i2s, cfg->bit_depth);
+
+	/* Store config values */
+	dev_data->sample_rate = cfg->sample_rate;
+	dev_data->bit_depth = cfg->bit_depth;
+	dev_data->channel_count = cfg->channel_count;
 
 	return 0;
 }
@@ -506,13 +579,8 @@ static int i2s_sync_init(const struct device *dev)
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
-	if (dev_cfg->bit_depth != 16) {
-		__ASSERT(0, "Bit depth other than 16 is not yet supported");
-		LOG_ERR("Bit depth other than 16 is not yet supported");
-		return -EINVAL;
-	}
-
-	ret = enable_clock(i2s);
+	/* Configure clocks to avoid stall in configure method */
+	ret = enable_clock(i2s, dev_cfg->bit_depth);
 	if (ret) {
 		LOG_ERR("Failed to enable clock, err %d", ret);
 		return ret;
@@ -529,17 +597,16 @@ static int i2s_sync_init(const struct device *dev)
 	}
 #endif
 
+	struct i2s_sync_config config = {
+		.sample_rate = dev_cfg->sample_rate,
+		.bit_depth = dev_cfg->bit_depth,
+		.channel_count = dev_cfg->channel_count,
+	};
+
+	i2s_sync_configure(dev, &config);
+
 	/* Initialise IRQ for this instance */
 	dev_cfg->irq_config(dev);
-
-	/* Configure I2S peripheral clock */
-	ret = configure_clock_source(dev_cfg);
-	if (ret) {
-		return ret;
-	}
-
-	LOG_INF("I2S:%s (%p) configured. Clock %u, bits %u", dev->name, i2s, dev_cfg->sample_rate,
-		dev_cfg->bit_depth);
 
 	if (dev_cfg->dma_rx.enabled || dev_cfg->dma_tx.enabled) {
 		if (!device_is_ready(dev_cfg->dma_dev)) {
@@ -573,24 +640,9 @@ static int i2s_sync_init(const struct device *dev)
 		}
 	}
 
-	/* Disable RX and TX channels (enabled by default) */
-	i2s_rx_channel_disable(i2s);
-	i2s_tx_channel_disable(i2s);
-
-	/* Clear both FIFOs */
-	i2s_tx_fifo_clear(i2s);
-	i2s_rx_fifo_clear(i2s);
-
 	/* Set FIFO trigger level for TX and RX */
 	i2s_set_tx_trigger_level(i2s);
 	i2s_set_rx_trigger_level(i2s);
-
-	/* Set word length */
-	i2s_set_rx_wlen(i2s, dev_cfg->bit_depth);
-	i2s_set_tx_wlen(i2s, dev_cfg->bit_depth);
-
-	/* Mask (disable) all interrupts */
-	i2s_interrupt_disable_all(i2s);
 
 	return 0;
 }
@@ -608,7 +660,7 @@ __ramfunc static void i2s_sync_tx_isr_handler(const struct device *dev)
 		i2s_write_left_tx(i2s, (uint32_t)buf[dev_data->tx.idx]);
 
 		/* TODO Use correct config variable here! */
-		if (dev_cfg->channel_count == 1U) {
+		if (dev_data->channel_count == 1U) {
 			/* In mono mode, right channel is duplicated left channel data */
 			i2s_write_right_tx(i2s, (uint32_t)buf[dev_data->tx.idx]);
 		} else {
@@ -627,7 +679,7 @@ __ramfunc static void i2s_sync_tx_isr_handler(const struct device *dev)
 		}
 
 		dev_data->tx.idx++;
-		dev_data->tx.count += dev_cfg->channel_count;
+		dev_data->tx.count += dev_data->channel_count;
 		tx_free--;
 	}
 
@@ -670,7 +722,7 @@ __ramfunc static void i2s_sync_rx_isr_handler(const struct device *dev)
 		/* Left channel is always placed in first buffer position */
 		buf[dev_data->rx.idx] = (int16_t)i2s_read_left_rx(i2s);
 
-		if (dev_cfg->channel_count == 1U) {
+		if (dev_data->channel_count == 1U) {
 			/* In mono mode, right channel should be read and then discarded */
 			(void)i2s_read_right_rx(i2s);
 		} else {
@@ -689,7 +741,7 @@ __ramfunc static void i2s_sync_rx_isr_handler(const struct device *dev)
 		}
 
 		dev_data->rx.idx++;
-		dev_data->rx.count += dev_cfg->channel_count;
+		dev_data->rx.count += dev_data->channel_count;
 		rx_avail--;
 	}
 
@@ -750,8 +802,11 @@ __ramfunc static void i2s_sync_isr(const struct device *dev)
 static const struct i2s_sync_driver_api i2s_sync_api = {.register_cb = i2s_register_cb,
 							.send = i2s_send,
 							.recv = i2s_recv,
-							.disable = i2s_disable,
-							.get_config = i2s_get_config};
+							.disable = i2s_sync_disable_impl,
+							.get_config = i2s_sync_get_config_impl,
+							.configure = i2s_sync_configure_impl};
+
+/* clang-format off */
 
 #define I2S_SYNC_INST_DMA_IS_ENABLED(inst)                                                         \
 	UTIL_OR(DT_INST_DMAS_HAS_NAME(inst, txdma), DT_INST_DMAS_HAS_NAME(inst, rxdma))
@@ -792,3 +847,5 @@ static const struct i2s_sync_driver_api i2s_sync_api = {.register_cb = i2s_regis
 			      &i2s_sync_api);
 
 DT_INST_FOREACH_STATUS_OKAY(I2S_SYNC_DEFINE)
+
+/* clang-format on */

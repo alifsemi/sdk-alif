@@ -133,7 +133,7 @@ __ramfunc static void finish_last_block(struct k_work *work)
 
 	if (ret || !p_audiobuf) {
 		/* No buffer available, just drop it */
-		LOG_ERR("Audio queue is empty, dropping frame");
+		/* LOG_ERR("Audio queue is empty, dropping frame"); */
 #if DT_NODE_EXISTS(GPIO_TEST0_NODE)
 		set_test_pin(&test_pin0, 0);
 #endif
@@ -290,11 +290,10 @@ int audio_source_i2s_configure(const struct device *dev, struct audio_queue *aud
 		return -EINVAL;
 	}
 
-	if (i2s_cfg.sample_rate != audio_queue->sampling_freq_hz) {
-		__ASSERT(i2s_cfg.sample_rate == audio_queue->sampling_freq_hz,
-			 "Audio queue and I2S sample rate mismatch");
-		LOG_ERR("Invalid I2S sample rate %u", i2s_cfg.sample_rate);
-		return -EINVAL;
+	i2s_cfg.sample_rate = audio_queue->sampling_freq_hz;
+	if (i2s_sync_configure(dev, &i2s_cfg)) {
+		LOG_ERR("Failed to configure I2S");
+		return -EIO;
 	}
 
 	/* Calculate sample count per block depending on the frame duration (7.5ms or 10ms) */

@@ -44,6 +44,8 @@ typedef int (*i2s_sync_api_send_t)(const struct device *dev, void *buf, size_t l
 typedef int (*i2s_sync_api_recv_t)(const struct device *dev, void *buf, size_t len);
 typedef int (*i2s_sync_api_disable_t)(const struct device *dev, enum i2s_dir dir);
 typedef int (*i2s_sync_api_get_config_t)(const struct device *dev, struct i2s_sync_config *cfg);
+typedef int (*i2s_sync_api_configure_t)(const struct device *dev,
+					struct i2s_sync_config const *cfg);
 
 __subsystem struct i2s_sync_driver_api {
 	i2s_sync_api_register_cb_t register_cb;
@@ -51,6 +53,7 @@ __subsystem struct i2s_sync_driver_api {
 	i2s_sync_api_recv_t recv;
 	i2s_sync_api_disable_t disable;
 	i2s_sync_api_get_config_t get_config;
+	i2s_sync_api_configure_t configure;
 };
 
 /**
@@ -141,6 +144,24 @@ static inline int z_impl_i2s_sync_get_config(const struct device *dev, struct i2
 	const struct i2s_sync_driver_api *api = (const struct i2s_sync_driver_api *)dev->api;
 
 	return api->get_config(dev, cfg);
+}
+
+/**
+ * @brief Configure I2S with given parameters
+ *
+ * @param dev Pointer to the device structure for the driver instance
+ * @param cfg Pointer to the i2s_sync_config structure to be filled with the I2S config parameters
+ *
+ * @return 0 if successful, negative error on failure
+ */
+__syscall int i2s_sync_configure(const struct device *dev, const struct i2s_sync_config *cfg);
+
+static inline int z_impl_i2s_sync_configure(const struct device *dev,
+					    const struct i2s_sync_config *cfg)
+{
+	const struct i2s_sync_driver_api *api = (const struct i2s_sync_driver_api *)dev->api;
+
+	return api->configure(dev, cfg);
 }
 
 #include <syscalls/i2s_sync.h>
