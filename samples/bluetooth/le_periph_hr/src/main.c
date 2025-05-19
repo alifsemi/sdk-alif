@@ -52,7 +52,7 @@ enum hrps_feat_bf {
 static uint16_t current_value = 70;
 
 /* Variable to check if peer device is ready to receive data"*/
-static bool READY_TO_SEND;
+static bool ready_to_send;
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
@@ -168,7 +168,7 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 
 static void on_hrps_meas_send_complete(uint16_t status)
 {
-	READY_TO_SEND = true;
+	ready_to_send = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint16_t cfg_val)
@@ -176,13 +176,13 @@ static void on_bond_data_upd(uint8_t conidx, uint16_t cfg_val)
 	switch (cfg_val) {
 	case PRF_CLI_STOP_NTFIND: {
 		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = false;
+		ready_to_send = false;
 	} break;
 
 	case PRF_CLI_START_NTF:
 	case PRF_CLI_START_IND: {
 		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = true;
+		ready_to_send = true;
 		LOG_DBG("Sending measurements");
 	}
 	}
@@ -462,9 +462,9 @@ void service_process(void)
 	read_sensor_value();
 
 	if (ctrl.connected) {
-		if (READY_TO_SEND) {
+		if (ready_to_send) {
 			send_measurement(current_value);
-			READY_TO_SEND = false;
+			ready_to_send = false;
 		}
 	} else {
 		LOG_DBG("Waiting for peer connection...\n");
