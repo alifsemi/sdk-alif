@@ -32,6 +32,52 @@ config MINIMUM_PRESENTATION_DELAY_US
 	  Minimum presentation delay to compensate for
 	  the audio processing delay.
 
+config USE_DIRECT_ADVERTISING_WHEN_RESTART
+	bool "Use direct advertising when connection is lost or peer is bonded"
+	default y
+
+config USE_DIRECTED_FAST_ADVERTISING
+	bool "Directed high duty cycle advertising"
+	default n
+	help
+	  Use directed high duty cycle advertising when
+	  connection is lost or peer is bonded
+
+config BONDING_ALLOWED
+	bool "Allow bonding"
+	default y
+
+config PRIVACY_ENABLED
+	bool "Enable Privacy to use Random Private Resolvable Address"
+	default n
+
+choice
+	prompt "Choose streaming type"
+	default UNICAST_UNIDIR
+
+	config UNICAST_BIDIR
+	bool "Bidirectional"
+	config UNICAST_UNIDIR
+	bool "Unidirectional"
+endchoice
+
+choice
+	prompt "Choose number of channels"
+	default UNICAST_STEREO
+
+	config UNICAST_MONO
+	bool "Mono"
+	config UNICAST_STEREO
+	bool "Stereo"
+endchoice
+
+config VOLUME_CTRL_STEP_SIZE
+	int "Volume control step size"
+	range 1 255
+	default 6
+	help
+	  Volume control step size
+
 menu "Logging"
 
 module = MAIN
@@ -40,6 +86,10 @@ source "subsys/logging/Kconfig.template.log_config"
 
 module = UNICAST_SINK
 module-str = unicast_sink
+source "subsys/logging/Kconfig.template.log_config"
+
+module = STORAGE
+module-str = storage
 source "subsys/logging/Kconfig.template.log_config"
 
 endmenu # "Logging"

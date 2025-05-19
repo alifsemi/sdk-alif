@@ -12,8 +12,9 @@
 
 #include <zephyr/types.h>
 
-#define I2S_NODE   DT_ALIAS(i2s_bus)
-#define CODEC_NODE DT_ALIAS(audio_codec)
+#define CODEC_CFG_NODE DT_ALIAS(audio_codec)
+#define CODEC_I2S_NODE DT_ALIAS(i2s_bus)
+#define I2S_MIC_NODE   DT_ALIAS(i2s_mic)
 
 struct audio_datapath_config {
 	uint32_t pres_delay_us;
@@ -22,7 +23,7 @@ struct audio_datapath_config {
 };
 
 /**
- * @brief Create the audio datapath
+ * @brief Create the audio source datapath
  *
  * This creates and configures all of the required elements to stream audio from Bluetooth LE to I2S
  *
@@ -31,10 +32,68 @@ struct audio_datapath_config {
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_create(struct audio_datapath_config const *cfg);
+int audio_datapath_create_source(struct audio_datapath_config const *cfg);
 
 /**
- * @brief Create the audio datapath channel
+ * @brief Create the audio source datapath channel
+ *
+ * @param[in] octets_per_frame Number of data per frame
+ * @param[in] stream_lid Stream local ID of the channel to be created
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_channel_create_source(size_t octets_per_frame, uint8_t stream_lid);
+
+/**
+ * @brief Start the audio source datapath
+ *
+ * Starts transmission of the first SDU over the ISO datapath,
+ * which when transmitted starts off the operation of the rest of
+ * the datapath.
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_channel_start_source(uint8_t stream_lid);
+
+/**
+ * @brief Stop the audio source datapath
+ *
+ * Stops transmission of the SDUs over the ISO datapath.
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_channel_stop_source(uint8_t stream_lid);
+
+/**
+ * @brief Clean up the audio source datapath
+ *
+ * This stops the audio source datapath and cleans up all elements created by
+ * audio_datapath_create_source, freeing any allocated memory if necessary. After calling this
+ * function, it is possible to create a new audio source datapath again using
+ * audio_datapath_create_source.
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_cleanup_source(void);
+
+/**
+ * @brief Create the audio sink datapath
+ *
+ * This creates and configures all of the required elements to stream audio from I2S to Bluetooth LE
+ *
+ * @param cfg Desired configuration of the audio datapath
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_create_sink(struct audio_datapath_config const *cfg);
+
+/**
+ * @brief Create the audio sink datapath channel
  *
  * @param[in] octets_per_frame Number of data per frame
  * @param[in] ch_index Index of the channel to be created
@@ -42,39 +101,52 @@ int audio_datapath_create(struct audio_datapath_config const *cfg);
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_create_channel(size_t octets_per_frame, uint8_t ch_index);
+int audio_datapath_channel_create_sink(size_t octets_per_frame, uint8_t ch_index);
 
 /**
- * @brief Start a channel
+ * @brief Start the audio sink datapath channel
  *
- * @param ch_index Index of the channel to start
+ * Starts transmission of the first SDU over the ISO datapath,
+ * which when transmitted starts off the operation of the rest of
+ * the datapath.
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_start_channel(uint8_t ch_index);
+int audio_datapath_channel_start_sink(uint8_t stream_lid);
 
 /**
- * @brief Stop a channel
+ * @brief Stop the audio sink datapath channel
  *
- * @param decoder Audio decoder instance to stop channel for
- * @param channel_id Channel ID to stop
+ * Stops transmission of the SDUs over the ISO datapath.
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_stop_channel(uint8_t ch_index);
+int audio_datapath_channel_stop_sink(uint8_t stream_lid);
 
 /**
- * @brief Clean up the audio datapath
+ * @brief Set the volume of an audio sink channel
  *
- * This stops the audio datapath and cleans up all elements created by audio_datapath_create,
- * freeing any allocated memory if necessary. After calling this function, it is possible to create
- * a new audio datapath again using audio_datapath_create.
+ * @param volume New volume value
+ * @param mute New mute state (true or false)
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_cleanup(void);
+int audio_datapath_channel_volume_sink(uint8_t volume, bool mute);
+
+/**
+ * @brief Clean up the audio sink datapath
+ *
+ * This stops the audio sink datapath and cleans up all elements created by
+ * audio_datapath_create_sink, freeing any allocated memory if necessary. After calling this
+ * function, it is possible to create a new audio sink datapath again using
+ * audio_datapath_create_sink.
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_cleanup_sink(void);
 
 #endif /* _AUDIO_DATAPATH_H */

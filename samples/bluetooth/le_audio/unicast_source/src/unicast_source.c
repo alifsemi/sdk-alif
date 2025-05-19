@@ -24,10 +24,16 @@
 
 LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
 
-#define STREAM_SINK_ASE_MAX_CNT   2
+#define STREAM_SINK_ASE_MAX_CNT 2
+#if CONFIG_LE_AUDIO_BIDIRECTIONAL
 #define STREAM_SOURCE_ASE_MAX_CNT 1
-#define STREAM_SINK_PAC_MAX_CNT   5
-#define STREAM_SOURCE_PAC_MAX_CNT 2
+#else
+#define STREAM_SOURCE_ASE_MAX_CNT 0
+#endif
+#define STREAM_ASE_MAX_CNT (STREAM_SINK_ASE_MAX_CNT + STREAM_SOURCE_ASE_MAX_CNT)
+
+#define SINK_PAC_MAX_CNT   10
+#define SOURCE_PAC_MAX_CNT 10
 
 #define DISCOVER_PACS_BEFORE_ASCS 1
 
@@ -43,10 +49,9 @@ LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
 #define PRESENTATION_DELAY_US (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000)
 #define CONTROL_DELAY_US      100
 #define DATA_PATH_CONFIG      DATA_PATH_ISOOSHM
-#define STREAM_CIS_ID_BASE    0
 #define STREAM_PHY_TYPE       BAP_UC_TGT_PHY_2M
 
-#define FRAME_OCTETS 84
+#define DEFAULT_FRAME_OCTETS 120 /* 84 */
 
 #define LATENCY_TARGET_LOWER    1
 #define LATENCY_TARGET_BALANCED 2
@@ -70,15 +75,6 @@ LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
 
 #else
 #error "Invalid latency target"
-#endif
-
-/** This can be removed when the i2s driver is updated to support dynamic sample rate */
-#define I2S_BUS_SAMPLE_RATE DT_PROP(I2S_NODE, sample_rate)
-
-/** This can be removed when the i2s driver is updated to support dynamic sample rate */
-#if I2S_BUS_SAMPLE_RATE != 16000 && I2S_BUS_SAMPLE_RATE != 24000 &&                                \
-	I2S_BUS_SAMPLE_RATE != 32000 && I2S_BUS_SAMPLE_RATE != 48000
-#error "Invalid sample rate"
 #endif
 
 /** Group type values */
@@ -107,9 +103,18 @@ enum ase_state_bits {
 	ASE_STATE_STREAMING = BIT(ASE_STATE_STREAMING_POS),
 };
 
+enum {
+	ASE_DIR_UNKNOWN = 0,
+	ASE_DIR_SOURCE,
+	ASE_DIR_SINK,
+};
+
 /** ASE structure */
 struct unicast_client_ase {
-
+	/** Work context */
+	struct k_work work;
+	/** Stream direction: Source or Sink */
+	uint8_t dir;
 	/** Connection index */
 	uint8_t conidx;
 	/** ASE local index */
@@ -130,9 +135,22 @@ struct unicast_client_ase {
 	uint8_t retx_number;
 	/** Presentation delay in microseconds */
 	uint32_t presentation_delay;
+	/** Audio datapath channel create function */
+	audio_datapath_channel_create_t channel_create;
+	/** Audio datapath channel start function */
+	audio_datapath_start_stop_channel_t channel_start;
+	/** Audio datapath channel stop function */
+	audio_datapath_start_stop_channel_t channel_stop;
+};
+
+enum pac_type {
+	PAC_UNKNOWN = 0,
+	PAC_SOURCE,
+	PAC_SINK,
 };
 
 struct pac_capa {
+	enum pac_type type;
 	uint32_t sampling_freq_hz;
 	uint8_t frame_duration_bf;
 	uint8_t frame_octet_min;
@@ -156,13 +174,9 @@ struct unicast_source_env {
 	} peripheral_info;
 
 	struct audio_datapath_config datapath_config;
-	bool data_path_configured;
 
 	/** ASE information for Sink and Source direction */
-	struct unicast_client_ase ase_sink[STREAM_SINK_ASE_MAX_CNT];
-	struct unicast_client_ase ase_source[STREAM_SOURCE_ASE_MAX_CNT];
-	uint8_t nb_ases_sink;
-	uint8_t nb_ases_source;
+	struct unicast_client_ase ase[STREAM_ASE_MAX_CNT];
 
 	/** Group local index */
 	uint8_t group_lid[UNICAST_CLIENT_GROUP_TYPE_MAX];
@@ -170,8 +184,8 @@ struct unicast_source_env {
 	uint8_t status_bf;
 
 	/** PACS data from server */
-	struct pac_capa pacs_sink[STREAM_SINK_PAC_MAX_CNT];
-	struct pac_capa pacs_source[STREAM_SOURCE_PAC_MAX_CNT];
+	struct pac_capa pacs_sink[SINK_PAC_MAX_CNT];
+	struct pac_capa pacs_source[SOURCE_PAC_MAX_CNT];
 	uint8_t nb_pacs_sink;
 	uint8_t nb_pacs_source;
 };
@@ -212,277 +226,123 @@ static uint32_t bap_sampling_freq_bitmask_to_hz(uint32_t const bitmask)
 	return audio_bap_sampling_freq_to_hz((!bitmask) ? 0 : 32 - __builtin_clz(bitmask));
 }
 
-static void *get_ase_config_by_id(size_t ase_lid)
+static void *get_ase_config_by_index(size_t const ase_index)
 {
-	if (ase_lid == GAF_INVALID_LID) {
-		return NULL;
-	}
-	if (ase_lid < ARRAY_SIZE(unicast_env.ase_sink)) {
-		return &unicast_env.ase_sink[ase_lid];
-	}
-	ase_lid -= ARRAY_SIZE(unicast_env.ase_sink);
-	if (ase_lid < ARRAY_SIZE(unicast_env.ase_source)) {
-		return &unicast_env.ase_source[ase_lid];
+	if (ase_index < ARRAY_SIZE(unicast_env.ase)) {
+		return &unicast_env.ase[ase_index];
 	}
 	return NULL;
 }
 
-/* ---------------------------------------------------------------------------------------- */
-
-static void *get_best_stream(struct pac_capa *p_pac_base, size_t count)
+static void *get_ase_config_by_id(size_t const ase_lid)
 {
-	struct pac_capa *p_pac = NULL;
-#if !I2S_BUS_SAMPLE_RATE
-	uint32_t sampling_freq_hz = 0;
-#endif
-	while (count--) {
-		if (
-#if !I2S_BUS_SAMPLE_RATE
-			sampling_freq_hz < p_pac_base[count].sampling_freq_hz
-#else
-			I2S_BUS_SAMPLE_RATE == p_pac_base[count].sampling_freq_hz
-#endif
-		) {
-#if !I2S_BUS_SAMPLE_RATE
-			sampling_freq_hz = p_pac_base[count].sampling_freq_hz;
-#endif
-			p_pac = &p_pac_base[count];
-		}
-	}
-	return p_pac;
-}
+	size_t iter;
+	struct unicast_client_ase *p_ase;
 
-static void *bap_config_alloc_and_init(enum bap_frame_dur const frame_dur,
-				       struct pac_capa const *const p_pac,
-				       uint32_t const location_bf)
-{
-	/* Allocate config buffer
-	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
-	 */
-	struct bap_cfg *p_config = ke_malloc_user((sizeof(*p_config) + 8), KE_MEM_PROFILE);
-
-	if (!p_config) {
-		__ASSERT(0, "Failed to allocate memory for codec capability");
-		LOG_ERR("Failed to allocate memory for codec capability");
+	if (ase_lid == GAF_INVALID_LID) {
 		return NULL;
 	}
 
-	/* TODO: SDU size bigger than 84B cause issues with encoding */
-	p_config->param.location_bf = location_bf;
-	p_config->param.frame_octet = ROUND_UP(FRAME_OCTETS, sizeof(uint32_t));
-	p_config->param.sampling_freq = audio_hz_to_bap_sampling_freq(p_pac->sampling_freq_hz);
-	p_config->param.frame_dur = frame_dur;
-	p_config->param.frames_sdu = p_pac->max_frames_sdu;
-	p_config->add_cfg.len = 0;
-
-	if (p_pac->frame_octet_min == p_pac->frame_octet_max) {
-		p_config->param.frame_octet = p_pac->frame_octet_max;
-	} else if (p_pac->frame_octet_max < p_config->param.frame_octet) {
-		p_config->param.frame_octet = p_pac->frame_octet_max;
-	} else if (p_config->param.frame_octet < p_pac->frame_octet_min) {
-		p_config->param.frame_octet = p_pac->frame_octet_min;
+	iter = ARRAY_SIZE(unicast_env.ase);
+	while (iter--) {
+		p_ase = &unicast_env.ase[iter];
+		if (p_ase->conidx != GAP_INVALID_CONIDX && p_ase->ase_lid == ase_lid) {
+			return p_ase;
+		}
 	}
 
-	return p_config;
+	return NULL;
 }
 
-static void configure_streams(struct k_work *p_job)
+static bool is_all_ase_states_set(enum ase_state_bits const state)
 {
-	/* TODO: use work context to deliver client group type.
-	 * struct ooo * p_data = CONTAINER_OF(p_job, struct ooo, work);
-	 */
-	ARG_UNUSED(p_job);
-	uint_fast8_t const type = UNICAST_CLIENT_GROUP_TYPE_MEDIA;
+	bool result = true;
+	size_t iter;
+	struct unicast_client_ase const *p_ase;
 
-	if (GAF_INVALID_LID != unicast_env.group_lid[type]) {
-		LOG_INF("Removing ASE group: %u", unicast_env.group_lid[type]);
-		bap_uc_cli_remove_group(unicast_env.group_lid[type]);
-		unicast_env.group_lid[type] = GAF_INVALID_LID;
-		return;
-	}
-
-	struct pac_capa *p_pac = get_best_stream(unicast_env.pacs_sink, unicast_env.nb_pacs_sink);
-
-	if (!p_pac) {
-		LOG_WRN("Unable to find a valid PAC");
-		return;
-	}
-
-	LOG_INF("Starting streaming with sampling frequency: %uHz", p_pac->sampling_freq_hz);
-
-	uint32_t sdu_intv_us = 0;
-	enum bap_frame_dur frame_dur = BAP_FRAME_DUR_10MS;
-
-	if ((p_pac->frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) &&
-	    !(p_pac->frame_duration_bf & BAP_FRAME_DUR_10MS_PREF_BIT)) {
-		sdu_intv_us = 7500;
-		frame_dur = BAP_FRAME_DUR_7_5MS;
-	} else if (p_pac->frame_duration_bf & BAP_FRAME_DUR_10MS_BIT) {
-		sdu_intv_us = 10000;
-	}
-	if (!sdu_intv_us) {
-		__ASSERT(0, "Invalid frame duration");
-		LOG_ERR("Invalid frame duration");
-		return;
-	}
-
-	bap_uc_cli_grp_param_t grp_param = {
-		.sdu_intv_m2s_us = sdu_intv_us,
-		.sdu_intv_s2m_us = sdu_intv_us,
-		.packing = ISO_PACKING_SEQUENTIAL, /** @ref enum iso_packing */
-		.framing = ISO_UNFRAMED_MODE,      /** @ref enum iso_frame */
-		.sca = 0,
-		.tlatency_m2s_ms = MAX_TRANSPORT_LATENCY_MS,
-		.tlatency_s2m_ms = MAX_TRANSPORT_LATENCY_MS,
-	};
-	uint16_t err;
-
-	err = bap_uc_cli_create_group(1 + UNICAST_CLIENT_GROUP_TYPE_MEDIA, &grp_param,
-				      &unicast_env.group_lid[type]);
-	if (err != GAF_ERR_NO_ERROR) {
-		LOG_ERR("Failed to create group! error %u", err);
-		return;
-	}
-
-	LOG_INF("ASE group %u created", unicast_env.group_lid[type]);
-
-	gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
-
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
-		struct unicast_client_ase *p_ase = &unicast_env.ase_sink[iter];
-
-		if (GAF_INVALID_LID != p_ase->ase_lid) {
-			continue;
+	iter = ARRAY_SIZE(unicast_env.ase);
+	while (iter--) {
+		p_ase = &unicast_env.ase[iter];
+		if (p_ase->conidx != GAP_INVALID_CONIDX) {
+			result &= !!(p_ase->state_bitmask & state);
 		}
-
-		struct bap_cfg *p_config = bap_config_alloc_and_init(
-			frame_dur, p_pac, CO_BIT(GAF_LOC_FRONT_LEFT_POS + iter));
-
-		if (!p_config) {
-			return;
-		}
-
-		p_ase->number_of_octets = p_config->param.frame_octet;
-		p_ase->ase_lid = iter;
-		p_ase->cis_id = (UNICAST_CLIENT_GROUP_TYPE_MEDIA << 2) + STREAM_CIS_ID_BASE + iter;
-
-		LOG_DBG("Codec setup: conidx %u, ase_instance_idx %u, ase_lid %u, octets %uB",
-			p_ase->conidx, p_ase->ase_instance_idx, p_ase->ase_lid,
-			p_config->param.frame_octet);
-
-		err = bap_uc_cli_configure_codec(
-			p_ase->conidx, p_ase->ase_instance_idx, p_ase->ase_lid, DATA_PATH_CONFIG,
-			&codec_id, BAP_UC_LINK_TYPE, STREAM_PHY_TYPE, CONTROL_DELAY_US, p_config);
-		if (err != GAF_ERR_NO_ERROR) {
-			LOG_ERR("Failed to configure codec! error %u", err);
-			return;
-		}
-		wait_bap_complete();
 	}
+
+	return result;
 }
 
-static K_WORK_DEFINE(configure_streams_job, configure_streams);
+/* ---------------------------------------------------------------------------------------- */
 
-static void configure_qos(struct k_work *p_job)
+static void datapath_start(struct k_work *p_job)
 {
-	/* TODO: use work context to deliver client group type.
-	 * struct ooo * p_data = CONTAINER_OF(p_job, struct ooo, work);
-	 */
-	ARG_UNUSED(p_job);
-	uint16_t err;
-	uint_fast8_t const type = UNICAST_CLIENT_GROUP_TYPE_MEDIA;
+	k_sleep(K_MSEC(20));
 
-	/* Create a datapath configuration before QoS configuration to be able to
-	 * setup streaming channels during the setup phase.
-	 * Presentation delay is set to 10ms (internal buffering, effects to queue size).
-	 */
-	unicast_env.datapath_config.pres_delay_us = 2 * MAX_TRANSPORT_LATENCY_MS;
-	audio_datapath_create_source(&unicast_env.datapath_config);
+	struct unicast_client_ase *const p_ase =
+		CONTAINER_OF(p_job, struct unicast_client_ase, work);
+	uint_fast8_t const mask = p_ase->state_bitmask;
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
-		struct unicast_client_ase *p_ase = &unicast_env.ase_sink[iter];
-
-		if (GAF_INVALID_LID == p_ase->ase_lid || GAF_INVALID_LID == p_ase->cis_id ||
-		    !(p_ase->state_bitmask & ASE_STATE_CODEC_CONFIGURED)) {
-			continue;
-		}
-
-		p_ase->max_sdu_size = p_ase->number_of_octets;
-
-		struct bap_uc_cli_qos_cfg qos_cfg = {
-			.phy = STREAM_PHY_TYPE,
-#if RETX_NUMBER
-			.retx_nb = RETX_NUMBER,
-#else
-			.retx_nb = p_ase->retx_number,
-#endif
-			.max_sdu_size = p_ase->max_sdu_size,
-			.pres_delay_us = p_ase->presentation_delay,
-		};
-
-		LOG_DBG("ASE %u, CIS %u QoS configing: phy %u, retx:%u, max_sdu:%uB, "
-			"pres_delay:%uus",
-			p_ase->ase_lid, p_ase->cis_id, qos_cfg.phy, qos_cfg.retx_nb,
-			qos_cfg.max_sdu_size, qos_cfg.pres_delay_us);
-		err = bap_uc_cli_configure_qos(p_ase->ase_lid, unicast_env.group_lid[type],
-					       p_ase->cis_id, &qos_cfg);
-		if (err != GAF_ERR_NO_ERROR) {
-			LOG_ERR("ASE %u, CIS %u Failed to configure qos! error %u", p_ase->ase_lid,
-				p_ase->cis_id, err);
-			continue;
-		}
-		wait_bap_complete();
+	if (GAF_INVALID_LID == p_ase->ase_lid || GAF_INVALID_LID == p_ase->cis_id ||
+	    !(mask & ASE_STATE_ENABLED)) {
+		return;
 	}
-}
 
-static K_WORK_DEFINE(qos_job, configure_qos);
+	LOG_DBG("Starting channel %u, cis %u", p_ase->ase_lid, p_ase->cis_id);
+
+	p_ase->channel_start(p_ase->ase_lid);
+}
 
 static void enable_streaming(struct k_work *const p_job)
 {
-	ARG_UNUSED(p_job);
-
-	/* Small delay is needed due to lower layer latency */
-	k_sleep(K_MSEC(5));
+	struct unicast_client_ase *const p_ase =
+		CONTAINER_OF(p_job, struct unicast_client_ase, work);
 
 	bap_cfg_metadata_t const cfg_metadata = {
-		.param.context_bf = BAP_CONTEXT_TYPE_MEDIA_BIT,
+		.param.context_bf =
+#if CONFIG_LE_AUDIO_BIDIRECTIONAL
+			BAP_CONTEXT_TYPE_CONVERSATIONAL_BIT,
+#else
+			BAP_CONTEXT_TYPE_MEDIA_BIT,
+#endif
 		.add_metadata.len = 0,
 	};
 	uint16_t err;
+	uint_fast8_t const mask = p_ase->state_bitmask;
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
-		struct unicast_client_ase *const p_ase = &unicast_env.ase_sink[iter];
-		uint_fast8_t mask = p_ase->state_bitmask;
+	if (GAF_INVALID_LID == p_ase->ase_lid || GAF_INVALID_LID == p_ase->cis_id ||
+	    !(mask & ASE_STATE_QOS_CONFIGURED) || (mask & ASE_STATE_ENABLED)) {
+		return;
+	}
 
-		if (GAF_INVALID_LID == p_ase->ase_lid || GAF_INVALID_LID == p_ase->cis_id ||
-		    !(mask & ASE_STATE_QOS_CONFIGURED) || (mask & ASE_STATE_ENABLED)) {
-			continue;
-		}
+	p_ase->work.handler = datapath_start;
 
-		LOG_INF("ASE %u enabling...!", p_ase->ase_lid);
+	LOG_INF("ASE %u enabling...", p_ase->ase_lid);
+
+	size_t retry_count = 5;
+
+	while (retry_count--) {
 		err = bap_uc_cli_enable(p_ase->ase_lid, &cfg_metadata);
-		if (err != GAF_ERR_NO_ERROR) {
-			LOG_ERR("Failed to enable ASE %u! error %u", p_ase->ase_lid, err);
+		if (err == GAF_ERR_COMMAND_DISALLOWED) {
+			/* Enable came a bit too near the other command(s). Delay a bit and retry */
+			k_sleep(K_MSEC(1));
 			continue;
+		} else if (err != GAF_ERR_NO_ERROR) {
+			LOG_ERR("Failed to enable ASE %u! error %u", p_ase->ase_lid, err);
+			__ASSERT(0, "Failed to enable ASE");
+			return;
 		}
-		p_ase->state_bitmask = mask | ASE_STATE_ENABLED;
-		/* wait_bap_complete(); */
+		break;
 	}
 }
 
-static K_WORK_DEFINE(enable_job, enable_streaming);
-
-/** Handle graceful shutdown of the streaming */
-#if 0
+/* TODO: Handle graceful shutdown of the streaming */
+#if STREAM_DISABLE_IMPL
 static void disable_streaming(struct k_work *const p_job)
 {
-	ARG_UNUSED(p_job);
-
 	uint16_t err;
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
-		struct unicast_client_ase *const p_ase = &unicast_env.ase_sink[iter];
-		uint_fast8_t mask = p_ase->state_bitmask;
+	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase); iter++) {
+		struct unicast_client_ase *const p_ase = &unicast_env.ase[iter];
+		uint_fast8_t const mask = p_ase->state_bitmask;
 
 		if (GAF_INVALID_LID == p_ase->ase_lid || GAF_INVALID_LID == p_ase->cis_id ||
 		    !(mask & ASE_STATE_ENABLED)) {
@@ -506,26 +366,263 @@ static void disable_streaming(struct k_work *const p_job)
 static K_WORK_DEFINE(disable_job, disable_streaming);
 #endif
 
-static void configure_datapath(struct k_work *p_job)
+static void configure_qos(struct k_work *p_job)
 {
+	LOG_INF("QoS configuration...");
 	ARG_UNUSED(p_job);
 
-	k_sleep(K_MSEC(20));
+	k_sem_reset(&bap_complete_sem);
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
-		struct unicast_client_ase *const p_ase = &unicast_env.ase_sink[iter];
-		uint_fast8_t mask = p_ase->state_bitmask;
+	/* Create a datapath configuration before QoS configuration to be able to
+	 * setup streaming channels during the setup phase.
+	 * Presentation delay is set to 10ms (internal buffering, effects to queue size).
+	 */
+	unicast_env.datapath_config.pres_delay_us = 2 * MAX_TRANSPORT_LATENCY_MS;
+
+	uint_fast16_t err;
+	uint_fast8_t const type = UNICAST_CLIENT_GROUP_TYPE_MEDIA;
+
+	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase); iter++) {
+		struct unicast_client_ase *p_ase = &unicast_env.ase[iter];
 
 		if (GAF_INVALID_LID == p_ase->ase_lid || GAF_INVALID_LID == p_ase->cis_id ||
-		    !(mask & ASE_STATE_ENABLED)) {
+		    !(p_ase->state_bitmask & ASE_STATE_CODEC_CONFIGURED)) {
+			LOG_INF("Skip QoS config: %u", iter);
 			continue;
 		}
 
-		audio_datapath_start_channel_source(p_ase->ase_lid);
+		p_ase->work.handler = enable_streaming;
+		p_ase->max_sdu_size = p_ase->number_of_octets;
+
+		struct bap_uc_cli_qos_cfg qos_cfg = {
+			.phy = STREAM_PHY_TYPE,
+#if RETX_NUMBER
+			.retx_nb = RETX_NUMBER,
+#else
+			.retx_nb = p_ase->retx_number,
+#endif
+			.max_sdu_size = p_ase->max_sdu_size,
+			.pres_delay_us = p_ase->presentation_delay,
+		};
+
+		LOG_DBG("ASE %u, CIS %u QoS configing: phy %u, retx:%u, max_sdu:%uB, "
+			"pres_delay:%uus",
+			p_ase->ase_lid, p_ase->cis_id, qos_cfg.phy, qos_cfg.retx_nb,
+			qos_cfg.max_sdu_size, qos_cfg.pres_delay_us);
+
+		if (p_ase->dir == ASE_DIR_SOURCE) {
+			audio_datapath_create_sink(&unicast_env.datapath_config);
+		} else if (p_ase->dir == ASE_DIR_SINK) {
+			audio_datapath_create_source(&unicast_env.datapath_config);
+		}
+
+		err = bap_uc_cli_configure_qos(p_ase->ase_lid, unicast_env.group_lid[type],
+					       p_ase->cis_id, &qos_cfg);
+		if (err != GAF_ERR_NO_ERROR) {
+			LOG_ERR("ASE %u, CIS %u Failed to configure qos! error %u", p_ase->ase_lid,
+				p_ase->cis_id, err);
+			continue;
+		}
+
+		wait_bap_complete();
+	}
+
+	LOG_INF("QoS configuration ready");
+}
+
+static K_WORK_DEFINE(qos_job, configure_qos);
+
+static void *get_best_stream(struct pac_capa *p_pac_base, size_t count)
+{
+	struct pac_capa *p_pac = NULL;
+	uint32_t sampling_freq_hz = 0;
+	while (count--) {
+		/* Use 32kHz 7.5ms frame duration if available */
+		if ((32000 == p_pac_base[count].sampling_freq_hz) &&
+		    p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) {
+			p_pac = &p_pac_base[count];
+			break;
+		}
+		/* Otherwise use the best 10ms sampling freq available */
+		if ((p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_10MS_BIT) &&
+		    sampling_freq_hz < p_pac_base[count].sampling_freq_hz) {
+			sampling_freq_hz = p_pac_base[count].sampling_freq_hz;
+			p_pac = &p_pac_base[count];
+		}
+	}
+	return p_pac;
+}
+
+static void *bap_config_alloc_and_init(enum bap_frame_dur const frame_dur,
+				       struct pac_capa const *const p_pac,
+				       uint32_t const location_bf)
+{
+	/* Allocate config buffer
+	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
+	 */
+	struct bap_cfg *p_config = ke_malloc_user((sizeof(*p_config) + 8), KE_MEM_PROFILE);
+
+	if (!p_config) {
+		__ASSERT(0, "Failed to allocate memory for codec capability");
+		LOG_ERR("Failed to allocate memory for codec capability");
+		return NULL;
+	}
+
+	/* TODO: SDU size bigger than 84B cause issues with encoding */
+	p_config->param.location_bf = location_bf;
+	p_config->param.frame_octet = ROUND_UP(DEFAULT_FRAME_OCTETS, sizeof(uint32_t));
+	p_config->param.sampling_freq = audio_hz_to_bap_sampling_freq(p_pac->sampling_freq_hz);
+	p_config->param.frame_dur = frame_dur;
+	p_config->param.frames_sdu = p_pac->max_frames_sdu;
+	p_config->add_cfg.len = 0;
+
+	if (p_pac->frame_octet_min == p_pac->frame_octet_max) {
+		p_config->param.frame_octet = p_pac->frame_octet_max;
+	} else if (p_pac->frame_octet_max < p_config->param.frame_octet) {
+		p_config->param.frame_octet = p_pac->frame_octet_max;
+	} else if (p_config->param.frame_octet < p_pac->frame_octet_min) {
+		p_config->param.frame_octet = p_pac->frame_octet_min;
+	}
+
+	return p_config;
+}
+
+static void remove_ase_group(const uint32_t group_lid)
+{
+	if (GAF_INVALID_LID != group_lid) {
+		LOG_INF("Removing ASE group: %u", group_lid);
+		bap_uc_cli_remove_group(group_lid);
 	}
 }
 
-static K_WORK_DEFINE(datapath_start_job, configure_datapath);
+static void configure_streams(struct k_work *p_job)
+{
+	ARG_UNUSED(p_job);
+
+	k_sem_reset(&bap_complete_sem);
+
+	static const char *const ase_type[] = {
+		[ASE_DIR_UNKNOWN] = "INVALID",
+		[ASE_DIR_SOURCE] = "SOURCE",
+		[ASE_DIR_SINK] = "SINK",
+	};
+	uint_fast8_t const type = UNICAST_CLIENT_GROUP_TYPE_MEDIA;
+
+	if (GAF_INVALID_LID != unicast_env.group_lid[type]) {
+		/* This is not needed but remove group for testing */
+		remove_ase_group(unicast_env.group_lid[type]);
+		unicast_env.group_lid[type] = GAF_INVALID_LID;
+	}
+
+	struct pac_capa *p_pac = get_best_stream(unicast_env.pacs_sink, unicast_env.nb_pacs_sink);
+
+	if (!p_pac) {
+		LOG_WRN("Unable to find a valid PAC");
+		return;
+	}
+
+	uint32_t sdu_intv_us = 0;
+	enum bap_frame_dur frame_dur = BAP_FRAME_DUR_10MS;
+
+	if ((p_pac->frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) &&
+	    !(p_pac->frame_duration_bf & BAP_FRAME_DUR_10MS_PREF_BIT)) {
+		sdu_intv_us = 7500;
+		frame_dur = BAP_FRAME_DUR_7_5MS;
+	} else if (p_pac->frame_duration_bf & BAP_FRAME_DUR_10MS_BIT) {
+		sdu_intv_us = 10000;
+	}
+	if (!sdu_intv_us) {
+		__ASSERT(0, "Invalid frame duration");
+		LOG_ERR("Invalid frame duration");
+		return;
+	}
+
+	LOG_INF("Starting streaming with sampling frequency: %uHz, SDU interval: %uus",
+		p_pac->sampling_freq_hz, sdu_intv_us);
+
+	bap_uc_cli_grp_param_t grp_param = {
+		.sdu_intv_m2s_us = sdu_intv_us,
+		.sdu_intv_s2m_us = sdu_intv_us,
+		.packing = ISO_PACKING_SEQUENTIAL, /** @ref enum iso_packing */
+		.framing = ISO_UNFRAMED_MODE,      /** @ref enum iso_frame */
+		.sca = 0,
+		.tlatency_m2s_ms = MAX_TRANSPORT_LATENCY_MS,
+		.tlatency_s2m_ms = MAX_TRANSPORT_LATENCY_MS,
+	};
+	uint16_t err;
+
+	if (unicast_env.group_lid[type] == GAF_INVALID_LID) {
+		err = bap_uc_cli_create_group(1 + UNICAST_CLIENT_GROUP_TYPE_MEDIA, &grp_param,
+					      &unicast_env.group_lid[type]);
+		if (err != GAF_ERR_NO_ERROR) {
+			LOG_ERR("Failed to create group! error %u", err);
+			return;
+		}
+
+		LOG_INF("ASE group %u created", unicast_env.group_lid[type]);
+	}
+
+	gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
+
+	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase); iter++) {
+		struct unicast_client_ase *p_ase = &unicast_env.ase[iter];
+
+		if (p_ase->conidx == GAP_INVALID_CONIDX || p_ase->ase_lid != GAF_INVALID_LID) {
+			continue;
+		}
+
+		/* TODO read positions from PAC */
+		struct bap_cfg *p_config = bap_config_alloc_and_init(
+			frame_dur, p_pac, CO_BIT(GAF_LOC_FRONT_LEFT_POS + iter));
+
+		if (!p_config) {
+			LOG_ERR("Failed to allocate memory for codec config");
+			return;
+		}
+
+		p_ase->work.handler = NULL;
+		p_ase->number_of_octets = p_config->param.frame_octet;
+		p_ase->ase_lid = iter;
+		p_ase->cis_id = (UNICAST_CLIENT_GROUP_TYPE_MEDIA << 2) + iter;
+
+		if (p_ase->dir == ASE_DIR_SINK) {
+			/* Server is working as a sink so create a source channels */
+			p_ase->channel_create = audio_datapath_channel_create_source;
+			p_ase->channel_start = audio_datapath_channel_start_source;
+			p_ase->channel_stop = audio_datapath_channel_stop_source;
+		} else if (p_ase->dir == ASE_DIR_SOURCE) {
+			/* Server is working as a source so create a sink channels */
+			p_ase->channel_create = audio_datapath_channel_create_sink;
+			p_ase->channel_start = audio_datapath_channel_start_sink;
+			p_ase->channel_stop = audio_datapath_channel_stop_sink;
+		}
+
+		LOG_DBG("Codec %s setup: conidx %u, ase_instance_idx %u, ase_lid %u, octets %uB",
+			ase_type[p_ase->dir], p_ase->conidx, p_ase->ase_instance_idx,
+			p_ase->ase_lid, p_config->param.frame_octet);
+
+		err = bap_uc_cli_configure_codec(
+			p_ase->conidx, p_ase->ase_instance_idx, p_ase->ase_lid, DATA_PATH_CONFIG,
+			&codec_id, BAP_UC_LINK_TYPE, STREAM_PHY_TYPE, CONTROL_DELAY_US, p_config);
+		if (err != GAF_ERR_NO_ERROR) {
+			LOG_ERR("Failed to configure codec! error %u", err);
+			return;
+		}
+
+		wait_bap_complete();
+	}
+	LOG_INF("Codec setup ready");
+
+	/* QoS configuration must be done after all codec configurations... for some reason */
+	if (is_all_ase_states_set(ASE_STATE_CODEC_CONFIGURED)) {
+		LOG_INF("Triggering QoS...");
+		/* Cannot call QoS configure from here directly thus trigger a worker thread */
+		/* TODO: resolve why direct call from here won't work! */
+		k_work_submit_to_queue(&worker_queue, &qos_job);
+	}
+}
+
+static K_WORK_DEFINE(configure_streams_job, configure_streams);
 
 /* ---------------------------------------------------------------------------------------- */
 /** GAF Client callbacks */
@@ -670,16 +767,21 @@ static void on_bap_uc_cli_cmp_evt(uint8_t const cmd_type, uint16_t const status,
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_CONFIGURE_CODEC: {
+		if (p_ase) {
+			p_ase->state_bitmask |= ASE_STATE_CODEC_CONFIGURED;
+		}
+		LOG_DBG("Codec configured %p", p_ase);
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_CONFIGURE_QOS: {
 		if (p_ase) {
 			p_ase->state_bitmask |= ASE_STATE_QOS_CONFIGURED;
 
-			if (ase_lid == (unicast_env.nb_ases_sink - 1)) {
-				k_work_submit_to_queue(&worker_queue, &enable_job);
-			}
 			bap_ready_sem_give();
+
+			if (p_ase->work.handler) {
+				k_work_submit_to_queue(&worker_queue, &p_ase->work);
+			}
 		}
 		break;
 	}
@@ -749,15 +851,69 @@ static void on_bap_uc_cli_bond_data(uint8_t const con_lid,
 			p_char->desc_hdl);
 	}
 
-	unicast_env.nb_ases_sink = MIN(p_ascs_info->nb_ases_sink, ARRAY_SIZE(unicast_env.ase_sink));
-	unicast_env.nb_ases_source =
-		MIN(p_ascs_info->nb_ases_src, ARRAY_SIZE(unicast_env.ase_source));
+	size_t const nb_ases_sink = MIN(p_ascs_info->nb_ases_sink, STREAM_SINK_ASE_MAX_CNT);
+	size_t const nb_ases_source = MIN(p_ascs_info->nb_ases_src, STREAM_SOURCE_ASE_MAX_CNT);
+
+	for (size_t iter = 0; iter < nb_ases_sink; iter++) {
+		unicast_env.ase[iter].dir = ASE_DIR_SINK;
+	}
+
+	for (size_t iter = nb_ases_sink; iter < (nb_ases_sink + nb_ases_source); iter++) {
+		unicast_env.ase[iter].dir = ASE_DIR_SOURCE;
+	}
 }
 
 static void on_bap_uc_cli_error(uint8_t const ase_lid, uint8_t const opcode, uint8_t const rsp_code,
 				uint8_t const reason)
 {
 	LOG_ERR("ASE %u opcode: %u, rsp_code: %u, reason: %u", ase_lid, opcode, rsp_code, reason);
+}
+
+static void handle_cis_state(struct unicast_client_ase *const p_ase, uint8_t const stream_lid,
+			     uint8_t const event)
+{
+	if (!p_ase) {
+		return;
+	}
+
+	switch (event) {
+	case BAP_UC_CLI_CIS_EVENT_ASE_BOUND: {
+		/* An ASE has been bound with the Stream */
+		p_ase->stream_lid = stream_lid;
+
+		int const retval = p_ase->channel_create(p_ase->number_of_octets, stream_lid);
+
+		if (retval) {
+			__ASSERT(0, "Failed to create datapath channel. error %d", retval);
+			LOG_ERR("Failed to create datapath channel. error %d", retval);
+		}
+		break;
+	}
+	case BAP_UC_CLI_CIS_EVENT_ASE_UNBOUND: {
+		/* TODO: is the Codec and/or QoS remove needed? */
+
+		/* An ASE has been unbound from the Stream */
+		p_ase->state_bitmask = ASE_STATE_ZERO;
+		/* TODO convert datapath to reference based */
+		audio_datapath_cleanup_source();
+		audio_datapath_cleanup_sink();
+		break;
+	}
+	case BAP_UC_CLI_CIS_EVENT_ESTABLISHED: {
+		/* CIS has been successfully established */
+		p_ase->state_bitmask |= ASE_STATE_STREAMING;
+		break;
+	}
+	case BAP_UC_CLI_CIS_EVENT_FAILED: {
+		/* CIS has failed to be established */
+		break;
+	}
+	case BAP_UC_CLI_CIS_EVENT_DISCONNECTED: {
+		/* CIS has been disconnected or connection has been lost */
+		p_ase->state_bitmask = ~(ASE_STATE_STREAMING | ASE_STATE_ENABLED);
+		break;
+	}
+	};
 }
 
 static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const event,
@@ -801,44 +957,17 @@ static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const even
 			p_cis_cfg->ft_s2m, p_cis_cfg->bn_m2s, p_cis_cfg->bn_s2m, p_cis_cfg->nse);
 	}
 
-	struct unicast_client_ase *p_ase = get_ase_config_by_id(ase_lid_sink);
+	struct unicast_client_ase *p_ase;
 
-	if (!p_ase) {
-		return;
+	p_ase = get_ase_config_by_id(ase_lid_sink);
+	if (p_ase) {
+		handle_cis_state(p_ase, stream_lid, event);
 	}
 
-	switch (event) {
-	case BAP_UC_CLI_CIS_EVENT_ASE_BOUND: {
-		/* An ASE has been bound with the Stream */
-		p_ase->stream_lid = stream_lid;
-		int const retval =
-			audio_datapath_channel_create_source(p_ase->number_of_octets, stream_lid);
-		if (retval) {
-			__ASSERT(0, "Failed to create datapath channel. error %d", retval);
-			LOG_ERR("Failed to create datapath channel. error %d", retval);
-		}
-		break;
+	p_ase = get_ase_config_by_id(ase_lid_src);
+	if (p_ase) {
+		handle_cis_state(p_ase, stream_lid, event);
 	}
-	case BAP_UC_CLI_CIS_EVENT_ASE_UNBOUND: {
-		/* An ASE has been unbound from the Stream */
-		p_ase->state_bitmask = ASE_STATE_ZERO;
-		break;
-	}
-	case BAP_UC_CLI_CIS_EVENT_ESTABLISHED: {
-		/* CIS has been successfully established */
-		p_ase->state_bitmask |= ASE_STATE_STREAMING;
-		break;
-	}
-	case BAP_UC_CLI_CIS_EVENT_FAILED: {
-		/* CIS has failed to be established */
-		break;
-	}
-	case BAP_UC_CLI_CIS_EVENT_DISCONNECTED: {
-		/* CIS has been disconnected or connection has been lost */
-		p_ase->state_bitmask = ~(ASE_STATE_STREAMING | ASE_STATE_ENABLED);
-		break;
-	}
-	};
 }
 
 static void on_bap_uc_cli_state_empty(uint8_t const con_lid, uint8_t const ase_instance_idx,
@@ -847,28 +976,33 @@ static void on_bap_uc_cli_state_empty(uint8_t const con_lid, uint8_t const ase_i
 	static const char *const states_str[] = {"IDLE",     "CODEC_CONFIGURED", "QOS_CONFIGURED",
 						 "ENABLING", "STREAMING",        "DISABLING",
 						 "RELEASING"};
+	struct unicast_client_ase *p_ase;
 
 	LOG_DBG("ASE state '%s': con_lid:%u, ase_inst_idx:%u, ase_lid:%u", states_str[state],
 		con_lid, ase_instance_idx, ase_lid);
 
-	struct unicast_client_ase *const p_ase =
-		get_ase_config_by_id((ase_lid == GAF_INVALID_LID) ? ase_instance_idx : ase_lid);
+	p_ase = get_ase_config_by_id(ase_lid);
+	if (!p_ase) {
+		p_ase = get_ase_config_by_index(ase_instance_idx);
+	}
+	if (!p_ase) {
+		return;
+	}
 
 	switch (state) {
 	case BAP_UC_ASE_STATE_IDLE: {
-		if (!p_ase) {
-			break;
-		}
-		if (con_lid != p_ase->conidx && ase_instance_idx != p_ase->ase_instance_idx) {
-			/* Initialize ASE state */
-			p_ase->conidx = con_lid;
-			p_ase->ase_instance_idx = ase_instance_idx;
-			p_ase->ase_lid = GAF_INVALID_LID;
-			p_ase->cis_id = GAF_INVALID_LID;
-			p_ase->stream_lid = GAF_INVALID_LID;
-			p_ase->state_bitmask = ASE_STATE_ZERO;
-		}
-		audio_datapath_cleanup_source();
+		/* Initialize ASE state */
+		p_ase->conidx = con_lid;
+		p_ase->ase_instance_idx = ase_instance_idx;
+		p_ase->ase_lid =
+			(con_lid == GAP_INVALID_CONIDX && ase_instance_idx == GAF_INVALID_LID)
+				? GAF_INVALID_LID
+				: ase_lid;
+		p_ase->cis_id = GAF_INVALID_LID;
+		p_ase->stream_lid = GAF_INVALID_LID;
+		p_ase->state_bitmask = ASE_STATE_ZERO;
+
+		LOG_DBG("ASE IDLE: %u", p_ase->ase_lid);
 		break;
 	}
 	case BAP_UC_ASE_STATE_CODEC_CONFIGURED: {
@@ -945,6 +1079,7 @@ static void on_bap_uc_cli_state_codec(uint8_t const con_lid, uint8_t const ase_i
 	struct unicast_client_ase *const p_ase = get_ase_config_by_id(ase_lid);
 
 	if (!p_ase) {
+		LOG_ERR("Invalid ASE");
 		return;
 	}
 
@@ -953,19 +1088,12 @@ static void on_bap_uc_cli_state_codec(uint8_t const con_lid, uint8_t const ase_i
 		return;
 	}
 
-	p_ase->state_bitmask |= ASE_STATE_CODEC_CONFIGURED;
+	/* p_ase->state_bitmask |= ASE_STATE_CODEC_CONFIGURED; */
 	p_ase->retx_number = p_qos_req->retx_nb;
 	p_ase->presentation_delay = MIN(MAX(p_qos_req->pres_delay_min_us, PRESENTATION_DELAY_US),
 					p_qos_req->pres_delay_max_us);
 
 	bap_ready_sem_give();
-
-	/* QoS configuration must be done after all codec configurations... for some reason */
-	if (ase_lid == (unicast_env.nb_ases_sink - 1)) {
-		/* Cannot call QoS configure from here directly thus trigger a worker thread */
-		/* TODO: resolve why direct call from here won't work! */
-		k_work_submit_to_queue(&worker_queue, &qos_job);
-	}
 }
 
 static void on_bap_uc_cli_state_qos(uint8_t const ase_lid, const bap_qos_cfg_t *const p_qos_cfg)
@@ -1028,17 +1156,18 @@ static void on_bap_uc_cli_dp_update_req(uint8_t const ase_lid, bool const start)
 
 	bap_uc_cli_dp_update_cfm(ase_lid, true);
 
-	if (start) {
+	struct unicast_client_ase *const p_ase = get_ase_config_by_id(ase_lid);
 
-		if (ase_lid == (unicast_env.nb_ases_sink - 1)) {
-			k_work_submit_to_queue(&worker_queue, &datapath_start_job);
-		}
-
-		/* audio_datapath_start_channel_source(ase_lid); */
+	if (!p_ase || !p_ase->work.handler) {
 		return;
 	}
 
-	audio_datapath_stop_channel_source(ase_lid);
+	if (start) {
+		k_work_submit_to_queue(&worker_queue, &p_ase->work);
+		return;
+	}
+
+	audio_datapath_channel_stop_source(ase_lid);
 }
 
 const struct bap_uc_cli_cb bap_cli_cbs = {
@@ -1249,13 +1378,10 @@ void configure_button(void)
 
 int unicast_source_configure(void)
 {
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_sink); iter++) {
-		unicast_env.ase_sink[iter].conidx = GAP_INVALID_CONIDX;
-		unicast_env.ase_sink[iter].ase_instance_idx = GAF_INVALID_LID;
-	}
-	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase_source); iter++) {
-		unicast_env.ase_source[iter].conidx = GAP_INVALID_CONIDX;
-		unicast_env.ase_source[iter].ase_instance_idx = GAF_INVALID_LID;
+	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.ase); iter++) {
+		unicast_env.ase[iter].conidx = GAP_INVALID_CONIDX;
+		unicast_env.ase[iter].ase_instance_idx = GAF_INVALID_LID;
+		unicast_env.ase[iter].ase_lid = GAF_INVALID_LID;
 	}
 	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.group_lid); iter++) {
 		unicast_env.group_lid[iter] = GAF_INVALID_LID;
@@ -1273,8 +1399,7 @@ int unicast_source_configure(void)
 		/* Number of ASE configurations that can be maintained
 		 * Shall be at larger than 0
 		 */
-		.nb_ases_cfg =
-			ARRAY_SIZE(unicast_env.ase_sink) + ARRAY_SIZE(unicast_env.ase_source),
+		.nb_ases_cfg = ARRAY_SIZE(unicast_env.ase),
 		/* Preferred MTU
 		 * Values from 0 to 63 are equivalent to 64
 		 */

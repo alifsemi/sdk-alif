@@ -26,11 +26,6 @@
 	/delete-node/ buttons;
 };
 
-&uart2 {
-	current-speed = <921600>;
-	dlf = <13>;
-};
-
 &dma2 {
 	status = "okay";
 };
@@ -56,14 +51,6 @@
 	status = "okay";
 };
 
-&i2s1 {
-	status = "disabled";
-};
-
-&i2s2 {
-	status = "disabled";
-};
-
 &pinctrl_i2c1 {
 	group0 {
 		pinmux = <PIN_P7_2__I2C1_SDA_C>,
@@ -81,9 +68,15 @@
 	};
 };
 
-&pinctrl_i2c0 {
-	group0 {
-		pinmux = <PIN_P2_4__I2C0_SCL_B>,
-			 <PIN_P2_5__I2C0_SDA_B>;
-	};
+/* Disable unnecessary nodes */
+&uart_ahi {
+	status = "disabled";
+};
+
+&i2s1 {
+	status = "disabled";
+};
+
+&i2s2 {
+	status = "disabled";
 };
