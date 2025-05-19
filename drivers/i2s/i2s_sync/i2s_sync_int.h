@@ -332,12 +332,27 @@ static inline void i2s_global_enable(struct i2s_t *i2s)
 	i2s->IER = _VAL2FLD(I2S_IER_IEN, 1U);
 }
 
-static inline void i2s_configure_clk(struct i2s_t *i2s)
+static inline void i2s_global_disable(struct i2s_t *i2s)
 {
-	i2s->CCR = _VAL2FLD(I2S_CCR_SCLKG, 0U) | _VAL2FLD(I2S_CCR_WSS, WSS_CLOCK_CYCLES_16);
+	i2s->IER = _VAL2FLD(I2S_IER_IEN, 0U);
 }
 
-static inline void i2s_clken(struct i2s_t *i2s)
+static inline bool i2s_global_state(struct i2s_t *i2s)
+{
+	return !!(i2s->IER & I2S_IER_IEN_Msk);
+}
+
+static inline void i2s_configure_clk(struct i2s_t *i2s, size_t const wss)
+{
+	i2s->CCR = _VAL2FLD(I2S_CCR_SCLKG, 0U) | _VAL2FLD(I2S_CCR_WSS, wss);
+}
+
+static inline void i2s_disable_clk(struct i2s_t *i2s)
+{
+	i2s->CER = _VAL2FLD(I2S_CER_CLKEN, 0U);
+}
+
+static inline void i2s_enable_clk(struct i2s_t *i2s)
 {
 	i2s->CER = _VAL2FLD(I2S_CER_CLKEN, 1U);
 }

@@ -47,6 +47,20 @@ config LE_AUDIO_TARGET_LATENCY
 	default 2 if LE_AUDIO_LATENCY_BALANCED
 	default 3 if LE_AUDIO_LATENCY_RELIABLE
 
+choice
+	prompt "Choose audio configuration"
+	default LE_AUDIO_UNIDIRECTIONAL
+
+	config LE_AUDIO_UNIDIRECTIONAL
+	bool "Unidirectional"
+	config LE_AUDIO_BIDIRECTIONAL
+	bool "Bidirectional"
+endchoice
+
+config BONDING_ALLOWED
+	bool "Allow bonding"
+	default y
+
 menu "Logging"
 
 module = MAIN

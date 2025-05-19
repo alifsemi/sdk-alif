@@ -15,9 +15,21 @@
 #define I2S_NODE   DT_ALIAS(i2s_bus)
 #define CODEC_NODE DT_ALIAS(audio_codec)
 
+typedef int (*audio_datapath_channel_create_t)(size_t octets_per_frame, uint8_t stream_lid);
+
+typedef int (*audio_datapath_start_stop_channel_t)(uint8_t stream_lid);
+
+/**
+ * @brief Audio datapath configuration structure
+ *
+ * This structure is used to configure the audio datapath
+ */
 struct audio_datapath_config {
+	/** Presentation delay in microseconds */
 	uint32_t pres_delay_us;
+	/** Sampling rate in Hz */
 	uint32_t sampling_rate_hz;
+	/** Frame duration is 10ms */
 	bool frame_duration_is_10ms;
 };
 
@@ -54,7 +66,7 @@ int audio_datapath_channel_create_source(size_t octets_per_frame, uint8_t stream
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_start_channel_source(uint8_t stream_lid);
+int audio_datapath_channel_start_source(uint8_t stream_lid);
 
 /**
  * @brief Stop the audio source datapath
@@ -64,7 +76,7 @@ int audio_datapath_start_channel_source(uint8_t stream_lid);
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_stop_channel_source(uint8_t stream_lid);
+int audio_datapath_channel_stop_source(uint8_t stream_lid);
 
 /**
  * @brief Clean up the audio source datapath

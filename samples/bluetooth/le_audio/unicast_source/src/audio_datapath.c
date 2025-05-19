@@ -10,7 +10,7 @@
 #include <zephyr/types.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
-
+#include <zephyr/audio/codec.h>
 #include "bluetooth/le_audio/audio_decoder.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 
@@ -18,19 +18,10 @@
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
-#define AUDIO_ENCODER_PATH 1
-/* TODO: Enable for bidirectional audio data */
-#define AUDIO_DECODER_PATH 0
-
 struct audio_datapath {
 	const struct device *i2s_dev;
-	const struct device *codec_dev;
-#if AUDIO_ENCODER_PATH
 	struct audio_encoder *encoder;
-#endif
-#if AUDIO_DECODER_PATH
 	struct audio_decoder *decoder;
-#endif
 };
 
 static struct audio_datapath env;
@@ -39,30 +30,25 @@ static struct audio_datapath env;
 static int unicast_audio_path_init(void)
 {
 	int ret;
-	const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
-	const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
 
 	/* Check all devices are ready */
-	ret = device_is_ready(i2s_dev);
+	ret = device_is_ready(DEVICE_DT_GET(I2S_NODE));
 	if (!ret) {
 		LOG_ERR("I2S is not ready");
 		return -1;
 	}
 
-	ret = device_is_ready(codec_dev);
+	ret = device_is_ready(DEVICE_DT_GET(CODEC_NODE));
 	if (!ret) {
 		LOG_ERR("Audio codec is not ready");
 		return -1;
 	}
 
-	env.i2s_dev = i2s_dev;
-	env.codec_dev = codec_dev;
-
 	return 0;
 }
 SYS_INIT(unicast_audio_path_init, APPLICATION, 0);
 
-#if AUDIO_ENCODER_PATH && ENCODER_DEBUG
+#if ENCODER_DEBUG
 __ramfunc static void on_encoder_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
 {
 	if ((sdu_seq % 128) == 0) {
@@ -71,8 +57,8 @@ __ramfunc static void on_encoder_frame_complete(void *param, uint32_t timestamp,
 }
 #endif
 
-#if AUDIO_DECODER_PATH && DECODER_DEBUG
-static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
+#if DECODER_DEBUG
+__ramfunc static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 {
 	static uint16_t last_sdu;
 
@@ -87,32 +73,50 @@ static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 }
 #endif
 
-#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
-void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
-{
-	LOG_INF("Presentation compensation debug data is ready");
-}
-#endif
-
 int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 {
-#if AUDIO_ENCODER_PATH
 	if (cfg == NULL) {
 		return -EINVAL;
 	}
 
 	if (env.encoder) {
-		/* TODO reconfigure decoder? */
+		/* TODO reconfigure encoder? */
 
 		return -EALREADY;
 	}
 
+	int ret;
 	struct audio_encoder_params const enc_params = {
-		.i2s_dev = env.i2s_dev,
+		.i2s_dev = DEVICE_DT_GET(I2S_NODE),
 		.frame_duration_us = cfg->frame_duration_is_10ms ? 10000 : 7500,
 		.sampling_rate_hz = cfg->sampling_rate_hz,
 		.audio_buffer_len_us = cfg->pres_delay_us,
 	};
+	/* clang-format off */
+	struct audio_codec_cfg codec_cfg = {
+		.dai_type = AUDIO_DAI_TYPE_I2S,
+		.dai_cfg = {
+			.i2s = {
+				.word_size = AUDIO_PCM_WIDTH_16_BITS,
+				.channels = 2,
+				.format = I2S_FMT_DATA_FORMAT_I2S,
+				.options = 0,
+				.frame_clk_freq = cfg->sampling_rate_hz,
+				.mem_slab = NULL,
+				.block_size = 0,
+				.timeout = 0,
+			},
+		},
+	};
+	/* clang-format on */
+
+	/* Configure codec */
+	ret = audio_codec_configure(DEVICE_DT_GET(CODEC_NODE), &codec_cfg);
+	if (ret) {
+		LOG_ERR("Failed to configure source codec. err %d", ret);
+		return ret;
+	}
+	audio_codec_start_output(DEVICE_DT_GET(CODEC_NODE));
 
 	/* Remove old one and create a new */
 	env.encoder = audio_encoder_create(&enc_params);
@@ -132,14 +136,10 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 	LOG_INF("Source audio datapath created");
 
 	return 0;
-#else
-	return -ENOTSUP;
-#endif /* AUDIO_ENCODER_PATH */
 }
 
 int audio_datapath_channel_create_source(size_t const octets_per_frame, uint8_t const stream_lid)
 {
-#if AUDIO_ENCODER_PATH
 	int ret = audio_encoder_add_channel(env.encoder, octets_per_frame, stream_lid);
 
 	if (ret) {
@@ -147,14 +147,10 @@ int audio_datapath_channel_create_source(size_t const octets_per_frame, uint8_t 
 		return ret;
 	}
 	return 0;
-#else
-	return -ENOTSUP;
-#endif
 }
 
-int audio_datapath_start_channel_source(uint8_t const ch_index)
+int audio_datapath_channel_start_source(uint8_t const ch_index)
 {
-#if AUDIO_ENCODER_PATH
 	int ret = audio_encoder_start_channel(env.encoder, ch_index);
 
 	if (ret) {
@@ -162,14 +158,10 @@ int audio_datapath_start_channel_source(uint8_t const ch_index)
 		return ret;
 	}
 	return 0;
-#else
-	return -ENOTSUP;
-#endif
 }
 
-int audio_datapath_stop_channel_source(uint8_t const ch_index)
+int audio_datapath_channel_stop_source(uint8_t const ch_index)
 {
-#if AUDIO_ENCODER_PATH
 	int ret = audio_encoder_stop_channel(env.encoder, ch_index);
 
 	if (ret) {
@@ -177,27 +169,19 @@ int audio_datapath_stop_channel_source(uint8_t const ch_index)
 		return ret;
 	}
 	return 0;
-#else
-	return -ENOTSUP;
-#endif
 }
 
 int audio_datapath_cleanup_source(void)
 {
-#if AUDIO_ENCODER_PATH
 	/* Stop encoder first as it references other modules */
 	audio_encoder_delete(env.encoder);
 	env.encoder = NULL;
 
 	return 0;
-#else
-	return -ENOTSUP;
-#endif /* AUDIO_ENCODER_PATH */
 }
 
 int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 {
-#if AUDIO_DECODER_PATH
 	if (!cfg) {
 		return -EINVAL;
 	}
@@ -209,7 +193,7 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 	}
 
 	struct audio_decoder_params const dec_params = {
-		.i2s_dev = env.i2s_dev,
+		.i2s_dev = DEVICE_DT_GET(I2S_NODE),
 		.frame_duration_us = cfg->frame_duration_is_10ms ? 10000 : 7500,
 		.sampling_rate_hz = cfg->sampling_rate_hz,
 		.pres_delay_us = cfg->pres_delay_us,
@@ -233,69 +217,50 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 	LOG_INF("Sink audio datapath created");
 
 	return 0;
-#else
-	return -ENOTSUP;
-#endif /* AUDIO_DECODER_PATH */
 }
 
 int audio_datapath_channel_create_sink(size_t const octets_per_frame, uint8_t const ch_index)
 {
-#if AUDIO_DECODER_PATH
-	LOG_DBG("Creating channel %u", ch_index);
-
 	int ret = audio_decoder_add_channel(env.decoder, octets_per_frame, ch_index);
 
-	LOG_DBG("Channel %u created", ch_index);
+	if (ret) {
+		LOG_ERR("Failed to create channel %u, err %d", ch_index, ret);
+		return ret;
+	}
 
-	return ret;
-#else
-	ARG_UNUSED(octets_per_frame);
-	ARG_UNUSED(ch_index);
-	return -ENOTSUP;
-#endif /* AUDIO_DECODER_PATH */
+	return 0;
 }
+
 int audio_datapath_channel_start_sink(uint8_t const ch_index)
 {
-#if AUDIO_DECODER_PATH
-	LOG_DBG("Starting channel %u", ch_index);
-
 	int ret = audio_decoder_start_channel(env.decoder, ch_index);
 
-	LOG_DBG("Channel %u started", ch_index);
+	if (ret) {
+		LOG_ERR("Failed to start channel %u, err %d", ch_index, ret);
+		return ret;
+	}
 
-	return ret;
-#else
-	ARG_UNUSED(ch_index);
-	return -ENOTSUP;
-#endif /* AUDIO_DECODER_PATH */
+	return 0;
 }
 
 int audio_datapath_channel_stop_sink(uint8_t const ch_index)
 {
-#if AUDIO_DECODER_PATH
-	LOG_DBG("Starting channel %u", ch_index);
+	int ret = audio_decoder_stop_channel(env.decoder, ch_index);
 
-	int ret = audio_decoder_start_channel(env.decoder, ch_index);
+	if (ret) {
+		LOG_ERR("Failed to stop channel %u, err %d", ch_index, ret);
+		return ret;
+	}
 
-	LOG_DBG("Channel %u started", ch_index);
-
-	return ret;
-#else
-	ARG_UNUSED(ch_index);
-	return -ENOTSUP;
-#endif /* AUDIO_DECODER_PATH */
+	return 0;
 }
 
 int audio_datapath_cleanup_sink(void)
 {
-#if AUDIO_DECODER_PATH
 	audio_decoder_delete(env.decoder);
 	env.decoder = NULL;
 
 	LOG_INF("Removed sink audio datapath");
 
 	return 0;
-#else
-	return -ENOTSUP;
-#endif /* AUDIO_DECODER_PATH */
 }

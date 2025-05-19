@@ -32,7 +32,8 @@ struct wm8904_data {
 	uint16_t fll_k;
 	uint8_t fll_n;
 	/* Volume settings */
-	uint8_t hp_volume;
+	uint8_t hp_volume_left;
+	uint8_t hp_volume_right;
 };
 
 /* Error handling is done directly in the functions */
@@ -210,9 +211,6 @@ static int cwm_configure(const struct device *dev, struct audio_codec_cfg *cfg)
 	data->fll_n = n;
 
 	data->config_cached = true;
-
-	/* Set the default volume level to 0dB (0x39) */
-	data->hp_volume = 0x39;
 
 	LOG_DBG("Configuration stored, will be applied on next start");
 
@@ -534,14 +532,14 @@ static void cwm_start_output(const struct device *dev)
 
 	/* Set headphone volume (both channels) */
 	ret = cwm_i2c_wr(i2c, WM8904_ANALOGUE_OUT1_LEFT,
-		ANLG_OUT1_HPOUTL_VU | ANLG_OUT1_HPOUTL_VOL(data->hp_volume));
+		ANLG_OUT1_HPOUTL_VU | data->hp_volume_left);
 	if (ret) {
 		LOG_ERR("Failed to set left headphone volume: %d", ret);
 		return;
 	}
 
 	ret = cwm_i2c_wr(i2c, WM8904_ANALOGUE_OUT1_RIGHT,
-		ANLG_OUT1_HPOUTR_VU | ANLG_OUT1_HPOUTR_VOL(data->hp_volume));
+		ANLG_OUT1_HPOUTR_VU | data->hp_volume_right);
 	if (ret) {
 		LOG_ERR("Failed to set right headphone volume: %d", ret);
 		return;
@@ -751,32 +749,49 @@ static int cwm_set_property(const struct device *dev, audio_property_t property,
 {
 	const struct wm8904_driver_config *dev_cfg = dev->config;
 	const struct i2c_dt_spec *i2c = &dev_cfg->i2c;
+	struct wm8904_data *data = dev->data;
 	int ret;
 
 	switch (property) {
-	case AUDIO_PROPERTY_OUTPUT_VOLUME:
-		if (channel == AUDIO_CHANNEL_FRONT_LEFT || channel == AUDIO_CHANNEL_ALL) {
+	case AUDIO_PROPERTY_OUTPUT_VOLUME: {
+		if (val.vol < 0 || val.vol > 255) {
+			LOG_ERR("Invalid volume: %d", val.vol);
+			return -EINVAL;
+		}
+
+		/* WM8904 volume is in 1dB steps so scale the API value */
+		uint16_t const volume = ANLG_OUT1_HPOUTL_VOL(val.vol >> 1);
+		bool const both = channel == AUDIO_CHANNEL_ALL;
+
+		if (both || channel == AUDIO_CHANNEL_FRONT_LEFT) {
 			ret = cwm_i2c_wr(i2c, WM8904_ANALOGUE_OUT1_LEFT,
-				ANLG_OUT1_HPOUTL_VU | ANLG_OUT1_HPOUTL_VOL(val.vol));
+				ANLG_OUT1_HPOUTL_VU | volume);
 			if (ret) {
 				LOG_ERR("Failed to set left headphone volume: %d", ret);
 				return ret;
 			}
+			/* Store for configure to avoid unwanted volume adjustment */
+			data->hp_volume_left = volume;
 		}
-		if (channel == AUDIO_CHANNEL_FRONT_RIGHT || channel == AUDIO_CHANNEL_ALL) {
+		if (both || channel == AUDIO_CHANNEL_FRONT_RIGHT) {
 			ret = cwm_i2c_wr(i2c, WM8904_ANALOGUE_OUT1_RIGHT,
-				ANLG_OUT1_HPOUTR_VU | ANLG_OUT1_HPOUTR_VOL(val.vol));
+				ANLG_OUT1_HPOUTR_VU | volume);
 			if (ret) {
 				LOG_ERR("Failed to set right headphone volume: %d", ret);
 				return ret;
 			}
+			/* Store for configure to avoid unwanted volume adjustment */
+			data->hp_volume_right = volume;
 		}
+
 		break;
+	}
 
 	case AUDIO_PROPERTY_OUTPUT_MUTE:
-		ret = cwm_i2c_wr(i2c, WM8904_DAC_DIGITAL_1, val.mute ? DAC_DG1_MUTE : 0);
+		ret = cwm_i2c_wr(i2c, WM8904_DAC_DIGITAL_1,
+				 data->dac_digital_settings | (val.mute ? DAC_DG1_MUTE : 0));
 		if (ret) {
-			LOG_ERR("Failed to set DAC mute state: %d", ret);
+			LOG_ERR("Failed to set mute state: %d", ret);
 			return ret;
 		}
 		break;
@@ -821,6 +836,7 @@ int cwm_init(const struct device *dev)
 {
 	const struct wm8904_driver_config *dev_cfg = dev->config;
 	const struct i2c_dt_spec *i2c = &dev_cfg->i2c;
+	struct wm8904_data *data = dev->data;
 	uint16_t dev_id;
 	int ret;
 
@@ -869,6 +885,9 @@ int cwm_init(const struct device *dev)
 		LOG_ERR("Failed to configure WM8904: %d", ret);
 		return ret;
 	}
+
+	/* Set the default volume level to 0dB (0x39) */
+	data->hp_volume_right = data->hp_volume_left = ANLG_OUT1_HPOUTL_VOL(0x39);
 
 	LOG_DBG("Initialisation completed");
 
