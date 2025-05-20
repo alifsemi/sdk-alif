@@ -27,18 +27,23 @@
 #include "prf.h"
 #include "htpt.h"
 #include "htpt_msg.h"
+#include "batt_svc.h"
+#include "shared_control.h"
 
-#define BT_CONN_STATE_CONNECTED	   0x00
-#define BT_CONN_STATE_DISCONNECTED 0x01
+struct shared_control ctrl = { false, 0, 0 };
+
 #define TX_INTERVAL		   1
 
 /* Indications disabled by peer */
 #define HTPT_CFG_STABLE_MEAS_IND_DIS 0
 
-static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
-
 /* Variable to check if peer device is ready to receive data"*/
-static bool READY_TO_SEND;
+static bool ready_to_send;
+
+/* Dummy starting measurement value */
+static uint32_t meas_value = 35;
+/* Dummy value change direction */
+static int8_t direction = 1;
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
@@ -105,7 +110,9 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
 		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
-	conn_status = BT_CONN_STATE_CONNECTED;
+	ctrl.connected = true;
+
+	k_sem_give(&conn_sem);
 
 	LOG_DBG("Please enable notifications on peer device..");
 }
@@ -127,7 +134,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
-	conn_status = BT_CONN_STATE_DISCONNECTED;
+	ctrl.connected = false;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -155,7 +162,7 @@ static void on_gapm_err(enum co_error err)
 
 static void on_meas_send_complete(uint16_t status)
 {
-	READY_TO_SEND = true;
+	ready_to_send = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
@@ -163,19 +170,19 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
 	switch (ntf_ind_cfg) {
 	case HTPT_CFG_STABLE_MEAS_IND:
 		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = true;
+		ready_to_send = true;
 		LOG_DBG("Sending measurements ...");
 		break;
 	case HTPT_CFG_STABLE_MEAS_IND_DIS:
 		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = false;
+		ready_to_send = false;
 		break;
 
 	case HTPT_CFG_INTERM_MEAS_NTF:
 	case HTPT_CFG_MEAS_INTV_IND:
 	default:
 		LOG_INF("Not currently supported notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND = false;
+		ready_to_send = false;
 		break;
 	}
 }
@@ -316,7 +323,6 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -378,40 +384,31 @@ static void server_configure(void)
 	}
 }
 
-void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
+static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 {
 	if (status) {
 		LOG_ERR("gapm process completed with error %u", status);
 		return;
 	}
 
-	server_configure();
-
 	LOG_DBG("gapm process completed successfully");
 
-	/* After configuration completed, create an advertising activity */
-	create_advertising();
+	k_sem_give(&init_sem);
 }
 
-uint32_t read_sensor_value(void)
+static void read_sensor_value(void)
 {
-	/* Generating dummy values between 1 and 5 */
-	static uint32_t value = 35;
-	static int8_t direction = 1;
-
 	/* Update the value based on the direction */
-	value += direction;
+	meas_value += direction;
 
 	/* Change direction if limits are reached */
-	if (value == 40 || value == 35) {
+	if (meas_value == 40 || meas_value == 35) {
 		direction = -direction;
 	}
-
-	return value;
 }
 
 /*  Generate and send dummy data*/
-static void send_measurement(uint32_t meas_value)
+static void send_measurement(void)
 {
 	uint16_t err;
 
@@ -428,27 +425,23 @@ static void send_measurement(uint32_t meas_value)
 	}
 }
 
-static void process_measurement(uint32_t meas_value)
+static void service_process(void)
 {
-	switch (conn_status) {
-	case BT_CONN_STATE_CONNECTED:
-		if (READY_TO_SEND) {
-
-			send_measurement(meas_value);
-			READY_TO_SEND = false;
+	read_sensor_value();
+	if (ctrl.connected) {
+		if (ready_to_send) {
+			send_measurement();
+			ready_to_send = false;
 		}
-		break;
-
-	case BT_CONN_STATE_DISCONNECTED:
-	default:
-		break;
+	} else {
+		LOG_DBG("Waiting for peer connection...\n");
+		k_sem_take(&conn_sem, K_FOREVER);
 	}
 }
 
 int main(void)
 {
 	uint16_t err;
-	uint32_t meas_value;
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -460,16 +453,27 @@ int main(void)
 	}
 
 	LOG_DBG("Waiting for init...\n");
+
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
 
+	/* Share connection info */
+	service_conn(&ctrl);
+
+	/* Adding battery service */
+	config_battery_service();
+
+	/* Configure main service */
+	server_configure();
+
+	/* Create an advertising activity */
+	create_advertising();
+
 	while (1) {
 		/* Execute process every 1 second */
 		k_sleep(K_SECONDS(TX_INTERVAL));
-
-		meas_value = read_sensor_value();
-
-		process_measurement(meas_value);
+		service_process();
+		battery_process();
 	}
 }
