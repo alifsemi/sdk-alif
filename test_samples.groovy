@@ -105,15 +105,9 @@ def build_zephyr(String sample, String build_dir, String board, String conf_file
         . venv/bin/activate
         cd zephyrproject/zephyr
         west build -p always -b $board --build-dir $build_dir $sample $overlay
+        STATUS=\$?
+        if [ \$STATUS -ne 0 ]; then exit \$STATUS; fi
         deactivate"""
-        // def proc = "echo \$?".execute()
-        // if [ proc.exitValue() -eq 0 ]; then
-        //   echo "Build succeeded"
-        // else
-        //   echo "Build failed"
-        // fi
-        //manual fail
-        //error "Failed, Maintenance Mode not Enabled... No reason to continue execution"
 }
 
 def run_test(String jsonfile, String zephyr_build_dir, String test) {
