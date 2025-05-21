@@ -41,8 +41,8 @@ def generate_ble_stage(sample) {
     return {
         stage("Build ${sample} sample") {
             script {
-                common_funcs = load 'test_samples.groovy'
-                common_funcs.build_zephyr("samples/bluetooth/${sample}", "build-b1-${sample}", "alif_b1_dk_rtss_he");
+                def testing = load 'test_samples.groovy'
+                testing.build_zephyr("samples/bluetooth/${sample}", "build-b1-${sample}", "alif_b1_dk_rtss_he");
             }
         }
     }
