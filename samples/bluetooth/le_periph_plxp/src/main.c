@@ -36,11 +36,20 @@
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 /* Variable to check if peer device is ready to receive data"*/
-static bool READY_TO_SEND;
+static bool ready_to_send;
 
 K_SEM_DEFINE(init_sem, 0, 1);
+K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+/* Measurement structure */
+static plxp_spo2pr_t plx_value = {
+	/* Initial dummy pulse rate value */
+	.pr = 60,
+	/* Initial dummy SpO2 value */
+	.sp_o2 = 95,
+};
 
 /**
  * Bluetooth stack configuration
@@ -104,6 +113,8 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 
 	conn_status = BT_CONN_STATE_CONNECTED;
 
+	k_sem_give(&conn_sem);
+
 	LOG_DBG("Please enable notifications on peer device..");
 }
 
@@ -125,7 +136,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	}
 
 	conn_status = BT_CONN_STATE_DISCONNECTED;
-	READY_TO_SEND = false;
+	ready_to_send = false;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -142,11 +153,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 {
 	/* Send unknown appearance */
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
-
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -168,6 +174,28 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs;
 
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+static void on_gapm_err(uint32_t metainfo, uint8_t code)
+{
+	LOG_ERR("gapm error %d", code);
+}
+static const gapm_cb_t gapm_err_cbs = {
+	.cb_hw_error = on_gapm_err,
+};
+
+static const gapm_callbacks_t gapm_cbs = {
+	.p_con_req_cbs = &gapc_con_cbs,
+	.p_sec_cbs = &gapc_sec_cbs,
+	.p_info_cbs = &gapc_con_inf_cbs,
+	.p_le_config_cbs = &gapc_le_cfg_cbs,
+	.p_bt_config_cbs = NULL, /* BT classic so not required */
+	.p_gapm_cbs = &gapm_err_cbs,
+};
+#else
+static void on_gapm_err(enum co_error err)
+{
+	LOG_ERR("gapm error %d", err);
+}
 static const gapm_err_info_config_cb_t gapm_err_cbs = {
 	.ctrl_hw_error = on_gapm_err,
 };
@@ -180,6 +208,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_bt_config_cbs = NULL, /* BT classic so not required */
 	.p_err_info_config_cbs = &gapm_err_cbs,
 };
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 
 static uint16_t set_advertising_data(uint8_t actv_idx)
@@ -275,7 +304,6 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 
 	case GAPM_ACTV_START:
 		LOG_DBG("Advertising was started");
-		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -302,14 +330,18 @@ static uint16_t create_advertising(void)
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+		.tx_pwr = 0,
+#else
 		.max_tx_pwr = 0,
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-				.adv_intv_min = 160, /* 100 ms */
-				.adv_intv_max = 800, /* 500 ms */
-				.ch_map = ADV_ALL_CHNLS_EN,
-				.phy = GAPM_PHY_TYPE_LE_1M,
-			},
+			.adv_intv_min = 160, /* 100 ms */
+			.adv_intv_max = 800, /* 500 ms */
+			.ch_map = ADV_ALL_CHNLS_EN,
+			.phy = GAPM_PHY_TYPE_LE_1M,
+		},
 	};
 
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
@@ -330,7 +362,7 @@ static void on_spot_meas_send_cmp(uint8_t conidx, uint16_t status)
 static void on_cont_meas_send_cmp(uint8_t conidx, uint16_t status)
 {
 	/* Notification was correctly received, it is now allowed to send a new one */
-	READY_TO_SEND = true;
+	ready_to_send = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
@@ -345,9 +377,9 @@ static void on_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
 	}
 
 	if (evt_cfg & PLXS_MEAS_CONT_NTF_CFG_BIT) {
-		READY_TO_SEND = true;
+		ready_to_send = true;
 	} else {
-		READY_TO_SEND = false;
+		ready_to_send = false;
 	}
 
 	if (evt_cfg & PLXS_RACP_IND_CFG_BIT) {
@@ -404,70 +436,73 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t error)
 		return;
 	}
 
-	server_configure();
-
 	LOG_DBG("gapm process completed successfully");
 
-	/* After configuration completed, create an advertising activity */
-	create_advertising();
+	k_sem_give(&init_sem);
 }
 
 /* Dummy sensor reading emulation */
-plxp_spo2pr_t read_sensor_value(void)
+void read_sensor_value(void)
 {
-	/* Initial SpO2 value */
-	static uint16_t sp_o2 = 95;
-
-	/* Initial pulse rate value */
-	static uint16_t pr = 60;
-
-	plxp_spo2pr_t value;
-
 	/* Increment and wrap around the values within their respective ranges */
-	sp_o2++;
+	plx_value.sp_o2++;
 
-	if (sp_o2 > 100) {
-		sp_o2 = 95;
+	if (plx_value.sp_o2 > 100) {
+		plx_value.sp_o2 = 95;
 	}
 
-	pr++;
+	plx_value.pr++;
 
-	if (pr > 100) {
-		pr = 60;
+	if (plx_value.pr > 100) {
+		plx_value.pr = 60;
 	}
 
-	value.sp_o2 = sp_o2;
-	value.pr = pr;
-
-	return value;
+	plx_value.sp_o2 = plx_value.sp_o2;
+	plx_value.pr = plx_value.pr;
 }
 
 /*  Generate and send dummy data*/
-static uint16_t send_measurement(plxp_spo2pr_t meas_value)
+static void send_measurement(void)
 {
 	uint16_t err;
-
-	plxp_spo2pr_t plxs_normal = {
-		.sp_o2 = meas_value.sp_o2,
-		.pr = meas_value.pr,
-	};
 
 	/*      Dummy measurements values       */
 	plxp_cont_meas_t p_meas = {
 		.cont_flags = 0,
-		.normal = plxs_normal,
+		.normal = plx_value,
 	};
 
 	/* Using connection ndex 0 to notify to the first connected client*/
 	err = plxs_cont_meas_send(0, &p_meas);
 
-	return err;
+	if (err) {
+		LOG_ERR("Error %u sending measurement", err);
+	}
+}
+
+static void service_process(void)
+{
+	read_sensor_value();
+
+	switch (conn_status) {
+	case BT_CONN_STATE_CONNECTED:
+		if (ready_to_send) {
+			send_measurement();
+			ready_to_send = false;
+		}
+		break;
+
+	case BT_CONN_STATE_DISCONNECTED:
+		LOG_DBG("Waiting for peer connection...\n");
+		k_sem_take(&conn_sem, K_FOREVER);
+	default:
+		break;
+	}
 }
 
 int main(void)
 {
 	uint16_t err;
-	plxp_spo2pr_t meas_value;
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -479,9 +514,14 @@ int main(void)
 	}
 
 	LOG_DBG("Waiting for init...\n");
+
 	k_sem_take(&init_sem, K_FOREVER);
 
 	LOG_DBG("Init complete!\n");
+
+	server_configure();
+
+	create_advertising();
 
 	while (1) {
 		/*
@@ -489,22 +529,8 @@ int main(void)
 		 * For example purposes
 		 */
 		k_sleep(K_SECONDS(TX_INTERVAL));
-
-		meas_value = read_sensor_value();
-
-		if (conn_status != BT_CONN_STATE_CONNECTED) {
-			continue;
-		}
-		if (!READY_TO_SEND) {
-			continue;
-		}
-
-		err = send_measurement(meas_value);
-		if (err) {
-			LOG_ERR("Error %u sending measurement", err);
-		} else {
-			READY_TO_SEND = false;
-		}
+		service_process();
 	}
-	return 0;
+	/* Should not come here */
+	return -EINVAL;
 }
