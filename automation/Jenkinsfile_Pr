@@ -1,0 +1,173 @@
+def Build_SW_Echo_Client = 'Pending'
+def Build_SW_Echo_Server = 'Pending'
+def Flash_board_echo_server = 'Pending'
+def Flash_board_echo_client = 'Pending'
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Pr_Build for echo-client and echo-server') {
+            when {
+                anyOf {
+                    branch 'PR-*'
+                    branch 'main'
+                }
+            }
+            agent { label 'pr_check_sdk_alif' }
+            options { skipDefaultCheckout() }
+            steps {
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        try {
+                            sh '''#!/bin/bash -xe
+                            pwd
+                            env
+                            cd /root/alif/public/alif
+                            git status
+                            git clean -fd
+                            git pull
+                            if [[ -v CHANGE_ID ]]; then
+                            git branch -D pr-\${CHANGE_ID} || true
+                            git clean -fd
+                            git fetch origin pull/\${CHANGE_ID}/head:pr-\${CHANGE_ID}
+                            git checkout pr-\${CHANGE_ID}
+                            cd ..
+                            west update
+                            ls -la
+                            cd /root/alif/public/alif/scripts
+                            pip install -r requirements.txt
+                            cd /root/alif/public/zephyr/scripts
+                            pip install -r requirements.txt
+                            cd /root/alif/public
+                            west build -p always -b alif_b1_dk_rtss_he zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                            cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
+                            cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
+                            mv /root/alif/public/build $WORKSPACE
+                            cd $WORKSPACE
+                            tar -cvf build_client.tar build/
+                            rm -fr build/
+                            pwd
+                            ls -la
+                            '''
+                            stash name: 'echo_client.bin', includes: 'zephyr.bin'
+                            stash name: 'echo_client_B1-test-app.json', includes: 'B1-test-app.json'
+                            Build_SW_Echo_Client = 'Pass'
+                        } catch (Exception e) {
+                            Build_SW_Echo_Client = 'Fail'
+                            error('Build failed')
+                        }
+                    }
+
+                    if (Build_SW_Echo_Client == 'Pass') {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                            try {
+                                sh '''#!/bin/bash -xe
+                                cd /root/alif/public
+                                west build -p always -b alif_b1_dk_rtss_he zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                                cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
+                                cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
+                                mv /root/alif/public/build $WORKSPACE
+                                cd $WORKSPACE
+                                tar -cvf build_server.tar build/
+                                pwd
+                                ls -la
+                                '''
+                                stash name: 'echo_server.bin', includes: 'zephyr.bin'
+                                stash name: 'echo_server_B1-test-app.json', includes: 'B1-test-app.json'
+                                Build_SW_Echo_Server = 'Pass'
+                            } catch (Exception e) {
+                                Build_SW_Echo_Server = 'Fail'
+                                error('Build failed')
+                            }
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: '*.tar', fingerprint: true
+                }
+            }
+        }
+
+
+        stage('Flash the board for echo_client') {
+            agent { label 'lasse' }
+            options { skipDefaultCheckout() }
+            steps {
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        try {
+                            unstash name: 'echo_client.bin'
+                            unstash name: 'echo_client_B1-test-app.json'
+                            sh """#!/bin/bash -xe
+                            pwd
+                            echo ""
+                            rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
+                            cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
+                            cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
+                            pushd $ALIF_SETOOLS_LOCATION
+                            sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                            ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                            ./app-gen-toc --filename build/config/B1-test-app.json
+                            ./app-write-mram -p
+                            popd
+                            """
+                            Flash_board_echo_client = 'Pass'
+                        } catch (Exception e) {
+                            Flash_board_echo_client = 'Fail'
+                            error('Flash_board failed')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Flash the board for echo_server') {
+            agent { label 'lasse' }
+            options { skipDefaultCheckout() }
+            steps {
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        try {
+                            unstash name: 'echo_server.bin'
+                            unstash name: 'echo_server_B1-test-app.json'
+                            sh """#!/bin/bash -xe
+                            pwd
+                            echo ""
+                            rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
+                            cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
+                            cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
+                            pushd $ALIF_SETOOLS_LOCATION
+                            sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                            ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                            ./app-gen-toc --filename build/config/B1-test-app.json
+                            ./app-write-mram -p
+                            popd
+                            """
+                            Flash_board_echo_server = 'Pass'
+                        } catch (Exception e) {
+                            Flash_board_echo_server = 'Fail'
+                            error('Flash_board failed')
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Done') {
+            steps {
+                echo "Pipeline Pr check completed successfully for ${env.BRANCH_NAME}"
+                
+            }
+        }
+    }
+}
+
