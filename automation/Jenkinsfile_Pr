@@ -34,10 +34,11 @@ pipeline {
                             git clean -fd
                             git pull
                             if [[ -v CHANGE_ID ]]; then
-                            git branch -D pr-\${CHANGE_ID} || true
-                            git clean -fd
-                            git fetch origin pull/\${CHANGE_ID}/head:pr-\${CHANGE_ID}
-                            git checkout pr-\${CHANGE_ID}
+                                git branch -D pr-\${CHANGE_ID} || true
+                                git clean -fd
+                                git fetch origin pull/\${CHANGE_ID}/head:pr-\${CHANGE_ID}
+                                git checkout pr-\${CHANGE_ID}
+                            fi
                             cd ..
                             west update
                             ls -la
