@@ -137,6 +137,20 @@ static pcm_sample_t pcm_temp_buffer[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS]
 				   [MAX_SAMPLES_PER_AUDIO_BLOCK];
 #endif
 
+static int get_channel_index(struct audio_decoder const *const decoder, size_t channel_id)
+{
+	if (channel_id >= ARRAY_SIZE(decoder->channel)) {
+		/* channel_id could be 2 * CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS in case of
+		 * bidirectional audio
+		 */
+		channel_id -= ARRAY_SIZE(decoder->channel);
+		if (channel_id >= ARRAY_SIZE(decoder->channel)) {
+			return -EINVAL;
+		}
+	}
+	return channel_id;
+}
+
 __ramfunc static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 {
 	struct audio_decoder *dec = (struct audio_decoder *)p1;
@@ -484,24 +498,28 @@ int audio_decoder_add_channel(struct audio_decoder *const decoder, size_t const 
 		return -EINVAL;
 	}
 
-	if (channel_id >= ARRAY_SIZE(decoder->channel)) {
-		return -EINVAL;
+	LOG_DBG("Adding channel %u", channel_id);
+
+	int const ch_index = get_channel_index(decoder, channel_id);
+
+	if (ch_index < 0) {
+		return ch_index;
 	}
 
-	struct sdu_queue *queue = decoder->channel[channel_id].sdu_queue;
-	struct iso_datapath_ctoh *iso_dp = decoder->channel[channel_id].iso_dp;
+	struct sdu_queue *queue = decoder->channel[ch_index].sdu_queue;
+	struct iso_datapath_ctoh *iso_dp = decoder->channel[ch_index].iso_dp;
 
 	sdu_queue_delete(queue);
 	iso_datapath_ctoh_delete(iso_dp);
 
-	decoder->channel[channel_id].sdu_queue = queue =
+	decoder->channel[ch_index].sdu_queue = queue =
 		sdu_queue_create(CONFIG_ALIF_BLE_AUDIO_SDU_QUEUE_LENGTH, octets_per_frame);
 	if (!queue) {
 		LOG_ERR("Failed to create SDU queue (index %u)", channel_id);
 		return -ENOMEM;
 	}
 
-	decoder->channel[channel_id].iso_dp = iso_dp = iso_datapath_ctoh_init(channel_id, queue);
+	decoder->channel[ch_index].iso_dp = iso_dp = iso_datapath_ctoh_init(channel_id, queue);
 	if (!iso_dp) {
 		LOG_ERR("Failed to create ISO datapath (index %u)", channel_id);
 		return -ENOMEM;
@@ -516,11 +534,17 @@ int audio_decoder_start_channel(struct audio_decoder *const decoder, size_t cons
 		return -EINVAL;
 	}
 
-	if (channel_id >= ARRAY_SIZE(decoder->channel)) {
-		return -EINVAL;
+	LOG_DBG("Starting channel %u", channel_id);
+
+	int const ch_index = get_channel_index(decoder, channel_id);
+
+	if (ch_index < 0) {
+		return ch_index;
 	}
 
-	return iso_datapath_ctoh_start(decoder->channel[channel_id].iso_dp);
+	int err = iso_datapath_ctoh_start(decoder->channel[ch_index].iso_dp);
+
+	return err;
 }
 
 int audio_decoder_stop_channel(struct audio_decoder *const decoder, size_t const channel_id)
@@ -529,11 +553,15 @@ int audio_decoder_stop_channel(struct audio_decoder *const decoder, size_t const
 		return -EINVAL;
 	}
 
-	if (channel_id >= ARRAY_SIZE(decoder->channel)) {
-		return -EINVAL;
+	LOG_DBG("Stopping channel %u", channel_id);
+
+	int const ch_index = get_channel_index(decoder, channel_id);
+
+	if (ch_index < 0) {
+		return ch_index;
 	}
 
-	return iso_datapath_ctoh_stop(decoder->channel[channel_id].iso_dp);
+	return iso_datapath_ctoh_stop(decoder->channel[ch_index].iso_dp);
 }
 
 int audio_decoder_register_cb(struct audio_decoder *const decoder, audio_decoder_sdu_cb_t const cb,

@@ -14,4 +14,5 @@ target_sources(app PRIVATE
     src/main.c
     src/unicast_sink.c
     src/audio_datapath.c
+    src/storage.c
 )

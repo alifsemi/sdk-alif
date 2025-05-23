@@ -9,7 +9,9 @@
 
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys_clock.h>
 #include <stdlib.h>
+#include <alif_ble.h>
 #include "gapi_isooshm.h"
 #include "iso_datapath_htoc.h"
 #include "presentation_compensation.h"
@@ -83,7 +85,7 @@ struct sdu_timing_info {
 	uint16_t seq_num;
 };
 
-__ramfunc static void send_next_sdu(struct iso_datapath_htoc *const datapath)
+__ramfunc static void send_next_sdu(struct iso_datapath_htoc *const datapath, bool const lock)
 {
 	void *p_sdu = NULL;
 	int ret = k_msgq_get(&datapath->sdu_queue->msgq, (void *)&p_sdu, K_NO_WAIT);
@@ -93,7 +95,18 @@ __ramfunc static void send_next_sdu(struct iso_datapath_htoc *const datapath)
 		return;
 	}
 
+	if (lock) {
+		/* Lock is needed to protect in case of bidirectional transfer
+		 * while DMA is not supported yet. Copy is synchronous at the moment
+		 * which could cause a race condition if incoming data is processed.
+		 * Can be removed when DMA is supported.
+		 */
+		alif_ble_mutex_lock(K_FOREVER);
+	}
 	ret = gapi_isooshm_dp_set_buf(&datapath->dp, p_sdu);
+	if (lock) {
+		alif_ble_mutex_unlock();
+	}
 
 	if (!ret) {
 		return;
@@ -115,7 +128,7 @@ __ramfunc static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
 
 	struct iso_datapath_htoc *const datapath = CONTAINER_OF(dp, struct iso_datapath_htoc, dp);
 
-	send_next_sdu(datapath);
+	send_next_sdu(datapath, false);
 
 	if (buf) {
 		k_mem_slab_free(&datapath->sdu_queue->slab, buf);
@@ -307,7 +320,7 @@ __ramfunc void iso_datapath_htoc_notify_sdu_available(void *const datapath,
 
 	if (iso_dp->awaiting_sdu) {
 		iso_dp->awaiting_sdu = false;
-		send_next_sdu(iso_dp);
+		send_next_sdu(iso_dp, true);
 	}
 
 	if (!iso_dp->timing_master_channel) {
