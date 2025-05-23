@@ -115,4 +115,6 @@ int main(void)
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;
 	}
+
+	return 0;
 }
