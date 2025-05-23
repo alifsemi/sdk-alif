@@ -75,13 +75,13 @@ def verify_checkpatch() {
         if [[ -v CHANGE_ID ]]; then
           GIT_REMOTE=`git remote`
           echo \$GIT_REMOTE
-          if ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...\${GIT_REMOTE}/main ; then
-            echo "Checkpatch OK"
-          else
-            echo "ERROR: ../zephyr/scripts/checkpatch.pl detected errors/warnings."
+          ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...\${GIT_REMOTE}/main
+          STATUS=\$?
+          if [ \$STATUS -ne 0 ]; then
+            exit \$STATUS
           fi
         else
-          echo "Checkpatch OK - skipped"
+          echo "Checkpatch skipped"
         fi
 
         deactivate"""
