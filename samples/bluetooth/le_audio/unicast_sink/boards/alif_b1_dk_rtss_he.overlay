@@ -76,9 +76,8 @@
 
 &pinctrl_i2s0 {
 	group0 {
-		/* Note: defined pinmux names are wrong so just setting numbers directly */
-		pinmux = <PINMUX_PIN(PIN_P2_4, 2)>, /* I2S0 SDI A  */
-			 <PINMUX_PIN(PIN_P2_5, 2)>, /* I2S0 SDO A  */
+		pinmux = <PIN_P2_4__I2S0_SDI_B>,
+			 <PIN_P2_5__I2S0_SDO_B>,
 			 <PIN_P1_7__I2S0_WS_A>,
 			 <PIN_P1_6__I2S0_SCLK_A>;
 	};

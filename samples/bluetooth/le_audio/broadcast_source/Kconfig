@@ -44,6 +44,16 @@ config APP_PRINT_STATS_INTERVAL
 	  count, e.g. 1024 means to print the statistics every 512 SDUs (per channel). With a 10 ms
 	  SDU interval this is around 10 seconds.
 
+config MICROPHONE_GAIN
+	int "Microphone gain in percentage"
+	default 800
+	range 100 1000
+
+config INPUT_VOLUME_LEVEL
+	int "Input volume level in percentage when MIC input is active"
+	default 33
+	range 10 100
+
 menu "Logging"
 
 module = MAIN
@@ -52,6 +62,10 @@ source "subsys/logging/Kconfig.template.log_config"
 
 module = BROADCAST_SOURCE
 module-str = broadcast_source
+source "subsys/logging/Kconfig.template.log_config"
+
+module = AUDIO_DATAPATH
+module-str = audio_datapath
 source "subsys/logging/Kconfig.template.log_config"
 
 endmenu # "Logging"
