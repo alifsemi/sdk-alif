@@ -16,7 +16,7 @@
  * 10ms frame has 480 bytes and 7.5ms has 360 bytes.
  */
 #define MAX_SAMPLES_PER_AUDIO_BLOCK 480
-#define MAX_NUMBER_OF_CHANNELS 2
+#define MAX_NUMBER_OF_CHANNELS      2
 
 typedef int16_t pcm_sample_t;
 
@@ -26,8 +26,7 @@ struct audio_block {
 	size_t num_channels;
 	/** 16-bit signed PCM values */
 	union {
-		pcm_sample_t channels[MAX_NUMBER_OF_CHANNELS]
-				     [MAX_SAMPLES_PER_AUDIO_BLOCK];
+		pcm_sample_t channels[MAX_NUMBER_OF_CHANNELS][MAX_SAMPLES_PER_AUDIO_BLOCK];
 		struct {
 			pcm_sample_t buf_left[MAX_SAMPLES_PER_AUDIO_BLOCK];
 #if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
@@ -56,9 +55,8 @@ struct audio_queue {
  * source use case is an exception where all parameters can be fixed at compile time).
  *
  * @param item_count Number of audio blocks in the queue
- * @param number_of_channels Number of channels in the audio stream
  * @param sampling_freq_hz Sampling frequency in Hz
- * @param frame_duration Frame duration. @ref enum audio_queue_duration
+ * @param frame_duration_us Frame duration. @ref enum audio_queue_duration
  *
  * @retval Pointer to created audio queue header if successful
  * @retval NULL if an error occurred
