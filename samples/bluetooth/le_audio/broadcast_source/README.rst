@@ -11,6 +11,10 @@ This sample demonstrates the LE audio broadcast source use-case.
 The broadcast name used can be configured using `CONFIG_BROADCAST_NAME`.
 This might need to be changed for compatibility with a 3rd party broadcast sink device, as the broadcast name is sometimes used to choose which broadcast source to receive from.
 
+Push-to-talk feature is also included in this sample. Push-to-talk feature is enabled by default.
+This means that input audio gain will be lowered and MIC input mixed into audio samples when the devkit's joystick button is pressed.
+This feature can be disabled by removing  `i2s-mic = &i2s2;` from the board's devicetree overlay file.
+
 Building and Running
 ********************
 

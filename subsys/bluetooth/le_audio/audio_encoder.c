@@ -351,7 +351,7 @@ struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *pa
 	/* Create and start thread */
 	enc->tid = k_thread_create(&enc->thread, encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE,
 				   audio_encoder_thread_func, enc, NULL, NULL,
-				   CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY /*+ 1*/, 0, K_NO_WAIT);
+				   CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY + 1, 0, K_NO_WAIT);
 	if (!enc->tid) {
 		LOG_ERR("Failed to create encoder thread");
 		audio_encoder_delete(enc);
@@ -361,6 +361,14 @@ struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *pa
 	k_thread_name_set(enc->tid, "lc3_encoder");
 
 	return enc;
+}
+
+struct audio_queue *audio_encoder_audio_queue_get(struct audio_encoder *encoder)
+{
+	if (!encoder) {
+		return NULL;
+	}
+	return encoder->audio_queue;
 }
 
 int audio_encoder_add_channel(struct audio_encoder *const encoder, size_t const octets_per_frame,
