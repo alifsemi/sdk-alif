@@ -11,6 +11,8 @@ The Alif DevKit is a development board featuring an Alif multi-core SoC, offerin
 
 The **Ensemble DevKit (DK-E7)**  allows you to configure the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
 
+The **Ensemble DevKit (DK-E8)**  allows you to configure the E8 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E6, and E4 series devices using a single kit.
+
 The **Ensemble E1C DevKit (DK-E1C)** is designed to explore the Compact series of Ensemble devices.
 
 The **Balletto DevKit (DK-B1)** introduces the Balletto B1 series, a wireless MCU with integrated hardware acceleration for AI/ML workloads. It combines Bluetooth Low Energy 5.3 and 802.15.4 based Thread protocols, an Ethos-U55 microNPU for AI acceleration, and a Cortex-M55 MCU core.
@@ -162,6 +164,9 @@ List of Supported Peripheral Devices and Features
 
 - **Ethos U55**:
   Pairs with Cortex-M55 for AI/ML acceleration using Arm v8.1 and Helium MVE.
+
+- **Ethos U85**:
+  Support for Arm Ethos-U85 enables scalable, energy-efficient edge AI with native transformer model acceleration.
 
 - **MCU-BOOT**:
   A secure bootloader for firmware upgrades, leveraging Zephyr’s HAL.

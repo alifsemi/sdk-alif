@@ -5,6 +5,6 @@
 .. _`ArmCLang Download`: https://developer.arm.com/Tools%20and%20Software/Arm%20Compiler%20for%20Embedded
 .. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
 .. _`Zephyr OS GitHub`: https://github.com/zephyrproject-rtos/zephyr
-.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v1.3.0/user_guide.pdf
+.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v1.4.0/user_guide.pdf
 .. _`Alif Trademarks`: https://alifsemi.com/legal
 .. _`Zephyr Project website`: https://www.zephyrproject.org

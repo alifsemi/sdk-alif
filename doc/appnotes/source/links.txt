@@ -1,0 +1,3 @@
+.. ### This page lists links used in Alif docs.
+
+.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v1.4.0/user_guide.pdf
