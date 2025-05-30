@@ -13,4 +13,6 @@ project(le_audio_broadcast_source)
 target_sources(app PRIVATE
     src/main.c
     src/broadcast_source.c
+    src/audio_datapath.c
+    src/mic_source.c
 )

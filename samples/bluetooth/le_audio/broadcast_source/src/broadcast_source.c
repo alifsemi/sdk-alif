@@ -8,17 +8,16 @@
  */
 
 #include <zephyr/kernel.h>
-#include <zephyr/device.h>
-#include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/random/random.h>
-#include "bluetooth/le_audio/audio_encoder.h"
 #include "bluetooth/le_audio/audio_utils.h"
+
+#include "ke_mem.h"
 #include "bap.h"
 #include "bap_bc.h"
 #include "bap_bc_src.h"
 #include "broadcast_source.h"
-#include "gapi_isooshm.h"
+#include "audio_datapath.h"
 
 LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 
@@ -26,84 +25,37 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 #define SUBGROUP_ID           0
 #define BIS_ID_BASE           0
 
-#define I2S_NODE   DT_ALIAS(i2s_bus)
-#define CODEC_NODE DT_ALIAS(audio_codec)
+#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS >= 2
+#define STREAM_LOCATIONS (GAF_LOC_FRONT_LEFT_BIT | GAF_LOC_FRONT_RIGHT_BIT)
+#else
+#define STREAM_LOCATIONS (GAF_LOC_FRONT_LEFT_BIT)
+#endif
 
-const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
-const struct device *codec_dev = DEVICE_DT_GET(CODEC_NODE);
-
+static uint32_t stream_ids[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
 /* Local ID of the broadcast group */
 static uint8_t bcast_grp_lid;
 
-/* Audio datapath handles */
-static struct audio_encoder *audio_encoder;
-
-#if CONFIG_APP_PRINT_STATS
-static void on_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
+static void *alloc_stream_config(uint32_t const location_bf)
 {
-	if ((sdu_seq % CONFIG_APP_PRINT_STATS_INTERVAL) == 0) {
-		LOG_INF("SDU sequence number: %u", sdu_seq);
-	}
-}
-#endif
+	/* NOTE: ke_malloc_user must be used to reserve buffer from correct heap! */
+	bap_cfg_t *p_stream_cfg = ke_malloc_user(sizeof(*p_stream_cfg), KE_MEM_PROFILE);
 
-#ifdef CONFIG_PRESENTATION_COMPENSATION_DEBUG
-void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
-{
-	LOG_INF("Presentation compensation debug data is ready");
-}
-#endif
-
-static int audio_datapath_init(void)
-{
-	if (!device_is_ready(i2s_dev)) {
-		LOG_WRN("I2S device is not ready");
-		return -ENODEV;
-	}
-	if (!device_is_ready(codec_dev)) {
-		LOG_WRN("Audio codec device is not ready");
-		return -ENODEV;
+	if (!p_stream_cfg) {
+		LOG_ERR("Failed to allocate memory for stream configuration");
+		return NULL;
 	}
 
-	struct audio_encoder_params const enc_params = {
-		.i2s_dev = i2s_dev,
-		.frame_duration_us =
-			IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS) ? 10000 : 7500,
-		.sampling_rate_hz = CONFIG_ALIF_BLE_AUDIO_FS_HZ,
-		.audio_buffer_len_us = 2 * CONFIG_ALIF_BLE_AUDIO_MAX_TLATENCY,
+	p_stream_cfg->param = (bap_cfg_param_t){
+		/* Just set specific location. Other parameters are inherited from subgroup */
+		.sampling_freq = BAP_SAMPLING_FREQ_UNKNOWN,
+		.frame_dur = BAP_FRAME_DUR_UNKNOWN,
+		.frames_sdu = 0,
+		.frame_octet = 0,
+		.location_bf = location_bf,
 	};
+	p_stream_cfg->add_cfg.len = 0;
 
-	audio_encoder_delete(audio_encoder);
-
-	audio_encoder = audio_encoder_create(&enc_params);
-	if (!audio_encoder) {
-		LOG_ERR("Failed to create audio encoder");
-		return -ENODEV;
-	}
-
-#if CONFIG_APP_PRINT_STATS
-	int ret = audio_encoder_register_cb(audio_encoder, on_frame_complete, NULL);
-
-	if (ret != 0) {
-		LOG_ERR("Failed to register encoder cb for stats, err %d", ret);
-		return ret;
-	}
-#endif
-
-	return 0;
-}
-
-static void audio_datapath_start(const uint8_t stream_lid)
-{
-	int retval;
-
-	for (int iter = 0; iter < CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS; iter++) {
-		retval = audio_encoder_start_channel(audio_encoder, stream_lid + iter);
-		if (retval != 0) {
-			LOG_ERR("Failed to start channel %d, err %d", iter, retval);
-			__ASSERT(false, "Failed to start channel");
-		}
-	}
+	return p_stream_cfg;
 }
 
 static void on_bap_bc_src_cmp_evt(const uint8_t cmd_type, const uint16_t status,
@@ -137,8 +89,9 @@ static void on_bap_bc_src_cmp_evt(const uint8_t cmd_type, const uint16_t status,
 
 	case BAP_BC_SRC_CMD_TYPE_START_STREAMING: {
 		LOG_INF("Started streaming");
-
-		audio_datapath_start(BIS_ID_BASE);
+		for (size_t iter = 0; iter < ARRAY_SIZE(stream_ids); iter++) {
+			audio_datapath_start(stream_ids[iter]);
+		}
 		break;
 	}
 
@@ -222,37 +175,49 @@ static int broadcast_source_configure_group(void)
 
 	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
 	 * statically allocated
+	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
 	 */
-	static bap_cfg_t sgrp_cfg = {
-		.param = {
-				.location_bf = 0, /* Location is unspecified at subgroup level */
-				.frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
-				.frame_dur = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS)
-						     ? BAP_FRAME_DUR_10MS
-						     : BAP_FRAME_DUR_7_5MS,
-				.frames_sdu =
-					0, /* 0 is unspecified, data will not be placed in BASE */
-			},
-		.add_cfg.len = 0,
+	bap_cfg_t *sgrp_cfg = ke_malloc_user(sizeof(*sgrp_cfg), KE_MEM_PROFILE);
+
+	if (!sgrp_cfg) {
+		LOG_ERR("Failed to allocate memory for subgroup configuration");
+		return -ENOMEM;
+	}
+	sgrp_cfg->param = (bap_cfg_param_t){
+		/* Location is unspecified at subgroup level */
+		.location_bf = 0,
+		.frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
+		.frame_dur = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS)
+				     ? BAP_FRAME_DUR_10MS
+				     : BAP_FRAME_DUR_7_5MS,
+		/* 0 is unspecified, data will not be placed in BASE */
+		.frames_sdu = 0,
+		/* Convert to sampling frequency */
+		.sampling_freq = audio_hz_to_bap_sampling_freq(CONFIG_ALIF_BLE_AUDIO_FS_HZ),
 	};
-	/* Convert to sampling frequency */
-	sgrp_cfg.param.sampling_freq = audio_hz_to_bap_sampling_freq(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
+	sgrp_cfg->add_cfg.len = 0;
 
 	/* Validate sampling frequency conversion */
-	if (sgrp_cfg.param.sampling_freq == BAP_SAMPLING_FREQ_UNKNOWN) {
+	if (sgrp_cfg->param.sampling_freq == BAP_SAMPLING_FREQ_UNKNOWN) {
 		LOG_ERR("Unsupported sampling frequency: %u Hz", CONFIG_ALIF_BLE_AUDIO_FS_HZ);
 		return -1;
 	}
 
 	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
 	 * statically allocated
+	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
 	 */
-	static const bap_cfg_metadata_t sgrp_meta = {
-		.param.context_bf = BAP_CONTEXT_TYPE_UNSPECIFIED_BIT | BAP_CONTEXT_TYPE_MEDIA_BIT,
-		.add_metadata.len = 0,
-	};
+	bap_cfg_metadata_t *sgrp_meta = ke_malloc_user(sizeof(*sgrp_meta), KE_MEM_PROFILE);
 
-	err = bap_bc_src_set_subgroup(bcast_grp_lid, SUBGROUP_ID, &codec_id, &sgrp_cfg, &sgrp_meta);
+	if (!sgrp_meta) {
+		ke_free(sgrp_cfg);
+		LOG_ERR("Failed to allocate memory for subgroup metadata");
+		return -ENOMEM;
+	}
+	sgrp_meta->param.context_bf = BAP_CONTEXT_TYPE_UNSPECIFIED_BIT | BAP_CONTEXT_TYPE_MEDIA_BIT;
+	sgrp_meta->add_metadata.len = 0;
+
+	err = bap_bc_src_set_subgroup(bcast_grp_lid, SUBGROUP_ID, &codec_id, sgrp_cfg, sgrp_meta);
 
 	if (err) {
 		LOG_ERR("Failed to set subgroup, err %u", err);
@@ -262,48 +227,35 @@ static int broadcast_source_configure_group(void)
 
 	const uint16_t dp_id = GAPI_DP_ISOOSHM;
 
-	/* This struct must be accessible to the BLE stack for the lifetime of the BIG, so is
-	 * statically allocated
-	 */
-	static const bap_cfg_t stream_cfg[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS] = {
-		{.param = {
-				 .sampling_freq =
-					 BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
-				 .frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
-				 .frames_sdu = 0,                    /* Inherited from subgroup */
-				 .frame_octet = 0,                   /* Inherited from subgroup */
-				 .location_bf = GAF_LOC_FRONT_LEFT_BIT,
-			 },
-		 .add_cfg.len = 0},
-#if CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS > 1
-		{.param = {
-				 .sampling_freq =
-					 BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
-				 .frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
-				 .frames_sdu = 0,                    /* Inherited from subgroup */
-				 .frame_octet = 0,                   /* Inherited from subgroup */
-				 .location_bf = GAF_LOC_FRONT_RIGHT_BIT,
-			 },
-		 .add_cfg.len = 0},
-#endif
-	};
+	size_t stream_bits = STREAM_LOCATIONS;
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(stream_cfg); iter++) {
+	for (size_t iter = 0; stream_bits != 0; stream_bits >>= 1, iter++) {
+		if (!(stream_bits & 1)) {
+			continue;
+		}
 
-		err = bap_bc_src_set_stream(bcast_grp_lid, iter + BIS_ID_BASE, SUBGROUP_ID, dp_id,
-					    0, &stream_cfg[iter]);
+		const uint32_t stream_id = iter + BIS_ID_BASE;
+		bap_cfg_t *stream_cfg = alloc_stream_config(0x1 << iter);
 
+		if (!stream_cfg) {
+			LOG_ERR("Failed to allocate memory for stream configuration");
+			return -ENOMEM;
+		}
+
+		err = bap_bc_src_set_stream(bcast_grp_lid, stream_id, SUBGROUP_ID, dp_id, 0,
+					    stream_cfg);
 		if (err) {
-			LOG_ERR("Failed to set stream %u, err %u", iter + BIS_ID_BASE, err);
+			ke_free(stream_cfg);
+			LOG_ERR("Failed to set stream %u, err %u", stream_id, err);
 			return -1;
 		}
-		err = audio_encoder_add_channel(audio_encoder,
-						CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
-						iter + BIS_ID_BASE);
+
+		err = audio_datapath_channel_create(sgrp_cfg->param.frame_octet, stream_id);
 		if (err) {
-			LOG_ERR("Failed to add stream channel %u. err %d", iter + BIS_ID_BASE, err);
 			return -1;
 		}
+
+		stream_ids[iter] = stream_id;
 	}
 
 	LOG_DBG("Broadcast stream added");
@@ -316,7 +268,7 @@ static int broadcast_source_enable(void)
 	uint8_t ad_data[1 + sizeof(CONFIG_BLE_DEVICE_NAME)];
 
 	ad_data[0] = sizeof(ad_data) - 1; /* Size of data following the size byte */
-	ad_data[1] = 0x09;                /* Complete local name */
+	ad_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
 
 	memcpy(&ad_data[2], CONFIG_BLE_DEVICE_NAME, sizeof(ad_data) - 2);
 
