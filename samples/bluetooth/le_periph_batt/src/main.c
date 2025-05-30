@@ -27,14 +27,13 @@
 #include "batt_svc.h"
 #include "shared_control.h"
 
-#define BATT_INSTANCE 0x00
-#define BT_CONN_STATE_CONNECTED	   0x00
+#define BATT_INSTANCE              0x00
+#define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
-
 extern void service_conn(struct shared_control *ctrl);
-struct shared_control ctrl = { false, 0, 0 };
+struct shared_control ctrl = {false, 0, 0};
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
@@ -50,12 +49,12 @@ struct conn_status {
 /**
  * Bluetooth stack configuration
  */
-static const gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
-	.privacy_cfg = 0,
+	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT, /*privacy address bit*/
 	.renew_dur = 1500,
-	.private_identity.addr = {0xCA, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
+	.private_identity.addr = {0xCA, 0xFE, 0xFB, 0xDE, 0x11, 0xC7},
 	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
@@ -70,7 +69,7 @@ static const gapm_config_t gapm_cfg = {
 	.dflt_link_policy = 0, /* BT Classic only */
 };
 
- /* Load name from configuration file */
+/* Load name from configuration file */
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 static const char device_name[] = DEVICE_NAME;
 
@@ -96,14 +95,14 @@ static uint16_t start_le_adv(uint8_t actv_idx)
  * Bluetooth GAPM callbacks
  */
 static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-			const gap_bdaddr_t *p_peer_addr,
-			const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
+				 const gap_bdaddr_t *p_peer_addr,
+				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
 {
 	LOG_INF("Connection request on index %u", conidx);
 	gapc_le_connection_cfm(conidx, 0, NULL);
 
 	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		 p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
+		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
 
 	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
 
@@ -144,7 +143,7 @@ static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint1
 	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
 
 	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
-			(const uint8_t *)device_name);
+			     (const uint8_t *)device_name);
 }
 
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
@@ -152,7 +151,6 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 	/* Send 'unknown' appearance */
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
-
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
 	.le_connection_req = on_le_connection_req,
@@ -209,17 +207,16 @@ static const gapm_callbacks_t gapm_cbs = {
 };
 #endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
-
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
-	/* gatt service identifier */
-	#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
+/* gatt service identifier */
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
 	uint16_t svc = GATT_SVC_BATTERY;
-	#else
+#else
 	uint16_t svc = GATT_SVC_BATTERY_SERVICE;
-	#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 	uint8_t num_svc = 1;
 	const size_t device_name_len = sizeof(device_name) - 1;
@@ -282,11 +279,11 @@ static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t re
 }
 
 static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
-				uint16_t status)
+				 uint16_t status)
 {
 	if (status) {
 		LOG_ERR("Advertising activity process completed with error %u", status);
-	return;
+		return;
 	}
 
 	switch (proc_id) {
@@ -335,18 +332,18 @@ static uint16_t create_advertising(void)
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
-		#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 		.tx_pwr = 0,
-		#else
+#else
 		.max_tx_pwr = 0,
-		#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-			.adv_intv_min = 160, /* 100 ms */
-			.adv_intv_max = 800, /* 500 ms */
-			.ch_map = ADV_ALL_CHNLS_EN,
-			.phy = GAPM_PHY_TYPE_LE_1M,
-		},
+				.adv_intv_min = 160, /* 100 ms */
+				.adv_intv_max = 800, /* 500 ms */
+				.ch_map = ADV_ALL_CHNLS_EN,
+				.phy = GAPM_PHY_TYPE_LE_1M,
+			},
 	};
 
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
@@ -362,17 +359,90 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		LOG_ERR("gapm process completed with error %u", status);
 		return;
 	}
+	gap_bdaddr_t identity;
+
+	gapm_get_identity(&identity);
+
+	if (identity.addr_type == GAP_ADDR_PUBLIC) {
+		LOG_DBG("Device address type: Public");
+	} else {
+		uint32_t const type = identity.addr[5] >> 6;
+
+		switch (type) {
+		case 0b00:
+			LOG_DBG("Device address type: Random Private Non-Resolvable Address");
+			break;
+		case 0b01:
+			LOG_DBG("Device address type: Random Private Resolvable Address");
+			break;
+		case 0b11:
+			LOG_DBG("Device address type: Random Static Address format");
+			break;
+		case 0b10:
+		default:
+			LOG_WRN("Device address type: unknown");
+			break;
+		}
+	}
+	LOG_INF("Device address: %02X:%02X:%02X:%02X:%02X:%02X", identity.addr[5], identity.addr[4],
+		identity.addr[3], identity.addr[2], identity.addr[1], identity.addr[0]);
 
 	LOG_DBG("gapm process completed successfully");
 
 	create_advertising();
 }
 
+static void on_gapm_reset_done(uint32_t metainfo, uint16_t status)
+{
+	gapm_le_adv_create_param_t adv_create_params = {
+		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
+		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
+#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
+		.tx_pwr = 0,
+#else
+		.max_tx_pwr = 0,
+#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
+		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
+		.prim_cfg = {
+				.adv_intv_min = 160, /* 100 ms */
+				.adv_intv_max = 800, /* 500 ms */
+				.ch_map = ADV_ALL_CHNLS_EN,
+				.phy = GAPM_PHY_TYPE_LE_1M,
+			},
+	};
+	uint16_t err;
+
+	if (status) {
+		LOG_ERR("gapm reset completed with error %u", status);
+		return;
+	}
+
+	LOG_DBG("gapm reset completed successfully");
+	/*err = gapm_le_generate_random_addr(private_identity.addr, on_gapm_le_random_addr_cb);
+	if (err) {
+		LOG_ERR("gapm_le_generate_random_addr error %u", err);
+		return -1;
+	}*/
+
+
+	/*err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
+	if (err) {
+		LOG_ERR("gapm_configure error %u", err);
+
+	}
+
+	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
+	if (err) {
+		LOG_ERR("Error %u creating advertising activity", err);
+	}
+	return err;
+*/
+}
 
 int main(void)
 {
 	uint16_t err;
-	
+
 	/* Share connection info */
 	service_conn(&ctrl);
 
