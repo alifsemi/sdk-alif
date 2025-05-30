@@ -29,6 +29,8 @@ Document History
       - Updated the document to include I3C, CAN FD and Touch screen
     * - 1.3
       - Updated the document to include DAC12, UTimer Counter, QDEC and SDMMC
+    * - 1.4
+      - Updated the build and flash sections
 
 Indices and tables
 ==================
