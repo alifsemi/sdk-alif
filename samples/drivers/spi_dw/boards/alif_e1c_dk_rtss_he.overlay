@@ -13,6 +13,11 @@
 */
 
 / {
+
+	chosen {
+		zephyr,console = &lpuart;
+		zephyr,shell-uart = &lpuart;
+	};
 	aliases {
 		master-spi = &lpspi0;
 		slave-spi = &spi0;
@@ -37,3 +42,12 @@
 	dmas = <&dma2 2 20>, <&dma2 3 16>;
 	dma-names = "txdma", "rxdma";
 };
+
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	status = "okay";
+};
+
