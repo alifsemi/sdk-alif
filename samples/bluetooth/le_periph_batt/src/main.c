@@ -50,7 +50,7 @@ struct conn_status {
 };
 
 /**
- * Bluetooth stack configuration
+ * Bluetooth stack configuration for default GAPM configuration.
  */
 gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
