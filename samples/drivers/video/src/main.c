@@ -10,6 +10,10 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
+#ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
+#include <zephyr/drivers/video/hm0360-video-controls.h>
+#endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
+
 #define N_FRAMES		10
 #define N_VID_BUFF		CONFIG_VIDEO_BUFFER_POOL_NUM_MAX
 
@@ -23,6 +27,9 @@ int main(void)
 	size_t bsize;
 	int i = 0;
 	int ret;
+
+	uint32_t last_timestamp = 0;
+	uint32_t frame_time = 0;
 
 	video = DEVICE_DT_GET_ONE(alif_cam);
 	if (!device_is_ready(video)) {
@@ -129,8 +136,18 @@ int main(void)
 			return -1;
 		}
 
-		printk("\rGot frame %u! size: %u; timestamp %u ms\n",
+		LOG_INF("Got frame %u! size: %u; timestamp %u ms",
 		       frame++, vbuf->bytesused, vbuf->timestamp);
+
+		if (last_timestamp == 0) {
+			LOG_INF("FPS: 0.0\n");
+			last_timestamp = vbuf->timestamp;
+		}
+		else {
+			frame_time = vbuf->timestamp - last_timestamp;
+			last_timestamp = vbuf->timestamp;
+			LOG_INF("FPS: %f\n", 1000.0/frame_time);
+		}
 
 		if (i < N_FRAMES - N_VID_BUFF) {
 			ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
@@ -141,7 +158,7 @@ int main(void)
 
 			ret = video_stream_start(video);
 			if (ret) {
-				printk("Unable to start capture (interface). ret - %d\n",
+				LOG_DBG("Unable to start capture (interface). ret - %d\n",
 						ret);
 				return -1;
 			}

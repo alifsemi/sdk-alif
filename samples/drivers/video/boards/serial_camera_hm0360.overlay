@@ -14,6 +14,7 @@
 
 &i2c1 {
 	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST_PLUS>;
 
 	hm0360: hm0360@24 {
 		compatible = "himax,hm0360";
