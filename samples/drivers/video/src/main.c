@@ -10,8 +10,18 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
+#ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
+#include <zephyr/drivers/video/hm0360-video-controls.h>
+#endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
+
 #define N_FRAMES		10
-#define N_VID_BUFF		CONFIG_VIDEO_BUFFER_POOL_NUM_MAX
+#define N_VID_BUFF              MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
+
+#ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
+#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_BGGR8
+#else
+#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_Y10P
+#endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
 int main(void)
 {
@@ -23,6 +33,13 @@ int main(void)
 	size_t bsize;
 	int i = 0;
 	int ret;
+
+#ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
+	uint32_t num_frames;
+#endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
+
+	uint32_t last_timestamp = 0;
+	uint32_t frame_time = 0;
 
 	video = DEVICE_DT_GET_ONE(alif_cam);
 	if (!device_is_ready(video)) {
@@ -50,11 +67,15 @@ int main(void)
 		       fcap->width_min, fcap->width_max, fcap->width_step,
 		       fcap->height_min, fcap->height_max, fcap->height_step);
 
-		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P) {
-			fmt.pixelformat = VIDEO_PIX_FMT_Y10P;
-			fmt.width = fcap->width_min;
-			fmt.height = fcap->height_min;
-			fmt.pitch = fcap->width_min;
+		if (fcap->pixelformat == FORMAT_TO_CAPTURE) {
+			fmt.pixelformat = FORMAT_TO_CAPTURE;
+			if (IS_ENABLED(CONFIG_DT_HAS_HIMAX_HM0360_ENABLED)) {
+				fmt.width = 320;
+				fmt.height = 240;
+			} else {
+				fmt.width = fcap->width_min;
+				fmt.height = fcap->height_min;
+			}
 		}
 		i++;
 	}
@@ -62,6 +83,23 @@ int main(void)
 	if (fmt.pixelformat == 0) {
 		LOG_ERR("Desired Pixel format is not supported.");
 		return -1;
+	}
+
+	switch (fmt.pixelformat) {
+	case VIDEO_PIX_FMT_RGB565:
+		fmt.pitch = fmt.width << 1;
+		break;
+	case VIDEO_PIX_FMT_Y10P:
+		fmt.pitch = (fmt.width + 8) << 1;
+		break;
+	case VIDEO_PIX_FMT_BGGR8:
+	case VIDEO_PIX_FMT_GBRG8:
+	case VIDEO_PIX_FMT_GRBG8:
+	case VIDEO_PIX_FMT_RGGB8:
+	case VIDEO_PIX_FMT_GREY:
+	default:
+		fmt.pitch = fmt.width;
+		break;
 	}
 
 	ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
@@ -100,7 +138,7 @@ int main(void)
 		video_enqueue(video, VIDEO_EP_OUT, buffers[i]);
 
 		printk("capture buffer[%d]: dump binary memory "
-			"\"/home/$USER/path/capture_%d.bin\" 0x%08x 0x%08x -r\n\n",
+			"\"/home/$USER/capture_%d.bin\" 0x%08x 0x%08x -r\n\n",
 			i, i, (uint32_t)buffers[i]->buffer,
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
@@ -112,6 +150,15 @@ int main(void)
 	 * sending out are not clear.
 	 */
 	k_msleep(7000);
+
+	if (IS_ENABLED(CONFIG_DT_HAS_HIMAX_HM0360_ENABLED)) {
+		/* Video test SNAPSHOT capture. */
+		num_frames = N_FRAMES;
+		ret = video_set_ctrl(video, VIDEO_CID_SNAPSHOT_CAPTURE, &num_frames);
+		if (ret) {
+			LOG_INF("Snapshot mode not-supported by CMOS sensor.");
+		}
+	}
 
 	/* Start video capture */
 	ret = video_stream_start(video);
@@ -129,8 +176,17 @@ int main(void)
 			return -1;
 		}
 
-		printk("\rGot frame %u! size: %u; timestamp %u ms\n",
+		LOG_INF("Got frame %u! size: %u; timestamp %u ms",
 		       frame++, vbuf->bytesused, vbuf->timestamp);
+
+		if (last_timestamp == 0) {
+			LOG_INF("FPS: 0.0\n");
+			last_timestamp = vbuf->timestamp;
+		} else {
+			frame_time = vbuf->timestamp - last_timestamp;
+			last_timestamp = vbuf->timestamp;
+			LOG_INF("FPS: %f\n", 1000.0/frame_time);
+		}
 
 		if (i < N_FRAMES - N_VID_BUFF) {
 			ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
@@ -141,7 +197,7 @@ int main(void)
 
 			ret = video_stream_start(video);
 			if (ret) {
-				printk("Unable to start capture (interface). ret - %d\n",
+				LOG_ERR("Unable to start capture (interface). ret - %d\n",
 						ret);
 				return -1;
 			}
