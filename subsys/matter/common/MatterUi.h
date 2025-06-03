@@ -32,10 +32,12 @@ class MatterUi
 	static int StatusLedInit(void);
 	static int BleLedInit(void);
 	static void StatusLedTimer(k_timer * timer);
+	static void AppFactoryResetEventHandler(intptr_t aArg);
 
 	struct k_work_delayable buttonWork;
 	struct k_timer mLedTimer;
 	ButtonHandler mButtonHandler = nullptr;
+	int64_t mRefTime = 0;
 	int mLedPeriod = 0;
 	bool mBleLedActive = false;
 	bool mSingleEvent = false;
@@ -49,6 +51,7 @@ class MatterUi
 	void BleLedSet(bool enable);
 	void BleLedTogle();
 	void StatusLedTimerStart(int period_ms, bool ble_led, bool single_event);
+	void AppFactoryResetEventTrig(void);
 	static MatterUi &Instance()
 	{
 		static MatterUi sMatterUi;
