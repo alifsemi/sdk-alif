@@ -26,6 +26,7 @@
 		pwm-led0 = &pwm_ut2;
 		sw0 = &button0;
 		sw1 = &button1;
+		sw2 = &button2;
 	};
 	pwmleds {
 		compatible = "pwm-leds";
@@ -44,6 +45,12 @@
 		button1: button_1 {
 			gpios = < &gpio5 6 GPIO_ACTIVE_LOW >;
 			label = "SW1";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+
+		button2: button_2 {
+			gpios = < &gpio5 5 GPIO_ACTIVE_LOW >;
+			label = "SW2";
 			zephyr,code = <INPUT_KEY_1>;
 		};
 	};
@@ -81,7 +88,8 @@
 	};
 
 	group1 {
-		pinmux = < PIN_P5_6__GPIO >,
+		pinmux = < PIN_P5_5__GPIO >,
+			 < PIN_P5_6__GPIO >,
 			 < PIN_P5_7__GPIO >;
 		driver_state_control = <1>;
 	};
