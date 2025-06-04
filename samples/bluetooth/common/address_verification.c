@@ -20,7 +20,7 @@ gapm_config_t *local_gapm_cfg;
 
 uint8_t address_verif(uint8_t SAMPLE_ADDR_TYPE, gapm_config_t *gapm_cfg)
 {
-		uint8_t adv_type = GAPM_STATIC_ADDR; /*Default value*/
+	int8_t adv_type = GAPM_STATIC_ADDR; /*Default value*/
 
 		local_gapm_cfg = gapm_cfg;
 		switch (SAMPLE_ADDR_TYPE) {
@@ -37,9 +37,8 @@ uint8_t address_verif(uint8_t SAMPLE_ADDR_TYPE, gapm_config_t *gapm_cfg)
 				break;
 		default:
 				break;
-		case ALIF_GEN_RSLV_RAND_ADDR:   /*DO CHANGES*/
+		case ALIF_GEN_RSLV_RAND_ADDR:
 				local_gapm_cfg->privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT;
-				/*sys_rand_get(gapm_cfg->private_identity.addr, GAP_BD_ADDR_LEN);*/
 				gapm_cfg->private_identity.addr[5] |= 0x40; /*MSB position*/
 				gapm_cfg->private_identity.addr[5] &= !0x80; /*Do not set to 11*/
 				gapm_cfg->irk = (gap_sec_key_t) {.key = {0x12, 0xCE,
