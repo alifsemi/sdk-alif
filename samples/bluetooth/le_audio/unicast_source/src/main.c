@@ -22,9 +22,6 @@
 #include "unicast_source.h"
 #include "storage.h"
 
-/** Enable for bonding support */
-#define BONDING_ENABLED 1
-
 #define APPEARANCE_EARBUDS 0x0941
 #define APPEARANCE_HEADSET 0x0942
 
@@ -71,7 +68,7 @@ static const gap_sec_key_t gapm_irk = {.key = {0xA1, 0xB2, 0xC3, 0xD5, 0xE6, 0xF
 static int request_pairing_and_bonding(uint8_t const conidx)
 {
 	gapc_pairing_t const pairing_info = {
-#if BONDING_ENABLED
+#if CONFIG_BONDING_ALLOWED
 		.auth = GAP_AUTH_REQ_SEC_CON_BOND,
 		.iocap = GAP_IO_CAP_KB_DISPLAY,
 #else
@@ -89,7 +86,7 @@ static int request_pairing_and_bonding(uint8_t const conidx)
 		return -1;
 	}
 
-#if BONDING_ENABLED
+#if CONFIG_BONDING_ALLOWED
 	LOG_DBG("Peer %u pairing and bonding initiated...", conidx);
 #else
 	LOG_DBG("Peer %u pairing initiated...", conidx);
@@ -343,6 +340,8 @@ static const gapc_security_cb_t gapc_sec_cbs = {
 static void on_disconnection(uint8_t const conidx, uint32_t const metainfo, uint16_t const reason)
 {
 	LOG_INF("Peer %u disconnected for reason %u", conidx, reason);
+
+	/* unicast_source_scan_start(); */
 }
 
 static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
@@ -471,6 +470,8 @@ int connect_to_device(const gap_bdaddr_t *p_peer_addr)
 #define CE_LEN_MAX        3
 #define SUPERVISION_MS    5000
 
+	/* clang-format off */
+
 	gapm_le_init_param_t const init_params = {
 		.prop = (GAPM_INIT_PROP_1M_BIT | GAPM_INIT_PROP_2M_BIT),
 		.conn_to = 100, /* Timeout in 10ms units = 1 second */
@@ -504,6 +505,8 @@ int connect_to_device(const gap_bdaddr_t *p_peer_addr)
 		},
 		.peer_addr = *p_peer_addr,
 	};
+
+	/* clang-format on */
 
 	uint16_t err;
 
@@ -539,13 +542,13 @@ static void on_gapm_process_complete(uint32_t const metainfo, uint16_t const sta
 
 	switch (metainfo) {
 	case 1:
-		LOG_INF("GAPM configured successfully");
+		LOG_DBG("GAPM configured successfully");
 		break;
 	case 2:
-		LOG_INF("GAPM name set successfully");
+		LOG_DBG("GAPM name set successfully");
 		break;
 	case 3:
-		LOG_INF("GAPM reset successfully");
+		LOG_DBG("GAPM reset successfully");
 		break;
 	default:
 		LOG_ERR("GAPM Unknown metadata!");
@@ -566,7 +569,7 @@ static void on_gapm_le_random_addr_cb(uint16_t const status, const gap_addr_t *c
 		return;
 	}
 
-	LOG_DBG("Generated resolvable random address: %02X:%02X:%02X:%02X:%02X:%02X",
+	LOG_DBG("Generated address: %02X:%02X:%02X:%02X:%02X:%02X",
 		p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2], p_addr->addr[1],
 		p_addr->addr[0]);
 
@@ -577,15 +580,12 @@ static void on_gapm_le_random_addr_cb(uint16_t const status, const gap_addr_t *c
 
 static int ble_stack_configure(uint8_t const role)
 {
-	LOG_DBG("Configuring GAPM with BLE role %s",
-		GAP_ROLE_LE_CENTRAL == role ? "CENTRAL" : "PERIPHERAL");
-
 	/* Bluetooth stack configuration*/
 	gapm_config_t gapm_cfg = {
 		.role = role,
 		.pairing_mode = GAPM_PAIRING_SEC_CON,
 		.privacy_cfg = 0,
-		.renew_dur = 1500,
+		.renew_dur = 15 * 60, /* 15 minutes */
 		.private_identity.addr = {0},
 		.irk = gapm_irk,
 		.gap_start_hdl = 0,
@@ -617,7 +617,7 @@ static int ble_stack_configure(uint8_t const role)
 	}
 
 	/* Generate resolvable random address */
-	err = gapm_le_generate_random_addr(GAP_BD_ADDR_RSLV, on_gapm_le_random_addr_cb);
+	err = gapm_le_generate_random_addr(GAP_BD_ADDR_STATIC, on_gapm_le_random_addr_cb);
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_le_generate_random_addr error %u", err);
 		return -1;
@@ -664,7 +664,7 @@ static int ble_stack_configure(uint8_t const role)
 		return -1;
 	}
 
-#if BONDING_ENABLED
+#if CONFIG_BONDING_ALLOWED
 	/* Configure security level */
 	gapm_le_configure_security_level(GAP_SEC1_SEC_CON_PAIR_ENC);
 #else
@@ -675,7 +675,7 @@ static int ble_stack_configure(uint8_t const role)
 
 	gapm_get_identity(&identity);
 
-	LOG_DBG("Device address: %02X:%02X:%02X:%02X:%02X:%02X", identity.addr[5], identity.addr[4],
+	LOG_INF("Device address: %02X:%02X:%02X:%02X:%02X:%02X", identity.addr[5], identity.addr[4],
 		identity.addr[3], identity.addr[2], identity.addr[1], identity.addr[0]);
 
 	LOG_DBG("BLE init complete!");
@@ -704,6 +704,8 @@ static int storage_load_bond_data(void)
 
 int main(void)
 {
+	LOG_INF("Alif Unicast Initiator app started");
+
 	int ret;
 
 	if (storage_load_bond_data() < 0) {

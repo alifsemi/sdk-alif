@@ -56,6 +56,16 @@ typedef void (*audio_encoder_sdu_cb_t)(void *context, uint32_t capture_timestamp
 struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *params);
 
 /**
+ * @brief Set the audio queue for the audio encoder
+ *
+ * @param encoder Audio encoder instance to set audio queue for
+ *
+ * @retval Audio queue if successful
+ * @retval NULL on failure
+ */
+struct audio_queue *audio_encoder_audio_queue_get(struct audio_encoder *encoder);
+
+/**
  * @brief Add a channel to the audio encoder
  *
  * @param encoder Audio encoder instance to add channel to

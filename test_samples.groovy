@@ -75,13 +75,13 @@ def verify_checkpatch() {
         if [[ -v CHANGE_ID ]]; then
           GIT_REMOTE=`git remote`
           echo \$GIT_REMOTE
-          if ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...\${GIT_REMOTE}/main ; then
-            echo "Checkpatch OK"
-          else
-            echo "ERROR: ../zephyr/scripts/checkpatch.pl detected errors/warnings."
+          ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...\${GIT_REMOTE}/main
+          STATUS=\$?
+          if [ \$STATUS -ne 0 ]; then
+            exit \$STATUS
           fi
         else
-          echo "Checkpatch OK - skipped"
+          echo "Checkpatch skipped"
         fi
 
         deactivate"""
@@ -105,15 +105,9 @@ def build_zephyr(String sample, String build_dir, String board, String conf_file
         . venv/bin/activate
         cd zephyrproject/zephyr
         west build -p always -b $board --build-dir $build_dir $sample $overlay
+        STATUS=\$?
+        if [ \$STATUS -ne 0 ]; then exit \$STATUS; fi
         deactivate"""
-        // def proc = "echo \$?".execute()
-        // if [ proc.exitValue() -eq 0 ]; then
-        //   echo "Build succeeded"
-        // else
-        //   echo "Build failed"
-        // fi
-        //manual fail
-        //error "Failed, Maintenance Mode not Enabled... No reason to continue execution"
 }
 
 def run_test(String jsonfile, String zephyr_build_dir, String test) {

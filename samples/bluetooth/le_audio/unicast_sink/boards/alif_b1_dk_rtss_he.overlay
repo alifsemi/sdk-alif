@@ -15,20 +15,19 @@
 #define I2S0_IRQ_NUM  141
 #define I2S0_IRQ_PRIO 3
 
+#define LPI2S_IRQ_NUM  48
+#define LPI2S_IRQ_PRIO 3
+
 / {
 	aliases {
 		/delete-property/ sw0;
 
 		audio-codec = &wm8904;
 		i2s-bus = &i2s0;
+		i2s-mic = &i2s2;
 	};
 
 	/delete-node/ buttons;
-};
-
-&uart2 {
-	current-speed = <921600>;
-	dlf = <13>;
 };
 
 &dma2 {
@@ -46,6 +45,7 @@
 	};
 };
 
+/* Sink (output) to WM8904 codec IC */
 &i2s0 {
 	/delete-property/ clock-frequency;
 	/delete-property/ driver_instance;
@@ -56,12 +56,15 @@
 	status = "okay";
 };
 
-&i2s1 {
-	status = "disabled";
-};
-
+/* Source (input) use onboard I2S microphones (T5848) */
 &i2s2 {
-	status = "disabled";
+	/delete-property/ clock-frequency;
+	/delete-property/ driver_instance;
+	compatible = "alif,i2s-sync";
+	interrupts = <LPI2S_IRQ_NUM LPI2S_IRQ_PRIO>;
+	bit-depth = <16>;
+	sample-rate = <48000>;
+	status = "okay";
 };
 
 &pinctrl_i2c1 {
@@ -73,17 +76,18 @@
 
 &pinctrl_i2s0 {
 	group0 {
-		/* Note: defined pinmux names are wrong so just setting numbers directly */
-		pinmux = <PINMUX_PIN(PIN_P2_4, 2)>, /* I2S0 SDI A  */
-			 <PINMUX_PIN(PIN_P2_5, 2)>, /* I2S0 SDO A  */
+		pinmux = <PIN_P2_4__I2S0_SDI_B>,
+			 <PIN_P2_5__I2S0_SDO_B>,
 			 <PIN_P1_7__I2S0_WS_A>,
 			 <PIN_P1_6__I2S0_SCLK_A>;
 	};
 };
 
-&pinctrl_i2c0 {
-	group0 {
-		pinmux = <PIN_P2_4__I2C0_SCL_B>,
-			 <PIN_P2_5__I2C0_SDA_B>;
-	};
+/* Disable unnecessary nodes */
+&uart_ahi {
+	status = "disabled";
+};
+
+&i2s1 {
+	status = "disabled";
 };

@@ -22,6 +22,7 @@
 
 	aliases {
 		led0 = &aled1;
+		led2 = &aled2;
 		pwm-led0 = &pwm_ut2;
 		sw0 = &button0;
 		sw1 = &button1;

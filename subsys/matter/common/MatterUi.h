@@ -30,17 +30,25 @@ class MatterUi
 	static void ButtonEventHandler(const struct device *dev, struct gpio_callback *cb,
 				   uint32_t pins);
 	static int StatusLedInit(void);
+	static int BleLedInit(void);
 	static void StatusLedTimer(k_timer * timer);
 
 	struct k_work_delayable buttonWork;
-	struct k_timer ledTimer;
+	struct k_timer mLedTimer;
 	ButtonHandler mButtonHandler = nullptr;
-	int statusTimerPeriodMs = 0;
+	int mLedPeriod = 0;
+	bool mBleLedActive = false;
+	bool mSingleEvent = false;
 	
 
       public:
 	bool Init(ButtonHandler buttonHandler = nullptr);
-	void StatusLedTimerSet(int period_ms);
+	void StatusLedSet(bool enable);
+	void StatusLedTogle();
+
+	void BleLedSet(bool enable);
+	void BleLedTogle();
+	void StatusLedTimerStart(int period_ms, bool ble_led, bool single_event);
 	static MatterUi &Instance()
 	{
 		static MatterUi sMatterUi;

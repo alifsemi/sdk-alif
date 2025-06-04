@@ -11,3 +11,4 @@ Zephyr Alif SDK Project Documentation
    :caption: Contents
 
    connectivity/index.rst
+   modules/index.rst

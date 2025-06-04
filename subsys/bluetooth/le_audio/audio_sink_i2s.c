@@ -183,7 +183,6 @@ int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio
 		return -EINVAL;
 	}
 
-	/* TODO: Configure I2S here to match requested audio path configuration! */
 	struct i2s_sync_config i2s_cfg;
 
 	if (i2s_sync_get_config(dev, &i2s_cfg)) {
@@ -191,11 +190,11 @@ int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio
 		return -EIO;
 	}
 
-	if (i2s_cfg.sample_rate != audio_queue->sampling_freq_hz) {
-		__ASSERT(i2s_cfg.sample_rate == audio_queue->sampling_freq_hz,
-			 "Audio queue and I2S sample rate mismatch");
-		LOG_ERR("Invalid I2S sample rate %u", i2s_cfg.sample_rate);
-		return -EINVAL;
+	i2s_cfg.sample_rate = audio_queue->sampling_freq_hz;
+
+	if (i2s_sync_configure(dev, &i2s_cfg)) {
+		LOG_ERR("Failed to configure I2S");
+		return -EIO;
 	}
 
 	size_t const samples_per_full_block =

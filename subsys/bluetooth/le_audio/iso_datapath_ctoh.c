@@ -9,7 +9,9 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys_clock.h>
 #include <stdlib.h>
+#include <alif_ble.h>
 #include "gapi_isooshm.h"
 #include "iso_datapath_ctoh.h"
 
@@ -130,7 +132,7 @@ __ramfunc static void finish_last_sdu(struct sdu_queue *sdu_queue,
 #endif
 }
 
-__ramfunc static int recv_next_sdu(struct iso_datapath_ctoh *const datapath)
+__ramfunc static int recv_next_sdu(struct iso_datapath_ctoh *const datapath, bool const lock)
 {
 	gapi_isooshm_sdu_buf_t *p_sdu = NULL;
 	struct sdu_queue *const sdu_queue = datapath->sdu_queue;
@@ -159,7 +161,18 @@ __ramfunc static int recv_next_sdu(struct iso_datapath_ctoh *const datapath)
 	p_sdu->seq_num = 0;
 	p_sdu->timestamp = 0;
 
+	if (lock) {
+		/* Lock is needed to protect in case of bidirectional transfer
+		 * while DMA is not supported yet. Copy is synchronous at the moment
+		 * which could cause a race condition if incoming data is processed.
+		 * Can be removed when DMA is supported.
+		 */
+		alif_ble_mutex_lock(K_FOREVER);
+	}
 	uint16_t const err = gapi_isooshm_dp_set_buf(&datapath->dp, p_sdu);
+	if (lock) {
+		alif_ble_mutex_unlock();
+	}
 
 	if (err) {
 		LOG_ERR("Failed to set next ISO buffer, err %u", err);
@@ -186,7 +199,7 @@ __ramfunc static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
 	struct iso_datapath_ctoh *const datapath = CONTAINER_OF(dp, struct iso_datapath_ctoh, dp);
 
 	if (!datapath->stop) {
-		recv_next_sdu(datapath);
+		recv_next_sdu(datapath, false);
 	}
 
 	if (buf) {
@@ -308,7 +321,7 @@ int iso_datapath_ctoh_start(struct iso_datapath_ctoh *const datapath)
 		return -ENOEXEC;
 	}
 
-	int err = recv_next_sdu(datapath);
+	int err = recv_next_sdu(datapath, true);
 
 	/* TODO: handle start timestamp
 	 * datapath->start_timestamp_us = gapi_isooshm_dp_get_local_time();
@@ -342,7 +355,7 @@ __ramfunc void iso_datapath_ctoh_notify_sdu_done(void *p_datapath, uint32_t cons
 	}
 
 	datapath->awaiting_buffer = false;
-	recv_next_sdu(datapath);
+	recv_next_sdu(datapath, true);
 }
 
 int iso_datapath_ctoh_delete(struct iso_datapath_ctoh *const datapath)

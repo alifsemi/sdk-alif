@@ -28,7 +28,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr_alif
-      revision: c37340197ada7af12294551b6406ba14cdcbb7e3
+      revision: 3cfb0d4616f5691c73b591af9ef2f8c08316446b
       import:
         # In addition to the zephyr repository itself,
         # Alif SDK fetches the needed projects
@@ -77,6 +77,7 @@ manifest:
       path: modules/hal/cmsis
       groups:
          - hal
+
   self:
     path: alif
     west-commands: scripts/west-commands.yml
