@@ -11,6 +11,10 @@ This sample uses 2 SPI instances one as master and other slave.
 By default it uses LPSPI as master and SPI0 as slave.
 Master Transmits five 32 bit data and Slave receives the same and prints.
 
+.. note::
+
+Use LPUART port for console logs on E1C and B1 DevKits.
+
 Building and Running
 ********************
 
