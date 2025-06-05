@@ -23,9 +23,9 @@ static void recv_cb(const struct device *mhuv2_ipmdev, void *user_data,
 		uint32_t id, volatile void *data)
 {
 	ARG_UNUSED(mhuv2_ipmdev);
-	ARG_UNUSED(data);
+	ARG_UNUSED(user_data);
 
-	printk("RTSS-HP: MSG on ch:%d is 0x%x\n", id, *((uint32_t *)user_data));
+	printk("RTSS-HP: MSG on ch:%d is 0x%x\n", id, *((uint32_t *)data));
 	msg_received = true;
 }
 
