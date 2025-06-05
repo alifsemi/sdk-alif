@@ -31,7 +31,7 @@
 #define BATT_INSTANCE              0x00
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
-#define SAMPLE_ADDR_TYPE          ALIF_GEN_RSLV_RAND_ADDR /* Static random address */
+#define SAMPLE_ADDR_TYPE          ALIF_PUBLIC_ADDR /* Static random address */
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 extern void service_conn(struct shared_control *ctrl);
@@ -56,8 +56,8 @@ gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0, /*privacy address bit*/
-	.renew_dur = 1500,
-	.private_identity.addr = {0xCA, 0xFE, 0xFB, 0xDE, 0x11, 0xC7},
+	.renew_dur = 5,
+	.private_identity.addr = {0},
 	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
@@ -98,8 +98,8 @@ static uint16_t start_le_adv(uint8_t actv_idx)
  * Bluetooth GAPM callbacks
  */
 static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
+				const gap_bdaddr_t *p_peer_addr,
+				const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
 {
 	LOG_INF("Connection request on index %u", conidx);
 	gapc_le_connection_cfm(conidx, 0, NULL);
@@ -284,6 +284,8 @@ static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t re
 static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
 				 uint16_t status)
 {
+	gap_addr_t *p_addr;
+
 	if (status) {
 		LOG_ERR("Advertising activity process completed with error %u", status);
 		return;
@@ -307,7 +309,10 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		LOG_DBG("Advertising was started");
+		p_addr = gapm_le_get_adv_addr(actv_idx);
+		LOG_INF("Advertising has been started, address: %02X:%02X:%02X:%02X:%02X:%02X",
+		p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2],
+		p_addr->addr[1], p_addr->addr[0]);
 		k_sem_give(&init_sem);
 		break;
 
@@ -366,28 +371,8 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 
 	gapm_get_identity(&identity);
 
-	if (identity.addr_type == GAP_ADDR_PUBLIC) {
-		LOG_DBG("Device address type: Public");
-	} else {
-		uint32_t const type = identity.addr[5] >> 6;
-
-		switch (type) {
-		case 0b00:
-			LOG_DBG("Device address type: Random Private Non-Resolvable Address");
-			break;
-		case 0b01:
-			LOG_DBG("Device address type: Random Private Resolvable Address");
-			break;
-		case 0b11:
-			LOG_DBG("Device address type: Random Static Address format");
-			break;
-		case 0b10:
-		default:
-			LOG_WRN("Device address type: unknown");
-			break;
-		}
-	}
-	LOG_INF("Device address: %02X:%02X:%02X:%02X:%02X:%02X", identity.addr[5], identity.addr[4],
+	LOG_INF("Device identity: %02X:%02X:%02X:%02X:%02X:%02X",
+		identity.addr[5], identity.addr[4],
 		identity.addr[3], identity.addr[2], identity.addr[1], identity.addr[0]);
 
 	LOG_DBG("gapm process completed successfully");
