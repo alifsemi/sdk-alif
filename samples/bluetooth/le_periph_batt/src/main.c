@@ -31,7 +31,7 @@
 #define BATT_INSTANCE              0x00
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
-#define SAMPLE_ADDR_TYPE          ALIF_PUBLIC_ADDR /* Static random address */
+#define SAMPLE_ADDR_TYPE          ALIF_STATIC_RAND_ADDR /* Static random address */
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 extern void service_conn(struct shared_control *ctrl);
@@ -56,9 +56,12 @@ gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0, /*privacy address bit*/
-	.renew_dur = 5,
+	.renew_dur = 1500,
 	.private_identity.addr = {0},
-	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	.irk.key = {0x12, 0xCE,
+	0xD2, 0x2F, 0x32, 0x5A,
+	0x61, 0x2A, 0x7E, 0x1A, 0x1B, 0x3B,
+	0x2A, 0x8D, 0xA1, 0xA4},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
 	.att_cfg = 0,
