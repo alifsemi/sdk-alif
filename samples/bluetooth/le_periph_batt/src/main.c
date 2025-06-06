@@ -31,7 +31,7 @@
 #define BATT_INSTANCE              0x00
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
-#define SAMPLE_ADDR_TYPE          ALIF_GEN_RSLV_RAND_ADDR /* Static random address */
+#define SAMPLE_ADDR_TYPE          ALIF_STATIC_RAND_ADDR /* Static random address */
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 extern void service_conn(struct shared_control *ctrl);
