@@ -7,7 +7,8 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-
+#ifndef ALIF_ADDR_H_
+#define ALIF_ADDR_H_
 
 #include "gapm.h"
 
@@ -22,4 +23,6 @@ enum alif_addr_type
 	/*Generated Public Address*/
 	ALIF_PUBLIC_ADDR,
 };
-uint8_t address_verif(uint8_t SAMPLE_ADDR_TYPE, gapm_config_t *gapm_cfg);
+uint8_t address_verif(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_cfg);
+
+#endif /* ALIF_ADDR_H_ */
