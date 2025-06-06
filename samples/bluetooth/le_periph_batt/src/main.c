@@ -31,7 +31,7 @@
 #define BATT_INSTANCE              0x00
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
-#define SAMPLE_ADDR_TYPE          ALIF_STATIC_RAND_ADDR /* Static random address */
+#define SAMPLE_ADDR_TYPE          ALIF_GEN_RSLV_RAND_ADDR /* Static random address */
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 extern void service_conn(struct shared_control *ctrl);
@@ -386,14 +386,16 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 int main(void)
 {
 	uint16_t err;
-
 	/* Share connection info */
 	service_conn(&ctrl);
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
-	adv_type = address_verif(SAMPLE_ADDR_TYPE, &gapm_cfg);
+	if (address_verif(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+		LOG_ERR("Address verification failed");
+	return -EADV;
+	}
 
 	/* Configure Bluetooth Stack */
 	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
