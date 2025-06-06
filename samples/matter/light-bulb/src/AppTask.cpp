@@ -93,7 +93,7 @@ CHIP_ERROR AppTask::DevInit()
 	}
 	// Register PWM device init and activate callback's
 	Instance().mPWMDevice.SetCallbacks(ActionInitiated, ActionCompleted);
-	/* Read a stored value */
+	/* SET a stored value */
 	if (current) {
 		AppTask::Instance().GetPWMDevice().InitiateAction(
 			PWMDevice::LEVEL_ACTION,
@@ -114,22 +114,12 @@ CHIP_ERROR AppTask::DevInit()
 void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 {
 	if (has_changed & 1) {
-		/* Press Button Update  toggle led when state goes to 0*/
-		if ((button_state & 1)) {
-			LOG_INF("SW0 press");
+		if (button_state & 1) {
+			LOG_INF("Factoryreset button pressed");
 		} else {
-			LOG_INF("SW0 released");
+			LOG_INF("Factoryreset button released");
 		}
-
-	} else if (has_changed & 2) {
-		/* Generic functional button */
-		if (button_state & 2) {
-			/* Set Anchor time */
-			LOG_INF("SW1 press");
-		} else {
-			/*  */
-			LOG_INF("SW1 released");
-		}
+		MatterUi::Instance().AppFactoryResetEventTrig();
 	}
 }
 
