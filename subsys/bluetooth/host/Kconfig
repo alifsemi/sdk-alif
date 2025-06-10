@@ -11,3 +11,9 @@ config BLE_DEVICE_NAME
 	default "ALIF"
 	help
 	  BLE device name
+
+config BLE_COMPANY_ID
+	hex "Default BLE Company ID"
+	default "0x0CDD"
+	help
+	  BLE Company ID
