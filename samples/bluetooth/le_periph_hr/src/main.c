@@ -257,6 +257,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
+	uint16_t comp_id = CONFIG_BLE_COMPANY_ID;
+
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_HEART_RATE;
 	uint16_t svc2 = get_batt_id();
@@ -265,9 +267,10 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
 	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
+	const uint16_t adv_manuf_name = GATT_HANDLE_LEN + 2;
 
 	/* Create advertising data with necessary services */
-	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
+	const uint16_t adv_len = adv_device_name + adv_uuid_svc + adv_manuf_name;
 
 	co_buf_t *p_buf;
 
@@ -288,6 +291,11 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	/* Copy identifier */
 	memcpy(p_data + 2, (void *)&svc, sizeof(svc));
 	memcpy(p_data + 4, (void *)&svc2, sizeof(svc2));
+
+	p_data = p_data + adv_uuid_svc;
+	p_data[0] = GATT_UUID_16_LEN + 1;
+	p_data[1] = GAP_AD_TYPE_MANU_SPECIFIC_DATA;
+	memcpy(p_data + 2, (void *)&comp_id, sizeof(comp_id));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf);
