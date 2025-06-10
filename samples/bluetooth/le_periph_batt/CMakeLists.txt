@@ -16,4 +16,5 @@ zephyr_include_directories(../common)
 target_sources(app PRIVATE
 	src/main.c
 	../common/batt_svc.c
+	../common/address_verification.c
 )
