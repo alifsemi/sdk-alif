@@ -23,5 +23,6 @@ enum alif_addr_type {
 	ALIF_PUBLIC_ADDR,
 };
 uint8_t address_verif(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_cfg);
+void print_device_identity(void);
 
 #endif /* ALIF_ADDRESS_VERIFICATION_H_ */
