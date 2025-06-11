@@ -55,3 +55,18 @@ uint8_t address_verif(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_
 	}
 	return 0;
 }
+
+void print_device_identity(void)
+{
+	uint16_t error;
+	gap_bdaddr_t identity;
+
+	error = gapm_get_identity(&identity);
+	if (error) {
+		LOG_ERR("Failed to get identity, error: %u", error);
+		return;
+	}
+	LOG_INF("Device Identity Address: %02X:%02X:%02X:%02X:%02X:%02X",
+		identity.addr[5], identity.addr[4], identity.addr[3], identity.addr[2],
+		identity.addr[1], identity.addr[0]);
+}
