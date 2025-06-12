@@ -10,8 +10,10 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
-#define N_FRAMES		10
-#define N_VID_BUFF		CONFIG_VIDEO_BUFFER_POOL_NUM_MAX
+#define N_FRAMES		1
+#define N_VID_BUFF		MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
+
+#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_GREY
 
 int main(void)
 {
@@ -50,13 +52,29 @@ int main(void)
 		       fcap->width_min, fcap->width_max, fcap->width_step,
 		       fcap->height_min, fcap->height_max, fcap->height_step);
 
-		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P) {
-			fmt.pixelformat = VIDEO_PIX_FMT_Y10P;
+		if (fcap->pixelformat == FORMAT_TO_CAPTURE) {
+			fmt.pixelformat = FORMAT_TO_CAPTURE;
 			fmt.width = fcap->width_min;
 			fmt.height = fcap->height_min;
-			fmt.pitch = fcap->width_min;
 		}
 		i++;
+	}
+
+	switch (fmt.pixelformat) {
+	case VIDEO_PIX_FMT_RGB565:
+		fmt.pitch = fmt.width << 1;
+		break;
+	case VIDEO_PIX_FMT_Y10P:
+		fmt.pitch = (fmt.width + 8) << 1;
+		break;
+	case VIDEO_PIX_FMT_BGGR8:
+	case VIDEO_PIX_FMT_GBRG8:
+	case VIDEO_PIX_FMT_GRBG8:
+	case VIDEO_PIX_FMT_RGGB8:
+	case VIDEO_PIX_FMT_GREY:
+	default:
+		fmt.pitch = fmt.width;
+		break;
 	}
 
 	if (fmt.pixelformat == 0) {
@@ -100,7 +118,7 @@ int main(void)
 		video_enqueue(video, VIDEO_EP_OUT, buffers[i]);
 
 		printk("capture buffer[%d]: dump binary memory "
-			"\"/home/$USER/path/capture_%d.bin\" 0x%08x 0x%08x -r\n\n",
+			"\"/home/$USER/capture_%d.bin\" 0x%08x 0x%08x -r\n\n",
 			i, i, (uint32_t)buffers[i]->buffer,
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
