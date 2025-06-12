@@ -1,0 +1,19 @@
+# Copyright(C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file.If not, please write to:
+# contact @alifsemi.com, or visit : https: // alifsemi.com/license
+
+mainmenu "AIPL Benchmark sample configuration"
+
+config AIPL_PREBUILT
+    bool "Use a pre-built AIPL binary"
+    depends on !AIPL
+    default false
+    help
+        Use a pre-built AIPL binary instead of building it with Zephyr.
+        CONFIG_AIPL should be set to false.
+
+source "Kconfig.zephyr"

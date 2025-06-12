@@ -12,17 +12,16 @@ project(aipl_example)
 
 # Add include directories
 zephyr_include_directories(
-    assets
-    src/aipl/
-    src/display/
+    ../common/assets
+    ../common/display/
     src/graphics/
 )
 
 # Add app sources
 target_sources(app PRIVATE
-    src/aipl/cache.c
-    src/aipl/video_alloc.c
-    src/display/display.c
+    ../common/cache.c
+    ../common/video_alloc.c
+    ../common/display/display.c
     src/graphics/image.c
     src/main.c
 )
@@ -34,13 +33,13 @@ endif()
 
 # Add asset files to the app
 target_sources(app PRIVATE
-    assets/sample_photo_alpha8.c
-    assets/sample_photo_argb1555.c
-    assets/sample_photo_argb4444.c
-    assets/sample_photo_argb8888.c
-    assets/sample_photo_rgb565.c
-    assets/sample_photo_rgb888.c
-    assets/sample_photo_rgba4444.c
-    assets/sample_photo_rgba5551.c
-    assets/sample_photo_rgba8888.c
+    ../common/assets/sample_photo_alpha8.c
+    ../common/assets/sample_photo_argb1555.c
+    ../common/assets/sample_photo_argb4444.c
+    ../common/assets/sample_photo_argb8888.c
+    ../common/assets/sample_photo_rgb565.c
+    ../common/assets/sample_photo_rgb888.c
+    ../common/assets/sample_photo_rgba4444.c
+    ../common/assets/sample_photo_rgba5551.c
+    ../common/assets/sample_photo_rgba8888.c
 )
