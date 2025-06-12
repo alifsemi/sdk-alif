@@ -21,6 +21,7 @@ struct mic_source_env {
 	size_t block_size;
 	size_t number_of_channels;
 	bool started;
+	bool capture;
 };
 
 static struct mic_source_env mic_source;
@@ -52,6 +53,12 @@ __ramfunc static void on_data_received(const struct device *dev, const enum i2s_
 	}
 
 	struct audio_block *p_block = CONTAINER_OF(block, struct audio_block, channels);
+
+	if (!mic_source.capture) {
+		/* Just ignore the block */
+		k_mem_slab_free(&mic_source.audio_queue->slab, p_block);
+		return;
+	}
 
 	if (k_msgq_put(&mic_source.audio_queue->msgq, &p_block, K_NO_WAIT)) {
 		/* Failed to put into queue */
@@ -89,6 +96,7 @@ int mic_i2s_configure(const struct device *dev, struct audio_queue *audio_queue)
 		i2s_cfg.channel_count * audio_queue->audio_block_samples * sizeof(pcm_sample_t);
 	mic_source.number_of_channels = i2s_cfg.channel_count;
 	mic_source.started = false;
+	mic_source.capture = false;
 
 	int ret = i2s_sync_register_cb(dev, I2S_DIR_RX, on_data_received);
 
@@ -105,14 +113,13 @@ void mic_i2s_start(void)
 		return;
 	}
 
-	if (mic_source.started) {
-		return;
+	/* Kick the I2S receive operation */
+	if (!mic_source.started) {
+		recv_next_block(mic_source.dev);
+		mic_source.started = true;
 	}
 
-	mic_source.started = true;
-
-	/* Kick the I2S receive operation */
-	recv_next_block(mic_source.dev);
+	mic_source.capture = true;
 }
 
 void mic_i2s_stop(void)
@@ -125,6 +132,5 @@ void mic_i2s_stop(void)
 		return;
 	}
 
-	i2s_sync_disable(mic_source.dev, I2S_DIR_RX);
-	mic_source.started = false;
+	mic_source.capture = false;
 }
