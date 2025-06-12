@@ -63,6 +63,8 @@ int audio_datapath_channel_create_source(size_t octets_per_frame, uint8_t stream
  * which when transmitted starts off the operation of the rest of
  * the datapath.
  *
+ * @param[in] stream_lid Stream local ID
+ *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
@@ -72,6 +74,8 @@ int audio_datapath_channel_start_source(uint8_t stream_lid);
  * @brief Stop the audio source datapath
  *
  * Stops transmission of the SDUs over the ISO datapath.
+ *
+ * @param[in] stream_lid Stream local ID
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
@@ -107,12 +111,12 @@ int audio_datapath_create_sink(struct audio_datapath_config const *cfg);
  * @brief Create the audio sink datapath channel
  *
  * @param[in] octets_per_frame Number of data per frame
- * @param[in] ch_index Index of the channel to be created
+ * @param[in] stream_lid Stream local ID of the channel to be created
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_channel_create_sink(size_t octets_per_frame, uint8_t ch_index);
+int audio_datapath_channel_create_sink(size_t octets_per_frame, uint8_t stream_lid);
 
 /**
  * @brief Start the audio sink datapath channel
@@ -120,6 +124,8 @@ int audio_datapath_channel_create_sink(size_t octets_per_frame, uint8_t ch_index
  * Starts transmission of the first SDU over the ISO datapath,
  * which when transmitted starts off the operation of the rest of
  * the datapath.
+ *
+ * @param[in] stream_lid Stream local ID
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
@@ -130,6 +136,8 @@ int audio_datapath_channel_start_sink(uint8_t stream_lid);
  * @brief Stop the audio sink datapath channel
  *
  * Stops transmission of the SDUs over the ISO datapath.
+ *
+ * @param[in] stream_lid Stream local ID
  *
  * @retval 0 if successful
  * @retval Negative error code on failure

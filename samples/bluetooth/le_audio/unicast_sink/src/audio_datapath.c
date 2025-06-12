@@ -134,29 +134,29 @@ int audio_datapath_channel_create_source(size_t const octets_per_frame, uint8_t 
 	int ret = audio_encoder_add_channel(env.encoder, octets_per_frame, stream_lid);
 
 	if (ret) {
-		LOG_ERR("Channel %u creation failed. Err %d", stream_lid, ret);
+		LOG_ERR("Stream %u creation failed. Err %d", stream_lid, ret);
 		return ret;
 	}
 	return 0;
 }
 
-int audio_datapath_channel_start_source(uint8_t const ch_index)
+int audio_datapath_channel_start_source(uint8_t const stream_lid)
 {
-	int ret = audio_encoder_start_channel(env.encoder, ch_index);
+	int ret = audio_encoder_start_channel(env.encoder, stream_lid);
 
 	if (ret) {
-		LOG_ERR("Channel %u start failed. Err %d", ch_index, ret);
+		LOG_ERR("Stream %u start failed. Err %d", stream_lid, ret);
 		return ret;
 	}
 	return 0;
 }
 
-int audio_datapath_channel_stop_source(uint8_t const ch_index)
+int audio_datapath_channel_stop_source(uint8_t const stream_lid)
 {
-	int ret = audio_encoder_stop_channel(env.encoder, ch_index);
+	int ret = audio_encoder_stop_channel(env.encoder, stream_lid);
 
 	if (ret) {
-		LOG_ERR("Channel %u stop failed. Err %d", ch_index, ret);
+		LOG_ERR("Stream %u stop failed. Err %d", stream_lid, ret);
 		return ret;
 	}
 	return 0;
@@ -239,36 +239,36 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 	return 0;
 }
 
-int audio_datapath_channel_create_sink(size_t const octets_per_frame, uint8_t const ch_index)
+int audio_datapath_channel_create_sink(size_t const octets_per_frame, uint8_t const stream_lid)
 {
-	int ret = audio_decoder_add_channel(env.decoder, octets_per_frame, ch_index);
+	int ret = audio_decoder_add_channel(env.decoder, octets_per_frame, stream_lid);
 
 	if (ret) {
-		LOG_ERR("Failed to create channel %u, err %d", ch_index, ret);
+		LOG_ERR("Failed to create stream %u, err %d", stream_lid, ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-int audio_datapath_channel_start_sink(uint8_t const ch_index)
+int audio_datapath_channel_start_sink(uint8_t const stream_lid)
 {
-	int ret = audio_decoder_start_channel(env.decoder, ch_index);
+	int ret = audio_decoder_start_channel(env.decoder, stream_lid);
 
 	if (ret) {
-		LOG_ERR("Failed to start channel %u, err %d", ch_index, ret);
+		LOG_ERR("Failed to start stream %u, err %d", stream_lid, ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-int audio_datapath_channel_stop_sink(uint8_t const ch_index)
+int audio_datapath_channel_stop_sink(uint8_t const stream_lid)
 {
-	int ret = audio_decoder_stop_channel(env.decoder, ch_index);
+	int ret = audio_decoder_stop_channel(env.decoder, stream_lid);
 
 	if (ret) {
-		LOG_ERR("Failed to stop channel %u, err %d", ch_index, ret);
+		LOG_ERR("Failed to stop stream %u, err %d", stream_lid, ret);
 		return ret;
 	}
 
