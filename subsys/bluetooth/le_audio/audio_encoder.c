@@ -103,6 +103,8 @@ struct channel_data {
 	struct sdu_queue *sdu_queue;
 	struct iso_datapath_htoc *iso_dp;
 	lc3_encoder_t *lc3_encoder;
+	uint32_t stream_id;
+	bool enabled;
 };
 
 struct audio_encoder {
@@ -121,18 +123,25 @@ struct audio_encoder {
 
 K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
 
-static int get_channel_index(struct audio_encoder const *const encoder, size_t channel_id)
+static int alloc_channel_index(struct audio_encoder const *const encoder)
 {
-	if (channel_id >= ARRAY_SIZE(encoder->channel)) {
-		/* channel_id could be 2 * CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS in case of
-		 * bidirectional audio
-		 */
-		channel_id -= ARRAY_SIZE(encoder->channel);
-		if (channel_id >= ARRAY_SIZE(encoder->channel)) {
-			return -EINVAL;
+	for (size_t iter = 0; iter < ARRAY_SIZE(encoder->channel); iter++) {
+		if (encoder->channel[iter].stream_id == UINT32_MAX) {
+			return iter;
 		}
 	}
-	return channel_id;
+	return -EINVAL;
+}
+
+static int get_channel_index(struct audio_encoder const *const encoder, uint32_t stream_id)
+{
+	for (size_t iter = 0; iter < ARRAY_SIZE(encoder->channel); iter++) {
+		if (encoder->channel[iter].stream_id == stream_id) {
+			return iter;
+		}
+	}
+
+	return -EINVAL;
 }
 
 __ramfunc static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
@@ -141,7 +150,7 @@ __ramfunc static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 	(void)p2;
 	(void)p3;
 
-	LOG_INF("Encoder thread started");
+	LOG_DBG("Encoder thread started");
 
 	int ret;
 	size_t iter;
@@ -197,7 +206,7 @@ __ramfunc static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 			p_sdu = NULL;
 			p_sdu_queue = p_channel->sdu_queue;
 
-			if (!p_sdu_queue) {
+			if (!p_sdu_queue || !p_channel->enabled) {
 				continue;
 			}
 			size_t const sdu_len = p_sdu_queue->payload_size;
@@ -205,6 +214,7 @@ __ramfunc static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 			/* Allocate SDU and encode audio into it */
 			ret = k_mem_slab_alloc(&p_sdu_queue->slab, (void *)&p_sdu, K_NO_WAIT);
 			if (ret || !p_sdu) {
+				LOG_WRN("SDU queue %u is full", iter);
 				continue;
 			}
 
@@ -284,7 +294,11 @@ struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *pa
 		return NULL;
 	}
 
-	for (uint8_t iter = 0; iter < params->num_queues; iter++) {
+	for (size_t iter = 0; iter < ARRAY_SIZE(enc->channel); iter++) {
+		enc->channel[iter].stream_id = UINT32_MAX;
+	}
+
+	for (size_t iter = 0; iter < params->num_queues; iter++) {
 		enc->channel[iter].sdu_queue = params->p_sdu_queues[iter];
 	}
 
@@ -372,19 +386,22 @@ struct audio_queue *audio_encoder_audio_queue_get(struct audio_encoder *encoder)
 }
 
 int audio_encoder_add_channel(struct audio_encoder *const encoder, size_t const octets_per_frame,
-			      size_t const channel_id)
+			      uint32_t const stream_id)
 {
 	if (!encoder) {
 		return -EINVAL;
 	}
 
-	LOG_DBG("Adding channel %u", channel_id);
+	LOG_DBG("Adding channel %u", stream_id);
 
-	int const ch_index = get_channel_index(encoder, channel_id);
+	int const ch_index = alloc_channel_index(encoder);
 
 	if (ch_index < 0) {
 		return ch_index;
 	}
+
+	encoder->channel[ch_index].enabled = false;
+	encoder->channel[ch_index].stream_id = stream_id;
 
 	struct sdu_queue *queue = encoder->channel[ch_index].sdu_queue;
 	struct iso_datapath_htoc *iso_dp = encoder->channel[ch_index].iso_dp;
@@ -395,29 +412,29 @@ int audio_encoder_add_channel(struct audio_encoder *const encoder, size_t const 
 	encoder->channel[ch_index].sdu_queue = queue =
 		sdu_queue_create(CONFIG_ALIF_BLE_AUDIO_SDU_QUEUE_LENGTH, octets_per_frame);
 	if (!queue) {
-		LOG_ERR("Failed to create SDU queue (index %u)", channel_id);
+		LOG_ERR("Failed to create SDU queue (index %u)", stream_id);
 		return -ENOMEM;
 	}
 
 	encoder->channel[ch_index].iso_dp = iso_dp =
-		iso_datapath_htoc_init(channel_id, queue, 0 /*channel_id == 0*/);
+		iso_datapath_htoc_init(stream_id, queue, 0 /*stream_id == 0*/);
 	if (!iso_dp) {
-		LOG_ERR("Failed to create ISO datapath (index %u)", channel_id);
+		LOG_ERR("Failed to create ISO datapath (index %u)", stream_id);
 		return -ENOMEM;
 	}
 
 	return 0;
 }
 
-int audio_encoder_start_channel(struct audio_encoder *const encoder, size_t const channel_id)
+int audio_encoder_start_channel(struct audio_encoder *const encoder, uint32_t const stream_id)
 {
 	if (!encoder) {
 		return -EINVAL;
 	}
 
-	LOG_DBG("Starting channel %u", channel_id);
+	LOG_DBG("Starting channel %u", stream_id);
 
-	int const ch_index = get_channel_index(encoder, channel_id);
+	int const ch_index = get_channel_index(encoder, stream_id);
 
 	if (ch_index < 0) {
 		return ch_index;
@@ -426,28 +443,32 @@ int audio_encoder_start_channel(struct audio_encoder *const encoder, size_t cons
 	int ret = iso_datapath_htoc_bind(encoder->channel[ch_index].iso_dp);
 
 	if (ret) {
-		LOG_ERR("Failed to bind ISO datapath (index %u)", channel_id);
+		LOG_ERR("Failed to bind ISO datapath (index %u)", stream_id);
 		return ret;
 	}
+
+	encoder->channel[ch_index].enabled = true;
 
 	audio_source_i2s_start();
 
 	return 0;
 }
 
-int audio_encoder_stop_channel(struct audio_encoder *const encoder, size_t const channel_id)
+int audio_encoder_stop_channel(struct audio_encoder *const encoder, uint32_t const stream_id)
 {
 	if (!encoder) {
 		return -EINVAL;
 	}
 
-	LOG_DBG("Stopping channel %u", channel_id);
+	LOG_DBG("Stopping channel %u", stream_id);
 
-	int const ch_index = get_channel_index(encoder, channel_id);
+	int const ch_index = get_channel_index(encoder, stream_id);
 
 	if (ch_index < 0) {
 		return ch_index;
 	}
+
+	encoder->channel[ch_index].enabled = false;
 
 	iso_datapath_htoc_unbind(encoder->channel[ch_index].iso_dp);
 
@@ -485,7 +506,7 @@ int audio_encoder_delete(struct audio_encoder *encoder)
 	}
 
 	for (size_t iter = 0; iter < ARRAY_SIZE(encoder->channel); iter++) {
-		audio_encoder_stop_channel(encoder, iter);
+		audio_encoder_stop_channel(encoder, encoder->channel[iter].stream_id);
 	}
 
 	/* Signal to thread that it should abort */

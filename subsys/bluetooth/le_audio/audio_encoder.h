@@ -70,35 +70,35 @@ struct audio_queue *audio_encoder_audio_queue_get(struct audio_encoder *encoder)
  *
  * @param encoder Audio encoder instance to add channel to
  * @param octets_per_frame Octets per frame for the channel
- * @param channel_id Channel ID
+ * @param stream_id Stream ID
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
 int audio_encoder_add_channel(struct audio_encoder *encoder, size_t octets_per_frame,
-			      size_t channel_id);
+			      uint32_t stream_id);
 
 /**
  * @brief Start a channel
  *
  * @param encoder Audio encoder instance to start channel for
- * @param channel_id Channel ID
+ * @param stream_id Stream ID
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_encoder_start_channel(struct audio_encoder *encoder, size_t channel_id);
+int audio_encoder_start_channel(struct audio_encoder *encoder, uint32_t stream_id);
 
 /**
  * @brief Stop a channel
  *
  * @param encoder Audio encoder instance to stop channel for
- * @param channel_id Channel ID
+ * @param stream_id Stream ID
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_encoder_stop_channel(struct audio_encoder *encoder, size_t channel_id);
+int audio_encoder_stop_channel(struct audio_encoder *encoder, uint32_t stream_id);
 
 /**
  * @brief Register a callback to be called on completion of each encoded frame
