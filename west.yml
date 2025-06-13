@@ -78,6 +78,16 @@ manifest:
       groups:
          - hal
 
+    - name: aipl
+      revision: e80e3f634a12a0c11431cdc3ef21bb3e9ba5e78c
+      repo-path: alif_image-processing-lib
+      path: modules/lib/aipl
+
+    - name: dave2d_driver
+      revision: 7db4883e16f1161094ae07a08adf48a38f648a35
+      repo-path: alif_dave2d_driver
+      path: modules/drivers/dave2d
+
   self:
     path: alif
     west-commands: scripts/west-commands.yml

@@ -1,0 +1,6 @@
+sample:
+  name: Alif Image Processing Library demo
+  common:
+    modules:
+      - aipl
+      - dave2d

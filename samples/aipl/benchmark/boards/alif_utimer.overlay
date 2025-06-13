@@ -1,0 +1,15 @@
+/* Copyright (c) 2024 Alif Semiconductor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Enabling utimer for this sample application
+ */
+
+&utimer0 {
+    status = "okay";
+    counter {
+        status = "okay";
+    };
+};
