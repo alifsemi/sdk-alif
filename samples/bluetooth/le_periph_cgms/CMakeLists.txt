@@ -17,6 +17,7 @@ zephyr_include_directories(../common)
 target_sources(app PRIVATE
     src/main.c
     ../common/batt_svc.c
+    ../common/address_verification.c
 )
 target_sources_ifdef(CONFIG_ALIF_BLE_ROM_IMAGE_V1_0	app PRIVATE src/cgms_rom_1_0.c)
 target_sources_ifdef(CONFIG_ALIF_BLE_ROM_IMAGE_V1_2	app PRIVATE src/cgms_rom_1_2.c)
