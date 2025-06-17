@@ -351,8 +351,6 @@ static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t re
 static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
 				 uint16_t status)
 {
-	gap_addr_t *p_addr;
-
 	if (status) {
 		LOG_ERR("Advertising activity process completed with error %u", status);
 		return;
@@ -376,10 +374,7 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		p_addr = gapm_le_get_adv_addr(actv_idx);
-		LOG_INF("Advertising has been started, address: %02X:%02X:%02X:%02X:%02X:%02X",
-			p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2],
-			p_addr->addr[1], p_addr->addr[0]);
+		address_verification_log_advertising_address(actv_idx);
 		k_sem_give(&init_sem);
 		break;
 
