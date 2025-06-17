@@ -13,6 +13,7 @@
 #include <zephyr/random/random.h>
 #include "address_verification.h"
 #include "gapm_le.h"
+#include "gapm_le_adv.h"
 
 LOG_MODULE_REGISTER(address, LOG_LEVEL_DBG);
 
@@ -69,4 +70,19 @@ void print_device_identity(void)
 	LOG_INF("Device Identity Address: %02X:%02X:%02X:%02X:%02X:%02X",
 		identity.addr[5], identity.addr[4], identity.addr[3], identity.addr[2],
 		identity.addr[1], identity.addr[0]);
+}
+
+void address_verification_log_advertising_address(const uint8_t actv_idx)
+{
+	const gap_addr_t *p_addr;
+
+	p_addr = gapm_le_get_adv_addr(actv_idx);
+
+	if (p_addr == NULL) {
+		LOG_ERR("Failed to get advertise address");
+		return;
+	}
+	LOG_INF("Advertising has been started, address: %02X:%02X:%02X:%02X:%02X:%02X",
+		p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2],
+		p_addr->addr[1], p_addr->addr[0]);
 }
