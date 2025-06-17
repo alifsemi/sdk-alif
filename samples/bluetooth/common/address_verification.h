@@ -37,4 +37,11 @@ uint8_t address_verif(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_
  */
 void print_device_identity(void);
 
+/**
+ * @brief Logs device's advertising address.
+ *
+ * @param actv_idx Active index connection from which the address will be fetched.
+ */
+void address_verification_log_advertising_address(const uint8_t actv_idx);
+
 #endif /* ALIF_ADDRESS_VERIFICATION_H_ */
