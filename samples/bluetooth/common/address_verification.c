@@ -17,7 +17,7 @@
 
 LOG_MODULE_REGISTER(address, LOG_LEVEL_DBG);
 
-uint8_t address_verif(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_cfg)
+uint8_t address_verification(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_cfg)
 {
 	if (!gapm_cfg) {
 		LOG_ERR("no gapm configuration provided");
