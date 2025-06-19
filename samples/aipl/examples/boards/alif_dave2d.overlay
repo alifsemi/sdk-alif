@@ -1,0 +1,24 @@
+/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/ {
+	soc {
+		gpu2d: dave2d@49040000 {
+            compatible = "tes,dave2d";
+            reg = < 0x49040000 0x1000 >;
+            interrupts = < 332 2 >;
+            clocks = < &clock ALIF_GPU_CLK >;
+        };
+	};
+
+    aliases {
+        d2-inst = &gpu2d;
+    };
+};
