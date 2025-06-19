@@ -31,7 +31,7 @@ enum alif_addr_type {
  * with the address configuration.
  * @return 0 on success, negative error code on failure.
  */
-uint8_t address_verif(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_cfg);
+uint8_t address_verification(uint8_t addr_type, uint8_t *adv_type, gapm_config_t *gapm_cfg);
 /**
  * @brief Logs device identity information.
  */

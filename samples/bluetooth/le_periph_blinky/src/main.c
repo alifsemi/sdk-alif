@@ -32,7 +32,7 @@
 #define LED2_NODE DT_ALIAS(led2)
 #define SW0_NODE  DT_ALIAS(sw0)
 
-static uint8_t adv_type; /* Advertising type, set by address_verif() */
+static uint8_t adv_type; /* Advertising type, set by address_verification() */
 
 static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
@@ -653,7 +653,7 @@ int main(void)
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
-	if (address_verif(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
 		LOG_ERR("Address verification failed");
 		return -EADV;
 	}

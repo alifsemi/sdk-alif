@@ -662,7 +662,7 @@ int main(void)
 
 	gapm_cbs = get_cbs();
 
-	if (address_verif(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
 		LOG_ERR("Address verification failed");
 		return -EADV;
 	}
