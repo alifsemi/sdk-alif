@@ -12,8 +12,7 @@ Getting started with Zephyr Alif SDK
 
    introduction
    overview
-   building_application_binaries
-   programming_an_app
+   building_and_flashing
 
 Document History
 ================
@@ -32,6 +31,9 @@ Document History
       - Updated the document to include I3C, CAN FD and Touch screen
     * - 1.3
       - Updated the document to include DAC12, UTimer Counter, QDEC and SDMMC
+    * - 1.4
+      - Updated the build and flash sections
+
 
 Indices and tables
 ==================
