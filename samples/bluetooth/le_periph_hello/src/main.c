@@ -25,9 +25,16 @@
 #include "gatt_db.h"
 #include "gatt_srv.h"
 #include "ke_mem.h"
+#include "address_verification.h"
 
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index;
+
+/* Define advertising address type */
+#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+
+/* Store and share advertising address type */
+static uint8_t adv_type;
 
 #define BT_CONN_STATE_CONNECTED	   0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
@@ -104,7 +111,7 @@ static const gatt_att_desc_t hello_att_db[HELLO_IDX_NB] = {
 };
 
 /* Bluetooth stack configuration*/
-static const gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0,
@@ -366,7 +373,8 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		LOG_DBG("Advertising was started");
+		print_device_identity();
+		address_verification_log_advertising_address(actv_idx);
 		k_sem_give(&init_sem);
 		break;
 
@@ -408,7 +416,7 @@ static uint16_t create_advertising(void)
 		},
 	};
 
-	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
+	err = gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
 	if (err) {
 		LOG_ERR("Error %u creating advertising activity", err);
 	}
@@ -661,6 +669,11 @@ int main(void)
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
+
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+		LOG_ERR("Address verification failed");
+		return -EADV;
+	}
 
 	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 	if (err) {
