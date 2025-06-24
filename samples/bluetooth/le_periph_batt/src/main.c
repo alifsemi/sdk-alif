@@ -287,8 +287,6 @@ static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t re
 static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
 				 uint16_t status)
 {
-	gap_addr_t *p_addr;
-
 	if (status) {
 		LOG_ERR("Advertising activity process completed with error %u", status);
 		return;
@@ -312,10 +310,8 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		p_addr = gapm_le_get_adv_addr(actv_idx);
-		LOG_INF("Advertising has been started, address: %02X:%02X:%02X:%02X:%02X:%02X",
-		p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2],
-		p_addr->addr[1], p_addr->addr[0]);
+		print_device_identity();
+		address_verification_log_advertising_address(actv_idx);
 		k_sem_give(&init_sem);
 		break;
 
@@ -370,13 +366,6 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 		LOG_ERR("gapm process completed with error %u", status);
 		return;
 	}
-	gap_bdaddr_t identity;
-
-	gapm_get_identity(&identity);
-
-	LOG_INF("Device identity: %02X:%02X:%02X:%02X:%02X:%02X",
-		identity.addr[5], identity.addr[4],
-		identity.addr[3], identity.addr[2], identity.addr[1], identity.addr[0]);
 
 	LOG_DBG("gapm process completed successfully");
 
