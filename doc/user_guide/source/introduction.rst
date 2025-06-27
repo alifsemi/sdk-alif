@@ -35,6 +35,7 @@ Zephyr uses a meta-tool called `west` to execute Kconfig, CMake, and build syste
 Ensure you have one of the following development kits to proceed with your project setup:
 
 - Ensemble Devkit (DK-E7)
+- Ensemble Devkit (DK-E8)
 - Ensemble E1C Devkit (DK-E1C)
 - Balletto Devkit (DK-B1)
 
@@ -67,6 +68,13 @@ The Alif DevKit is a development board featuring an Alif multi-core SoC, offerin
         - Two Ethos-U55 neural network processor cores
         - Two Cortex-A32 MPU cores
     - Allows configuration of the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
+
+- **DK-E8:**
+    - Features:
+        - Two Cortex-M55 CPU cores
+        - Two Ethos-U55 + One Ethos-U85 neural network processor cores
+        - Two Cortex-A32 MPU cores
+        - Allows configuration of the E8 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E6, and E4 series devices using a single kit.
 
 - **DK-E1C:**
     - Designed to explore the Compact series of Ensemble devices.
