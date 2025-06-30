@@ -12,6 +12,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+#include <app/server/Server.h>
 
 LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 
@@ -146,6 +147,30 @@ int MatterUi::ButtonInit(void)
 	}
 
 	return 0;
+}
+
+void MatterUi::AppFactoryResetEventHandler(intptr_t aArg)
+{
+	MatterUi *entry = reinterpret_cast<MatterUi *>(aArg);
+	if (entry->mRefTime) {
+		int64_t elapsed_time = entry->mRefTime;
+
+		entry->mRefTime = 0;
+		elapsed_time = k_uptime_delta(&elapsed_time);
+		/* Reset Only When time is more than 3 seconds */
+		if (elapsed_time > 3000) {
+			MatterUi::Instance().StatusLedSet(true);
+			chip::Server::GetInstance().ScheduleFactoryReset();
+		}
+	} else {
+		entry->mRefTime = k_uptime_get();
+	}
+}
+
+void MatterUi::AppFactoryResetEventTrig(void)
+{
+	/* Shedule Factory reset Event */
+	PlatformMgr().ScheduleWork(AppFactoryResetEventHandler, reinterpret_cast<intptr_t>(this));
 }
 
 int MatterUi::StatusLedInit(void)

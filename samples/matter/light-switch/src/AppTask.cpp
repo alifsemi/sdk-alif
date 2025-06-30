@@ -80,13 +80,20 @@ void AppTask::ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 	} else if (has_changed & 2) {
 		/* Generic functional button */
 		if (button_state & 2) {
-			/* Set Anchor time */
 			LOG_INF("SW1 press");
 			LightSwitch::GetInstance().GenericSwitchInitialPress();
 		} else {
 			LOG_INF("SW1 released");
 			LightSwitch::GetInstance().GenericSwitchReleasePress();
 		}
+	}  else if (has_changed & 4) {
+		/* Factory Reset user Button */
+		if (button_state & 4) {
+			LOG_INF("Factoryreset button pressed");
+		} else {
+			LOG_INF("Factoryreset button released");
+		}
+		MatterUi::Instance().AppFactoryResetEventTrig();
 	}
 }
 

@@ -6,18 +6,11 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-cmake_minimum_required(VERSION 3.20.0)
-find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(le_periph_batt)
-
-include(${CMAKE_CURRENT_SOURCE_DIR}/../common/CMakeLists.txt)
-
-# Include directories
-target_include_directories(app PRIVATE
-	${COMMON_INC}
+set(COMMON_SRCS
+ 	${CMAKE_CURRENT_LIST_DIR}/batt_svc.c
+ 	${CMAKE_CURRENT_LIST_DIR}/address_verification.c
 )
 
-target_sources(app PRIVATE
-	src/main.c
-	${COMMON_SRCS}
+set(COMMON_INC
+ 	${CMAKE_CURRENT_LIST_DIR}
 )

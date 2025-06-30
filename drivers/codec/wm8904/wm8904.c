@@ -436,13 +436,14 @@ static void cwm_start_output(const struct device *dev)
 	/* Configure mono/stereo mode */
 	if (data->is_mono) {
 		/* Send left input to both DACs */
-		ret = cwm_i2c_wr(i2c, WM8904_AUDIO_INTERFACE_0, AUD_INT0_AIFADCR_SRC);
+		ret = cwm_i2c_wr(i2c, WM8904_AUDIO_INTERFACE_0, 0);
 		if (ret) {
 			LOG_ERR("Failed to configure mono mode: %d", ret);
 			return;
 		}
 	} else {
-		ret = cwm_i2c_wr(i2c, WM8904_AUDIO_INTERFACE_0, 0);
+		ret = cwm_i2c_wr(i2c, WM8904_AUDIO_INTERFACE_0,
+			AUD_INT0_AIFADCR_SRC | AUD_INT0_AIFDACR_SRC);
 		if (ret) {
 			LOG_ERR("Failed to configure stereo mode: %d", ret);
 			return;

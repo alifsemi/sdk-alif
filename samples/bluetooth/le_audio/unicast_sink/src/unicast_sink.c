@@ -677,8 +677,6 @@ static void on_unicast_server_cb_release_req(uint8_t const ase_lid)
 
 static void on_unicast_server_cb_dp_update_req(uint8_t const ase_lid, bool const start)
 {
-	LOG_DBG("ASE %u data path %s requested", ase_lid, start ? "START" : "STOP");
-
 	struct ase_instance const *const p_ase = get_ase_context_by_lid(ase_lid);
 	bool const valid_config = !!p_ase && p_ase->stream_lid != GAF_INVALID_LID;
 
@@ -697,8 +695,6 @@ static void on_unicast_server_cb_dp_update_req(uint8_t const ase_lid, bool const
 		}
 		return;
 	}
-
-	/* TODO: unable to bind a stream from here */
 }
 
 static const struct bap_uc_srv_cb bap_uc_srv_cb = {
@@ -842,8 +838,8 @@ static inline void *bap_capa_record_alloc_and_init(enum capa_type const type_bit
 						     ? BAP_FRAME_DUR_10MS_BIT
 						     : BAP_FRAME_DUR_7_5MS_BIT;
 		p_capa->param.chan_cnt_bf = 1;
-		p_capa->param.frame_octet_min = 76;  /* 75 */
-		p_capa->param.frame_octet_max = 152; /* 155 */
+		p_capa->param.frame_octet_min = 75;
+		p_capa->param.frame_octet_max = 155;
 		p_capa->param.max_frames_sdu = 1;
 		p_capa->add_capa.len = 0;
 		break;
@@ -853,7 +849,7 @@ static inline void *bap_capa_record_alloc_and_init(enum capa_type const type_bit
 		p_capa->param.frame_dur_bf = BAP_FRAME_DUR_10MS_BIT;
 		p_capa->param.chan_cnt_bf = 1;
 		p_capa->param.frame_octet_min = 120;
-		p_capa->param.frame_octet_max = 152; /* 155 */
+		p_capa->param.frame_octet_max = 155;
 		p_capa->param.max_frames_sdu = 1;
 		p_capa->add_capa.len = 0;
 		break;
@@ -1080,7 +1076,7 @@ static int configure_bap_capabilities(uint32_t const loc_bf_sink, uint32_t const
 /* ---------------------------------------------------------------------------------------- */
 
 /* Telephony and Media Audio Service */
-int init_tmap(void)
+static int init_tmap(void)
 {
 	uint32_t err;
 	tmap_tmas_cfg_param_t cfg_tmas = {

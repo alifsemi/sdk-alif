@@ -23,9 +23,16 @@
 #include "gatt_db.h"
 #include "batt_svc.h"
 #include "shared_control.h"
+#include "address_verification.h"
 
 extern void service_conn(struct shared_control *ctrl);
 struct shared_control ctrl = { false, 0, 0 };
+
+/* Define advertising address type */
+#define SAMPLE_ADDR_TYPE	ALIF_PUBLIC_ADDR
+
+/* Store and share advertising address type */
+static uint8_t adv_type;
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -198,7 +205,6 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 				 uint16_t status)
 {
 	uint16_t rc;
-	gap_addr_t *p_addr;
 
 	if (status != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Advertising completion callback failed, error: %u", status);
@@ -231,10 +237,8 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 	} break;
 
 	case GAPM_ACTV_START: {
-		p_addr = gapm_le_get_adv_addr(actv_idx);
-		LOG_INF("Advertising has been started, address: %02X:%02X:%02X:%02X:%02X:%02X",
-			p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2],
-			p_addr->addr[1], p_addr->addr[0]);
+		print_device_identity();
+		address_verification_log_advertising_address(actv_idx);
 	} break;
 
 	default: {
@@ -522,7 +526,7 @@ static uint16_t utils_create_adv(void)
 		.created = on_adv_created,
 	};
 
-	return gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
+	return gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
 }
 
 static void on_gapm_name_proc_cmp_cb(uint32_t metainfo, uint16_t status)
@@ -581,7 +585,7 @@ static void on_ctrl_hw_error(enum co_error hw_err_code)
 
 static uint16_t utils_config_gapm(void)
 {
-	static const gapm_config_t gapm_cfg = {
+	static gapm_config_t gapm_cfg = {
 		.role = GAP_ROLE_LE_PERIPHERAL,
 		.pairing_mode = GAPM_PAIRING_DISABLE,
 		.pairing_min_req_key_size = 0,
@@ -601,6 +605,11 @@ static uint16_t utils_config_gapm(void)
 		.class_of_device = 0,
 		.dflt_link_policy = 0,
 	};
+
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+		LOG_ERR("Address verification failed");
+		return -EADV;
+	}
 
 	static const gapc_connection_req_cb_t gapc_con_cbs = {
 		.le_connection_req = on_le_connection_req,

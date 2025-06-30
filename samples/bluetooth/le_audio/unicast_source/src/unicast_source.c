@@ -286,9 +286,9 @@ static void datapath_start(struct k_work *p_job)
 		return;
 	}
 
-	LOG_DBG("Starting channel %u, cis %u", p_ase->ase_lid, p_ase->cis_id);
-
 	p_ase->channel_start(p_ase->ase_lid);
+
+	LOG_INF("Channel %u, CIS %u: active", p_ase->ase_lid, p_ase->cis_id);
 }
 
 static void enable_streaming(struct k_work *const p_job)

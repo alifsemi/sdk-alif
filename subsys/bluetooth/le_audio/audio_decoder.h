@@ -59,41 +59,41 @@ struct audio_decoder *audio_decoder_create(struct audio_decoder_params const *pa
  * @brief Add a channel to the decoder
  *
  * @param decoder Audio decoder instance to add channel to
- * @param channel_id Channel ID to add
- * @param queue SDU queue for the channel
+ * @param octets_per_frame Octets per frame for the channel
+ * @param stream_id Stream ID to add
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
 int audio_decoder_add_channel(struct audio_decoder *decoder, size_t octets_per_frame,
-			      size_t channel_id);
+			      uint32_t stream_id);
 
 /**
  * @brief Start a channel
  *
  * @param decoder Audio decoder instance to start channel for
- * @param channel_id Channel ID to start
+ * @param stream_id Stream ID to start
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_decoder_start_channel(struct audio_decoder *decoder, size_t channel_id);
+int audio_decoder_start_channel(struct audio_decoder *decoder, uint32_t stream_id);
 
 /**
  * @brief Stop a channel
  *
  * @param decoder Audio decoder instance to stop channel for
- * @param channel_id Channel ID to stop
+ * @param stream_id Stream ID to stop
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_decoder_stop_channel(struct audio_decoder *decoder, size_t channel_id);
+int audio_decoder_stop_channel(struct audio_decoder *decoder, uint32_t stream_id);
 
 /**
  * @brief Register a callback to be called on completion of each decoded frame
  *
- * @param encoder Audio decoder instance to register with
+ * @param decoder Audio decoder instance to register with
  * @param cb Callback function
  *
  * @retval 0 if successful

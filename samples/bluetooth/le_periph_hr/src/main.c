@@ -23,6 +23,7 @@
 #include "gapm_le.h"
 #include "gapm_le_adv.h"
 #include "co_buf.h"
+#include "address_verification.h"
 
 #include "prf.h"
 #include "hrp_common.h"
@@ -31,6 +32,12 @@
 #include "shared_control.h"
 
 #define BODY_SENSOR_LOCATION_CHEST 0x01
+
+/* Define advertising address type */
+#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+
+/* Store and share advertising address type */
+static uint8_t adv_type;
 
 struct shared_control ctrl = { false, 0, 0 };
 
@@ -62,7 +69,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 /**
  * Bluetooth stack configuration
  */
-static const gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0,
@@ -257,6 +264,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
+	uint16_t comp_id = CONFIG_BLE_COMPANY_ID;
+
 	/* gatt service identifier */
 	uint16_t svc = GATT_SVC_HEART_RATE;
 	uint16_t svc2 = get_batt_id();
@@ -265,9 +274,10 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
 	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
+	const uint16_t adv_manuf_name = GATT_HANDLE_LEN + 2;
 
 	/* Create advertising data with necessary services */
-	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
+	const uint16_t adv_len = adv_device_name + adv_uuid_svc + adv_manuf_name;
 
 	co_buf_t *p_buf;
 
@@ -288,6 +298,11 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	/* Copy identifier */
 	memcpy(p_data + 2, (void *)&svc, sizeof(svc));
 	memcpy(p_data + 4, (void *)&svc2, sizeof(svc2));
+
+	p_data = p_data + adv_uuid_svc;
+	p_data[0] = GATT_UUID_16_LEN + 1;
+	p_data[1] = GAP_AD_TYPE_MANU_SPECIFIC_DATA;
+	memcpy(p_data + 2, (void *)&comp_id, sizeof(comp_id));
 
 	err = gapm_le_set_adv_data(actv_idx, p_buf);
 	co_buf_release(p_buf);
@@ -348,7 +363,8 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		LOG_DBG("Advertising was started");
+		print_device_identity();
+		address_verification_log_advertising_address(actv_idx);
 		break;
 
 	default:
@@ -389,7 +405,7 @@ static uint16_t create_advertising(void)
 		},
 	};
 
-	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
+	err = gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
 	if (err) {
 		LOG_ERR("Error %u creating advertising activity", err);
 	}
@@ -478,6 +494,11 @@ int main(void)
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
+
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+		LOG_ERR("Address verification failed");
+		return -EADV;
+	}
 
 	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 	if (err) {

@@ -8,13 +8,23 @@
 #include "gapm_le.h"
 #include "gapm_le_adv.h"
 #include "co_buf.h"
+#include "address_verification.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+
+/* Semaphores definition */
+K_SEM_DEFINE(init_sem, 0, 1);
+
+/* Define advertising address type */
+#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+
+/* Store and share advertising address type */
+static uint8_t adv_type;
 
 /**
  * Bluetooth stack configuration
  */
-static const gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0,
@@ -235,7 +245,9 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		LOG_DBG("Advertising was started");
+		print_device_identity();
+		address_verification_log_advertising_address(actv_idx);
+		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -302,6 +314,11 @@ int main(void)
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+		LOG_ERR("Address verification failed");
+		return -EADV;
+	}
+
 	uint16_t err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 
 	if (err) {
@@ -309,9 +326,11 @@ int main(void)
 		return -1;
 	}
 
-	/* After gapm_configure returns successfully, all other operations will be started from
-	 * callbacks
-	 */
+	LOG_DBG("Waiting for init...\n");
+
+	k_sem_take(&init_sem, K_FOREVER);
+
+	LOG_DBG("Init complete!");
 
 	uint32_t ctr = 0;
 

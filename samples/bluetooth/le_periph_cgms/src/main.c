@@ -35,12 +35,15 @@
 #include "cgms_app.h"
 
 #include "gapc_msg.h"
+#include "address_verification.h"
 
 #include "se_service.h"
 #include <zephyr/settings/settings.h>
 #include <string.h>
 
-#define BATT_INSTANCE 0x00
+/* Define advertising address type */
+#define SAMPLE_ADDR_TYPE	ALIF_GEN_RSLV_RAND_ADDR
+
 #define BLE_BOND_KEYS_KEY_0	"ble/bond_keys_0"
 #define BLE_BOND_KEYS_NAME_0	"bond_keys_0"
 #define BLE_BOND_DATA_KEY_0	"ble/bond_data_0"
@@ -51,6 +54,9 @@
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 static const char device_name[] = DEVICE_NAME;
 
+/* Store and share advertising address type */
+static uint8_t adv_type;
+
 /* State variables for BLE connection and services */
 static bool connected;
 static bool resolved;
@@ -58,6 +64,7 @@ static gapc_pairing_keys_t stored_keys;
 static gapc_pairing_keys_t generated_keys;
 static gapc_bond_data_t bond_data_saved;
 static uint8_t temp_conidx;
+
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
 
@@ -75,7 +82,7 @@ static struct shared_control ctrl = {false, 0, 0};
  * Bluetooth stack configuration
  */
 
-static const gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_MODE_ALL,
 	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
@@ -494,7 +501,9 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 		break;
 
 	case GAPM_ACTV_START:
-		LOG_DBG("Advertising was started");
+		print_device_identity();
+		address_verification_log_advertising_address(actv_idx);
+		k_sem_give(&init_sem);
 		break;
 
 	default:
@@ -535,7 +544,7 @@ static uint16_t create_advertising(void)
 		},
 	};
 
-	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
+	err = gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
 	if (err) {
 		LOG_ERR("Error %u creating advertising activity", err);
 	}
@@ -553,6 +562,7 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 	}
 
 	LOG_DBG("gapm process completed successfully");
+
 	k_sem_give(&init_sem);
 
 }
@@ -645,6 +655,11 @@ int main(void)
 	alif_ble_enable(NULL);
 
 	gapm_cbs = get_cbs();
+
+	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+		LOG_ERR("Address verification failed");
+		return -EADV;
+	}
 
 	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 	if (err) {

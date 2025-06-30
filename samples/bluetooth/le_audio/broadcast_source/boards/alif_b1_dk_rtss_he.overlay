@@ -29,8 +29,7 @@
 #define LPI2S_DMA_TX_REQ 15
 
 #define AUDIO_DMA_ENABLED 1
-/* TODO: check MIC DMA for some weird error when used multiple times */
-#define MIC_DMA_ENABLED 0
+#define MIC_DMA_ENABLED 1
 
 / {
 	aliases {
