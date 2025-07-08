@@ -32,9 +32,17 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 /* size of stack area used by each thread */
 #define STACKSIZE 1024
 
-/* scheduling priority used by each thread */
-#define MASTER_PRIORITY 7
-#define SLAVE_PRIORITY 6
+/* default SPI master SS(slave select) is H/W controlled,
+ * enable this to use as S/W controlled using gpio.
+ */
+#define SPI_MASTER_SS_SW_CONTROLLED_GPIO   0
+
+/* scheduling priority used by each thread,
+ * as we are testing Loopback on the same board,
+ * make sure master priority is higher than slave priority.
+ */
+#define MASTER_PRIORITY 6
+#define SLAVE_PRIORITY  7
 
 /* delay between greetings (in ms) */
 #define SLEEPTIME 1000
@@ -66,8 +74,7 @@ static uint32_t slave_rxdata[BUFF_SIZE];
 /*
  * Send/Receive data through slave spi
  */
-int slave_spi_transceive(const struct device *dev,
-				 struct spi_cs_control *cs)
+int slave_spi_transceive(const struct device *dev)
 {
 	struct spi_config cnfg;
 	int ret;
@@ -188,10 +195,16 @@ static void master_spi(void *p1, void *p2, void *p3)
 		printk("%s: Master device not ready.\n", dev->name);
 		return;
 	}
+
+#if SPI_MASTER_SS_SW_CONTROLLED_GPIO /* SPI master SS as S/W controlled using gpio */
 	struct spi_cs_control cs_ctrl = (struct spi_cs_control){
-		.gpio = GPIO_DT_SPEC_GET(SPIDW_NODE, cs_gpios),
-		.delay = 0u,
+		.gpio  = GPIO_DT_SPEC_GET(SPIDW_NODE, cs_gpios),
+		.delay = 100u, /* k_busy_wait(uint32_t usec_to_wait) */
 	};
+#else /* SPI master SS as H/W controlled */
+	struct spi_cs_control cs_ctrl = {0};
+#endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
+
 	while (iterations) {
 		printk("Master Transceive Iter= %d\n", iterations);
 		ret = master_spi_transceive(dev, &cs_ctrl);
@@ -219,13 +232,10 @@ static void slave_spi(void *p1, void *p2, void *p3)
 		printk("%s: Slave device not ready\n", slave_dev->name);
 		return;
 	}
-	struct spi_cs_control slave_cs_ctrl = (struct spi_cs_control){
-		.gpio = GPIO_DT_SPEC_GET(S_SPIDW_NODE, cs_gpios),
-		.delay = 0u,
-	};
+
 	while (iterations) {
 		printk("Slave Transceive Iter= %d\n", iterations);
-		ret = slave_spi_transceive(slave_dev, &slave_cs_ctrl);
+		ret = slave_spi_transceive(slave_dev);
 		if (ret < 0) {
 			printk("Stopping the Slave Thread due to error\n");
 			return;
@@ -528,9 +538,13 @@ int main(void)
 	if (tids == NULL) {
 		printk("Error creating Slave Thread\n");
 	}
+
+	/* as we are testing Loopback on the same board,
+	 * make sure slave is ready before master starts.
+	 */
 	k_tid_t tidm = k_thread_create(&MasterT_data, MasterT_stack, STACKSIZE,
 			&master_spi, NULL, NULL, NULL,
-			MASTER_PRIORITY, 0, K_NO_WAIT);
+			MASTER_PRIORITY, 0, K_MSEC(100));
 	if (tidm == NULL) {
 		printk("Error creating Master Thread\n");
 	}
