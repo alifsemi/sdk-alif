@@ -72,5 +72,7 @@ if (CONFIG_AIPL)
   zephyr_library_sources_ifdef(
     CONFIG_AIPL_BAYER
     source/aipl_bayer.c
+    source/default/aipl_bayer_default.c
+    source/helium/aipl_bayer_helium.c
   )
 endif()
