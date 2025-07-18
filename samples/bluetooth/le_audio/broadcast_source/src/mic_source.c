@@ -26,7 +26,13 @@ struct mic_source_env {
 
 static struct mic_source_env mic_source;
 
-__ramfunc static void recv_next_block(const struct device *dev)
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
+INT_RAMFUNC static void recv_next_block(const struct device *dev)
 {
 	struct audio_block *p_block = NULL;
 	int ret = k_mem_slab_alloc(&mic_source.audio_queue->slab, (void **)&p_block, K_NO_WAIT);
@@ -41,8 +47,8 @@ __ramfunc static void recv_next_block(const struct device *dev)
 	p_block->num_channels = mic_source.number_of_channels;
 }
 
-__ramfunc static void on_data_received(const struct device *dev, const enum i2s_sync_status status,
-				       void *block)
+INT_RAMFUNC static void on_data_received(const struct device *dev,
+					 const enum i2s_sync_status status, void *block)
 {
 	ARG_UNUSED(status);
 

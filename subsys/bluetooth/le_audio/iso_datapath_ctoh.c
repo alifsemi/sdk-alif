@@ -17,6 +17,12 @@
 
 LOG_MODULE_REGISTER(iso_datapath_ctoh, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 #include <zephyr/drivers/gpio.h>
 
 #define GPIO_TEST0_NODE DT_ALIAS(ctoh_test0)
@@ -92,9 +98,9 @@ struct timestamp_debug timestamps_debug[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS]
 	__attribute__((__used__));
 #endif
 
-__ramfunc static void finish_last_sdu(struct sdu_queue *sdu_queue,
-				      gapi_isooshm_sdu_buf_t *const p_sdu, size_t const stream_id,
-				      uint32_t const timestamp)
+INT_RAMFUNC static void finish_last_sdu(struct sdu_queue *sdu_queue,
+					gapi_isooshm_sdu_buf_t *const p_sdu, size_t const stream_id,
+					uint32_t const timestamp)
 {
 #if DT_NODE_EXISTS(GPIO_TEST1_NODE)
 	set_test_pin(&test_pin1, 1);
@@ -132,7 +138,7 @@ __ramfunc static void finish_last_sdu(struct sdu_queue *sdu_queue,
 #endif
 }
 
-__ramfunc static int recv_next_sdu(struct iso_datapath_ctoh *const datapath, bool const lock)
+INT_RAMFUNC static int recv_next_sdu(struct iso_datapath_ctoh *const datapath, bool const lock)
 {
 	gapi_isooshm_sdu_buf_t *p_sdu = NULL;
 	struct sdu_queue *const sdu_queue = datapath->sdu_queue;
@@ -189,8 +195,8 @@ __ramfunc static int recv_next_sdu(struct iso_datapath_ctoh *const datapath, boo
 	return ret;
 }
 
-__ramfunc static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
-					      gapi_isooshm_sdu_buf_t *const buf)
+INT_RAMFUNC static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
+						gapi_isooshm_sdu_buf_t *const buf)
 {
 #if DT_NODE_EXISTS(GPIO_TEST0_NODE)
 	set_test_pin(&test_pin0, 1);
@@ -342,8 +348,8 @@ int iso_datapath_ctoh_stop(struct iso_datapath_ctoh *const datapath)
 	return iso_datapath_ctoh_unbind(datapath);
 }
 
-__ramfunc void iso_datapath_ctoh_notify_sdu_done(void *p_datapath, uint32_t const timestamp,
-						 uint16_t const sdu_seq)
+INT_RAMFUNC void iso_datapath_ctoh_notify_sdu_done(void *p_datapath, uint32_t const timestamp,
+						   uint16_t const sdu_seq)
 {
 	ARG_UNUSED(timestamp);
 	ARG_UNUSED(sdu_seq);

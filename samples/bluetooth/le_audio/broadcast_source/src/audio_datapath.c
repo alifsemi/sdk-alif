@@ -18,6 +18,12 @@
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_AUDIO_DATAPATH_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 #define MIC_LEVEL_CALC(_s)   (((int)(_s) * CONFIG_MICROPHONE_GAIN) / 100)
 #define INPUT_LEVEL_CALC(_s) (((int)(_s) * CONFIG_INPUT_VOLUME_LEVEL) / 100)
 
@@ -80,7 +86,7 @@ static int configure_codec(const uint32_t sampling_rate_hz)
 	return 0;
 }
 
-__ramfunc static void audio_encoder_mixer_thread_func(void *p1, void *p2, void *p3)
+INT_RAMFUNC static void audio_encoder_mixer_thread_func(void *p1, void *p2, void *p3)
 {
 	/* thread:
 	 * get audio input jack buffer

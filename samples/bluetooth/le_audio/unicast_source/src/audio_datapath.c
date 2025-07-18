@@ -16,6 +16,12 @@
 
 #include "audio_datapath.h"
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
 struct audio_datapath {
@@ -49,7 +55,7 @@ static int unicast_audio_path_init(void)
 SYS_INIT(unicast_audio_path_init, APPLICATION, 0);
 
 #if ENCODER_DEBUG
-__ramfunc static void on_encoder_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
+INT_RAMFUNC static void on_encoder_frame_complete(void *param, uint32_t timestamp, uint16_t sdu_seq)
 {
 	if ((sdu_seq % 128) == 0) {
 		LOG_INF("SDU sequence number: %u", sdu_seq);
@@ -58,7 +64,7 @@ __ramfunc static void on_encoder_frame_complete(void *param, uint32_t timestamp,
 #endif
 
 #if DECODER_DEBUG
-__ramfunc static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
+INT_RAMFUNC static void print_sdus(void *context, uint32_t timestamp, uint16_t sdu_seq)
 {
 	static uint16_t last_sdu;
 

@@ -177,6 +177,10 @@ config ALIF_BLE_AUDIO_SOURCE_TRANSMISSION_DELAY_MS
 	range 0 100
 	default 30
 
+config ALIF_BLE_AUDIO_USE_RAMFUNC
+	bool "Run some critical functions in RAM"
+	default n
+
 rsource "Kconfig.lc3"
 rsource "Kconfig.presentation_compensation"
 
