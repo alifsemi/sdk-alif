@@ -70,7 +70,9 @@ if (CONFIG_AIPL)
   )
 
   zephyr_library_sources_ifdef(
-    CONFIG_AIPL_BAYER
-    source/aipl_bayer.c
+    CONFIG_AIPL_DEMOSAIC
+    source/aipl_demosaic.c
+    source/default/aipl_demosaic_default.c
+    source/helium/aipl_demosaic_helium.c
   )
 endif()

@@ -1753,6 +1753,53 @@ INLINE void aipl_cnvt_px_yuv_to_rgb565(aipl_rgb565_px_t *dst, int32_t c, int32_t
 	dst->b = (g0 << 5) | aipl_channel_cap_5bit((c + b) >> 11, 0);
 }
 
+/**
+ * Convert R, G and B channels into Y channel
+ *
+ * @param dst       destination Y channel pointer
+ * @param red       red channel
+ * @param green     green channel
+ * @param blue      blue channel
+ */
+INLINE void aipl_cnvt_px_rgb_to_yuv_y(uint8_t *dst, uint8_t red, uint8_t green, uint8_t blue)
+{
+	*dst = ((66 * red + 129 * green + 25 * blue + 128) >> 8) + 16;
+}
+
+/**
+ * Convert R, G and B channels into U and V channels
+ *
+ * @param u_dst     destination U channel pointer
+ * @param v_dst     destination V channel pointer
+ * @param red       red channel
+ * @param green     green channel
+ * @param blue      blue channel
+ */
+INLINE void aipl_cnvt_px_rgb_to_yuv_uv(uint8_t *u_dst, uint8_t *v_dst, uint8_t red, uint8_t green,
+				       uint8_t blue)
+{
+	*u_dst = ((-38 * red - 74 * green + 112 * blue + 128) >> 8) + 128;
+	*v_dst = ((112 * red - 94 * green - 18 * blue + 128) >> 8) + 128;
+}
+
+/**
+ * Convert R, G and B channels into Y, U and V channels
+ *
+ * @param y_dst     destination Y channel pointer
+ * @param u_dst     destination U channel pointer
+ * @param v_dst     destination V channel pointer
+ * @param red       red channel
+ * @param green     green channel
+ * @param blue      blue channel
+ */
+INLINE void aipl_cnvt_px_rgb_to_yuv(uint8_t *y_dst, uint8_t *u_dst, uint8_t *v_dst, uint8_t red,
+				    uint8_t green, uint8_t blue)
+{
+	*y_dst = ((66 * red + 129 * green + 25 * blue + 128) >> 8) + 16;
+	*u_dst = ((-38 * red - 74 * green + 112 * blue + 128) >> 8) + 128;
+	*v_dst = ((112 * red - 94 * green - 18 * blue + 128) >> 8) + 128;
+}
+
 /**********************
  *      MACROS
  **********************/
