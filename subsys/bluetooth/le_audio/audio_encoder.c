@@ -21,6 +21,12 @@
 #include "bluetooth/le_audio/iso_datapath_htoc.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 #define AUDIO_QUEUE_MARGIN_US     (CONFIG_ALIF_BLE_AUDIO_PRESENTATION_DELAY_QUEUE_MARGIN * 1000)
 #define MIN_PRESENTATION_DELAY_US (CONFIG_ALIF_BLE_AUDIO_MIN_PRESENTATION_DELAY_MS * 1000)
 
@@ -144,7 +150,7 @@ static int get_channel_index(struct audio_encoder const *const encoder, uint32_t
 	return -EINVAL;
 }
 
-__ramfunc static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
+INT_RAMFUNC static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 {
 	struct audio_encoder *enc = (struct audio_encoder *)p1;
 	(void)p2;

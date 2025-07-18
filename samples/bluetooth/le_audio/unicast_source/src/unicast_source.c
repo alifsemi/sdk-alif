@@ -568,6 +568,7 @@ static void configure_streams(struct k_work *p_job)
 		struct unicast_client_ase *p_ase = &unicast_env.ase[iter];
 
 		if (p_ase->conidx == GAP_INVALID_CONIDX || p_ase->ase_lid != GAF_INVALID_LID) {
+			LOG_INF("Skipping codec configuration for ASE %u", iter);
 			continue;
 		}
 
@@ -595,6 +596,8 @@ static void configure_streams(struct k_work *p_job)
 			p_ase->channel_create = audio_datapath_channel_create_sink;
 			p_ase->channel_start = audio_datapath_channel_start_sink;
 			p_ase->channel_stop = audio_datapath_channel_stop_sink;
+		} else {
+			__ASSERT(0, "Invalid ASE direction");
 		}
 
 		LOG_DBG("Codec %s setup: conidx %u, ase_instance_idx %u, ase_lid %u, octets %uB",
@@ -648,7 +651,8 @@ static void on_gaf_scanning_cb_stopped(uint8_t const reason)
 		"Timeout",
 	};
 
-	LOG_DBG("GAF scanning stopped. Reason: %s", reason_str[reason]);
+	LOG_DBG("GAF scanning stopped. Reason: %s",
+		reason < ARRAY_SIZE(reason_str) ? reason_str[reason] : "??");
 
 	if (reason == GAF_SCAN_STOP_REASON_TIMEOUT) {
 	} else if (reason == GAF_SCAN_STOP_REASON_UL) {
@@ -881,6 +885,8 @@ static void handle_cis_state(struct unicast_client_ase *const p_ase, uint8_t con
 		/* An ASE has been bound with the Stream */
 		p_ase->stream_lid = stream_lid;
 
+		__ASSERT(p_ase->channel_create != NULL, "Channel create callback is not set");
+
 		int const retval = p_ase->channel_create(p_ase->number_of_octets, stream_lid);
 
 		if (retval) {
@@ -931,7 +937,8 @@ static void on_bap_uc_cli_cis_state(uint8_t const stream_lid, uint8_t const even
 		[BAP_UC_CLI_CIS_EVENT_DISCONNECTED] = "DISCONNECTED",
 	};
 
-	LOG_DBG("CIS %u state %s - stream %u, ASE sink:%u,source:%u", cis_id, cis_state_str[event],
+	LOG_DBG("CIS %u state %s - stream %u, ASE sink:%u,source:%u", cis_id,
+		event < ARRAY_SIZE(cis_state_str) ? cis_state_str[event] : "??",
 		stream_lid, ase_lid_sink, ase_lid_src);
 
 	if (event == BAP_UC_CLI_CIS_EVENT_FAILED) {
@@ -978,7 +985,8 @@ static void on_bap_uc_cli_state_empty(uint8_t const con_lid, uint8_t const ase_i
 						 "RELEASING"};
 	struct unicast_client_ase *p_ase;
 
-	LOG_DBG("ASE state '%s': con_lid:%u, ase_inst_idx:%u, ase_lid:%u", states_str[state],
+	LOG_DBG("ASE state '%s': con_lid:%u, ase_inst_idx:%u, ase_lid:%u",
+		state < ARRAY_SIZE(states_str) ? states_str[state] : "??",
 		con_lid, ase_instance_idx, ase_lid);
 
 	p_ase = get_ase_config_by_id(ase_lid);
@@ -1115,7 +1123,8 @@ static void on_bap_uc_cli_state_metadata(uint8_t const ase_lid, uint8_t const st
 		"STREAMING", "DISABLING",        "RELEASING",
 	};
 
-	LOG_DBG("ASE %u metadata state %s", ase_lid, states_str[state]);
+	LOG_DBG("ASE %u metadata state %s", ase_lid,
+		state < ARRAY_SIZE(states_str) ? states_str[state] : "??");
 
 	switch (state) {
 	case BAP_UC_ASE_STATE_IDLE: {
@@ -1194,7 +1203,8 @@ static void on_bap_capa_client_cb_cmp_evt(uint8_t const cmd_type, uint16_t statu
 	static const char *const cmd_str[] = {"DISCOVER", "GET", "SET_CFG", "SET_LOCATION"};
 
 	LOG_DBG("BAP Capabilities completed: cmd:%s, status:%u, conlid:%u, pac_lid:%u",
-		cmd_str[cmd_type], status, con_lid, pac_lid);
+		cmd_type < ARRAY_SIZE(cmd_str) ? cmd_str[cmd_type] : "??",
+		status, con_lid, pac_lid);
 
 	__ASSERT(status == GAF_ERR_NO_ERROR, "BAP Capa Client cmd failed!");
 

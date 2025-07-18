@@ -19,6 +19,12 @@
 
 LOG_MODULE_REGISTER(audio_sink_i2s, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 #include <zephyr/drivers/gpio.h>
 
 #define GPIO_TEST0_NODE DT_ALIAS(sink_i2s_test0) /* DT_NODELABEL(test_pin0) */
@@ -91,7 +97,7 @@ static struct pres_delay_work pd_work;
 
 static pcm_sample_t silence[MAX_SAMPLES_PER_AUDIO_BLOCK];
 
-__ramfunc static void send_next_block(const struct device *dev, uint32_t const time_now)
+INT_RAMFUNC static void send_next_block(const struct device *dev, uint32_t const time_now)
 {
 	struct audio_block *block = NULL;
 	int32_t const correction_samples = audio_i2s_get_sample_correction(&audio_sink.timing);
@@ -144,8 +150,8 @@ __ramfunc static void send_next_block(const struct device *dev, uint32_t const t
 	audio_sink.current_block = block;
 }
 
-__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status,
-				      void *p_block)
+INT_RAMFUNC static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status,
+					void *p_block)
 {
 	ARG_UNUSED(p_block);
 
@@ -169,7 +175,7 @@ __ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_st
 	}
 }
 
-__ramfunc static void submit_presentation_delay(struct k_work *item)
+INT_RAMFUNC static void submit_presentation_delay(struct k_work *item)
 {
 	(void)item;
 	/* struct pres_delay_work *w = CONTAINER_OF(item, struct pres_delay_work, work); */
@@ -236,8 +242,8 @@ int audio_sink_i2s_configure(const struct device *dev, struct audio_queue *audio
 	return 0;
 }
 
-__ramfunc void audio_sink_i2s_notify_buffer_available(void *param, uint32_t const timestamp,
-						      uint16_t const sdu_seq)
+INT_RAMFUNC void audio_sink_i2s_notify_buffer_available(void *param, uint32_t const timestamp,
+							uint16_t const sdu_seq)
 {
 	(void)param;
 	(void)timestamp;
@@ -253,7 +259,7 @@ __ramfunc void audio_sink_i2s_notify_buffer_available(void *param, uint32_t cons
 	send_next_block(audio_sink.dev, time_now);
 }
 
-__ramfunc void audio_sink_i2s_apply_timing_correction(int32_t correction_us)
+INT_RAMFUNC void audio_sink_i2s_apply_timing_correction(int32_t correction_us)
 {
 	audio_i2s_timing_apply_correction(&audio_sink.timing, correction_us);
 }

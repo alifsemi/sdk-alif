@@ -18,6 +18,12 @@
 
 LOG_MODULE_REGISTER(iso_datapath_htoc, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 #define GPIO_TEST0_NODE DT_ALIAS(htoc_test0)
 #define GPIO_TEST1_NODE DT_ALIAS(htoc_test1)
 
@@ -85,7 +91,7 @@ struct sdu_timing_info {
 	uint16_t seq_num;
 };
 
-__ramfunc static void send_next_sdu(struct iso_datapath_htoc *const datapath, bool const lock)
+INT_RAMFUNC static void send_next_sdu(struct iso_datapath_htoc *const datapath, bool const lock)
 {
 	void *p_sdu = NULL;
 	int ret = k_msgq_get(&datapath->sdu_queue->msgq, (void *)&p_sdu, K_NO_WAIT);
@@ -119,8 +125,8 @@ __ramfunc static void send_next_sdu(struct iso_datapath_htoc *const datapath, bo
 	LOG_ERR("Failed to set next ISO buffer, err %u", ret);
 }
 
-__ramfunc static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
-					      gapi_isooshm_sdu_buf_t *const buf)
+INT_RAMFUNC static void on_dp_transfer_complete(gapi_isooshm_dp_t *const dp,
+						gapi_isooshm_sdu_buf_t *const buf)
 {
 #if DT_NODE_EXISTS(GPIO_TEST0_NODE)
 	set_test_pin(&test_pin0, 1);
@@ -256,8 +262,8 @@ int iso_datapath_htoc_unbind(struct iso_datapath_htoc *const datapath)
 	return 0;
 }
 
-__ramfunc static void store_sdu_timing_info(struct iso_datapath_htoc *iso_dp,
-					    uint32_t capture_timestamp, uint16_t sdu_seq)
+INT_RAMFUNC static void store_sdu_timing_info(struct iso_datapath_htoc *iso_dp,
+					      uint32_t capture_timestamp, uint16_t sdu_seq)
 {
 	struct sdu_timing_info info = {
 		.seq_num = sdu_seq,
@@ -271,8 +277,8 @@ __ramfunc static void store_sdu_timing_info(struct iso_datapath_htoc *iso_dp,
 	}
 }
 
-__ramfunc static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t sdu_seq,
-				    struct sdu_timing_info *info)
+INT_RAMFUNC static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t sdu_seq,
+				      struct sdu_timing_info *info)
 {
 	/* Loop through SDU queue until we either find a matching SDU or we know that the matching
 	 * SDU does not exist in the queue
@@ -303,9 +309,9 @@ __ramfunc static int get_sdu_timing(struct iso_datapath_htoc *iso_dp, uint16_t s
 	}
 }
 
-__ramfunc void iso_datapath_htoc_notify_sdu_available(void *const datapath,
-						      uint32_t const capture_timestamp,
-						      uint16_t const sdu_seq)
+INT_RAMFUNC void iso_datapath_htoc_notify_sdu_available(void *const datapath,
+							uint32_t const capture_timestamp,
+							uint16_t const sdu_seq)
 {
 	if (datapath == NULL) {
 		LOG_ERR("null datapath");

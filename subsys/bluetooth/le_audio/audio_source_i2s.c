@@ -18,6 +18,12 @@
 
 LOG_MODULE_REGISTER(audio_source_i2s, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 #if CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS
 #define FRAMES_PER_SECOND 100
 #else
@@ -118,7 +124,7 @@ struct last_block_job {
 K_KERNEL_STACK_DEFINE(i2s_worker_stack, 2048);
 static struct k_work_q i2s_worker_queue;
 
-__ramfunc static void finish_last_block(struct k_work *work)
+INT_RAMFUNC static void finish_last_block(struct k_work *work)
 {
 	struct last_block_job *p_context = CONTAINER_OF(work, struct last_block_job, work);
 	struct audio_input_buffer *p_block = p_context->p_block;
@@ -196,7 +202,7 @@ static struct last_block_job finish_last_block_job = {
 	.p_block = NULL,
 };
 
-__ramfunc static void recv_next_block(const struct device *dev, uint32_t timestamp)
+INT_RAMFUNC static void recv_next_block(const struct device *dev, uint32_t timestamp)
 {
 	bool const ping_pong = audio_source.ping_pong_buffer ^ true;
 
@@ -247,8 +253,8 @@ __ramfunc static void recv_next_block(const struct device *dev, uint32_t timesta
 #endif
 }
 
-__ramfunc static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status,
-				      void *block)
+INT_RAMFUNC static void on_i2s_complete(const struct device *dev, enum i2s_sync_status status,
+					void *block)
 {
 	/* Capture timestamp before doing anything else to reduce jitter */
 	const uint32_t time_now = gapi_isooshm_dp_get_local_time();
@@ -389,7 +395,7 @@ void audio_source_i2s_stop(void)
 	audio_source.started = false;
 }
 
-__ramfunc void audio_source_i2s_apply_timing_correction(int32_t const correction_us)
+INT_RAMFUNC void audio_source_i2s_apply_timing_correction(int32_t const correction_us)
 {
 	audio_i2s_timing_apply_correction(&audio_source.timing, correction_us);
 }

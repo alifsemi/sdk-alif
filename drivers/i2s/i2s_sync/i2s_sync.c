@@ -35,6 +35,12 @@ LOG_MODULE_REGISTER(i2s_sync, CONFIG_I2S_SYNC_LOG_LEVEL);
 #define EVTRTR2_DMA_CTRL_ACK_PERIPH (0x0 << 16)
 #define EVTRTR2_DMA_CTRL_ACK_ROUTER (0x1 << 16)
 
+#if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
+#define INT_RAMFUNC __ramfunc
+#else
+#define INT_RAMFUNC
+#endif
+
 struct i2s_sync_channel {
 	i2s_sync_cb_t cb;
 	void *buf;
@@ -121,8 +127,8 @@ static int configure_dma_event_router(const uint32_t dma_group, const uint32_t d
 	return 0;
 }
 
-__ramfunc static void dma_tx_callback(const struct device *dma_dev, void *p_user_data,
-				      uint32_t const channel, int const status)
+INT_RAMFUNC static void dma_tx_callback(const struct device *dma_dev, void *p_user_data,
+					uint32_t const channel, int const status)
 {
 	const struct device *const dev = p_user_data;
 	struct i2s_sync_data *const dev_data = dev->data;
@@ -143,8 +149,8 @@ __ramfunc static void dma_tx_callback(const struct device *dma_dev, void *p_user
 	LOG_DBG("I2S:%s tx dma callback ch:%d completed", dev->name, channel);
 }
 
-__ramfunc static int i2s_transmitter_start_dma(const struct device *const dev,
-					       size_t const bytes_per_sample)
+INT_RAMFUNC static int i2s_transmitter_start_dma(const struct device *const dev,
+						 size_t const bytes_per_sample)
 {
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
@@ -206,7 +212,7 @@ __ramfunc static int i2s_transmitter_start_dma(const struct device *const dev,
 	return ret;
 }
 
-__ramfunc static void i2s_transmitter_start(struct i2s_t *const i2s)
+INT_RAMFUNC static void i2s_transmitter_start(struct i2s_t *const i2s)
 {
 	i2s_tx_channel_enable(i2s);
 	i2s_tx_interrupt_enable(i2s);
@@ -214,7 +220,7 @@ __ramfunc static void i2s_transmitter_start(struct i2s_t *const i2s)
 	/* Should immediately get interrupt during which FIFO is filled */
 }
 
-__ramfunc static int i2s_send(const struct device *dev, void *buf, size_t len)
+INT_RAMFUNC static int i2s_send(const struct device *dev, void *buf, size_t len)
 {
 	if ((buf == NULL) || (len == 0)) {
 		return -EINVAL;
@@ -256,8 +262,8 @@ __ramfunc static int i2s_send(const struct device *dev, void *buf, size_t len)
 	return 0;
 }
 
-__ramfunc static void dma_rx_callback(const struct device *dma_dev, void *p_user_data,
-				      uint32_t const channel, int const status)
+INT_RAMFUNC static void dma_rx_callback(const struct device *dma_dev, void *p_user_data,
+					uint32_t const channel, int const status)
 {
 	const struct device *const dev = p_user_data;
 	struct i2s_sync_data *const dev_data = dev->data;
@@ -282,8 +288,8 @@ __ramfunc static void dma_rx_callback(const struct device *dma_dev, void *p_user
 	LOG_DBG("I2S:%s rx dma callback ch:%d completed", dev->name, channel);
 }
 
-__ramfunc static int i2s_receiver_start_dma(const struct device *const dev,
-					    size_t const bytes_per_sample)
+INT_RAMFUNC static int i2s_receiver_start_dma(const struct device *const dev,
+					      size_t const bytes_per_sample)
 {
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
@@ -340,14 +346,14 @@ __ramfunc static int i2s_receiver_start_dma(const struct device *const dev,
 	return ret;
 }
 
-__ramfunc static void i2s_receiver_start(struct i2s_t *const i2s)
+INT_RAMFUNC static void i2s_receiver_start(struct i2s_t *const i2s)
 {
 	i2s_rx_channel_enable(i2s);
 	i2s_rx_interrupt_enable(i2s);
 	i2s_rx_block_enable(i2s);
 }
 
-__ramfunc static int i2s_recv(const struct device *dev, void *buf, size_t len)
+INT_RAMFUNC static int i2s_recv(const struct device *dev, void *buf, size_t len)
 {
 	if ((buf == NULL) || (len == 0)) {
 		return -EINVAL;
@@ -647,7 +653,7 @@ static int i2s_sync_init(const struct device *dev)
 	return 0;
 }
 
-__ramfunc static void i2s_sync_tx_isr_handler(const struct device *dev)
+INT_RAMFUNC static void i2s_sync_tx_isr_handler(const struct device *dev)
 {
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_sync_data *dev_data = dev->data;
@@ -710,7 +716,7 @@ __ramfunc static void i2s_sync_tx_isr_handler(const struct device *dev)
 	}
 }
 
-__ramfunc static void i2s_sync_rx_isr_handler(const struct device *dev)
+INT_RAMFUNC static void i2s_sync_rx_isr_handler(const struct device *dev)
 {
 	const struct i2s_sync_config_priv *dev_cfg = (struct i2s_sync_config_priv *)dev->config;
 	struct i2s_sync_data *dev_data = dev->data;
@@ -772,7 +778,7 @@ __ramfunc static void i2s_sync_rx_isr_handler(const struct device *dev)
 	}
 }
 
-__ramfunc static void i2s_sync_isr(const struct device *dev)
+INT_RAMFUNC static void i2s_sync_isr(const struct device *dev)
 {
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_sync_data *dev_data = dev->data;
