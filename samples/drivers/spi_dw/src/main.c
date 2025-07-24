@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -16,7 +16,7 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #include <zephyr/devicetree.h>
 #include <string.h>
 #include <zephyr/drivers/spi.h>
-#include <soc.h>
+#include <soc_common.h>
 
 #define Mhz		1000000
 #define Khz		1000
@@ -542,9 +542,10 @@ int main(void)
 	/* as we are testing Loopback on the same board,
 	 * make sure slave is ready before master starts.
 	 */
+	k_msleep(100);
 	k_tid_t tidm = k_thread_create(&MasterT_data, MasterT_stack, STACKSIZE,
 			&master_spi, NULL, NULL, NULL,
-			MASTER_PRIORITY, 0, K_MSEC(100));
+			MASTER_PRIORITY, 0, K_NO_WAIT);
 	if (tidm == NULL) {
 		printk("Error creating Master Thread\n");
 	}
