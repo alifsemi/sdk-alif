@@ -8,21 +8,19 @@
  *
  */
 
-/* setting SPI4 as master and SPI0 instance as slave.
- *
- */
+/* setting SPI1 as master and SPI0 instance as slave. */
 
 /* For SPI master SS(slave select) as:
  * - H/W controlled (default):
  *   - use SS pinmux as H/W
- *     - example for SPI4 as master "PIN_P7_7__LPSPI_SS_A"
+ *     - example for SPI1 as master "PIN_P14_7__SPI1_SS0_C"
  *  "OR"
  * - S/W controlled using gpio:
  *   - use SS pinmux as gpio
- *     - example for SPI4 as master "PIN_P7_7__GPIO"
+ *     - example for SPI1 as master "PIN_P14_7__GPIO"
  *   - define cs-gpios property
- *     - example for SPI4 as master
- *        cs-gpios = <&gpio7 7 GPIO_ACTIVE_LOW>;
+ *     - example for SPI1 as master
+ *        cs-gpios = <&gpio14 7 GPIO_ACTIVE_LOW>;
  */
 
 /* default SPI master SS(slave select) is H/W controlled,
@@ -32,53 +30,46 @@
 
 / {
 	aliases {
-		master-spi = &spi4;
+		master-spi = &spi1;
 		slave-spi = &spi0;
 	};
-};
-
-&dma2 {
-	status = "okay";
 };
 
 &dma0 {
 	status = "okay";
 };
 
-&spi4 {
+&spi1 {
 	status = "okay";
-	dmas = <&dma2 0 13>, <&dma2 1 12>;
-/* If user want to use dma0 for master spi(spi4),
- * add below dmas property:
- * dmas = <&dma0 0 25>, <&dma0 1 24>;
- */
+	dmas = <&dma0 0 21>, <&dma0 1 17>;
 	dma-names = "txdma", "rxdma";
 
 #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
-	cs-gpios = <&gpio7 7 GPIO_ACTIVE_LOW>;
+	cs-gpios = <&gpio14 7 GPIO_ACTIVE_LOW>;
 	/* as we are testing Loopback on the same board,
 	 * make sure master interrupt priority is
 	 * higher than slave interrupt priority.
 	 */
-	interrupts = <46 0>;
+	interrupts = <138 0>;
 #endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
 };
 
 #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
 /* use SPI master SS pinmux as gpio. */
-&pinctrl_lpspi {
+&pinctrl_spi1 {
 	group0 {
-		pinmux = < PIN_P7_4__LPSPI_MISO_A >,
-			 < PIN_P7_5__LPSPI_MOSI_A >,
-			 < PIN_P7_6__LPSPI_SCLK_A >,
-			 < PIN_P7_7__GPIO >;
+		pinmux = < PIN_P14_4__SPI1_MISO_C >,
+			 < PIN_P14_5__SPI1_MOSI_C >,
+			 < PIN_P14_6__SPI1_SCLK_C >,
+			 < PIN_P14_7__GPIO >;
 		read_enable = < 0x1 >;
 	};
 };
 
-&gpio7 {
+&gpio14 {
 	status = "okay";
 };
+
 #endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
 
 &spi0 {
