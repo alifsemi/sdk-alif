@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -66,6 +66,10 @@
 			 < PIN_P6_4__GPIO >;
 		read_enable = < 0x1 >;
 	};
+};
+
+&gpio6 {
+	status = "okay";
 };
 #endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
 
