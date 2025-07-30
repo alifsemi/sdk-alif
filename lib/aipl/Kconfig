@@ -1,0 +1,1157 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+#
+#
+# Alif Image Processing Library configuration
+
+menuconfig AIPL
+    bool "AIPL support"
+
+if AIPL
+
+config AIPL_CUSTOM_VIDEO_ALLOC
+    bool "Use custom video memory allocation functions"
+    default y
+
+config AIPL_CUSTOM_DAVE2D_INIT
+    bool "Use custom D/AVE2D initialization function"
+
+config AIPL_OPTIMIZE_CPU_LOAD
+    bool "Use function implementations that minimize CPU load"
+
+config AIPL_DAVE2D_ACCELERATION
+    bool "Use D/AVE2D hardware acceleration"
+    default y
+
+config AIPL_HELIUM_ACCELERATION
+    bool "Use Helium hardware acceleration"
+    default y
+
+config AIPL_INCLUDE_ALL_DEFAULT
+    bool "Include all default implementations to compilation"
+
+config AIPL_INCLUDE_ALL_HELIUM
+    bool "Include all Helium implementations to compilation"
+
+config AIPL_BASIC
+    bool "Include AIPL basic functions"
+    default y
+
+config AIPL_COLOR_CORRECTION
+    bool "Include AIPL color correction functions"
+    default y
+
+config AIPL_BAYER
+    bool "Include AIPL bayer conversion"
+    default y
+
+menuconfig AIPL_COLOR_CONVERSION
+    bool "Include AIPL color format conversions"
+    default y
+
+if AIPL_COLOR_CONVERSION
+
+menuconfig AIPL_CONVERT_ALPHA8_I400
+    bool "Include color conversions from ALPHA8 and I400"
+    default y
+
+if AIPL_CONVERT_ALPHA8_I400
+
+config AIPL_CONVERT_ALPHA8_I400_TO_ARGB8888
+    bool "ALPHA8 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_ALPHA8_I400_TO_ARGB4444
+    bool "ALPHA8 -> ARGB4444"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_ARGB1555
+    bool "ALPHA8 -> ARGB1555"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_RGBA8888
+    bool "ALPHA8 -> RGBA8888"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_RGBA4444
+    bool "ALPHA8 -> RGBA4444"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_RGBA5551
+    bool "ALPHA8 -> RGBA5551"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_RGB888
+    bool "ALPHA8 -> RGB888"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_BGR888
+    bool "ALPHA8 -> BRG888"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_RGB565
+    bool "ALPHA8 -> RGB565"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_YV12
+    bool "ALPHA8 -> YV12"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_I420
+    bool "ALPHA8 -> I420"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_I422
+    bool "ALPHA8 -> I422"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_I444
+    bool "ALPHA8 -> I444"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_NV12
+    bool "ALPHA8 -> NV12"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_NV21
+    bool "ALPHA8 -> NV21"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_YUY2
+    bool "ALPHA8 -> YUY2"
+
+config AIPL_CONVERT_ALPHA8_I400_TO_UYVY
+    bool "ALPHA8 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_ARGB8888
+    bool "Include color conversions from ARGB8888"
+    default y
+
+if AIPL_CONVERT_ARGB8888
+
+config AIPL_CONVERT_ARGB8888_TO_ALPHA8_I400
+    bool "ARGB8888 -> ALPHA8"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_ARGB4444
+    bool "ARGB8888 -> ARGB4444"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_ARGB1555
+    bool "ARGB8888 -> ARGB1555"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_RGBA8888
+    bool "ARGB8888 -> RGBA8888"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_RGBA4444
+    bool "ARGB8888 -> RGBA4444"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_RGBA5551
+    bool "ARGB8888 -> RGBA5551"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_RGB888
+    bool "ARGB8888 -> RGB888"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_BGR888
+    bool "ARGB8888 -> BRG888"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_RGB565
+    bool "ARGB8888 -> RGB565"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_YV12
+    bool "ARGB8888 -> YV12"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_I420
+    bool "ARGB8888 -> I420"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_I422
+    bool "ARGB8888 -> I422"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_I444
+    bool "ARGB8888 -> I444"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_NV12
+    bool "ARGB8888 -> NV12"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_NV21
+    bool "ARGB8888 -> NV21"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_YUY2
+    bool "ARGB8888 -> YUY2"
+    default y
+
+config AIPL_CONVERT_ARGB8888_TO_UYVY
+    bool "ARGB8888 -> UYVY"
+    default y
+
+endif
+
+menuconfig AIPL_CONVERT_ARGB4444
+    bool "Include color conversions from ARGB4444"
+    default y
+
+if AIPL_CONVERT_ARGB4444
+
+config AIPL_CONVERT_ARGB4444_TO_ALPHA8_I400
+    bool "ARGB4444 -> ALPHA8"
+
+config AIPL_CONVERT_ARGB4444_TO_ARGB8888
+    bool "ARGB4444 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_ARGB4444_TO_ARGB1555
+    bool "ARGB4444 -> ARGB1555"
+
+config AIPL_CONVERT_ARGB4444_TO_RGBA8888
+    bool "ARGB4444 -> RGBA8888"
+
+config AIPL_CONVERT_ARGB4444_TO_RGBA4444
+    bool "ARGB4444 -> RGBA4444"
+
+config AIPL_CONVERT_ARGB4444_TO_RGBA5551
+    bool "ARGB4444 -> RGBA5551"
+
+config AIPL_CONVERT_ARGB4444_TO_RGB888
+    bool "ARGB4444 -> RGB888"
+
+config AIPL_CONVERT_ARGB4444_TO_BGR888
+    bool "ARGB4444 -> BGR888"
+
+config AIPL_CONVERT_ARGB4444_TO_RGB565
+    bool "ARGB4444 -> RGB565"
+
+config AIPL_CONVERT_ARGB4444_TO_YV12
+    bool "ARGB4444 -> YV12"
+
+config AIPL_CONVERT_ARGB4444_TO_I420
+    bool "ARGB4444 -> I420"
+
+config AIPL_CONVERT_ARGB4444_TO_I422
+    bool "ARGB4444 -> I422"
+
+config AIPL_CONVERT_ARGB4444_TO_I444
+    bool "ARGB4444 -> I444"
+
+config AIPL_CONVERT_ARGB4444_TO_NV12
+    bool "ARGB4444 -> NV12"
+
+config AIPL_CONVERT_ARGB4444_TO_NV21
+    bool "ARGB4444 -> NV21"
+
+config AIPL_CONVERT_ARGB4444_TO_YUY2
+    bool "ARGB4444 -> YUY2"
+
+config AIPL_CONVERT_ARGB4444_TO_UYVY
+    bool "ARGB4444 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_ARGB1555
+    bool "Include color conversions from ARGB1555"
+    default y
+
+if AIPL_CONVERT_ARGB1555
+
+config AIPL_CONVERT_ARGB1555_TO_ALPHA8_I400
+    bool "ARGB1555 -> ALPHA8"
+
+config AIPL_CONVERT_ARGB1555_TO_ARGB8888
+    bool "ARGB1555 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_ARGB1555_TO_ARGB4444
+    bool "ARGB1555 -> ARGB4444"
+
+config AIPL_CONVERT_ARGB1555_TO_RGBA8888
+    bool "ARGB1555 -> RGBA8888"
+
+config AIPL_CONVERT_ARGB1555_TO_RGBA4444
+    bool "ARGB1555 -> RGBA4444"
+
+config AIPL_CONVERT_ARGB1555_TO_RGBA5551
+    bool "ARGB1555 -> RGBA5551"
+
+config AIPL_CONVERT_ARGB1555_TO_RGB888
+    bool "ARGB1555 -> RGB888"
+
+config AIPL_CONVERT_ARGB1555_TO_BGR888
+    bool "ARGB1555 -> BGR888"
+
+config AIPL_CONVERT_ARGB1555_TO_RGB565
+    bool "ARGB1555 -> RGB565"
+
+config AIPL_CONVERT_ARGB1555_TO_YV12
+    bool "ARGB1555 -> YV12"
+
+config AIPL_CONVERT_ARGB1555_TO_I420
+    bool "ARGB1555 -> I420"
+
+config AIPL_CONVERT_ARGB1555_TO_I422
+    bool "ARGB1555 -> I422"
+
+config AIPL_CONVERT_ARGB1555_TO_I444
+    bool "ARGB1555 -> I444"
+
+config AIPL_CONVERT_ARGB1555_TO_NV12
+    bool "ARGB1555 -> NV12"
+
+config AIPL_CONVERT_ARGB1555_TO_NV21
+    bool "ARGB1555 -> NV21"
+
+config AIPL_CONVERT_ARGB1555_TO_YUY2
+    bool "ARGB1555 -> YUY2"
+
+config AIPL_CONVERT_ARGB1555_TO_UYVY
+    bool "ARGB1555 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_RGBA8888
+    bool "Include color conversions from RGBA8888"
+    default y
+
+if AIPL_CONVERT_RGBA8888
+
+config AIPL_CONVERT_RGBA8888_TO_ALPHA8_I400
+    bool "RGBA8888 -> ALPHA8"
+
+config AIPL_CONVERT_RGBA8888_TO_ARGB8888
+    bool "RGBA8888 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_RGBA8888_TO_ARGB4444
+    bool "RGBA8888 -> ARGB4444"
+
+config AIPL_CONVERT_RGBA8888_TO_ARGB1555
+    bool "RGBA8888 -> ARGB1555"
+
+config AIPL_CONVERT_RGBA8888_TO_RGBA4444
+    bool "RGBA8888 -> RGBA4444"
+
+config AIPL_CONVERT_RGBA8888_TO_RGBA5551
+    bool "RGBA8888 -> RGBA5551"
+
+config AIPL_CONVERT_RGBA8888_TO_RGB888
+    bool "RGBA8888 -> RGB888"
+
+config AIPL_CONVERT_RGBA8888_TO_BGR888
+    bool "RGBA8888 -> BGR888"
+
+config AIPL_CONVERT_RGBA8888_TO_RGB565
+    bool "RGBA8888 -> RGB565"
+
+config AIPL_CONVERT_RGBA8888_TO_YV12
+    bool "RGBA8888 -> YV12"
+
+config AIPL_CONVERT_RGBA8888_TO_I420
+    bool "RGBA8888 -> I420"
+
+config AIPL_CONVERT_RGBA8888_TO_I422
+    bool "RGBA8888 -> I422"
+
+config AIPL_CONVERT_RGBA8888_TO_I444
+    bool "RGBA8888 -> I444"
+
+config AIPL_CONVERT_RGBA8888_TO_NV12
+    bool "RGBA8888 -> NV12"
+
+config AIPL_CONVERT_RGBA8888_TO_NV21
+    bool "RGBA8888 -> NV21"
+
+config AIPL_CONVERT_RGBA8888_TO_YUY2
+    bool "RGBA8888 -> YUY2"
+
+config AIPL_CONVERT_RGBA8888_TO_UYVY
+    bool "RGBA8888 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_RGBA4444
+    bool "Include color conversions from RGBA4444"
+    default y
+
+if AIPL_CONVERT_RGBA4444
+
+config AIPL_CONVERT_RGBA4444_TO_ALPHA8_I400
+    bool "RGBA4444 -> ALPHA8"
+
+config AIPL_CONVERT_RGBA4444_TO_ARGB8888
+    bool "RGBA4444 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_RGBA4444_TO_ARGB4444
+    bool "RGBA4444 -> ARGB4444"
+
+config AIPL_CONVERT_RGBA4444_TO_ARGB1555
+    bool "RGBA4444 -> ARGB1555"
+
+config AIPL_CONVERT_RGBA4444_TO_RGBA8888
+    bool "RGBA4444 -> RGBA8888"
+
+config AIPL_CONVERT_RGBA4444_TO_RGBA5551
+    bool "RGBA4444 -> RGBA5551"
+
+config AIPL_CONVERT_RGBA4444_TO_RGB888
+    bool "RGBA4444 -> RGB888"
+
+config AIPL_CONVERT_RGBA4444_TO_BGR888
+    bool "RGBA4444 -> BGR888"
+
+config AIPL_CONVERT_RGBA4444_TO_RGB565
+    bool "RGBA4444 -> RGB565"
+
+config AIPL_CONVERT_RGBA4444_TO_YV12
+    bool "RGBA4444 -> YV12"
+
+config AIPL_CONVERT_RGBA4444_TO_I420
+    bool "RGBA4444 -> I420"
+
+config AIPL_CONVERT_RGBA4444_TO_I422
+    bool "RGBA4444 -> I422"
+
+config AIPL_CONVERT_RGBA4444_TO_I444
+    bool "RGBA4444 -> I444"
+
+config AIPL_CONVERT_RGBA4444_TO_NV12
+    bool "RGBA4444 -> NV12"
+
+config AIPL_CONVERT_RGBA4444_TO_NV21
+    bool "RGBA4444 -> NV21"
+
+config AIPL_CONVERT_RGBA4444_TO_YUY2
+    bool "RGBA4444 -> YUY2"
+
+config AIPL_CONVERT_RGBA4444_TO_UYVY
+    bool "RGBA4444 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_RGBA5551
+    bool "Include color conversions from RGBA5551"
+    default y
+
+if AIPL_CONVERT_RGBA5551
+
+config AIPL_CONVERT_RGBA5551_TO_ALPHA8_I400
+    bool "RGBA5551 -> ALPHA8"
+
+config AIPL_CONVERT_RGBA5551_TO_ARGB8888
+    bool "RGBA5551 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_RGBA5551_TO_ARGB4444
+    bool "RGBA5551 -> ARGB4444"
+
+config AIPL_CONVERT_RGBA5551_TO_ARGB1555
+    bool "RGBA5551 -> ARGB1555"
+
+config AIPL_CONVERT_RGBA5551_TO_RGBA8888
+    bool "RGBA5551 -> RGBA8888"
+
+config AIPL_CONVERT_RGBA5551_TO_RGBA4444
+    bool "RGBA5551 -> RGBA4444"
+
+config AIPL_CONVERT_RGBA5551_TO_RGB888
+    bool "RGBA5551 -> RGB888"
+
+config AIPL_CONVERT_RGBA5551_TO_BGR888
+    bool "RGBA5551 -> BGR888"
+
+config AIPL_CONVERT_RGBA5551_TO_RGB565
+    bool "RGBA5551 -> RGB565"
+
+config AIPL_CONVERT_RGBA5551_TO_YV12
+    bool "RGBA5551 -> YV12"
+
+config AIPL_CONVERT_RGBA5551_TO_I420
+    bool "RGBA5551 -> I420"
+
+config AIPL_CONVERT_RGBA5551_TO_I422
+    bool "RGBA5551 -> I422"
+
+config AIPL_CONVERT_RGBA5551_TO_I444
+    bool "RGBA5551 -> I444"
+
+config AIPL_CONVERT_RGBA5551_TO_NV12
+    bool "RGBA5551 -> NV12"
+
+config AIPL_CONVERT_RGBA5551_TO_NV21
+    bool "RGBA5551 -> NV21"
+
+config AIPL_CONVERT_RGBA5551_TO_YUY2
+    bool "RGBA5551 -> YUY2"
+
+config AIPL_CONVERT_RGBA5551_TO_UYVY
+    bool "RGBA5551 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_RGB888
+    bool "Include color conversions from RGB888"
+    default y
+
+if AIPL_CONVERT_RGB888
+
+config AIPL_CONVERT_RGB888_TO_ALPHA8_I400
+    bool "RGB888 -> ALPHA8"
+
+config AIPL_CONVERT_RGB888_TO_ARGB8888
+    bool "RGB888 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_RGB888_TO_ARGB4444
+    bool "RGB888 -> ARGB4444"
+
+config AIPL_CONVERT_RGB888_TO_ARGB1555
+    bool "RGB888 -> ARGB1555"
+
+config AIPL_CONVERT_RGB888_TO_RGBA8888
+    bool "RGB888 -> RGBA8888"
+
+config AIPL_CONVERT_RGB888_TO_RGBA4444
+    bool "RGB888 -> RGBA4444"
+
+config AIPL_CONVERT_RGB888_TO_RGBA5551
+    bool "RGB888 -> RGBA5551"
+
+config AIPL_CONVERT_RGB888_TO_BGR888
+    bool "RGB888 -> BGR888"
+
+config AIPL_CONVERT_RGB888_TO_RGB565
+    bool "RGB888 -> RGB565"
+
+config AIPL_CONVERT_RGB888_TO_YV12
+    bool "RGB888 -> YV12"
+
+config AIPL_CONVERT_RGB888_TO_I420
+    bool "RGB888 -> I420"
+
+config AIPL_CONVERT_RGB888_TO_I422
+    bool "RGB888 -> I422"
+
+config AIPL_CONVERT_RGB888_TO_I444
+    bool "RGB888 -> I444"
+
+config AIPL_CONVERT_RGB888_TO_NV12
+    bool "RGB888 -> NV12"
+
+config AIPL_CONVERT_RGB888_TO_NV21
+    bool "RGB888 -> NV21"
+
+config AIPL_CONVERT_RGB888_TO_YUY2
+    bool "RGB888 -> YUY2"
+
+config AIPL_CONVERT_RGB888_TO_UYVY
+    bool "RGB888 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_BGR888
+    bool "Include color conversions from BGR888"
+    default y
+
+if AIPL_CONVERT_BGR888
+
+config AIPL_CONVERT_BGR888_TO_ALPHA8_I400
+    bool "BGR888 -> ALPHA8"
+
+config AIPL_CONVERT_BGR888_TO_ARGB8888
+    bool "BGR888 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_BGR888_TO_ARGB4444
+    bool "BGR888 -> ARGB4444"
+
+config AIPL_CONVERT_BGR888_TO_ARGB1555
+    bool "BGR888 -> ARGB1555"
+
+config AIPL_CONVERT_BGR888_TO_RGBA8888
+    bool "BGR888 -> RGBA8888"
+
+config AIPL_CONVERT_BGR888_TO_RGBA4444
+    bool "BGR888 -> RGBA4444"
+
+config AIPL_CONVERT_BGR888_TO_RGBA5551
+    bool "BGR888 -> RGBA5551"
+
+config AIPL_CONVERT_BGR888_TO_RGB888
+    bool "BGR888 -> RGB888"
+
+config AIPL_CONVERT_BGR888_TO_RGB565
+    bool "BGR888 -> RGB565"
+
+config AIPL_CONVERT_BGR888_TO_YV12
+    bool "BGR888 -> YV12"
+
+config AIPL_CONVERT_BGR888_TO_I420
+    bool "BGR888 -> I420"
+
+config AIPL_CONVERT_BGR888_TO_I422
+    bool "BGR888 -> I422"
+
+config AIPL_CONVERT_BGR888_TO_I444
+    bool "BGR888 -> I444"
+
+config AIPL_CONVERT_BGR888_TO_NV12
+    bool "BGR888 -> NV12"
+
+config AIPL_CONVERT_BGR888_TO_NV21
+    bool "BGR888 -> NV21"
+
+config AIPL_CONVERT_BGR888_TO_YUY2
+    bool "BGR888 -> YUY2"
+
+config AIPL_CONVERT_BGR888_TO_UYVY
+    bool "BGR888 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_RGB565
+    bool "Include color conversions from RGB565"
+    default y
+
+if AIPL_CONVERT_RGB565
+
+config AIPL_CONVERT_RGB565_TO_ALPHA8_I400
+    bool "RGB565 -> ALPHA8"
+
+config AIPL_CONVERT_RGB565_TO_ARGB8888
+    bool "RGB565 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_RGB565_TO_ARGB4444
+    bool "RGB565 -> ARGB4444"
+
+config AIPL_CONVERT_RGB565_TO_ARGB1555
+    bool "RGB565 -> ARGB1555"
+
+config AIPL_CONVERT_RGB565_TO_RGBA8888
+    bool "RGB565 -> RGBA8888"
+
+config AIPL_CONVERT_RGB565_TO_RGBA4444
+    bool "RGB565 -> RGBA4444"
+
+config AIPL_CONVERT_RGB565_TO_RGBA5551
+    bool "RGB565 -> RGBA5551"
+
+config AIPL_CONVERT_RGB565_TO_RGB888
+    bool "RGB565 -> RGB888"
+
+config AIPL_CONVERT_RGB565_TO_BGR888
+    bool "RGB565 -> BGR888"
+
+config AIPL_CONVERT_RGB565_TO_YV12
+    bool "RGB565 -> YV12"
+
+config AIPL_CONVERT_RGB565_TO_I420
+    bool "RGB565 -> I420"
+
+config AIPL_CONVERT_RGB565_TO_I422
+    bool "RGB565 -> I422"
+
+config AIPL_CONVERT_RGB565_TO_I444
+    bool "RGB565 -> I444"
+
+config AIPL_CONVERT_RGB565_TO_NV12
+    bool "RGB565 -> NV12"
+
+config AIPL_CONVERT_RGB565_TO_NV21
+    bool "RGB565 -> NV21"
+
+config AIPL_CONVERT_RGB565_TO_YUY2
+    bool "RGB565 -> YUY2"
+
+config AIPL_CONVERT_RGB565_TO_UYVY
+    bool "RGB565 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_YV12
+    bool "Include color conversions from YV12"
+    default y
+
+if AIPL_CONVERT_YV12
+
+config AIPL_CONVERT_YV12_TO_ALPHA8_I400
+    bool "YV12 -> ALPHA8"
+
+config AIPL_CONVERT_YV12_TO_ARGB8888
+    bool "YV12 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_YV12_TO_ARGB4444
+    bool "YV12 -> ARGB4444"
+
+config AIPL_CONVERT_YV12_TO_ARGB1555
+    bool "YV12 -> ARGB1555"
+
+config AIPL_CONVERT_YV12_TO_RGBA8888
+    bool "YV12 -> RGBA8888"
+
+config AIPL_CONVERT_YV12_TO_RGBA4444
+    bool "YV12 -> RGBA4444"
+
+config AIPL_CONVERT_YV12_TO_RGBA5551
+    bool "YV12 -> RGBA5551"
+
+config AIPL_CONVERT_YV12_TO_RGB888
+    bool "YV12 -> RGB888"
+
+config AIPL_CONVERT_YV12_TO_BGR888
+    bool "YV12 -> BGR888"
+
+config AIPL_CONVERT_YV12_TO_RGB565
+    bool "YV12 -> RGB565"
+
+config AIPL_CONVERT_YV12_TO_I420
+    bool "YV12 -> I420"
+
+config AIPL_CONVERT_YV12_TO_I422
+    bool "YV12 -> I422"
+
+config AIPL_CONVERT_YV12_TO_I444
+    bool "YV12 -> I444"
+
+config AIPL_CONVERT_YV12_TO_NV12
+    bool "YV12 -> NV12"
+
+config AIPL_CONVERT_YV12_TO_NV21
+    bool "YV12 -> NV21"
+
+config AIPL_CONVERT_YV12_TO_YUY2
+    bool "YV12 -> YUY2"
+
+config AIPL_CONVERT_YV12_TO_UYVY
+    bool "YV12 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_I420
+    bool "Include color conversions from I420"
+    default y
+
+if AIPL_CONVERT_I420
+
+config AIPL_CONVERT_I420_TO_ALPHA8_I400
+    bool "I420 -> ALPHA8"
+
+config AIPL_CONVERT_I420_TO_ARGB8888
+    bool "I420 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_I420_TO_ARGB4444
+    bool "I420 -> ARGB4444"
+
+config AIPL_CONVERT_I420_TO_ARGB1555
+    bool "I420 -> ARGB1555"
+
+config AIPL_CONVERT_I420_TO_RGBA8888
+    bool "I420 -> RGBA8888"
+
+config AIPL_CONVERT_I420_TO_RGBA4444
+    bool "I420 -> RGBA4444"
+
+config AIPL_CONVERT_I420_TO_RGBA5551
+    bool "I420 -> RGBA5551"
+
+config AIPL_CONVERT_I420_TO_RGB888
+    bool "I420 -> RGB888"
+
+config AIPL_CONVERT_I420_TO_BGR888
+    bool "I420 -> BGR888"
+
+config AIPL_CONVERT_I420_TO_RGB565
+    bool "I420 -> RGB565"
+
+config AIPL_CONVERT_I420_TO_YV12
+    bool "I420 -> YV12"
+
+config AIPL_CONVERT_I420_TO_I422
+    bool "I420 -> I422"
+
+config AIPL_CONVERT_I420_TO_I444
+    bool "I420 -> I444"
+
+config AIPL_CONVERT_I420_TO_NV12
+    bool "I420 -> NV12"
+
+config AIPL_CONVERT_I420_TO_NV21
+    bool "I420 -> NV21"
+
+config AIPL_CONVERT_I420_TO_YUY2
+    bool "I420 -> YUY2"
+
+config AIPL_CONVERT_I420_TO_UYVY
+    bool "I420 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_I422
+    bool "Include color conversions from I422"
+    default y
+
+if AIPL_CONVERT_I422
+
+config AIPL_CONVERT_I422_TO_ALPHA8_I400
+    bool "I422 -> ALPHA8"
+
+config AIPL_CONVERT_I422_TO_ARGB8888
+    bool "I422 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_I422_TO_ARGB4444
+    bool "I422 -> ARGB4444"
+
+config AIPL_CONVERT_I422_TO_ARGB1555
+    bool "I422 -> ARGB1555"
+
+config AIPL_CONVERT_I422_TO_RGBA8888
+    bool "I422 -> RGBA8888"
+
+config AIPL_CONVERT_I422_TO_RGBA4444
+    bool "I422 -> RGBA4444"
+
+config AIPL_CONVERT_I422_TO_RGBA5551
+    bool "I422 -> RGBA5551"
+
+config AIPL_CONVERT_I422_TO_RGB888
+    bool "I422 -> RGB888"
+
+config AIPL_CONVERT_I422_TO_BGR888
+    bool "I422 -> BGR888"
+
+config AIPL_CONVERT_I422_TO_RGB565
+    bool "I422 -> RGB565"
+
+config AIPL_CONVERT_I422_TO_YV12
+    bool "I422 -> YV12"
+
+config AIPL_CONVERT_I422_TO_I420
+    bool "I422 -> I420"
+
+config AIPL_CONVERT_I422_TO_I444
+    bool "I422 -> I444"
+
+config AIPL_CONVERT_I422_TO_NV12
+    bool "I422 -> NV12"
+
+config AIPL_CONVERT_I422_TO_NV21
+    bool "I422 -> NV21"
+
+config AIPL_CONVERT_I422_TO_YUY2
+    bool "I422 -> YUY2"
+
+config AIPL_CONVERT_I422_TO_UYVY
+    bool "I422 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_I444
+    bool "Include color conversions from I444"
+    default y
+
+if AIPL_CONVERT_I444
+
+config AIPL_CONVERT_I444_TO_ALPHA8_I400
+    bool "I444 -> ALPHA8"
+
+config AIPL_CONVERT_I444_TO_ARGB8888
+    bool "I444 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_I444_TO_ARGB4444
+    bool "I444 -> ARGB4444"
+
+config AIPL_CONVERT_I444_TO_ARGB1555
+    bool "I444 -> ARGB1555"
+
+config AIPL_CONVERT_I444_TO_RGBA8888
+    bool "I444 -> RGBA8888"
+
+config AIPL_CONVERT_I444_TO_RGBA4444
+    bool "I444 -> RGBA4444"
+
+config AIPL_CONVERT_I444_TO_RGBA5551
+    bool "I444 -> RGBA5551"
+
+config AIPL_CONVERT_I444_TO_RGB888
+    bool "I444 -> RGB888"
+
+config AIPL_CONVERT_I444_TO_BGR888
+    bool "I444 -> BGR888"
+
+config AIPL_CONVERT_I444_TO_RGB565
+    bool "I444 -> RGB565"
+
+config AIPL_CONVERT_I444_TO_YV12
+    bool "I444 -> YV12"
+
+config AIPL_CONVERT_I444_TO_I420
+    bool "I444 -> I420"
+
+config AIPL_CONVERT_I444_TO_I422
+    bool "I444 -> I444"
+
+config AIPL_CONVERT_I444_TO_NV12
+    bool "I444 -> NV12"
+
+config AIPL_CONVERT_I444_TO_NV21
+    bool "I444 -> NV21"
+
+config AIPL_CONVERT_I444_TO_YUY2
+    bool "I444 -> YUY2"
+
+config AIPL_CONVERT_I444_TO_UYVY
+    bool "I444 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_NV12
+    bool "Include color conversions from NV12"
+    default y
+
+if AIPL_CONVERT_NV12
+
+config AIPL_CONVERT_NV12_TO_ALPHA8_I400
+    bool "NV12 -> ALPHA8"
+
+config AIPL_CONVERT_NV12_TO_ARGB8888
+    bool "NV12 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_NV12_TO_ARGB4444
+    bool "NV12 -> ARGB4444"
+
+config AIPL_CONVERT_NV12_TO_ARGB1555
+    bool "NV12 -> ARGB1555"
+
+config AIPL_CONVERT_NV12_TO_RGBA8888
+    bool "NV12 -> RGBA8888"
+
+config AIPL_CONVERT_NV12_TO_RGBA4444
+    bool "NV12 -> RGBA4444"
+
+config AIPL_CONVERT_NV12_TO_RGBA5551
+    bool "NV12 -> RGBA5551"
+
+config AIPL_CONVERT_NV12_TO_RGB888
+    bool "NV12 -> RGB888"
+
+config AIPL_CONVERT_NV12_TO_BGR888
+    bool "NV12 -> BGR888"
+
+config AIPL_CONVERT_NV12_TO_RGB565
+    bool "NV12 -> RGB565"
+
+config AIPL_CONVERT_NV12_TO_YV12
+    bool "NV12 -> YV12"
+
+config AIPL_CONVERT_NV12_TO_I420
+    bool "NV12 -> I420"
+
+config AIPL_CONVERT_NV12_TO_I422
+    bool "NV12 -> I422"
+
+config AIPL_CONVERT_NV12_TO_I444
+    bool "NV12 -> I444"
+
+config AIPL_CONVERT_NV12_TO_NV21
+    bool "NV12 -> NV21"
+
+config AIPL_CONVERT_NV12_TO_YUY2
+    bool "NV12 -> YUY2"
+
+config AIPL_CONVERT_NV12_TO_UYVY
+    bool "NV12 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_NV21
+    bool "Include color conversions from NV21"
+    default y
+
+if AIPL_CONVERT_NV21
+
+config AIPL_CONVERT_NV21_TO_ALPHA8_I400
+    bool "NV21 -> ALPHA8"
+
+config AIPL_CONVERT_NV21_TO_ARGB8888
+    bool "NV21 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_NV21_TO_ARGB4444
+    bool "NV21 -> ARGB4444"
+
+config AIPL_CONVERT_NV21_TO_ARGB1555
+    bool "NV21 -> ARGB1555"
+
+config AIPL_CONVERT_NV21_TO_RGBA8888
+    bool "NV21 -> RGBA8888"
+
+config AIPL_CONVERT_NV21_TO_RGBA4444
+    bool "NV21 -> RGBA4444"
+
+config AIPL_CONVERT_NV21_TO_RGBA5551
+    bool "NV21 -> RGBA5551"
+
+config AIPL_CONVERT_NV21_TO_RGB888
+    bool "NV21 -> RGB888"
+
+config AIPL_CONVERT_NV21_TO_BGR888
+    bool "NV21 -> BGR888"
+
+config AIPL_CONVERT_NV21_TO_RGB565
+    bool "NV21 -> RGB565"
+
+config AIPL_CONVERT_NV21_TO_YV12
+    bool "NV21 -> YV12"
+
+config AIPL_CONVERT_NV21_TO_I420
+    bool "NV21 -> I420"
+
+config AIPL_CONVERT_NV21_TO_I422
+    bool "NV21 -> I422"
+
+config AIPL_CONVERT_NV21_TO_I444
+    bool "NV21 -> I444"
+
+config AIPL_CONVERT_NV21_TO_NV12
+    bool "NV21 -> NV12"
+
+config AIPL_CONVERT_NV21_TO_YUY2
+    bool "NV21 -> YUY2"
+
+config AIPL_CONVERT_NV21_TO_UYVY
+    bool "NV21 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_YUY2
+    bool "Include color conversions from YUY2"
+    default y
+
+if AIPL_CONVERT_YUY2
+
+config AIPL_CONVERT_YUY2_TO_ALPHA8_I400
+    bool "YUY2 -> ALPHA8"
+
+config AIPL_CONVERT_YUY2_TO_ARGB8888
+    bool "YUY2 -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_YUY2_TO_ARGB4444
+    bool "YUY2 -> ARGB4444"
+
+config AIPL_CONVERT_YUY2_TO_ARGB1555
+    bool "YUY2 -> ARGB1555"
+
+config AIPL_CONVERT_YUY2_TO_RGBA8888
+    bool "YUY2 -> RGBA8888"
+
+config AIPL_CONVERT_YUY2_TO_RGBA4444
+    bool "YUY2 -> RGBA4444"
+
+config AIPL_CONVERT_YUY2_TO_RGBA5551
+    bool "YUY2 -> RGBA5551"
+
+config AIPL_CONVERT_YUY2_TO_RGB888
+    bool "YUY2 -> RGB888"
+
+config AIPL_CONVERT_YUY2_TO_BGR888
+    bool "YUY2 -> BGR888"
+
+config AIPL_CONVERT_YUY2_TO_RGB565
+    bool "YUY2 -> RGB565"
+
+config AIPL_CONVERT_YUY2_TO_YV12
+    bool "YUY2 -> YV12"
+
+config AIPL_CONVERT_YUY2_TO_I420
+    bool "YUY2 -> I420"
+
+config AIPL_CONVERT_YUY2_TO_I422
+    bool "YUY2 -> I422"
+
+config AIPL_CONVERT_YUY2_TO_I444
+    bool "YUY2 -> I444"
+
+config AIPL_CONVERT_YUY2_TO_NV12
+    bool "YUY2 -> NV12"
+
+config AIPL_CONVERT_YUY2_TO_NV21
+    bool "YUY2 -> NV21"
+
+config AIPL_CONVERT_YUY2_TO_UYVY
+    bool "YUY2 -> UYVY"
+
+endif
+
+menuconfig AIPL_CONVERT_UYVY
+    bool "Include color conversions from UYVY"
+    default y
+
+if AIPL_CONVERT_UYVY
+
+config AIPL_CONVERT_UYVY_TO_ALPHA8_I400
+    bool "UYVY -> ALPHA8"
+
+config AIPL_CONVERT_UYVY_TO_ARGB8888
+    bool "UYVY -> ARGB8888"
+    default y
+
+config AIPL_CONVERT_UYVY_TO_ARGB4444
+    bool "UYVY -> ARGB4444"
+
+config AIPL_CONVERT_UYVY_TO_ARGB1555
+    bool "UYVY -> ARGB1555"
+
+config AIPL_CONVERT_UYVY_TO_RGBA8888
+    bool "UYVY -> RGBA8888"
+
+config AIPL_CONVERT_UYVY_TO_RGBA4444
+    bool "UYVY -> RGBA4444"
+
+config AIPL_CONVERT_UYVY_TO_RGBA5551
+    bool "UYVY -> RGBA5551"
+
+config AIPL_CONVERT_UYVY_TO_RGB888
+    bool "UYVY -> RGB888"
+
+config AIPL_CONVERT_UYVY_TO_BGR888
+    bool "UYVY -> BGR888"
+
+config AIPL_CONVERT_UYVY_TO_RGB565
+    bool "UYVY -> RGB565"
+
+config AIPL_CONVERT_UYVY_TO_YV12
+    bool "UYVY -> YV12"
+
+config AIPL_CONVERT_UYVY_TO_I420
+    bool "UYVY -> I420"
+
+config AIPL_CONVERT_UYVY_TO_I422
+    bool "UYVY -> I422"
+
+config AIPL_CONVERT_UYVY_TO_I444
+    bool "UYVY -> I444"
+
+config AIPL_CONVERT_UYVY_TO_NV12
+    bool "UYVY -> NV12"
+
+config AIPL_CONVERT_UYVY_TO_NV21
+    bool "UYVY -> NV21"
+
+config AIPL_CONVERT_UYVY_TO_YUY2
+    bool "UYVY -> YUY2"
+
+endif
+
+endif
+
+endif
