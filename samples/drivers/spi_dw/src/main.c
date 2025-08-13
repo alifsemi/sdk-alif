@@ -254,8 +254,8 @@ static void slave_spi(void *p1, void *p2, void *p3)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
-#if (IS_ENABLED(CONFIG_SOC_SERIES_ENSEMBLE_E1C) ||  \
-	IS_ENABLED(CONFIG_SOC_SERIES_BALLETTO_B1)) /* E1C/B1 dma2 */
+#if (IS_ENABLED(CONFIG_SOC_SERIES_E1C) ||  \
+	IS_ENABLED(CONFIG_SOC_SERIES_B1)) /* E1C/B1 dma2 */
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas) /* E1C/B1 LPSPI0 dma2 */
 static void configure_lpspi0_for_dma2(void)
@@ -491,8 +491,8 @@ int main(void)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
-#if (IS_ENABLED(CONFIG_SOC_SERIES_ENSEMBLE_E1C) || \
-	IS_ENABLED(CONFIG_SOC_SERIES_BALLETTO_B1)) /* E1C/B1 dma2 */
+#if (IS_ENABLED(CONFIG_SOC_SERIES_E1C) || \
+	IS_ENABLED(CONFIG_SOC_SERIES_B1)) /* E1C/B1 dma2 */
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas) /* E1C/B1 LPSPI0 dma2 */
 	configure_lpspi0_for_dma2();
