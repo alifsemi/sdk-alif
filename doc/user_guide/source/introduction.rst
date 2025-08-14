@@ -105,18 +105,15 @@ The following toolchains have been tested for the SDK application:
    * - GCC (GNU Compiler Collection)
      - v12.2.0
      - `GCC Download`_
-   * - ArmCLang
-     - v6.18
-     - `ArmCLang Download`_
-   * - LLVM (Low-Level Virtual Machine)
-     - v17.0.1
-     - `LLVM Download`_
+
 
 **Target Reference Board**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Alif Devkit Ensemble E3
+- Alif Devkit Ensemble E4
 - Alif Devkit Ensemble E7
+- Alif Devkit Ensemble E8
 - Alif Devkit Ensemble E1C
 - Alif Devkit Balletto B1
 
