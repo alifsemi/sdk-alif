@@ -23,21 +23,47 @@ struct audio_datapath_config {
 };
 
 /**
- * @brief Create the audio datapath
+ * @brief Create the audio datapath for sink
  *
- * This creates and configures all of the required elements to stream audio from Bluetooth LE to I2S
+ * Creates and configures all of the required elements to stream audio from Bluetooth LE to I2S.
+ * This includes configuring and starting the codec.
  *
  * @param cfg Desired configuration of the audio datapath
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_create(struct audio_datapath_config *cfg);
+int audio_datapath_create_sink(struct audio_datapath_config const *cfg);
+
+/**
+ * @brief Create a channel for the audio datapath
+ *
+ * Creates a channel for the audio decoder.
+ *
+ * @param octets_per_frame Number of octets per frame
+ * @param ch_index Channel index
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_channel_create_sink(size_t const octets_per_frame, uint8_t const ch_index);
+
+/**
+ * @brief Start a channel for the audio datapath
+ *
+ * Starts a channel for the audio decoder.
+ *
+ * @param ch_index Channel index
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_channel_start_sink(uint8_t const ch_index);
 
 /**
  * @brief Start the audio datapath
  *
- * This starts reception of the first SDU over the ISO datapath, which when received starts off the
+ * Starts reception of the first SDU over the ISO datapath, which when received starts off the
  * operation of the rest of the datapath.
  *
  * @retval 0 if successful
@@ -48,13 +74,13 @@ int audio_datapath_start(void);
 /**
  * @brief Clean up the audio datapath
  *
- * This stops the audio datapath and cleans up all elements created by audio_datapath_create,
+ * Stops the audio datapath and cleans up all elements created by audio_datapath_create_sink,
  * freeing any allocated memory if necessary. After calling this function, it is possible to create
- * a new audio datapath again using audio_datapath_create.
+ * a new audio datapath again using audio_datapath_create_sink.
  *
  * @retval 0 if successful
  * @retval Negative error code on failure
  */
-int audio_datapath_cleanup(void);
+int audio_datapath_cleanup_sink(void);
 
 #endif /* _AUDIO_DATAPATH_H */

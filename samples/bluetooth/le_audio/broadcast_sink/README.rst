@@ -8,8 +8,8 @@ Overview
 
 This sample demonstrates the LE audio broadcast sink use-case.
 
-It scans for broadcast sources and synchronises with the first compatible source found. To be
-compatible, a source device must use a 48 kHz sampling rate and 10 ms frames, unless differently configured.
+It scans for broadcast sources and synchronises with the first compatible source found.
+The audio configuration (sampling rate, frame duration) is dynamically determined from the broadcast source and used to configure the audio codec at runtime.
 
 Both stereo and mono sources are supported. In case of a mono source, the single channel will be
 duplicated on both left and right I2S output streams.
@@ -22,21 +22,8 @@ sdk-alif tree.
 
 See :ref:`Alif bluetooth samples section <alif-bluetooth-samples>` for details.
 
-Configuration options:
-
-.. list-table::
-
-    * - :file:`prj.conf`
-      - This is the standard default config. Sampling frequency 48kHz, 10ms frame duration, 100 octets per codec frame. The default retransmissions are set to 4.
-
-    * - :file:`overlay-auracast_16_2.conf`
-      - Enables a Standard Quality codec configuration. 16-bit sample rate, 40 octets per codec frame.
-
-    * - :file:`overlay-auracast_24_2.conf`
-      - Enables a Standard Quality codec configuration. 24-bit sample rate, 60 octets per codec frame.
-
-BAP defined Codec Configuration Settings
-******************************************
+BAP defined Codec Configuration Settings (Dynamically Supported)
+***************************************************************
 
 .. table:: BAP defined Codec Configuration Settings
    :widths: 1 1 1 1 1
