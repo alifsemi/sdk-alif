@@ -91,8 +91,6 @@ Toolchains
 SDK supports the following development toolchains:
 
 - **GCC (GNU Compiler Collection v12.2.0)** - Used through the Zephyr Project.
-- **LLVM-embedded-toolchain-for-Arm 17.0.1** - For optimized Arm code generation.
-- **ARM CLang 6.18** - For Arm-specific optimizations.
 
 **Zephyr RTOS**
 ---------------

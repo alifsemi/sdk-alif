@@ -90,7 +90,8 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 Building an Application
 -----------------------
 
-Supported Board Targets as per new hardware model v2 (Zephyr v3.7.0 and onwards): <board name[@revision][/board qualifiers]>
+Supported Board Targets as per new hardware model v2 (Zephyr v3.7.0 and onwards):
+<board name[@revision][/board qualifiers]>
 
 - alif_e3_dk/ae302f80f55d5xx/rtss_he
 - alif_e3_dk/ae302f80f55d5xx/rtss_hp
@@ -104,7 +105,7 @@ Supported Board Targets as per new hardware model v2 (Zephyr v3.7.0 and onwards)
 - alif_b1_dk/ab1c1f4m51820hh/rtss_he
 
 .. note::
-   The ``alif_e7_dk_rtss_he`` and ``alif_e7_dk_rtss_hp`` targets can also be run on
+   The ``alif_e7_dk/ae722f80f55d5xx/rtss_he`` and ``alif_e7_dk/ae722f80f55d5xx/rtss_hp`` targets can also be run on
    the Devkit E5.
 
 a. Navigate to the Zephyr directory:
