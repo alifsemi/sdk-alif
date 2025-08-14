@@ -29,8 +29,8 @@ Document History
       - Updated the document to include I3C, CAN FD and Touch screen
     * - 1.3
       - Updated the document to include DAC12, UTimer Counter, QDEC and SDMMC
-    * - 2.0
-      - Initial Release with Zephyr v4.1.0; Updated the build and flash sections
+    * - 2.0-alpha
+      - Initial Release with Zephyr v4.1.0
 
 Indices and tables
 ==================
