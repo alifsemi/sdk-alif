@@ -125,13 +125,13 @@ b. Build the Hello World application:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_he samples/hello_world
+     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world
 
 - Build for ITCM:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_he samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 **RTSS-HP**
 
@@ -139,13 +139,13 @@ b. Build the Hello World application:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_hp samples/hello_world
+     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world
 
 - Build for ITCM:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk_rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 .. note::
    By default, Ninja is used. To switch to Unix Makefiles, add the following option:
