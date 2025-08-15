@@ -892,10 +892,6 @@ int cwm_init(const struct device *dev)
 
 	LOG_DBG("Initialisation completed");
 
-	/* TODO Remove once the application is updated to use the new API */
-	cwm_start_output(dev);
-	LOG_DBG("Output started. TODO: Remove");
-
 	return 0;
 }
 

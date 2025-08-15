@@ -437,10 +437,10 @@ static void on_bap_bc_sink_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t gr
 
 		/* Start audio datapath when all chosen streams are started */
 		if (sink_env.started_streams_bf == sink_env.chosen_streams_bf) {
-			int ret = audio_datapath_create(&sink_env.datapath_cfg);
+			int ret = audio_datapath_create_sink(&sink_env.datapath_cfg);
 
 			if (ret) {
-				audio_datapath_cleanup();
+				audio_datapath_cleanup_sink();
 				LOG_ERR("Failed to create audio datapath");
 				start_scanning();
 			}
@@ -479,7 +479,7 @@ static void on_bap_bc_sink_status(uint8_t grp_lid, uint8_t state, uint32_t strea
 	case BAP_BC_SINK_UPPER_TERMINATE:
 	case BAP_BC_SINK_MIC_FAILURE:
 		LOG_INF("no sync with group %u, state %u", grp_lid, state);
-		audio_datapath_cleanup();
+		audio_datapath_cleanup_sink();
 		start_scanning();
 		break;
 	default:

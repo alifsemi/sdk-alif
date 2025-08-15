@@ -8,11 +8,15 @@
  */
 
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/i2s.h>
+#include <zephyr/audio/codec.h>
 #include "bluetooth/le_audio/audio_decoder.h"
 #include "bluetooth/le_audio/presentation_compensation.h"
 #include "audio_datapath.h"
 
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
+
+#define CODEC_NODE DT_ALIAS(audio_codec)
 
 struct audio_datapath {
 	struct audio_decoder *decoder;
@@ -44,14 +48,44 @@ void on_timing_debug_info_ready(struct presentation_comp_debug_data *dbg_data)
 }
 #endif
 
-int audio_datapath_create(struct audio_datapath_config *cfg)
+int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 {
-	if (cfg == NULL) {
+	int ret;
+
+	if (!cfg) {
 		__ASSERT(false, "Datapath configuration missing");
 		return -EINVAL;
 	}
 
+	if (env.decoder) {
+		return -EALREADY;
+	}
+
 	env.octets_per_frame = cfg->octets_per_frame;
+
+	/* Configure codec */
+	struct audio_codec_cfg codec_cfg = {
+		.dai_type = AUDIO_DAI_TYPE_I2S,
+		.dai_cfg = {
+			.i2s = {
+				.word_size = AUDIO_PCM_WIDTH_16_BITS,
+				.channels = 2,
+				.format = I2S_FMT_DATA_FORMAT_I2S,
+				.options = 0,
+				.frame_clk_freq = cfg->sampling_rate_hz,
+				.mem_slab = NULL,
+				.block_size = 0,
+				.timeout = 0,
+			},
+		},
+	};
+
+	ret = audio_codec_configure(DEVICE_DT_GET(CODEC_NODE), &codec_cfg);
+	if (ret) {
+		LOG_ERR("Failed to configure sink codec. err %d", ret);
+		return ret;
+	}
+	audio_codec_start_output(DEVICE_DT_GET(CODEC_NODE));
 
 	struct audio_decoder_params const dec_params = {
 		.i2s_dev = cfg->i2s_dev,
@@ -59,8 +93,6 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 		.sampling_rate_hz = cfg->sampling_rate_hz,
 		.pres_delay_us = cfg->pres_delay_us,
 	};
-
-	audio_decoder_delete(env.decoder);
 
 	env.decoder = audio_decoder_create(&dec_params);
 	if (env.decoder == NULL) {
@@ -95,7 +127,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 #endif
 
 #if CONFIG_APP_PRINT_STATS
-	int ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
+	ret = audio_decoder_register_cb(env.decoder, print_sdus, NULL);
 
 	if (ret != 0) {
 		LOG_ERR("Failed to register decoder cb, err %d", ret);
@@ -108,7 +140,7 @@ int audio_datapath_create(struct audio_datapath_config *cfg)
 	return 0;
 }
 
-int audio_datapath_create_channel(size_t const octets_per_frame, uint8_t const ch_index)
+int audio_datapath_channel_create_sink(size_t const octets_per_frame, uint8_t const ch_index)
 {
 	int ret = audio_decoder_add_channel(env.decoder, octets_per_frame, ch_index);
 
@@ -120,7 +152,7 @@ int audio_datapath_create_channel(size_t const octets_per_frame, uint8_t const c
 	return 0;
 }
 
-int audio_datapath_start_channel(uint8_t const ch_index)
+int audio_datapath_channel_start_sink(uint8_t const ch_index)
 {
 	int ret = audio_decoder_start_channel(env.decoder, ch_index);
 
@@ -135,11 +167,11 @@ int audio_datapath_start_channel(uint8_t const ch_index)
 int audio_datapath_start(void)
 {
 	for (int iter = 0; iter < CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS; iter++) {
-		audio_datapath_create_channel(env.octets_per_frame, iter);
+		audio_datapath_channel_create_sink(env.octets_per_frame, iter);
 	}
 
 	for (int iter = 0; iter < CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS; iter++) {
-		audio_datapath_start_channel(iter);
+		audio_datapath_channel_start_sink(iter);
 	}
 
 	LOG_INF("Audio datapath started");
@@ -147,10 +179,13 @@ int audio_datapath_start(void)
 	return 0;
 }
 
-int audio_datapath_cleanup(void)
+int audio_datapath_cleanup_sink(void)
 {
 	audio_decoder_delete(env.decoder);
 	env.decoder = NULL;
+
+	/* Stop codec output */
+	audio_codec_stop_output(DEVICE_DT_GET(CODEC_NODE));
 
 	LOG_INF("Removed audio datapath");
 
