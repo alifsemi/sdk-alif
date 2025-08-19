@@ -26,8 +26,6 @@
 
 /*  Profile definitions */
 #include "prf.h"
-#include "cgmp_common.h"
-#include "cgms_msg.h"
 #include "prf_types.h"
 #include "rwprf_config.h"
 #include "batt_svc.h"

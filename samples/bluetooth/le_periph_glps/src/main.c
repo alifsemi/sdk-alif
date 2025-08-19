@@ -27,7 +27,6 @@
 
 /*  Profile definitions */
 #include "prf.h"
-#include "cgmp_common.h"
 #include "glps.h"
 #include "glps_msg.h"
 #include "prf_types.h"
