@@ -29,8 +29,6 @@
 #include "batt_svc.h"
 #include "shared_control.h"
 #include "prf.h"
-#include "proxr.h"
-#include "proxr_msg.h"
 #include "bass.h"
 
 #include "prxp_app.h"
