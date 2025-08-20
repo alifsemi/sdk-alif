@@ -32,7 +32,7 @@ LOG_MODULE_REGISTER(PDM, LOG_LEVEL_INF);
 #define SAMPLE_BIT_WIDTH		16
 #define TIMEOUT				5000
 
-struct PDM_CH_CONFIG pdm_coef_reg;
+struct pdm_ch_config pdm_coef_reg;
 
 uint32_t ch4_fir[18] = {0x00000001, 0x00000003, 0x00000003, 0x000007F4,
 		0x00000004, 0x000007ED, 0x000007F5, 0x000007F4, 0x000007D3,
