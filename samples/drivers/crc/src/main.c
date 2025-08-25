@@ -18,9 +18,11 @@ uint8_t arr[] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80};
 uint32_t polynomial = 0x2CEEA6C8;
 uint32_t seed_value;
 
+#define CRC_NODE	DT_ALIAS(crc_module)
+
 int main(void)
 {
-	const struct device *const crc_dev = DEVICE_DT_GET(DT_NODELABEL(crc));
+	const struct device *const crc_dev = DEVICE_DT_GET(CRC_NODE);
 
 	uint32_t crc_output;
 
@@ -30,7 +32,7 @@ int main(void)
 	params.byte_swap   = FALSE;
 	params.reflect     = FALSE;
 	params.invert      = FALSE;
-	params.custum_poly = FALSE;
+	params.custom_poly = FALSE;
 	params.data_out    = &crc_output;
 
 	if (!crc_dev) {
