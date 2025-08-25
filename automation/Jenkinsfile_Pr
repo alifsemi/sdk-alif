@@ -3,7 +3,7 @@ def Build_SW_Echo_Server = 'Pending'
 def Flash_board_echo_server = 'Pending'
 def Flash_board_echo_client = 'Pending'
 def smoke_tests = 'Pending'
-def Flash_board = 'Pendind'
+def Flash_board = 'Pending'
 def Build_SW = 'Pending'
 
 pipeline {
@@ -15,6 +15,7 @@ pipeline {
                 checkout scm
             }
         }
+
         stage('Pr_Build for echo-client and echo-server') {
             when {
                 anyOf {
@@ -36,10 +37,10 @@ pipeline {
                             git clean -fd
                             git pull
                             if [[ -v CHANGE_ID ]]; then
-                                git branch -D pr-\${CHANGE_ID} || true
+                                git branch -D pr-${CHANGE_ID} || true
                                 git clean -fd
-                                git fetch origin pull/\${CHANGE_ID}/head:pr-\${CHANGE_ID}
-                            git checkout pr-\${CHANGE_ID}
+                                git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+                                git checkout pr-${CHANGE_ID}
                             fi
                             cd ..
                             west update
@@ -99,7 +100,6 @@ pipeline {
             }
         }
 
-
         stage('Flash the board for echo_client') {
             agent { label 'lasse' }
             steps {
@@ -110,7 +110,6 @@ pipeline {
                             unstash name: 'echo_client_B1-test-app.json'
                             sh """#!/bin/bash -xe
                             pwd
-                            echo ""
                             rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
                             cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
                             cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
@@ -130,6 +129,7 @@ pipeline {
                 }
             }
         }
+
         stage('Flash the board for echo_server') {
             agent { label 'lasse' }
             steps {
@@ -140,7 +140,6 @@ pipeline {
                             unstash name: 'echo_server_B1-test-app.json'
                             sh """#!/bin/bash -xe
                             pwd
-                            echo ""
                             rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
                             cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
                             cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
@@ -162,19 +161,14 @@ pipeline {
             }
         }
 
-        stage('Done') {
-            steps {
-                echo "Pipeline Pr check completed successfully for ${env.BRANCH_NAME}"
-            }
-        }
-		stage('Pr_Build for test-app') {
+        stage('Pr_Build for test-app') {
             when {
                 anyOf {
                     branch 'PR-*'
                     branch 'main'
                 }
             }
-			agent { label 'zephyr_alif_sdk_ble' }
+            agent { label 'zephyr_alif_sdk_ble' }
             options { skipDefaultCheckout() }
             steps {
                 script {
@@ -184,12 +178,12 @@ pipeline {
                             pwd
                             cd /root/alif
                             west forall -c "git clean -fdx"
-							cd /root/alif/sdk-alif/
+                            cd /root/alif/sdk-alif/
                             git status
                             if [[ -v CHANGE_ID ]]; then
-                                git branch -D pr-\${CHANGE_ID} || true
-                                git fetch origin pull/\${CHANGE_ID}/head:pr-\${CHANGE_ID}
-                                git checkout pr-\${CHANGE_ID}
+                                git branch -D pr-${CHANGE_ID} || true
+                                git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+                                git checkout pr-${CHANGE_ID}
                             else
                                 git fetch origin -pu
                                 git checkout main
@@ -208,85 +202,117 @@ pipeline {
                             '''
                             stash name: 'zephyr.bin', includes: 'zephyr.bin'
                             Build_SW = 'Pass'
-                            } catch (Exception e) {
-                                Build_SW = 'Fail'
-                                error('Build failed')
+                        } catch (Exception e) {
+                            Build_SW = 'Fail'
+                            error('Build failed')
                         }
                     }
                 }
-			}
-			post {
+            }
+            post {
                 always {
                     archiveArtifacts artifacts: 'build.tar', fingerprint: true
                 }
             }
-        } //end of stage Build
-	stage('Flash and run Smoke test') {
-    agent { label 'lasse' }
-                steps {
-                    script {
+        }
+
+        stage('Flash and run Smoke test') {
+            agent { label 'lasse' }
+            steps {
+                script {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        try {
+                            unstash 'zephyr.bin'
+                            checkout changelog: false, poll: false, scm: scmGit(branches: [[name: '*/main']],
+                                extensions: [submodule(parentCredentials: true, reference: '')],
+                                userRemoteConfigs: [[credentialsId: '533fc6b7-f0f5-4514-9629-1c55a011e1d3',
+                                    url: 'git@github.com:AlifSemiDev/jenkins_automation.git']])
+                            sh """#!/bin/bash -xe
+                                ls -lart
+                                rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
+                                cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
+                                cp ble_automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
+                                pushd $ALIF_SETOOLS_LOCATION
+                                sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                                ./app-gen-toc --filename build/config/B1-test-app.json
+                                ./app-write-mram -p
+                                sed -e 's/ttyUSB0/ttyAlifSEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                                ./app-gen-toc --filename build/config/B1-test-app.json
+                                ./app-write-mram -p
+                                popd
+                                """
+                            reset_boards()
+                            Flash_board = 'Pass'
+                        } catch (Exception e) {
+                            Flash_board = 'Fail'
+                            error('Flash_board failed')
+                        }
+                    }
+                    if (Flash_board == 'Pass') {
                         catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                             try {
-                                unstash 'zephyr.bin'
-                                checkout changelog: false, poll: false, scm: scmGit(branches: [[name: '*/main']],extensions: [submodule(parentCredentials: true, reference: '')],userRemoteConfigs: [[credentialsId: '533fc6b7-f0f5-4514-9629-1c55a011e1d3',url: 'git@github.com:AlifSemiDev/jenkins_automation.git']])
-                                    sh """#!/bin/bash -xe
-                                        ls -lart
-                                        rsync -a --delete \$ALIF_SETOOLS_ORIG \$ALIF_SETOOLS_LOCATION
-                                        cp zephyr.bin \$ALIF_SETOOLS_LOCATION/build/images/test-app.bin
-                                        cp ble_automation/B1-test-app.json \$ALIF_SETOOLS_LOCATION/build/config/
-                                        pushd \$ALIF_SETOOLS_LOCATION
-                                        sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                                        ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
-                                        ./app-gen-toc --filename build/config/B1-test-app.json
-                                        ./app-write-mram -p
-                                        sed -e 's/ttyUSB0/ttyAlifSEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                                        ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
-                                        ./app-gen-toc --filename build/config/B1-test-app.json
-                                        ./app-write-mram -p
-                                        popd
-                                        """
-                                        reset_boards()
-                                        Flash_board = 'Pass'
-
+                                sh """
+                                #!/bin/bash -xe
+                                pwd
+                                cd pytest
+                                python3 -m venv venv
+                                . venv/bin/activate
+                                pip install -r requirements.txt
+                                sed -e 's/ttyACM0/ttyAlifHEDUT1/g' -e 's/ttyACM1/ttyAlifHEDUT2/g' pytest_ini.template > pytest.ini
+                                pytest tests --tb=no -s --root-logdir=pytest-logs
+                                """
+                                smoke_tests = 'Pass'
                             } catch (Exception e) {
-                                Flash_board = 'Fail'
-                                error('Flash_board failed')
-                            }
-                        }
-                        if (Flash_board == 'Pass') {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                                try {
-                                    sh """
-                                    #!/bin/bash -xe
-                                    pwd
-                                    cd pytest
-                                    python3 -m venv venv
-                                    . venv/bin/activate
-                                    pip install -r requirements.txt
-                                    sed -e 's/ttyACM0/ttyAlifHEDUT1/g' -e 's/ttyACM1/ttyAlifHEDUT2/g' pytest_ini.template > pytest.ini
-                                    pytest tests --tb=no -s --root-logdir=pytest-logs
-                                    """
-
-                                    smoke_tests = 'Pass'
-                                } catch (Exception e) {
-                                    smoke_tests = 'Fail'
-                                    error('Smoke_tests failed')
-                                }
+                                smoke_tests = 'Fail'
+                                error('Smoke_tests failed')
                             }
                         }
                     }
                 }
-                post {
-                    always {
-                        archiveArtifacts artifacts: 'pytest/pytest-logs/**', fingerprint: true
-                        cleanWs(cleanWhenNotBuilt: false, deleteDirs:true, disableDeferredWipeout: true, notFailBuild: true,)
-                    }
-                }
-        }
-		 stage('Done for test-app pr_check') {
-            steps {
-                echo "Pipeline Pr check for test_app completed successfully for ${env.BRANCH_NAME}"
             }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'pytest/pytest-logs/**', fingerprint: true
+                    cleanWs(cleanWhenNotBuilt: false, deleteDirs:true,
+                            disableDeferredWipeout: true, notFailBuild: true)
+                }
+            }
+        }
+
+        stage('Summary') {
+            steps {
+                script {
+                    echo """
+                    ========= Build Summary =========
+                    Build_SW_Echo_Client     = ${Build_SW_Echo_Client}
+                    Build_SW_Echo_Server     = ${Build_SW_Echo_Server}
+                    Flash_board_echo_client  = ${Flash_board_echo_client}
+                    Flash_board_echo_server  = ${Flash_board_echo_server}
+                    Build_SW                 = ${Build_SW}
+                    Flash_board              = ${Flash_board}
+                    smoke_tests              = ${smoke_tests}
+                    =================================
+                    """
+
+                    if ([Build_SW_Echo_Client, Build_SW_Echo_Server,
+                         Flash_board_echo_client, Flash_board_echo_server,
+                         Build_SW, Flash_board, smoke_tests].contains('Fail')) {
+                        currentBuild.result = 'FAILURE'
+                        error("One or more stages failed.")
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo " Pr check passed for ${env.BRANCH_NAME}"
+        }
+        failure {
+            echo " Pr check failed for ${env.BRANCH_NAME}"
         }
     }
 }
