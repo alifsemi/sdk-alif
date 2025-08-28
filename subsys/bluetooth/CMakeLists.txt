@@ -7,3 +7,4 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 add_subdirectory_ifdef(CONFIG_ALIF_BLE_AUDIO le_audio)
+add_subdirectory_ifdef(CONFIG_ALIF_BT_SHELL shell)

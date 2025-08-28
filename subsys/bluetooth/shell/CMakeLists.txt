@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+# Copyright Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -6,7 +6,7 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-rsource "le_audio/Kconfig"
-rsource "host/Kconfig"
-rsource "shell/Kconfig"
-
+zephyr_library()
+zephyr_library_sources(
+  bt.c
+  )
