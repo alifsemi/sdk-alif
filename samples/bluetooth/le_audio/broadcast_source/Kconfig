@@ -18,6 +18,11 @@ config BROADCAST_NAME
 	string "LE audio broadcast name"
 	default "ALIF_LE_AUDIO"
 
+config BROADCAST_PASSWORD
+	string "LE audio broadcast password"
+	help
+	  If defined the broadcast stream will be encrypted. Length needs to be 16 chars.
+
 config LE_AUDIO_PRESENTATION_DELAY_MS
 	int "Presentation delay in ms"
 	default 40
