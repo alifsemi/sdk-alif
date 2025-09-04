@@ -168,7 +168,7 @@ static int broadcast_source_configure_group(void)
 
 	const size_t bc_password_len = sizeof(bc_password) - 1;
 
-	if (GAP_KEY_LEN != bc_password_len || 0 != bc_password_len) {
+	if (3 < bc_password_len && GAP_KEY_LEN >= bc_password_len && 0 != bc_password_len) {
 		LOG_ERR("Broadcast password is invalid, len must be either 0 or %u, actual %u",
 			GAP_KEY_LEN, bc_password_len);
 		return -1;
@@ -178,7 +178,7 @@ static int broadcast_source_configure_group(void)
 	const gaf_bcast_code_t *ptr = NULL;
 
 	if (bc_password_len) {
-		memcpy(code.bcast_code, CONFIG_BROADCAST_PASSWORD, bc_password_len);
+		memcpy(code.bcast_code, bc_password, bc_password_len);
 		ptr = &code;
 	}
 
