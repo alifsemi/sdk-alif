@@ -14,6 +14,11 @@ config BROADCAST_NAME
 	help
 	  Broadcast name to connect to
 
+config BROADCAST_PASSWORD
+	string "LE audio broadcast password"
+	help
+	  If defined the broadcast stream will be encrypted. Length needs to be 16 chars.
+
 choice
 	prompt "Choose way to determine left/right audio channels"
 	default AUDIO_LOCATION_USE_GAF
