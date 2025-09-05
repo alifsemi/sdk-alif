@@ -18,7 +18,7 @@ config BROADCAST_PASSWORD
 	string "LE audio broadcast password"
 	help
 	  If defined the broadcast stream will be encrypted.
-	  Length needs to be between 4 and 16 chars.
+	  Length needs to be between 4 and 16 chars or empty string (default) to disable.
 
 choice
 	prompt "Choose way to determine left/right audio channels"

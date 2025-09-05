@@ -31,9 +31,7 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 #define STREAM_LOCATIONS (GAF_LOC_FRONT_LEFT_BIT)
 #endif
 
-#define BC_PASSWORD CONFIG_BROADCAST_PASSWORD
-static const char bc_password[] = BC_PASSWORD;
-
+static const char bc_password[] = CONFIG_BROADCAST_PASSWORD;
 
 static uint32_t stream_ids[CONFIG_ALIF_BLE_AUDIO_NMB_CHANNELS];
 /* Local ID of the broadcast group */
@@ -168,7 +166,7 @@ static int broadcast_source_configure_group(void)
 
 	const size_t bc_password_len = sizeof(bc_password) - 1;
 
-	if (3 < bc_password_len && GAP_KEY_LEN >= bc_password_len && 0 != bc_password_len) {
+	if (0 != bc_password_len && (bc_password_len < 4 ||  bc_password_len > GAP_KEY_LEN)) {
 		LOG_ERR("Broadcast password is invalid, len must be either 0 or %u, actual %u",
 			GAP_KEY_LEN, bc_password_len);
 		return -1;
@@ -178,6 +176,7 @@ static int broadcast_source_configure_group(void)
 	const gaf_bcast_code_t *ptr = NULL;
 
 	if (bc_password_len) {
+		memset(code.bcast_code, 0, GAP_KEY_LEN);
 		memcpy(code.bcast_code, bc_password, bc_password_len);
 		ptr = &code;
 	}
