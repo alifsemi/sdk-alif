@@ -12,26 +12,31 @@ Getting started with Zephyr Alif SDK
 
    introduction
    overview
-   building_application_binaries
-   programming_an_app
+   building_and_flashing
 
 Document History
 ================
 
 .. list-table::
-    :widths: 15 120
-    :header-rows: 1
+   :widths: 15 85
+   :header-rows: 1
+   :align: left
 
-    * - Version
-      - Change Log
-    * - 1.0
-      - First Production Release
-    * - 1.1
-      - Updated the document to incorporate E1C and Balletto.
-    * - 1.2
-      - Updated the document to include I3C, CAN FD and Touch screen
-    * - 1.3
-      - Updated the document to include DAC12, UTimer Counter, QDEC and SDMMC
+   * - Version
+     - Change Log
+   * - 1.0
+     - First production release
+   * - 1.1
+     - Added support for E1C and Balletto
+   * - 1.2
+     - Added support for I3C, CAN FD, and touchscreen
+   * - 1.3
+     - Added support for DAC12, UTimer Counter, QDEC, and SDMMC
+   * - 1.4
+     - - Updated build and flash sections in the User Guide
+       - Added application notes for supported drivers
+       - Updated release notes with Ethos-U85 support and newly supported DevKits
+
 
 Indices and tables
 ==================
