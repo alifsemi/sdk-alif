@@ -1,28 +1,29 @@
 # CODEOWNERS for autoreview assigning in github
 #
-/automation/                       @HemanthKumar-AlifSemi
-/samples/drivers/ipm/              @HemanthKumar-AlifSemi
-/.checkpatch.conf/                 @HemanthKumar-AlifSemi
-/samples/drivers/spi_flash/        @HemanthKumar-AlifSemi
-/samples/bluetooth/                @AnttiKauppila-AlifSemi @VeijoPesonen
-/samples/matter/                   @jheiskan81
-/samples/lc3/                      @AnttiKauppila-AlifSemi @VeijoPesonen
-/subsys/bluetooth/                 @AnttiKauppila-AlifSemi @VeijoPesonen
-/subsys/ieee802154/                @mikter @jheiskan81
-/subsys/matter/                    @jheiskan81
+
+/.git*                             @RupeshKumar-AlifSemi
 /applications/testapp/             @mikter @jheiskan81
-/subsys/matter/                    @jheiskan81
-/applications/testapp/             @mikter @jheiskan81
+/automation/                       @rajranjan-alifsemi @layl1984
+/.checkpatch.conf                  @RupeshKumar-AlifSemi
+/drivers/                          @RupeshKumar-AlifSemi
+Jenkinsfile                        @rajranjan-alifsemi @layl1984
+/samples/                          @RupeshKumar-AlifSemi
+/samples/bluetooth/                @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi
+/samples/lc3/                      @AnttiKauppila-AlifSemi
 /samples/drivers/adc/              @Prabhakar-Alifsemi
 /samples/drivers/audio/dmic_alif/  @Nisarga-AlifSemi
 /samples/drivers/cmp/              @Prabhakar-Alifsemi
 /samples/drivers/crc/              @Nisarga-AlifSemi
 /samples/drivers/display/          @YogenderKumar-AlifSemi
 /samples/drivers/i2c_dw/           @Prabhakar-Alifsemi
-/samples/drivers/ipm/              @HemanthKumar-AlifSemi
 /samples/drivers/lpi2c/            @Prabhakar-Alifsemi
 /samples/drivers/pm/               @sudhir-alifsemi
 /samples/drivers/spi_dw/           @GaneshRamani-AlifSemi
 /samples/drivers/video/            @ChandraBhushan-AlifSemi
+/samples/matter/                   @jheiskan81
 /samples/modules/tflite-micro/     @rajranjan-alifsemi @SrinivasRagolu-AlifSemi
 /samples/sensor/bme680/            @Prabhakar-Alifsemi
+/subsys/                           @AnttiKauppila-AlifSemi
+/subsys/bluetooth/                 @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi
+/subsys/ieee802154/                @mikter @jheiskan81
+/subsys/matter/                    @jheiskan81
