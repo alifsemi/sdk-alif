@@ -64,6 +64,9 @@ struct broadcast_sink_env {
 #define CODEC_NODE DT_ALIAS(audio_codec)
 /* #define MCLK_GEN_NODE DT_ALIAS(mclk_gen) */
 
+static const char bc_password[] = CONFIG_BROADCAST_PASSWORD;
+static bool bc_stream_is_encrypted;
+
 BUILD_ASSERT(!DT_PROP(I2S_NODE, mono_mode), "I2S must be configured in stereo mode");
 
 const struct device *i2s_dev = DEVICE_DT_GET(I2S_NODE);
@@ -144,9 +147,26 @@ static int sink_enable(void)
 
 	LOG_INF("Chosen streams bitfield: %x", sink_env.chosen_streams_bf);
 
+	const size_t bc_password_len = sizeof(bc_password) - 1;
+
+	if ( 0 != bc_password_len && (bc_password_len < 4 ||  bc_password_len > GAP_KEY_LEN)) {
+		LOG_ERR("Broadcast password is invalid, len must be either 0 or %u, actual %u",
+			GAP_KEY_LEN, bc_password_len);
+		return -1;
+	}
+
+	gaf_bcast_code_t code;
+	const gaf_bcast_code_t *ptr = NULL;
+
+	if (bc_password_len && bc_stream_is_encrypted) {
+		memset(code.bcast_code, 0, GAP_KEY_LEN);
+		memcpy(code.bcast_code, bc_password, bc_password_len);
+		ptr = &code;
+	}
+
 	uint16_t err =
 		bap_bc_sink_enable(sink_env.pa_lid, &sink_env.bcast_id, sink_env.chosen_streams_bf,
-				   NULL, 0, SINK_TIMEOUT, &sink_env.grp_lid);
+				   ptr, 0, SINK_TIMEOUT, &sink_env.grp_lid);
 
 	if (err) {
 		LOG_ERR("Failed to enable bap_bc_sink, err %u", err);
@@ -242,6 +262,8 @@ static void on_bap_bc_scan_public_bcast(const bap_adv_id_t *p_adv_id,
 {
 	bool correct_stream = false;
 
+	bc_stream_is_encrypted = (pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT);
+
 	LOG_INF("Got public broadcast report");
 	LOG_INF("PBP features: encrypted: %s, standard quality: %s, high quality: %s",
 		(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT) ? "yes" : "no",
@@ -259,9 +281,14 @@ static void on_bap_bc_scan_public_bcast(const bap_adv_id_t *p_adv_id,
 	}
 	LOG_HEXDUMP_DBG(p_metadata, metadata_len, "metadata: ");
 
+	/* check that encrypted stream could be connected... */
+	if (bc_stream_is_encrypted && 0 == (sizeof(bc_password) - 1)) {
+		LOG_WRN("Cannot connect to encrypted broadcast without password");
+		return;
+	}
+
 	/* If we found a non-encrypted public broadcast, synchronise to this */
-	if (correct_stream && !(pbp_features_bf & BAP_BC_PBP_FEATURES_ENCRYPTED_BIT) &&
-	    !public_broadcast_found) {
+	if (correct_stream && !public_broadcast_found) {
 		LOG_INF("Synchronising to public broadcast");
 		public_broadcast_found = true;
 
