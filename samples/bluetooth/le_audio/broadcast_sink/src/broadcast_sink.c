@@ -64,8 +64,7 @@ struct broadcast_sink_env {
 #define CODEC_NODE DT_ALIAS(audio_codec)
 /* #define MCLK_GEN_NODE DT_ALIAS(mclk_gen) */
 
-#define BC_PASSWORD CONFIG_BROADCAST_PASSWORD
-static const char bc_password[] = BC_PASSWORD;
+static const char bc_password[] = CONFIG_BROADCAST_PASSWORD;
 static bool bc_stream_is_encrypted;
 
 BUILD_ASSERT(!DT_PROP(I2S_NODE, mono_mode), "I2S must be configured in stereo mode");
@@ -150,7 +149,7 @@ static int sink_enable(void)
 
 	const size_t bc_password_len = sizeof(bc_password) - 1;
 
-	if (3 < bc_password_len && GAP_KEY_LEN >= bc_password_len && 0 != bc_password_len) {
+	if (0 != bc_password_len && (bc_password_len < 4 ||  bc_password_len > GAP_KEY_LEN)) {
 		LOG_ERR("Broadcast password is invalid, len must be either 0 or %u, actual %u",
 			GAP_KEY_LEN, bc_password_len);
 		return -1;
@@ -160,6 +159,7 @@ static int sink_enable(void)
 	const gaf_bcast_code_t *ptr = NULL;
 
 	if (bc_password_len && bc_stream_is_encrypted) {
+		memset(code.bcast_code, 0, GAP_KEY_LEN);
 		memcpy(code.bcast_code, bc_password, bc_password_len);
 		ptr = &code;
 	}
