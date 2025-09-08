@@ -1007,6 +1007,31 @@ static int app_se_configuration(void)
 	}
 	return 0;
 }
+static uint32_t host_bsys_pwr_req;
+#define HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON 0x12
+
+static inline void app_force_host_systop_on(void)
+{
+	host_bsys_pwr_req = sys_read32(HOST_BSYS_PWR_REQ);
+	sys_write32(host_bsys_pwr_req | HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON, HOST_BSYS_PWR_REQ);
+}
+
+static inline void app_restore_host_systop(void)
+{
+	sys_write32(host_bsys_pwr_req, HOST_BSYS_PWR_REQ);
+}
+ 
+static int app_pre_kernel1_init(void)
+{
+	app_force_host_systop_on();
+
+	return 0;
+}
+SYS_INIT(app_pre_kernel1_init, PRE_KERNEL_1, 39); /* (CONFIG_KERNEL_INIT_PRIORITY_DEFAULT - 1) */
+
+
+#define UART_DEVICE_NODE DT_CHOSEN(zephyr_hci_uart)
+static const struct device *uart_dev = DEVICE_DT_GET(UART_DEVICE_NODE);
 
 int main(void)
 {
@@ -1014,10 +1039,14 @@ int main(void)
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	int ret;
 
+	app_se_configuration();
 	/* Start up bluetooth host stack. */
 	ble_status = alif_ble_enable(NULL);
+	app_restore_host_systop();
 
-	app_se_configuration();
+	/* Enable UART communication with ES0 assume that clocks for uart are now great*/
+	uart_line_ctrl_set(uart_dev, UART_LINE_CTRL_RTS, 1);
+
 
 	if (boot_status != COLD_BOOT_DONE) {
 		printk("BLE Sleep demo\n");
