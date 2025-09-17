@@ -6,17 +6,5 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-config ALIF_POWER_MGR_SHELL
-	bool "HAL power manager commands"
-	default y
-	depends on SHELL
-	depends on HAS_ALIF_POWER_MANAGER
-	help
-	  Enable Alif Power manager commands
-
-config ALIF_POWER_MGR_LIB
-	bool "HAL power manager api"
-	default y if PM
-	depends on HAS_ALIF_POWER_MANAGER
-	help
-	  Enable Alif Power manager commands
+zephyr_include_directories(.)
+zephyr_sources(power_mgr.c)
