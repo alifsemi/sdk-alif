@@ -39,21 +39,29 @@ static int settings_direct_loader(const char *const key, size_t const len,
 
 int storage_init(void)
 {
+	static bool initialized;
+
+	if (initialized) {
+		return 0;
+	}
+
 	int err = settings_subsys_init();
 
 	if (err) {
 		LOG_ERR("settings_subsys_init() failed (err %d)", err);
 		return err;
 	}
+
+	initialized = true;
 	return 0;
 }
 
-int storage_store(const char *key, void *data, size_t const size)
+int storage_store(const char *key, const int index, void *data, size_t const size)
 {
 	int err;
 	char key_str[64];
 
-	snprintf(key_str, sizeof(key_str), SETTINGS_BASE "/%s", key);
+	snprintf(key_str, sizeof(key_str), SETTINGS_BASE "/%s_%d", key, index);
 	err = settings_save_one(key_str, data, size);
 	if (err) {
 		LOG_ERR("Failed to store %s data (err %d)", key, err);
@@ -61,7 +69,7 @@ int storage_store(const char *key, void *data, size_t const size)
 	return err;
 }
 
-int storage_load(const char *key, void *data, size_t const size)
+int storage_load(const char *key, const int index, void *data, size_t const size)
 {
 	struct storage_ctx ctx = {
 		.p_output = data,
@@ -69,6 +77,13 @@ int storage_load(const char *key, void *data, size_t const size)
 	};
 	char key_str[64];
 
-	snprintf(key_str, sizeof(key_str), SETTINGS_BASE "/%s", key);
-	return settings_load_subtree_direct(key_str, settings_direct_loader, &ctx);
+	snprintf(key_str, sizeof(key_str), SETTINGS_BASE "/%s_%d", key, index);
+
+	int err = settings_load_subtree_direct(key_str, settings_direct_loader, &ctx);
+
+	if (err) {
+		LOG_ERR("Failed to load %s data (err %d)", key, err);
+	}
+
+	return err;
 }

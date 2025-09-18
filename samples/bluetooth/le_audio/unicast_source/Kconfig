@@ -61,10 +61,21 @@ config BONDING_ALLOWED
 	bool "Allow bonding"
 	default y
 
+config NUMBER_OF_CLIENTS
+	int
+	range 1 4
+	default 2
+	help
+	  Number of clients to be connected
+
 menu "Logging"
 
 module = MAIN
 module-str = main
+source "subsys/logging/Kconfig.template.log_config"
+
+module = UNICAST_SCAN
+module-str = unicast_scan
 source "subsys/logging/Kconfig.template.log_config"
 
 module = UNICAST_SOURCE
