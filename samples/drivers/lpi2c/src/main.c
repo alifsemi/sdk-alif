@@ -1,6 +1,11 @@
-/*
- * Copyright (C) 2024 Alif Semiconductor.
- * SPDX-License-Identifier: Apache-2.0
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
  */
 
 #include <zephyr/logging/log.h>
@@ -14,7 +19,7 @@ LOG_MODULE_REGISTER(ALIF_LPI2C, LOG_LEVEL_INF);
 #include <soc.h>
 
 /* i2c_master and lpi2c_slave aliases are defined in
- * overlay files to use different SPI instance if needed.
+ * overlay files to use different I2C instance if needed.
  */
 
 #define SLV_I2C_ADDR	0x40
@@ -130,7 +135,7 @@ void register_slave_i2c(struct i2c_target_config *cfg)
 {
 	int ret = 0;
 
-	const struct device *const i2c_slave_dev = DEVICE_DT_GET(DT_NODELABEL(lpi2c));
+	const struct device *const i2c_slave_dev = DEVICE_DT_GET(DT_NODELABEL(lpi2c0));
 
 	if (!device_is_ready(i2c_slave_dev)) {
 		LOG_ERR("lpi2c: Slave Device is not ready.");
@@ -177,7 +182,7 @@ static void lpi2c_slave(void *p1, void *p2, void *p3)
 
 	LOG_INF("Start Slave transmit and Master receive");
 
-	const struct device *const i2c_slave_dev = DEVICE_DT_GET(DT_NODELABEL(lpi2c));
+	const struct device *const i2c_slave_dev = DEVICE_DT_GET(DT_NODELABEL(lpi2c0));
 
 	/* Slave transmitting bytes to master */
 	ret = i2c_transfer(i2c_slave_dev, &msgs[0], 1, SLV_I2C_ADDR);
