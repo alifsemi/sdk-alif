@@ -72,18 +72,6 @@ List of Supported Peripheral Devices and Features
 - **UART (Universal Asynchronous Receiver/Transmitter)**:
   Synopsys DW_apb_uart is a programmable Universal Asynchronous Receiver/Transmitter. This AMBA 2.0-compliant Advanced Peripheral Bus (APB) component supports up to 8 ports. DW UART2 and UART4 are enabled in Zephyr for the RTSS-HP and RTSS-HE subsystems, respectively.
 
-- **MHU (Message Handling Unit)**:
-  MHUs enable interrupt-driven communication between subsystems. Each MHU pair consists of a Sender in one subsystem and a Receiver in another. The SoC provides 12 MHUs for Secure access and 12 for Non-Secure access.
-
-- **HWSEM (Hardware Semaphore)**:
-  HWSEM provides synchronization for shared resources (memory or peripherals) across independent subsystems, preventing race conditions, deadlocks, and abnormal behavior. Supported in the E7 series.
-
-- **GPIO (General-Purpose Input/Output)**:
-  Uncommitted digital signal pins controllable by software, usable as inputs, outputs, or both.
-
-- **LPSPI (Low Power Serial Peripheral Interface)**:
-  Synopsys DW_apb_ssi, an AMBA 2.0-compliant component, operates in master mode only on RTSS-HE.
-
 - **SPI (Serial Peripheral Interface)**:
   Synopsys DWC_ssi is a full-duplex, configurable synchronous serial interface supporting 4 instances on RTSS-HE and RTSS-HP. SPI1 is configured as master; SPI0, SPI2, and SPI3 are slaves.
 
@@ -92,6 +80,9 @@ List of Supported Peripheral Devices and Features
 
 - **I2C (Inter-Integrated Circuit)**:
   DW_apb_i2c supports master or slave mode with two enabled instances (i2c0 and i2c1) on RTSS-HE and RTSS-HP.
+
+- **I2S (Inter-IC Sound)**:
+  DW_apb_i2s supports four instances for digital audio processing; I2S3_b connects internally to a microphone.
 
 - **RTC (Real-Time Counter)**:
   The Low-Power Real-Time Counter (LPRTC) in PD-0 operates in low-power states, supporting a 32-bit counter and interrupt generation.
@@ -102,11 +93,32 @@ List of Supported Peripheral Devices and Features
 - **PWM (Pulse Width Modulation)**:
   Alif UTIMER IP generates up to 24 simultaneous PWM signals across 12 channels.
 
-- **WDT (Watchdog Timer)**:
-  Integrates Zephyr’s WDT for fault detection.
+- **Quadrature Decoder (QDEC)**:
+  Alif UTIMER IP on Ensemble Devkit supports QDEC mode for precise rotary encoder position tracking.
 
-- **MRAM**:
-  Supports MRAM Read and Write.
+- **UTimer Counter**:
+  Alif UTIMER IP on Ensemble Devkit supports counter mode for precise event or clock pulse counting, enabling frequency measurement, event counting, and timer-based scheduling.
+
+- **PDM (Pulse Density Modulation)**:
+  Enhances audio with support for eight PDM microphones, converting 1-bit PDM to 16-bit PCM.
+
+- **CRC (Cyclic Redundancy Check)**:
+  Supports CRC-8-CCITT, CRC-16-CCITT, CRC-32, and CRC-32C with flexible data processing via AHB.
+
+- **OSPI Flash (Octal SPI Flash)**:
+  The Alif DevKit-E7 includes a 32MB ISSI Flash (IS25WX256) with Zephyr flash APIs for erase, read, and write operations.
+
+- **ADC (Analog-to-Digital Converter)**:
+  Features ADC12 (12-bit, 8 channels) and ADC24 (24-bit, 4 differential channels) for analog-to-digital conversion.
+
+- **LPTimer (Low-Power Timer)**:
+  A 32-bit timer in the M55 core for precise low-power timing.
+
+- **SDMMC (Secure Digital Multimedia Card)**:
+  Alif SDMMC driver supports eMMC/SD interfaces.
+
+- **DAC 12 (Digital to Analog Converter)**:
+  Features a DAC12 module that converts 12-bit digital values to analog voltages, with a 0 V to 1.8 V output range in Low-Power mode.
 
 Known Issues
 ------------
