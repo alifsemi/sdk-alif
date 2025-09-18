@@ -403,6 +403,7 @@ int audio_encoder_add_channel(struct audio_encoder *const encoder, size_t const 
 	int const ch_index = alloc_channel_index(encoder);
 
 	if (ch_index < 0) {
+		LOG_ERR("No free channel slots");
 		return ch_index;
 	}
 
@@ -443,6 +444,7 @@ int audio_encoder_start_channel(struct audio_encoder *const encoder, uint32_t co
 	int const ch_index = get_channel_index(encoder, stream_id);
 
 	if (ch_index < 0) {
+		LOG_ERR("Stream ID not found");
 		return ch_index;
 	}
 
@@ -471,6 +473,7 @@ int audio_encoder_stop_channel(struct audio_encoder *const encoder, uint32_t con
 	int const ch_index = get_channel_index(encoder, stream_id);
 
 	if (ch_index < 0) {
+		LOG_ERR("Stream ID not found");
 		return ch_index;
 	}
 

@@ -29,6 +29,16 @@
 #define APPEARANCE APPEARANCE_EARBUDS
 #endif
 
+#if CONFIG_UNICAST_LOCATION_BOTH
+#define IRK_VAL 0x8B
+#elif CONFIG_UNICAST_LOCATION_LEFT
+#define IRK_VAL 0x8A
+#elif CONFIG_UNICAST_LOCATION_RIGHT
+#define IRK_VAL 0x89
+#else
+#define IRK_VAL 0x88
+#endif
+
 LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 
 K_SEM_DEFINE(gapm_init_sem, 0, 1);
@@ -64,7 +74,7 @@ static struct app_con_bond_data app_con_bond_data;
 const char device_name[] = CONFIG_BLE_DEVICE_NAME;
 
 static const gap_sec_key_t gapm_irk = {.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08, 0x11,
-					       0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}};
+					       0x22, 0x33, 0x44, 0x55, 0x66, 0x77, IRK_VAL}};
 
 /* ---------------------------------------------------------------------------------------- */
 /* Settings NVM storage handlers */
@@ -493,8 +503,6 @@ static void on_gapm_le_random_addr_cb(uint16_t const status, const gap_addr_t *c
 
 static int ble_stack_configure(uint8_t const role)
 {
-	storage_load(SETTINGS_NAME_ADDR, &private_address, sizeof(private_address));
-
 	/* Bluetooth stack configuration*/
 	gapm_config_t gapm_cfg = {
 		.role = role,

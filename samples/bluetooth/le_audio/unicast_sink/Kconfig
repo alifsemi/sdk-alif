@@ -10,7 +10,9 @@ menu "Alif Bluetooth LE Audio Unicast Sink"
 
 config BLE_DEVICE_NAME
 	string "BLE device name"
-	default "ALIF_CIS_SINK"
+	default "ALIF_CIS_SINK_L" if UNICAST_LOCATION_LEFT
+	default "ALIF_CIS_SINK_R" if UNICAST_LOCATION_RIGHT
+	default "ALIF_CIS_SINK" if UNICAST_LOCATION_BOTH
 	help
 	  Device name to be included in advertising packets
 
@@ -62,13 +64,16 @@ choice
 endchoice
 
 choice
-	prompt "Choose number of channels"
-	default UNICAST_STEREO
+	prompt "Choose location"
+	default UNICAST_LOCATION_BOTH if UNICAST_UNIDIR
+	default UNICAST_LOCATION_LEFT if UNICAST_BIDIR
 
-	config UNICAST_MONO
-	bool "Mono"
-	config UNICAST_STEREO
-	bool "Stereo"
+	config UNICAST_LOCATION_LEFT
+	bool "Left"
+	config UNICAST_LOCATION_RIGHT
+	bool "Right"
+	config UNICAST_LOCATION_BOTH
+	bool "Both"
 endchoice
 
 config VOLUME_CTRL_STEP_SIZE

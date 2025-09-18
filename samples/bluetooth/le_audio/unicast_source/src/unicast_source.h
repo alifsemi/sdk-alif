@@ -20,17 +20,30 @@
 int unicast_source_configure(void);
 
 /**
- * @brief Start scanning for LE audio devices
- *
- * @return 0 on success
- */
-int unicast_source_scan_start(void);
-
-/**
  * @brief Start the service discovery
  *
+ * @param con_lid Connection index
+ *
  * @return 0 on success
  */
-int unicast_source_discover(uint8_t const con_lid);
+int unicast_source_discover(uint8_t con_lid);
+
+/**
+ * @brief Setup the streams for the LE audio unicast source
+ *
+ * @param con_lid Connection index
+ *
+ * @return 0 on success
+ */
+int unicast_setup_streams(uint8_t con_lid);
+
+/**
+ * @brief Enable the streams for the LE audio unicast source
+ *
+ * @param con_lid Connection index
+ *
+ * @return 0 on success
+ */
+int unicast_enable_streams(uint8_t con_lid);
 
 #endif /* _UNICAST_SOURCE_H */

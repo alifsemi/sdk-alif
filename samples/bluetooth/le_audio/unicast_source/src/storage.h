@@ -13,10 +13,9 @@
 #include <stdint.h>
 
 #define SETTINGS_BASE           "uc_central"
-#define SETTINGS_NAME_KEYS      "bond_keys_0"
-#define SETTINGS_NAME_BOND_DATA "bond_data_0"
-#define SETTINGS_NAME_BOND_ASCS "bond_ascs"
-#define SETTINGS_NAME_BOND_PACS "bond_pacs"
+#define SETTINGS_NAME_KEYS      "bond_keys"
+#define SETTINGS_NAME_BOND_DATA "bond_data"
+#define SETTINGS_NAME_PEER      "peer"
 
 /**
  * @brief Stores data in the flash memory.
@@ -33,22 +32,24 @@ int storage_init(void);
  * @brief Stores data in the flash memory.
  *
  * @param key Key string to identify the data.
+ * @param index Index of the data to store.
  * @param data Pointer to the data to store.
  * @param size Size of the data.
  *
  * @return 0 on success, error code otherwise.
  */
-int storage_store(const char *key, void *data, size_t size);
+int storage_store(const char *key, int index, void *data, size_t size);
 
 /**
  * @brief Loads data from the flash memory.
  *
  * @param key Key string to identify the data.
+ * @param index Index of the data to load.
  * @param data Pointer to store the loaded data.
  * @param size Size of the data to load.
  *
  * @return 0 on success, error code otherwise.
  */
-int storage_load(const char *key, void *data, size_t size);
+int storage_load(const char *key, int index, void *data, size_t size);
 
 #endif /* _STORAGE_H */
