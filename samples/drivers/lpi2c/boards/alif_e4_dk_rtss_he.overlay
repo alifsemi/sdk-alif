@@ -8,14 +8,14 @@
  *
  */
 
-/* setting i2c0 as master and lpi2c instance as slave.
+/* setting i2c0 as master and lpi2c0 instance as slave.
  *
  */
 
 / {
 	aliases {
 		master-i2c = &i2c0;
-		slave-i2c = &lpi2c;
+		slave-i2c = &lpi2c0;
 	};
 };
 
@@ -23,6 +23,6 @@
 	status = "okay";
 };
 
-&lpi2c {
+&lpi2c0 {
 	status = "okay";
 };

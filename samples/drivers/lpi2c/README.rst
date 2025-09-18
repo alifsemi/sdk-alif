@@ -8,7 +8,7 @@ Overview
 
 This sample demonstrates using the alif LPI2C driver.
 This sample uses I2C instances one as master and the alif lpi2c as slave.
-By default it uses i2c0 as master and lpi2c as slave.
+By default it uses i2c0 as master and lpi2c0 as slave.
 
 Building and Running
 ********************
@@ -19,8 +19,8 @@ The application will build only for a target that has a devicetree entry with
 NOTE
 ============
 
-when lpi2c transmit 3 bytes then master reception has to be called 3 times
-to receive the 3 bytes send by the slave.
+When lpi2c0 transmits 3 bytes then, master reception has to be called 3 times
+to receive the 3 bytes sent by the slave.
 
 Sample Output
 =============
