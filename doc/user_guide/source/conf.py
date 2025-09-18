@@ -20,8 +20,8 @@ sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_scripts"))
 sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "west_commands"))
 
 # Initialize version and release with default values
-version = "2.0-alpha"
-release = "2.0-alpha"
+version = "2.0"
+release = "2.0"
 
 # Read the version from VERSION file if it exists
 if (ZEPHYR_BASE / "VERSION").exists():
