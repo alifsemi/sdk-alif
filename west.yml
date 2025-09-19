@@ -37,6 +37,7 @@ manifest:
         name-allowlist:
           - canopennode
           - chre
+          - dave2d
           - edtt
           - fatfs
           - hal_alif
@@ -77,6 +78,11 @@ manifest:
       path: modules/hal/cmsis
       groups:
          - hal
+
+    - name: aipl
+      repo-path: alif_image-processing-lib
+      revision: a700fef6411cf0322a32433cc5adbd3f1aa26f82
+      path: modules/lib/aipl
 
   self:
     path: alif
