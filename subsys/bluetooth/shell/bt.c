@@ -13,13 +13,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/bluetooth/hci.h>
-#include <zephyr/bluetooth/conn.h>
-#include <zephyr/bluetooth/uuid.h>
-#include <zephyr/bluetooth/gatt.h>
-#include <zephyr/bluetooth/services/bas.h>
-#include <zephyr/sys/byteorder.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/shell/shell.h>
@@ -41,47 +34,13 @@
 #include "gatt_srv.h"
 #include "ke_mem.h"
 
-LOG_MODULE_REGISTER(bt_shell, CONFIG_BT_SHELL_LOG_LEVEL);
+#include <alif/bluetooth/bt_adv_data.h>
+#include <alif/bluetooth/bt_scan_rsp.h>
+#include <alif/bluetooth/bt_srv_hello.h>
 
+LOG_MODULE_REGISTER(bt_shell, CONFIG_BT_SHELL_LOG_LEVEL);
 #define BT_CONN_STATE_CONNECTED	   0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
-
-#define HELLO_UUID_128_SVC                                                                         \
-	{                                                                                          \
-		0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89,      \
-			0x90, 0x00, 0x00                                                           \
-	}
-
-#define HELLO_UUID_128_CHAR0                                                                       \
-	{                                                                                          \
-		0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89,      \
-			0x15, 0x00, 0x00                                                           \
-	}
-#define HELLO_UUID_128_CHAR1                                                                       \
-	{                                                                                          \
-		0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89,      \
-			0x16, 0x00, 0x00                                                           \
-	}
-
-#define ATT_16_TO_128_ARRAY(uuid)                                                          \
-{                                                                                          \
-	(uuid) & 0xFF, (uuid >> 8) & 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0        \
-}
-
-#define ATT_128_PRIMARY_SERVICE  ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
-#define ATT_128_INCLUDED_SERVICE ATT_16_TO_128_ARRAY(GATT_DECL_INCLUDE)
-#define ATT_128_CHARACTERISTIC   ATT_16_TO_128_ARRAY(GATT_DECL_CHARACTERISTIC)
-#define ATT_128_CLIENT_CHAR_CFG  ATT_16_TO_128_ARRAY(GATT_DESC_CLIENT_CHAR_CFG)
-
-#define HELLO_METAINFO_CHAR0_NTF_SEND 0x4321
-#define NAME_LEN                      30
-#define KEY_STR_LEN                   33
-#define ADV_DATA_DELIMITER            ", "
-#define AD_SIZE                       9
-
-#ifndef CONFIG_HELLO_STRING_LENGTH
-#define CONFIG_HELLO_STRING_LENGTH 10
-#endif /* CONFIG_HELLO_STRING_LENGTH */
 
 /*
  * Semaphores
@@ -99,20 +58,6 @@ static struct connections_params {
 } cxn;
 
 /*
- * Service environment
- */
-static struct service_env {
-	uint16_t start_hdl;
-	uint8_t user_lid;
-	uint8_t char0_val[250];
-	uint8_t char1_val;
-	bool ntf_ongoing;
-	uint16_t ntf_cfg;
-	uint8_t hello_arr[11]; /* "HelloHello" + null terminator */
-	uint8_t hello_arr_index;
-} srv_env;
-
-/*
  * Advertising parameters
  */
 static struct adv_params {
@@ -121,41 +66,7 @@ static struct adv_params {
 	uint8_t actv_idx; /* Activity index of the effective advertising parameters */
 } stored_adv __attribute__((noinit));
 
-/*
- * List of attributes in the service
- */
-enum service_att_list {
-	HELLO_IDX_SERVICE = 0,
-	/* First characteristic is readable + supports notifications */
-	HELLO_IDX_CHAR0_CHAR,
-	HELLO_IDX_CHAR0_VAL,
-	HELLO_IDX_CHAR0_NTF_CFG,
-	/* Second characteristic is writable */
-	HELLO_IDX_CHAR1_CHAR,
-	HELLO_IDX_CHAR1_VAL,
-	/* Number of items*/
-	HELLO_IDX_NB,
-};
-
-/* Device name */
-static const char device_name[] = CONFIG_BLE_DEVICE_NAME;
-
-/* Service UUID to pass into gatt_db_svc_add */
-static const uint8_t hello_service_uuid[] = HELLO_UUID_128_SVC;
-
-/* GATT database for the service */
-static const gatt_att_desc_t hello_att_db[HELLO_IDX_NB] = {
-	[HELLO_IDX_SERVICE] = {ATT_128_PRIMARY_SERVICE, ATT_UUID(16) | PROP(RD), 0},
-
-	[HELLO_IDX_CHAR0_CHAR] = {ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0},
-	[HELLO_IDX_CHAR0_VAL] = {HELLO_UUID_128_CHAR0, ATT_UUID(128) | PROP(RD) | PROP(N),
-				 OPT(NO_OFFSET)},
-	[HELLO_IDX_CHAR0_NTF_CFG] = {ATT_128_CLIENT_CHAR_CFG, ATT_UUID(16) | PROP(RD) | PROP(WR),
-				     0},
-	[HELLO_IDX_CHAR1_CHAR] = {ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0},
-	[HELLO_IDX_CHAR1_VAL] = {HELLO_UUID_128_CHAR1, ATT_UUID(128) | PROP(WR),
-				 OPT(NO_OFFSET) | sizeof(uint16_t)},
-};
+char bt_device_name[CONFIG_BLE_DEVICE_NAME_MAX] = CONFIG_BLE_DEVICE_NAME;
 
 /* Convert MAC address string from Kconfig to byte array */
 static void init_private_addr(uint8_t *addr)
@@ -305,11 +216,11 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
 			uint16_t max_len)
 {
-	const size_t device_name_len = sizeof(device_name) - 1;
+	const size_t device_name_len = strlen(bt_device_name);
 	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
 
 	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
-			     (const uint8_t *)device_name);
+			     (const uint8_t *)bt_device_name);
 }
 
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
@@ -382,90 +293,6 @@ static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t re
 	LOG_INF("Advertising activity index %u stopped for reason %u", actv_idx, reason);
 }
 
-static uint16_t set_advertising_data(uint8_t actv_idx)
-{
-	uint16_t err;
-
-	/* gatt service identifier */
-	uint16_t svc[8] = {
-		0xd123, 0xeabc, 0x785f, 0x1523,
-		0xefde, 0x1212, 0x1523, 0x0000
-	};
-
-	/* Name advertising length */
-	const size_t device_name_len = sizeof(device_name) - 1;
-
-	/* Check if device name is too long for advertising data */
-	const uint16_t max_adv_data_size = 31; /* BLE spec limit for advertising data */
-	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_128_LEN;
-	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
-
-	if (adv_len > max_adv_data_size) {
-		LOG_ERR("Device name exceeds maximum length: %u bytes", device_name_len);
-		LOG_ERR("Advertising data requires %u bytes (maximum allowed: %u)", adv_len,
-			max_adv_data_size);
-		LOG_ERR("Shorten CONFIG_BLE_DEVICE_NAME in prj.conf to fix this issue");
-		return GAP_ERR_INVALID_PARAM;
-	}
-
-	co_buf_t *p_buf;
-	uint8_t *p_data;
-
-	err = co_buf_alloc(&p_buf, 0, adv_len, 0);
-	if (err != 0) {
-		LOG_ERR("Cannot allocate buffer for advertising data");
-		return err;
-	}
-
-	p_data = co_buf_data(p_buf);
-
-	/* Device name data */
-	p_data[0] = device_name_len + 1;
-	p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
-	memcpy(p_data + 2, device_name, device_name_len);
-
-	/* Update data pointer */
-	p_data = p_data + adv_device_name;
-
-	/* Service UUID data */
-	p_data[0] = GATT_UUID_128_LEN + 1;
-	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
-	memcpy(p_data + 2, &svc, sizeof(svc));
-
-	err = gapm_le_set_adv_data(actv_idx, p_buf);
-	co_buf_release(p_buf);
-
-	if (err) {
-		if (err == GAP_ERR_INVALID_PARAM) {
-			LOG_ERR("Advertising data contains invalid parameter (0x%02x)", err);
-			LOG_ERR("Verify device name length and service UUID format");
-		} else {
-			LOG_ERR("Cannot set advertising data, error code: 0x%02x", err);
-		}
-	}
-
-	return err;
-}
-
-static uint16_t set_scan_data(uint8_t actv_idx)
-{
-	co_buf_t *p_buf;
-	uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
-
-	if (err) {
-		LOG_ERR("Cannot allocate buffer for scan response data");
-		return err;
-	}
-
-	err = gapm_le_set_scan_response_data(actv_idx, p_buf);
-	if (err) {
-		LOG_ERR("Cannot set scan response data, error code: 0x%02x", err);
-	}
-
-	return err;
-}
-
 static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
 				 uint16_t status)
 {
@@ -478,11 +305,11 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 	case GAPM_ACTV_CREATE_LE_ADV:
 		LOG_INF("Created advertising activity");
 		stored_adv.actv_idx = actv_idx;
-		set_advertising_data(actv_idx);
+		bt_adv_data_set_default(actv_idx, bt_device_name, strlen(bt_device_name));
 		break;
 	case GAPM_ACTV_SET_ADV_DATA:
 		LOG_INF("Set advertising data");
-		set_scan_data(actv_idx);
+		bt_scan_rsp_set(actv_idx);
 		break;
 	case GAPM_ACTV_SET_SCAN_RSP_DATA:
 		LOG_INF("Set scan response data");
@@ -519,169 +346,18 @@ static const gapm_le_adv_cb_actv_t le_adv_cbs = {
 	.created = on_adv_created,
 };
 
-/* Service callbacks */
-static void on_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token, uint16_t hdl,
-			    uint16_t offset, uint16_t max_length)
-{
-	co_buf_t *p_buf = NULL;
-	uint16_t status = GAP_ERR_NO_ERROR;
-	uint16_t att_val_len = 0;
-	void *att_val = NULL;
-
-	do {
-		if (offset != 0) {
-			/* Long read not supported for any characteristics within this service */
-			status = ATT_ERR_INVALID_OFFSET;
-			break;
-		}
-
-		uint8_t att_idx = hdl - srv_env.start_hdl;
-
-		switch (att_idx) {
-		case HELLO_IDX_CHAR0_VAL:
-			att_val_len = CONFIG_HELLO_STRING_LENGTH;
-			uint8_t loop_count = (CONFIG_HELLO_STRING_LENGTH / 5);
-
-			if (CONFIG_HELLO_STRING_LENGTH % 5) {
-				loop_count += 1;
-			}
-			for (int i = 0; i < loop_count; i++) {
-				memcpy(srv_env.char0_val + i * 5,
-				       &srv_env.hello_arr[srv_env.hello_arr_index], 5);
-			}
-			att_val = srv_env.char0_val;
-			LOG_DBG("Preparing response for read request");
-			break;
-
-		case HELLO_IDX_CHAR0_NTF_CFG:
-			att_val_len = sizeof(srv_env.ntf_cfg);
-			att_val = &srv_env.ntf_cfg;
-			break;
-
-		default:
-			break;
-		}
-
-		if (att_val == NULL) {
-			status = ATT_ERR_REQUEST_NOT_SUPPORTED;
-			break;
-		}
-
-		status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, att_val_len,
-				      GATT_BUFFER_TAIL_LEN);
-		if (status != CO_BUF_ERR_NO_ERROR) {
-			status = ATT_ERR_INSUFF_RESOURCE;
-			break;
-		}
-
-		memcpy(co_buf_data(p_buf), att_val, att_val_len);
-	} while (0);
-
-	/* Send the GATT response */
-	gatt_srv_att_read_get_cfm(conidx, user_lid, token, status, att_val_len, p_buf);
-	if (p_buf != NULL) {
-		co_buf_release(p_buf);
-	}
-}
-
-static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uint16_t hdl,
-			   uint16_t offset, co_buf_t *p_data)
-{
-	uint16_t status = GAP_ERR_NO_ERROR;
-
-	do {
-		if (offset != 0) {
-			/* Long write not supported for any characteristics in this service */
-			status = ATT_ERR_INVALID_OFFSET;
-			break;
-		}
-
-		uint8_t att_idx = hdl - srv_env.start_hdl;
-
-		switch (att_idx) {
-		case HELLO_IDX_CHAR1_VAL: {
-			if (sizeof(srv_env.char1_val) != co_buf_data_len(p_data)) {
-				LOG_ERR("Incorrect buffer size");
-				status = ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN;
-			} else {
-				memcpy(&srv_env.char1_val, co_buf_data(p_data),
-				       sizeof(srv_env.char1_val));
-				LOG_DBG("led toggle, state %d", srv_env.char1_val);
-			}
-			break;
-		}
-
-		case HELLO_IDX_CHAR0_NTF_CFG: {
-			if (sizeof(uint16_t) != co_buf_data_len(p_data)) {
-				LOG_ERR("Incorrect buffer size");
-				status = ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN;
-			} else {
-				uint16_t cfg;
-
-				memcpy(&cfg, co_buf_data(p_data), sizeof(uint16_t));
-				if (PRF_CLI_START_NTF == cfg || PRF_CLI_STOP_NTFIND == cfg) {
-					srv_env.ntf_cfg = cfg;
-				} else {
-					/* Indications not supported */
-					status = ATT_ERR_REQUEST_NOT_SUPPORTED;
-				}
-			}
-			break;
-		}
-
-		default:
-			status = ATT_ERR_REQUEST_NOT_SUPPORTED;
-			break;
-		}
-	} while (0);
-
-	/* Send the GATT write confirmation */
-	gatt_srv_att_val_set_cfm(conidx, user_lid, token, status);
-}
-
-static void on_event_sent(uint8_t conidx, uint8_t user_lid, uint16_t metainfo, uint16_t status)
-{
-	if (metainfo == HELLO_METAINFO_CHAR0_NTF_SEND) {
-		srv_env.ntf_ongoing = false;
-	}
-}
-
-static const gatt_srv_cb_t gatt_cbs = {
-	.cb_att_event_get = NULL,
-	.cb_att_info_get = NULL,
-	.cb_att_read_get = on_att_read_get,
-	.cb_att_val_set = on_att_val_set,
-	.cb_event_sent = on_event_sent,
-};
-
-
 static uint16_t service_init(void)
 {
-	uint16_t status;
+	int err;
 
-	/* Initialize hello_arr with the string "HelloHello" */
-	static const char hello_str[] = "HelloHello";
-
-	memcpy(srv_env.hello_arr, hello_str, sizeof(hello_str));
-	srv_env.hello_arr_index = 0;
-
-	/* Register a GATT user */
-	status = gatt_user_srv_register(L2CAP_LE_MTU_MIN, 0, &gatt_cbs, &srv_env.user_lid);
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Cannot register GATT user service, error code: 0x%02x", status);
-		return status;
+	/* Initialize the hello service */
+	err = bt_srv_hello_init();
+	if (err) {
+		LOG_ERR("Cannot initialize hello service, error code: %d", err);
+		return GAP_ERR_INVALID_PARAM;
 	}
 
-	/* Add the GATT service */
-	status = gatt_db_svc_add(srv_env.user_lid, SVC_UUID(128), hello_service_uuid, HELLO_IDX_NB,
-				 NULL, hello_att_db, HELLO_IDX_NB, &srv_env.start_hdl);
-	if (status != GAP_ERR_NO_ERROR) {
-		gatt_user_unregister(srv_env.user_lid);
-		LOG_ERR("Cannot add GATT service to database, error code: 0x%02x", status);
-		return status;
-	}
-
-	LOG_DBG("GATT service added");
+	LOG_DBG("Hello service initialized");
 
 	return GAP_ERR_NO_ERROR;
 }
@@ -841,6 +517,14 @@ static int cmd_adv_create(const struct shell *sh, size_t argc, char *argv[])
 	if (!adv_param_parse(sh, argc, argv, &param)) {
 		shell_help(sh);
 		return -ENOEXEC;
+	}
+
+	/* Initialize the advertising module */
+	err = bt_adv_data_init();
+	if (err) {
+		LOG_ERR("Cannot initialize advertising module, error code: %u", err);
+		__ASSERT(false, "Cannot initialize advertising module, error code: %u", err);
+		return -ECANCELED;
 	}
 
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &param, &le_adv_cbs);
@@ -1137,6 +821,136 @@ static int cmd_default_handler(const struct shell *sh, size_t argc, char **argv)
 	return -EINVAL;
 }
 
+static int cmd_adv_data(const struct shell *sh, size_t argc, char *argv[])
+{
+	int err;
+
+	if (!is_initialized(sh)) {
+		return -ENOEXEC;
+	}
+
+	if (stored_adv.actv_idx == 0xFF) {
+		shell_error(sh, "No advertising set created. Run 'bt adv-create' first.");
+		return -EINVAL;
+	}
+
+	/* Display current advertising data if no parameters */
+	if (argc < 2) {
+		uint8_t adv_data_len = bt_adv_data_get_length();
+
+		if (adv_data_len > 0) {
+			shell_print(sh, "Current advertising data: %u bytes", adv_data_len);
+
+			/* Get the advertising data for hexdump */
+			uint8_t *adv_data = bt_adv_data_get_raw();
+
+			if (adv_data != NULL) {
+				shell_hexdump(sh, adv_data, adv_data_len);
+			}
+		} else {
+			shell_print(sh, "No advertising data set");
+		}
+		return 0;
+	}
+
+	/* Handle name command */
+	if (!strcmp(argv[1], "name")) {
+		if (argc < 3) {
+			/* TODO: Extended advertising would support longer names
+			 * Display current name if set
+			 * Max data size: 31 - 2 (length, type)
+			 */
+			char name[CONFIG_BLE_DEVICE_NAME_MAX - 2];
+
+			err = bt_adv_data_check_name(name, sizeof(name));
+			if (err >= 0) {
+				shell_print(sh, "Current name: %s", name);
+				return 0;
+			} else if (err == -ENOENT) {
+				shell_print(sh, "No name set in advertising data");
+				return 0;
+			}
+
+			shell_error(sh, "Failed to get name: %d", err);
+			return err;
+		}
+
+		/* Set new name */
+		const char *name = argv[2];
+		size_t name_len = strlen(name);
+
+		err = bt_adv_data_set_name_auto(stored_adv.actv_idx, name, name_len);
+		if (err) {
+			shell_error(sh, "Failed to set advertising name: %d", err);
+			return err;
+		}
+
+		shell_print(sh, "Set advertising name to '%s'", name);
+		return 0;
+	} else if (!strcmp(argv[1], "manufacturer")) {
+		if (argc < 3) {
+			shell_print(sh,
+				    "Usage: adv-data manufacturer <company_id> [data_bytes...]");
+			return -EINVAL;
+		}
+
+		/* Parse company ID */
+		uint16_t company_id;
+
+		if (argv[2][0] == '0' && (argv[2][1] == 'x' || argv[2][1] == 'X')) {
+			company_id = strtoul(argv[2], NULL, 16);
+		} else {
+			company_id = strtoul(argv[2], NULL, 10);
+		}
+
+		/* Parse data bytes
+		 * Max data size: 31 - 2 (length, type) - 2 (company ID)
+		 */
+		uint8_t data[CONFIG_BLE_ADV_DATA_MAX - 2 - 2];
+		size_t data_len = 0;
+
+		for (int i = 3; i < argc && data_len < sizeof(data); i++) {
+			char *arg = argv[i];
+			unsigned long val;
+
+			if (arg[0] == '0' && (arg[1] == 'x' || arg[1] == 'X')) {
+				val = strtoul(arg, NULL, 16);
+			} else {
+				val = strtoul(arg, NULL, 10);
+			}
+
+			if (val > 0xFF) {
+				shell_error(sh, "Invalid byte value: %s", arg);
+				return -EINVAL;
+			}
+
+			data[data_len++] = (uint8_t)val;
+		}
+
+		err = bt_adv_data_set_manufacturer(stored_adv.actv_idx, company_id, data, data_len);
+		if (err) {
+			shell_error(sh, "Failed to set manufacturer data: %d", err);
+			return err;
+		}
+
+		shell_print(sh, "Set manufacturer data for company ID 0x%04x (%u bytes)",
+			    company_id, data_len);
+		return 0;
+	} else if (!strcmp(argv[1], "clear")) {
+		err = bt_adv_data_clear(stored_adv.actv_idx);
+		if (err) {
+			shell_error(sh, "Failed to clear advertising data: %d", err);
+			return err;
+		}
+
+		shell_print(sh, "Cleared all advertising data");
+		return 0;
+	}
+
+	shell_error(sh, "Unknown parameter: %s", argv[1]);
+	return -EINVAL;
+}
+
 #define HELP_NONE "[none]"
 #define HELP_ADV_CREATE                                                                            \
 	"<conn-scan | conn-nscan | nconn-scan | nconn-nscan> "                                     \
@@ -1145,11 +959,15 @@ static int cmd_default_handler(const struct shell *sh, size_t argc, char **argv)
 	"[disable-37] [disable-38] [disable-39] "                                                  \
 	"[enable-37] [enable-38] [enable-39]"
 
+#define HELP_ADV_DATA                                                                              \
+	"[name <device_name>] [manufacturer <manuf_data>] [service-data <service_data>]"
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	bt_cmds, SHELL_CMD_ARG(init, NULL, "[no-settings-load] [sync]", cmd_init, 1, 2),
 
 	SHELL_CMD_ARG(adv-create, NULL, HELP_ADV_CREATE, cmd_adv_create, 2, 3),
 	SHELL_CMD_ARG(adv-param, NULL, HELP_ADV_PARAM_OPT, cmd_adv_param, 0, 4),
+	SHELL_CMD_ARG(adv-data, NULL, HELP_ADV_DATA, cmd_adv_data, 0, 4),
 	SHELL_CMD_ARG(adv-start, NULL, "[timeout <timeout>] [num-events <num events>]",
 		      cmd_adv_start, 0, 4),
 	SHELL_CMD_ARG(adv-stop, NULL, HELP_NONE, cmd_adv_stop, 0, 0),

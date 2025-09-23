@@ -17,3 +17,21 @@ config BLE_COMPANY_ID
 	default "0x0CDD"
 	help
 	  BLE Company ID
+
+config BLE_DEVICE_NAME_MAX
+	int "Maximum device name length in bytes"
+	default 28
+	range 28 248
+	help
+	  Length of the device name string - termination character excluded
+
+config BLE_ADV_DATA_MAX
+	int "Maximum advertising data length in bytes"
+	default 31
+	range 31 255
+	help
+	  Length of the advertising data string - termination character excluded. Defaults to legacy maximum of 31 bytes.
+
+module = BT_HOST
+module-str = bt_host
+source "subsys/logging/Kconfig.template.log_config"
