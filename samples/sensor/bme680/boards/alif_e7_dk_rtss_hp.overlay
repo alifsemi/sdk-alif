@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -8,14 +8,12 @@
  *
  */
 
-/* Adding the bme680 sensor to the i2c0 instance.
- *
- */
+/* Adding the bme680 sensor to the i2c0 instance */
 
 &i2c0 {
 	status = "okay";
-	bme680@76{
-			compatible = "bosch,bme680";
-			reg = <0x76>;
-		};
+	bme680@76 {
+		compatible = "bosch,bme680";
+		reg = <0x76>;
+	};
 };
