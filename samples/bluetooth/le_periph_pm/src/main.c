@@ -39,225 +39,10 @@
 #include "gatt_db.h"
 #include "gatt_srv.h"
 #include "ke_mem.h"
+#include <power_mgr.h>
 
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index __attribute__((noinit));
-
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
-#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
-#else
-#error "RTC0 not available"
-#endif
-
-#define EARLY_BOOT_CONSOLE_INIT 1
-
-static uint32_t wakeup_reason;
-
-/*
- * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
- * We can read the wakeup reason from reading the RESET STATUS register
- * and from the pending IRQ.
- */
-static uint32_t ewic_psr, ewic_pend_0, ewic_pend_1;
-static uint32_t nvic_ispr0, nvic_ispr1;
-
-static int get_core_wakeup_reason(void)
-{
-	ewic_psr = EWIC->EWIC_PSR;
-	ewic_pend_0 = EWIC->EWIC_PENDn[0];
-	ewic_pend_1 = EWIC->EWIC_PENDn[1];
-
-	nvic_ispr0 = NVIC->ISPR[0];
-	nvic_ispr1 = NVIC->ISPR[1];
-	if (nvic_ispr0 || nvic_ispr1) {
-		wakeup_reason = 1;
-	} else {
-		wakeup_reason = 0;
-	}
-	return 0;
-}
-SYS_INIT(get_core_wakeup_reason, PRE_KERNEL_2, 0);
-
-#if EARLY_BOOT_CONSOLE_INIT
-/**
- * Use the HFOSC clock for the UART console
- */
-#if DT_SAME_NODE(DT_NODELABEL(uart4), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 4
-#elif DT_SAME_NODE(DT_NODELABEL(uart2), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 2
-#elif DT_SAME_NODE(DT_NODELABEL(uart1), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 1
-#else
-#error "Specify the uart console number"
-#endif
-
-#define UART_CTRL_CLK_SEL_POS 8
-static int app_pre_console_init(void)
-{
-	/* Enable HFOSC in CGU */
-	sys_set_bits(CGU_CLK_ENA, BIT(23));
-
-	/* Enable HFOSC for the UART console */
-	sys_clear_bits(EXPSLV_UART_CTRL, BIT((CONSOLE_UART_NUM + UART_CTRL_CLK_SEL_POS)));
-	return 0;
-}
-SYS_INIT(app_pre_console_init, PRE_KERNEL_1, 50);
-#endif
-
-/*
- * This function will be invoked in the PRE_KERNEL_2 phase of the init
- * routine to prevent sleep during startup.
- */
-static int app_pre_kernel_init(void)
-{
-	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-	return 0;
-}
-SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
-
-/**
- * Set the RUN profile parameters for this application.
- */
-static int app_set_run_params(bool trace_data)
-{
-	run_profile_t runp;
-	int ret;
-
-	runp.power_domains =
-		PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK | PD_SESS_MASK;
-	runp.dcdc_voltage = 825;
-	runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
-	runp.aon_clk_src = CLK_SRC_LFXO;
-	runp.run_clk_src = CLK_SRC_PLL;
-	runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
-	runp.phy_pwr_gating = LDO_PHY_MASK;
-	runp.ip_clock_gating = LP_PERIPH_MASK;
-	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-	runp.scaled_clk_freq = SCALED_FREQ_XO_HIGH_DIV_38_4_MHZ;
-
-	runp.memory_blocks = MRAM_MASK;
-	runp.memory_blocks |= SRAM2_MASK | SRAM3_MASK;
-	runp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
-	runp.memory_blocks |=
-		SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK; /* M55-HE ITCM */
-	runp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |
-			      SRAM5_5_MASK; /* M55-HE DTCM */
-
-	if (trace_data) {
-		printk("SE(run): domains = %x\n", runp.power_domains);
-		printk("SE(run): aon clk = %x run clk = %x\n", runp.aon_clk_src, runp.run_clk_src);
-		printk("SE(run): CPU clk freq = %x scaled clk freq = %x\n", runp.cpu_clk_freq,
-		       runp.scaled_clk_freq);
-		printk("SE(run): MEMBLOCKS = %x\n", runp.memory_blocks);
-	}
-
-	ret = se_service_set_run_cfg(&runp);
-	if (ret) {
-		printk("SE: set_run_cfg failed = %d.\n", ret);
-		return 0;
-	}
-	return 0;
-}
-
-#define NOT_USED 0
-#define USED     1
-
-static int app_set_off_params(bool trace_data)
-{
-	int ret;
-	off_profile_t offp;
-
-#if NOT_USED
-	/*idle mode*/
-	offp.power_domains = PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK;
-	offp.dcdc_voltage = DCDC_VOUT_0825;
-	offp.dcdc_mode = DCDC_MODE_PFM_FORCED;
-	offp.aon_clk_src = CLK_SRC_LFXO;
-	offp.stby_clk_src = CLK_SRC_HFRC;
-	offp.ip_clock_gating = LDO_PHY_MASK;
-	offp.phy_pwr_gating = LDO_PHY_MASK;
-	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
-	offp.ewic_cfg = EWIC_RTC_A;
-	offp.wakeup_events = WE_LPRTC;
-	offp.vtor_address = SCB->VTOR;
-	offp.vtor_address_ns = SCB->VTOR;
-	offp.memory_blocks = MRAM_MASK;
-	offp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
-	offp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK;
-#endif
-#if NOT_USED
-	/*standby mode*/
-	offp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
-	offp.dcdc_voltage = DCDC_VOUT_0825;
-	offp.dcdc_mode = DCDC_MODE_PFM_FORCED;
-	offp.aon_clk_src = CLK_SRC_LFXO;
-	offp.stby_clk_src = CLK_SRC_HFRC;
-	offp.ip_clock_gating = LDO_PHY_MASK;
-	offp.phy_pwr_gating = LDO_PHY_MASK;
-	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
-	offp.ewic_cfg = EWIC_RTC_A;
-	offp.wakeup_events = WE_LPRTC;
-	offp.vtor_address = SCB->VTOR;
-	offp.vtor_address_ns = SCB->VTOR;
-	offp.memory_blocks = MRAM_MASK;
-	offp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
-	offp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK;
-#endif
-#if USED
-	/*stop mode*/
-	offp.power_domains = PD_VBAT_AON_MASK;
-	offp.dcdc_voltage = DCDC_VOUT_0825;
-	offp.dcdc_mode = DCDC_MODE_OFF;
-	offp.aon_clk_src = CLK_SRC_LFXO;
-	offp.stby_clk_src = CLK_SRC_HFRC;
-	offp.ip_clock_gating = 0;
-	offp.phy_pwr_gating = 0;
-	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
-	offp.ewic_cfg = EWIC_RTC_A;
-	offp.wakeup_events = WE_LPRTC;
-	offp.vtor_address = SCB->VTOR;
-	offp.vtor_address_ns = SCB->VTOR;
-	offp.memory_blocks = MRAM_MASK;
-	offp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
-	offp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK;
-#endif
-#if NOT_USED
-	offp.power_domains = PD_VBAT_AON_MASK | PD_SESS_MASK;
-	offp.dcdc_voltage = DCDC_VOUT_0825;
-	offp.dcdc_mode = DCDC_MODE_OFF;
-	offp.aon_clk_src = CLK_SRC_LFXO;
-	offp.stby_clk_src = CLK_SRC_HFRC;
-	offp.ip_clock_gating = 0;
-	offp.phy_pwr_gating = 0;
-	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
-	offp.ewic_cfg = EWIC_RTC_A;
-	offp.wakeup_events = WE_LPRTC;
-	offp.vtor_address = SCB->VTOR;
-	offp.vtor_address_ns = SCB->VTOR;
-	offp.memory_blocks = MRAM_MASK;
-	offp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
-	offp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK;
-#endif
-	if (trace_data) {
-		printk("SE(off): domains = %x\n", offp.power_domains);
-		printk("SE(off): aon clk = %x stby clk = %x\n", offp.aon_clk_src,
-		       offp.stby_clk_src);
-		printk("SE(off): Ewic = %x wakeup events = %x\n", offp.ewic_cfg,
-		       offp.wakeup_events);
-		printk("SE(off): VTOR = %x\n", offp.vtor_address);
-		printk("SE(off): MEMBLOCKS = %x\n", offp.memory_blocks);
-	}
-
-	ret = se_service_set_off_cfg(&offp);
-	if (ret) {
-		printk("SE: set_off_cfg failed = %d.\n", ret);
-		printk("ERROR: Can't establish SE connection, app exiting..\n");
-		return ret;
-	}
-
-	return 0;
-}
 
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
@@ -976,65 +761,26 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 	return status;
 }
 
-static uint32_t boot_status __attribute__((noinit));
-#define COLD_BOOT_DONE 0xea014012
-
-static int app_se_configuration(void)
-{
-	int ret;
-
-	/* This needs to be done before UART configuration.
-	 */
-
-	ret = se_service_sync();
-	if (ret) {
-		printk("SE: not responding to service calls %d\n", ret);
-		return 0;
-	}
-
-	ret = app_set_run_params(false);
-	if (ret) {
-		printk("ERROR: app exiting..\n");
-		return 0;
-	}
-
-	if (boot_status != COLD_BOOT_DONE) {
-		ret = app_set_off_params(false);
-		if (ret) {
-			printk("ERROR: app exiting..\n");
-			return 0;
-		}
-	}
-	return 0;
-}
-
 int main(void)
 {
 	uint16_t ble_status;
-	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	int ret;
+
+	uint32_t wakeup_reason = power_mgr_get_wakeup_reason();
+
+	if (power_mgr_cold_boot()) {
+		printk("BLE Sleep demo\n");
+
+		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
+
+		if (ret) {
+			printk("off profile set ERROR: %d\n", ret);
+			return ret;
+		}
+	}
 
 	/* Start up bluetooth host stack. */
 	ble_status = alif_ble_enable(NULL);
-
-	app_se_configuration();
-
-	if (boot_status != COLD_BOOT_DONE) {
-		printk("BLE Sleep demo\n");
-	}
-
-	if (!device_is_ready(wakeup_dev)) {
-		printk("%s: device not ready.\n", wakeup_dev->name);
-		printk("ERROR: app exiting..\n");
-		return 0;
-	}
-
-	ret = counter_start(wakeup_dev);
-	if (ret) {
-		printk("Failed to start counter (err %d)", ret);
-		printk("ERROR: app exiting..\n");
-		return 0;
-	}
 
 	if (ble_status == 0) {
 		/* BLE initialized first time */
@@ -1055,12 +801,11 @@ int main(void)
 		printk("Waiting for initial BLE init...\n");
 		k_sem_take(&init_sem, K_FOREVER);
 		printk("Init complete!\n");
-
-		printk("Wait for debgger or connecion without sleeps\n");
-		k_sleep(K_SECONDS(10));
 	}
 
-	if (nvic_ispr1 & 0x4000000 && conn_status == BT_CONN_STATE_CONNECTED) {
+	printk("RTC wc=%u\n", wakeup_reason);
+
+	if (wakeup_reason && conn_status == BT_CONN_STATE_CONNECTED) {
 		/* RTC wakeups when connection is active */
 		bool sleep_in_subscription = true;
 
@@ -1086,25 +831,15 @@ int main(void)
 				printk("Update connection ret:%d\n", ret);
 			}
 		}
-	} else if (nvic_ispr1 & 0x40000) {
-		printk("Uart wakeup\n");
-		k_sleep(K_MSEC(10));
-	} else {
-		/* Wakeup without reason so lets wait some for BLE handling */
-		printk("No wakeup reason\n");
-		k_sleep(K_MSEC(10));
 	}
-	boot_status = COLD_BOOT_DONE;
+
 	if (IS_ENABLED(CONFIG_SLEEP_ENABLED)) {
-		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-		if (conn_status == BT_CONN_STATE_CONNECTED) {
-			k_sleep(K_MSEC(2150));
-		}
-		k_sleep(K_SECONDS(30));
+		power_mgr_ready_for_sleep();
 	}
 	while (1) {
-		k_sleep(K_MSEC(2150));
+
 		if (conn_status == BT_CONN_STATE_CONNECTED) {
+			k_sleep(K_MSEC(2150));
 			conn_count++;
 			if (conn_count == 2) {
 				uint16_t ret = gapc_le_update_params(conn_idx, 0,
@@ -1114,6 +849,8 @@ int main(void)
 			}
 			/* Update text at 2.15 second periods */
 			service_notification_send(UINT32_MAX);
+		} else {
+			k_sleep(K_SECONDS(30));
 		}
 	}
 	return 0;
