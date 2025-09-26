@@ -7,7 +7,7 @@
  * Enable RTC and Set the counter to increment every 1sec
  */
 &rtc0 {
-	prescaler = < 32768 >;
+	prescaler = < 0 >;
 	status = "okay";
 };
 
