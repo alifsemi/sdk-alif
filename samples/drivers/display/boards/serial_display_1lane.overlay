@@ -62,3 +62,7 @@
 &ili9488 {
 	status = "okay";
 };
+
+ns: &ns {
+	status = "okay";
+};
