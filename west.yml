@@ -28,7 +28,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr_alif
-      revision: 14a30a93eb0b3d1db8410127b655792be8acf409
+      revision: 17b06df6b9a0f38a6851542def86045c51c7e649
       import:
         # In addition to the zephyr repository itself,
         # Alif SDK fetches the needed projects
