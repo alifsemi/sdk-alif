@@ -4,8 +4,12 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 from pathlib import Path
+import os
 import shutil
 import sys
+from docutils import nodes
+from docutils.parsers.rst import roles
+from sphinx.util import logging
 
 
 # -- Project information -----------------------------------------------------
@@ -21,13 +25,45 @@ SDK_BASE = Path(__file__).absolute().parents[2]
 # -- General configuration ---------------------------------------------------
 
 extensions = [
-    'sphinx_copybutton'
+    'sphinx_copybutton',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.extlinks',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.graphviz',
+    'sphinx_tabs.tabs',
+    'notfound.extension'
 ]
 
 rst_epilog = """
 .. include:: /links.txt
 .. include:: /substitutions.txt
 """
+
+# Do not treat imported files as source documents (they are included explicitly)
+exclude_patterns = [
+    'sdkroot/**',
+]
+
+# -- Intersphinx configuration --------------------------------------------------
+
+# Path to local Zephyr documentation
+ZEPHYR_BASE = Path(__file__).absolute().parents[3] / "zephyr"
+ZEPHYR_DOC_BUILD = ZEPHYR_BASE / "doc" / "_build"
+LOCAL_ZEPHYR_INV = ZEPHYR_DOC_BUILD / "html" / "objects.inv"
+
+if LOCAL_ZEPHYR_INV.exists():
+    intersphinx_mapping = {
+        'zephyr': (str(ZEPHYR_DOC_BUILD / "html"), None),
+    }
+else:
+    intersphinx_mapping = {
+        'zephyr': ('https://docs.zephyrproject.org/3.6.0/', None),
+    }
+
+# -- Extension configuration ---------------------------------------------------
+
+todo_include_todos = True
 
 # -- Options for HTML output -------------------------------------------------
 

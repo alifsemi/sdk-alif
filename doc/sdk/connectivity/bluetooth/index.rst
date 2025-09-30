@@ -13,13 +13,24 @@ Bluetooth - |Alif_BLE|
    rom_abi.rst
    sample_basic_profile.rst
 
-With Alif's software development kit it's possible to use two different BLE host layers, the one included on Zephyr RTOS and |**Alif_BLE**| provided as ROM code library.
-When working with the Zephyr's BLE host layer implementation you should refer to the Zephyr documentation.
+With Alif's software development kit it's possible to use two different BLE host layers:
 
-For BLE audio use cases Alif provides |**Alif_LC3**| codec as ROM code library.
+* Zephyr's Bluetooth Host stack ("Zephyr BLE") (see :ref:`Zephyr Bluetooth <zephyr:bluetooth>`)
+* |**Alif_BLE**| Host stack provided as a ROM code library ("Alif BLE")
 
-The |**Alif_BLE**|'s and |**Alif_LC3**|'s APIs are part of Alif's HAL layer. Samples demonstrating usage of the forementioned libraries are part of the SDK.
-A list of samples given here is not exhaustive. Bear in mind that samples demonstrating usage of Zephyr's BLE host layer are found in the Zephyr's own samples-directory.
+.. note::
+
+   These are two alternative options. Choose the one that best fits your product goals:
+
+   * Zephyr BLE: best for code reuse and portability across Zephyr-based SDKs. Leverages Zephyr's upstream APIs, docs, and ecosystem.
+   * |**Alif_BLE**| (ROM): optimized for power. The host stack runs from ROM, reducing flash/RAM footprint and typically lowering power consumption for BLE use cases.
+
+When working with Zephyr's BLE host implementation you should refer to the Zephyr documentation (see :ref:`Zephyr Bluetooth <zephyr:bluetooth>`).
+
+For BLE audio use cases Alif provides |**Alif_LC3**| codec as a ROM code library.
+
+The |**Alif_BLE**| and |**Alif_LC3**| APIs are part of Alif's HAL layer. Samples demonstrating usage of these libraries are part of the SDK.
+Bear in mind that samples demonstrating the Zephyr BLE host stack are found in Zephyr's own samples directory.
 
 .. code-block:: console
 
