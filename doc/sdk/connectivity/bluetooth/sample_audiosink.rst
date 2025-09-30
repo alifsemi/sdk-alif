@@ -67,6 +67,19 @@ The role is set to be an *observer* to be able to listen for advertisements from
 
 .. code-block:: c
 
+	#include <stdint.h>
+	#include <stdbool.h>
+	#include <stddef.h>
+
+	/* GAP role definitions */
+	#define GAP_ROLE_LE_OBSERVER 0x02
+
+	/* GAPM configuration structure */
+	typedef struct {
+		uint8_t role;
+		/* Other fields omitted for brevity */
+	} gapm_config_t;
+
 	static const gapm_config_t gapm_cfg = {
 		.role = GAP_ROLE_LE_OBSERVER,
 	};
@@ -90,6 +103,20 @@ The information is used to check that all the required callbacks are set.
 
 .. code-block:: c
 
+	#include <stdint.h>
+	#include <stdbool.h>
+
+	/* BAP role definitions */
+	#define BAP_ROLE_SUPP_BC_SINK_BIT 0x01
+	#define BAP_ROLE_SUPP_BC_SCAN_BIT 0x02
+
+	/* Forward declarations */
+	uint16_t bap_bc_scan_configure(uint32_t role_bf, const bap_bc_scan_cb_t* scan_cbs);
+	uint16_t bap_bc_sink_configure(uint32_t role_bf, const bap_bc_sink_cb_t* sink_cbs);
+	int start_scanning(void);
+	extern bap_bc_scan_cb_t scan_cbs;
+	extern bap_bc_sink_cb_t sink_cbs;
+
 	int broadcast_sink_start(void) {
 		bap_bc_scan_configure(BAP_ROLE_SUPP_BC_SINK_BIT | BAP_ROLE_SUPP_BC_SCAN_BIT, &scan_cbs);
 
@@ -102,6 +129,37 @@ Scan configuration
 ==================
 
 .. code-block:: c
+
+	#include <stdint.h>
+	#include <stdbool.h>
+
+	/* Forward declarations for callback functions */
+	void on_bap_bc_scan_cmp_evt(uint16_t status);
+	void on_bap_bc_scan_timeout(void);
+	void on_bap_bc_scan_report(void);
+	void on_bap_bc_scan_public_bcast(void);
+	void on_bap_bc_scan_pa_established(void);
+	void on_bap_bc_scan_pa_terminated(void);
+	void on_bap_bc_scan_pa_report(void);
+	void on_bap_bc_scan_big_info_report(void);
+	void on_bap_bc_scan_group_report(void);
+	void on_bap_bc_scan_subgroup_report(void);
+	void on_bap_bc_scan_stream_report(void);
+
+	/* BAP broadcast scan callback structure */
+	typedef struct {
+		void (*cb_cmp_evt)(uint16_t status);
+		void (*cb_timeout)(void);
+		void (*cb_report)(void);
+		void (*cb_public_bcast_source)(void);
+		void (*cb_pa_established)(void);
+		void (*cb_pa_terminated)(void);
+		void (*cb_pa_report)(void);
+		void (*cb_big_info_report)(void);
+		void (*cb_group_report)(void);
+		void (*cb_subgroup_report)(void);
+		void (*cb_stream_report)(void);
+	} bap_bc_scan_cb_t;
 
 	bap_bc_scan_cb_t scan_cbs = {
 		.cb_cmp_evt = on_bap_bc_scan_cmp_evt,
@@ -139,6 +197,20 @@ Sink configuration
 
 .. code-block:: c
 
+	#include <stdint.h>
+
+	/* Forward declarations for callback functions */
+	void on_bap_bc_sink_cmp_evt(uint16_t status);
+	void on_bap_bc_sink_quality_cmp_evt(uint16_t status);
+	void on_bap_bc_sink_status(void);
+
+	/* BAP broadcast sink callback structure */
+	typedef struct {
+		void (*cb_cmp_evt)(uint16_t status);
+		void (*cb_quality_cmp_evt)(uint16_t status);
+		void (*cb_status)(void);
+	} bap_bc_sink_cb_t;
+
 	static const bap_bc_sink_cb_t sink_cbs = {
 		.cb_cmp_evt = on_bap_bc_sink_cmp_evt,
 		.cb_quality_cmp_evt = on_bap_bc_sink_quality_cmp_evt,
@@ -159,6 +231,16 @@ Scanning
 ========
 
 .. code-block:: c
+
+	#include <stdint.h>
+	#include <stdbool.h>
+
+	/* Forward declarations */
+	void bap_bc_scan_start(uint16_t timeout);
+	void reset_sink_config(void);
+
+	/* Global variables */
+	bool public_broadcast_found;
 
 	static int start_scanning(void)
 	{
