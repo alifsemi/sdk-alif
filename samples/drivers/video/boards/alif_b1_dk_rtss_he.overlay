@@ -38,3 +38,9 @@
 		};
 	};
 };
+
+ns: &ns {
+	/* Set NS region size to 640KB (128KB aligned) */
+	reg = <0x2002a000 DT_SIZE_K(640)>;
+	status = "okay";
+};
