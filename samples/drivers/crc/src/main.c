@@ -5,7 +5,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
-#include <zephyr/drivers/crc/alif_crc.h>
+#include <zephyr/drivers/crc.h>
 #include <zephyr/sys/printk.h>
 #include <stdint.h>
 
