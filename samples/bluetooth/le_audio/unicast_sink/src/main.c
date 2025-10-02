@@ -528,6 +528,8 @@ static int ble_stack_configure(uint8_t const role)
 
 	int err;
 
+	storage_load(SETTINGS_NAME_ADDR, &private_address, sizeof(private_address));
+
 	if (private_address.addr[5] == 0) {
 		/* Configure GAPM to prepare address generation */
 		err = gapm_configure(1, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
