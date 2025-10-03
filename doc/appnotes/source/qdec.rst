@@ -29,7 +29,7 @@ Navigate to the SDK directory and build the application with TCM Memory. Refer t
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he samples/sensor/qdec/ \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/sensor/qdec/ \
        -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 3. Build commands for applications on the M55 HP core using the Ninja build command:
@@ -38,7 +38,7 @@ Navigate to the SDK directory and build the application with TCM Memory. Refer t
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp samples/sensor/qdec/ \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/sensor/qdec/ \
        -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 

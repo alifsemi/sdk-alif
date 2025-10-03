@@ -217,14 +217,14 @@ Follow these steps to build your Zephyr-based PDM application using the GCC comp
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/audio/dmic_alif/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/audio/dmic_alif/
 
 3. Build commands for applications on the M55 HP core using the Ninja build command:
 
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/audio/dmic_alif/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
 Building LPPDM Application in Zephyr
 ======================================
@@ -265,7 +265,7 @@ Follow these steps to build your Zephyr-based LPPDM application using the GCC co
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/audio/dmic_alif/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
 Executing Binary on the DevKit
 ===============================

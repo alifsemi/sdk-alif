@@ -57,14 +57,14 @@ Follow these steps to build the LPRTC alarm application using the GCC compiler a
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
 
 4. Build commands for applications on the M55 HE core using the Ninja build command:
 
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

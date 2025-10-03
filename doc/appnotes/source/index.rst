@@ -22,8 +22,6 @@ Application Notes of Zephyr Alif SDK
    lp_rtc.rst
    pwm.rst
    uart.rst
-   cmp_lpcmp.rst
-   adc.rst
    crc.rst
    dma.rst
    i2s.rst

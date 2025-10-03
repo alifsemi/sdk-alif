@@ -43,12 +43,12 @@ Ensure you have one of the following development kits to proceed with your proje
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **For Host PC:**
-    - Ubuntu 20.04 64-bit or later.
+    - Ubuntu 22.04.5 LTS or above.
 
     *Note: While different flavors of Linux distributions may also work, they have not been thoroughly tested.*
 
 2. **Alif Security Toolkit:**
-    - Version 1.98.3 or later.
+    - Version 1.108 or above.
 
     * Available at `Alif Toolkit Download`_
 

@@ -52,7 +52,7 @@ Follow these steps to build the LPTIMER application in Zephyr using the Alif Zep
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp samples/drivers/counter/alarm/ \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ \
        -DOVERLAY_CONFIG=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.conf \
        -DDTC_OVERLAY_FILE=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.overlay
 
@@ -61,7 +61,7 @@ Follow these steps to build the LPTIMER application in Zephyr using the Alif Zep
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he samples/drivers/counter/alarm/ \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ \
        -DOVERLAY_CONFIG=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.conf \
        -DDTC_OVERLAY_FILE=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.overlay
 

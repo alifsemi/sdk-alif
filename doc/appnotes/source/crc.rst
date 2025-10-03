@@ -65,14 +65,14 @@ Follow these steps to create your Zephyr-based CRC application using the GCC com
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/crc/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/crc/
 
 3. Build commands for applications on the M55 HP core using the Ninja build command:
 
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/crc/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/crc/
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

@@ -101,7 +101,7 @@ Follow these steps to build the DAC application using the Alif Zephyr SDK:
 .. code-block:: bash
 
    rm -rf build/
-   west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/dac -p -- -G"Unix Makefiles"
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/dac -p -- -G"Unix Makefiles"
 
 
 2. Build commands for applications on the M55 HP core using the Ninja build command:
@@ -109,7 +109,7 @@ Follow these steps to build the DAC application using the Alif Zephyr SDK:
 .. code-block:: bash
 
    rm -rf build/
-   west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/dac -p -- -G"Unix Makefiles"
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/dac -p -- -G"Unix Makefiles"
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
