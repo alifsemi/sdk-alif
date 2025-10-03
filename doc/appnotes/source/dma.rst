@@ -46,14 +46,14 @@ Follow these steps to build your Zephyr-based SPI_dw application using the GCC c
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/spi_dw/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_dw/
 
 3. Build commands for applications on the M55 HP core using the Ninja build command:
 
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/spi_dw/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw/
 
 Ensure that the DMA-related configurations are enabled in ``../alif/samples/drivers/spi_dw/prj.conf``:
 
@@ -63,7 +63,7 @@ Ensure that the DMA-related configurations are enabled in ``../alif/samples/driv
 
    DMA Configuration in prj.conf
 
-Select the DMA instance from the overlay file ``../alif/samples/drivers/spi_dw/boards/alif_e7_dk_rtss_he.overlay``:
+Select the DMA instance from the overlay file ``../alif/samples/drivers/spi_dw/boards/aalif_e7_dk/ae722f80f55d5xx/rtss_he.overlay``:
 
 .. figure:: _static/dma_overlay_file.png
    :alt: Overlay File Configuration

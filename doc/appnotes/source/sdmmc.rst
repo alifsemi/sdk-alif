@@ -71,7 +71,7 @@ Follow these steps to build the SDMMC application using the Alif Zephyr SDK:
 .. code-block:: bash
 
    cd alif
-   west build -p always -b alif_e7_dk_rtss_he samples/subsys/fs/fs_sample/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/subsys/fs/fs_sample/
 
 4 .Build commands for applications on the M55 HP core using the Ninja build command:
 
@@ -79,7 +79,7 @@ Follow these steps to build the SDMMC application using the Alif Zephyr SDK:
 .. code-block:: bash
 
    cd alif
-   west build -p always -b alif_e7_dk_rtss_hp samples/subsys/fs/fs_sample/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/subsys/fs/fs_sample/
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

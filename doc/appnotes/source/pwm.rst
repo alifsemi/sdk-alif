@@ -34,20 +34,20 @@ Follow these steps to build the `fade_led` and `blinky_pwm` applications using t
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp samples/basic/fade_led
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/basic/fade_led
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp samples/basic/blinky_pwm
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/basic/blinky_pwm
 
 3. Build commands for both applications on the M55 HE core using the Ninja build command:
 
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he samples/basic/fade_led
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/basic/fade_led
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he samples/basic/blinky_pwm
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/basic/blinky_pwm
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

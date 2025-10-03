@@ -90,7 +90,7 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 Building an Application
 -----------------------
 
-Supported Board Targets as per new hardware model v2 (Zephyr v3.7.0 and onwards):
+Supported Board Targets as per new hardware model v2 (Zephyr v4.1.0 and onwards):
 <board name[@revision][/board qualifiers]>
 
 - alif_e3_dk/ae302f80f55d5xx/rtss_he
@@ -151,19 +151,6 @@ b. Build the Hello World application:
    By default, Ninja is used. To switch to Unix Makefiles, add the following option:
    ``-- -G "Unix Makefiles"``
 
-c. Save the binaries:
-
-**RTSS-HE**
-
-.. code-block:: console
-
-   cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshe_helloworld.bin
-
-**RTSS-HP**
-
-.. code-block:: console
-
-   cp build/zephyr/zephyr.bin YOUR_WORKSPACE/app-release-exec-linux/build/images/zephyr_e7_rtsshp_helloworld.bin
 
 Flashing the Application
 ------------------------
@@ -205,7 +192,18 @@ for SE-UART device communication.
 
       export ALIF_SE_TOOLS_DIR=path/of/extracted/directory
 
-4. Flash the application:
+4. Set device permissions:
+
+   .. note::
+
+      Replace `/dev/ttyACM0` with the appropriate port for your board.
+      This step prevents “permission denied” errors during flashing.
+
+   .. code-block:: console
+
+      sudo chmod 666 /dev/ttyACM0
+
+5. Flash the application:
 
    From the Zephyr build directory, rebuild the binary and flash it to your board:
 
@@ -213,7 +211,7 @@ for SE-UART device communication.
 
       west flash
 
-5. The application boots automatically:
+6. The application boots automatically:
 
    a. Open a serial console application on the host PC with a baud rate of 115200.
 

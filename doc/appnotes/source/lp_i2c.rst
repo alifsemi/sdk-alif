@@ -26,19 +26,19 @@ The LPI2C block diagram illustrates the integration of the LPI2C controller with
 Pin Setup
 ---------
 
-.. list-table:: LPI2C Pin Setup
+.. list-table:: LPI2C0 Pin Setup
    :widths: 20 20 20
    :header-rows: 1
 
    * - Function
      - I2C0 Pin
-     - LPI2C Pin
+     - LPI2C0 Pin
    * - SDA
      - P3_5
-     - P5_3
+     - P7_5
    * - SCL
      - P3_4
-     - P5_2
+     - P7_4
 
 Hardware Connections and Setup
 ------------------------------
@@ -52,8 +52,8 @@ Hardware Connections and Setup
 Connection
 ~~~~~~~~~~
 
-- **SDA**: Connect I2C0 instance P3_5 (J11-29) to LPI2C pin P5_3 (J14_5).
-- **SCL**: Connect I2C0 instance P3_4 (J11-27) to LPI2C pin P5_2 (J12_17).
+- **SDA**: Connect I2C0 instance P3_5 (J11-29) to LPI2C0 pin P7_5 (J11_9).
+- **SCL**: Connect I2C0 instance P3_4 (J11-27) to LPI2C0 pin P7_4 (J10_27).
 
 
 Building LPI2C Application in Zephyr
@@ -75,14 +75,14 @@ Follow these steps to build your Zephyr-based LPI2C application using the GCC co
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/lpi2c/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/lpi2c/
 
 4. Build commands for applications on the M55 HE core using the Ninja build command:
 
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/lpi2c/
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/lpi2c/
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
