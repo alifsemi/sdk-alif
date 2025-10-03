@@ -161,7 +161,7 @@ static void init_private_addr(uint8_t *addr)
 #endif
 
 /* Bluetooth stack configuration*/
-static const gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = BT_SHELL_GAP_ROLE,
 	.pairing_mode = BT_SHELL_PAIRING_MODE,
 	.privacy_cfg = BT_SHELL_PRIVACY_CFG,

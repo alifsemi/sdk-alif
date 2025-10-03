@@ -10,6 +10,9 @@
 #include <zephyr/shell/shell.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/dt-bindings/pinctrl/balletto-pinctrl.h>
+#if defined(CONFIG_PM)
+#include <power_mgr.h>
+#endif
 #include <es0_power_manager.h>
 #include <stdlib.h>
 #include <inttypes.h>
@@ -19,6 +22,95 @@
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(LOG_MODULE_NAME);
+
+#if defined(CONFIG_PM)
+static uint32_t wakeup_counter __attribute__((noinit));
+static pm_state_mode_type_e pm_off_mode __attribute__((noinit));
+static int sleep_period __attribute__((noinit));
+
+static int pm_application_init(void)
+{
+	if (power_mgr_cold_boot()) {
+		wakeup_counter = 0;
+	} else {
+		if (wakeup_counter) {
+			/* Set a off profile */
+			if (power_mgr_set_offprofile(pm_off_mode)) {
+				printk("Error to set off profile\n");
+				wakeup_counter = 0;
+				return 0;
+			}
+			wakeup_counter--;
+			power_mgr_ready_for_sleep();
+			power_mgr_set_subsys_off_period(sleep_period);
+		}
+	}
+	return 0;
+}
+SYS_INIT(pm_application_init, APPLICATION, 1);
+
+static int64_t param_get_int(size_t argc, char **argv, char *p_param, int def_value)
+{
+	if (p_param && argc > 1) {
+		for (int n = 0; n < (argc - 1); n++) {
+			if (strcmp(argv[n], p_param) == 0) {
+				return strtoll(argv[n + 1], NULL, 0);
+			}
+		}
+	}
+	return def_value;
+}
+
+static int cmd_subsys_off_configure(const struct shell *shell)
+{
+	int ret = power_mgr_set_offprofile(pm_off_mode);
+
+	if (ret) {
+		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "ERROR: %d\n", ret);
+		wakeup_counter = 0;
+		return ret;
+	}
+	power_mgr_ready_for_sleep();
+	power_mgr_set_subsys_off_period(sleep_period);
+
+	return ret;
+}
+
+static int cmd_off_test(const struct shell *shell, size_t argc, char **argv)
+{
+	wakeup_counter = param_get_int(argc, argv, "--cnt", 0);
+	sleep_period = param_get_int(argc, argv, "--period", 1000);
+	pm_off_mode = PM_STATE_MODE_STOP;
+	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start off mode %d ms period %u cnt\n",
+		      sleep_period, wakeup_counter);
+
+	return cmd_subsys_off_configure(shell);
+}
+
+static int cmd_standby_test(const struct shell *shell, size_t argc, char **argv)
+{
+	wakeup_counter = param_get_int(argc, argv, "--cnt", 0);
+	sleep_period = param_get_int(argc, argv, "--period", 1000);
+	pm_off_mode = PM_STATE_MODE_STANDBY;
+
+	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start Standby mode %d ms period %u cnt\n",
+		      sleep_period, wakeup_counter);
+
+	return cmd_subsys_off_configure(shell);
+}
+
+static int cmd_idle_test(const struct shell *shell, size_t argc, char **argv)
+{
+	wakeup_counter = param_get_int(argc, argv, "--cnt", 0);
+	sleep_period = param_get_int(argc, argv, "--period", 1000);
+	pm_off_mode = PM_STATE_MODE_IDLE;
+
+	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start Idle mode %d ms period %u cnt\n",
+		      sleep_period, wakeup_counter);
+
+	return cmd_subsys_off_configure(shell);
+}
+#endif
 
 static bool param_get_flag(size_t argc, char **argv, char *p_flag)
 {
@@ -140,6 +232,13 @@ static int cmd_hci(const struct shell *shell, size_t argc, char **argv)
 
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	sub_cmds, SHELL_CMD_ARG(start, NULL, "es0 start", cmd_start, 1, 10),
+#if defined(CONFIG_PM)
+	SHELL_CMD_ARG(pm_off, NULL, "Start Off-state sequency --period --cnt", cmd_off_test, 1, 10),
+	SHELL_CMD_ARG(pm_standby, NULL, "Start Standby-state sequency  --period", cmd_standby_test,
+		      1, 10),
+	SHELL_CMD_ARG(pm_idle, NULL, "Start Standby-state sequency  --period", cmd_idle_test, 1,
+		      10),
+#endif
 	SHELL_CMD_ARG(stop, NULL, "es0 stop", cmd_stop, 1, 10),
 	SHELL_CMD_ARG(uart, NULL, "es0 uart wakeup --sleep --wiggle", cmd_uart, 1, 10),
 	SHELL_CMD_ARG(hci, NULL, "Configure ext HCI: --ahi --trace --pinmux_b", cmd_hci, 1, 10),
