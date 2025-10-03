@@ -90,7 +90,7 @@ int main(void)
 		fmt.pitch = fmt.width << 1;
 		break;
 	case VIDEO_PIX_FMT_Y10P:
-		fmt.pitch = (fmt.width + 8) << 1;
+		fmt.pitch = fmt.width;
 		break;
 	case VIDEO_PIX_FMT_BGGR8:
 	case VIDEO_PIX_FMT_GBRG8:
@@ -151,14 +151,14 @@ int main(void)
 	 */
 	k_msleep(7000);
 
-	if (IS_ENABLED(CONFIG_DT_HAS_HIMAX_HM0360_ENABLED)) {
-		/* Video test SNAPSHOT capture. */
-		num_frames = N_FRAMES;
-		ret = video_set_ctrl(video, VIDEO_CID_SNAPSHOT_CAPTURE, &num_frames);
-		if (ret) {
-			LOG_INF("Snapshot mode not-supported by CMOS sensor.");
-		}
+#if CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
+	/* Video test SNAPSHOT capture. */
+	num_frames = N_FRAMES;
+	ret = video_set_ctrl(video, VIDEO_CID_SNAPSHOT_CAPTURE, &num_frames);
+	if (ret) {
+		LOG_INF("Snapshot mode not-supported by CMOS sensor.");
 	}
+#endif
 
 	/* Start video capture */
 	ret = video_stream_start(video);
