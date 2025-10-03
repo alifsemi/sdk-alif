@@ -53,70 +53,6 @@ All pins can be configured as GPIO unless assigned to a specific peripheral.
    * - P14
      - P14_0 to P14_7
 
-ADC Pin Setup
--------------
-
-ADC interfaces use analog signals (ANA_S0 to ANA_S23) mapped to specific pins.
-
-.. list-table:: Analog Pins
-   :widths: 50 50
-   :header-rows: 1
-   :align: left
-
-   * - Signal
-     - Pin
-   * - ANA_S0
-     - P0_0
-   * - ANA_S1
-     - P0_1
-   * - ANA_S2
-     - P0_2
-   * - ANA_S3
-     - P0_3
-   * - ANA_S4
-     - P0_4
-   * - ANA_S5
-     - P0_5
-   * - ANA_S6
-     - P0_6
-   * - ANA_S7
-     - P0_7
-   * - ANA_S8
-     - P1_0
-   * - ANA_S9
-     - P1_1
-   * - ANA_S10
-     - P1_2
-   * - ANA_S11
-     - P1_3
-   * - ANA_S12
-     - P1_4
-   * - ANA_S13
-     - P1_5
-   * - ANA_S14
-     - P1_6
-   * - ANA_S15
-     - P1_7
-   * - ANA_S16
-     - P2_0
-   * - ANA_S17
-     - P2_1
-   * - ANA_S18
-     - P2_2
-   * - ANA_S19
-     - P2_3
-   * - ANA_S20
-     - P2_4
-   * - ANA_S21
-     - P2_5
-   * - ANA_S22
-     - P2_6
-   * - ANA_S23
-     - P2_7
-
-.. note::
-   Analog pins support ADC functions. Refer to the Balletto SDK for ADC channel configuration.
-
 CAN Pin Setup
 -------------
 
@@ -153,30 +89,6 @@ CAN interfaces support RXD, TXD, and STBY signals.
 .. note::
    - No pin connections or transceiver are required for the loopback test.
    - Connector mappings (TBD) require specific board documentation.
-
-Comparator Pin Setup
---------------------
-
-Comparator interfaces output signals on specific pins.
-
-.. list-table:: CMP Pin Setup
-   :widths: 20 20 20 20 20
-   :header-rows: 1
-   :align: left
-
-   * - Instance
-     - CMP0
-     - CMP1
-     - CMP2
-     - CMP3
-   * - Output Pin
-     - P7_3 (A), P14_7 (B)
-     - P7_2 (A), P14_6 (B)
-     - P7_1 (A), P14_5 (B)
-     - P7_0 (A), P14_4 (B)
-
-.. note::
-   Comparator inputs are typically tied to analog pins (ANA_S0 to ANA_S23). Refer to the Balletto SDK for input configuration.
 
 I2C Pin Setup
 -------------
@@ -340,38 +252,6 @@ PDM and LPPDM interfaces support data and clock signals.
      - P2_1 (A), P2_3 (A), P3_4 (B), P7_4 (A), P7_6 (A), P11_2 (B), P11_3 (B)
      - Low-Power
 
-Camera Pin Setup
-----------------
-
-Camera interfaces include CAM and LPCAM.
-
-.. list-table:: Camera Pins
-   :widths: 14 14 14 14 14 14 16
-   :header-rows: 1
-   :align: left
-
-   * - Instance
-     - Data
-     - HSYNC
-     - VSYNC
-     - PCLK
-     - XVCLK
-     - Variant
-   * - CAM
-     - P2_4 to P2_7 (A), P8_0 to P8_7 (B), P9_0 to P9_7 (B), P3_0 to P3_5 (A)
-     - P0_0 (A), P10_0 (B)
-     - P0_1 (A), P10_1 (B)
-     - P0_2 (A), P10_2 (B)
-     - P0_3 (A), P10_3 (B)
-     - Standard
-   * - LPCAM
-     - P1_4 to P1_7 (C), P2_0 to P2_3 (C), P8_0 to P8_7 (A)
-     - P0_0 (B), P1_0 (C), P10_0 (A)
-     - P0_1 (B), P1_1 (C), P10_1 (A)
-     - P0_2 (B), P1_2 (C), P10_2 (A)
-     - P0_3 (B), P1_3 (C), P10_3 (A)
-     - Low-Power
-
 SPI Pin Setup
 -------------
 
@@ -387,30 +267,36 @@ SPI interfaces include SPI0 to SPI3 and LPSPI.
      - MOSI
      - SCLK
      - SS
+
    * - SPI0
      - P1_0 (A), P5_0 (B), P7_0 (C)
      - P1_1 (A), P5_1 (B), P7_1 (C)
      - P1_2 (A), P5_3 (B), P7_2 (C)
      - P1_3 (A), P5_2 (B), P7_3 (C), P1_4 (A), P1_5 (A), P5_4 (A), P8_2 (B)
+
    * - SPI1
      - P2_4 (A), P8_3 (B), P14_4 (C)
      - P2_5 (A), P8_4 (B), P14_5 (C)
      - P2_6 (A), P8_5 (B), P14_6 (C)
      - P2_7 (A), P14_7 (C), P3_7 (A), P4_0 (A), P4_1 (A), P4_6 (A), P6_4 (B), P6_5 (B), P6_6 (B), P6_7 (B)
+
    * - SPI2
      - P4_2 (A), P9_2 (B)
      - P4_3 (A), P9_3 (B)
      - P4_4 (A), P9_4 (B)
      - P4_5 (A), P9_5 (B), P13_3 (A), P4_6 (A), P4_7 (A), P10_0 (B), P9_6 (B), P9_7 (B)
+
    * - SPI3
      - P12_4 (A), P10_5 (B)
      - P12_5 (A), P10_6 (B)
      - P12_6 (A), P10_7 (B)
      - P12_7 (A), P13_0 (A), P13_1 (A), P13_2 (A), P11_0 (B), P11_1 (B), P11_2 (B), P11_3 (B)
+
    * - LPSPI
      - P7_4 (A), P11_4 (B)
      - P7_5 (A), P11_5 (B)
-     - P7_6 (A), P11_6 Opened brace without matching close brace in artifact content at line 354:     - P7_7 (A), P11_7 (B)
+     - P7_6 (A), P11_6 (B)
+     - P7_7 (A), P11_7 (B)
 
 .. list-table:: SPI0 and SPI1 Demo Connections
    :widths: 20 20 20 20 20
@@ -446,35 +332,6 @@ SPI interfaces include SPI0 to SPI3 and LPSPI.
 .. note::
    - Connector mappings (TBD) require specific board documentation.
    - Ensure proper voltage levels for SPI connections.
-
-Ethernet Pin Setup
-------------------
-
-Ethernet interfaces support various signals.
-
-.. list-table:: Ethernet Pins
-   :widths: 16 16 16 16 16 20
-   :header-rows: 1
-   :align: left
-
-   * - Instance
-     - RXD0/RXD1
-     - TXD0/TXD1
-     - TXEN
-     - REFCLK/IRQ
-     - MDIO/MDC
-   * - ETH
-     - P1_0 (C), P1_1 (C), P5_5 (A), P5_6 (A), P11_3 (B), P11_4 (B)
-     - P1_3 (C), P1_4 (C), P6_0 (A), P6_1 (A), P10_4 (B), P10_5 (B)
-     - P1_5 (C), P6_2 (A), P10_6 (B)
-     - P1_7 (C), P6_3 (A), P1_6 (C), P11_0 (B), P11_6 (B)
-     - P2_0 (C), P2_1 (C), P6_5 (A), P6_6 (A), P11_1 (B), P11_2 (B)
-   * - ETH (Reset/CRS_DV)
-     - P1_2 (C), P11_5 (B), P5_7 (A), P6_7 (A), P2_2 (C)
-     - -
-     - -
-     - -
-     - -
 
 SD Pin Setup
 ------------
@@ -584,27 +441,6 @@ JTAG interfaces (JTAG0 and JTAG1) support trace, clock, and data signals.
      - -
      - -
      - -
-
-CDC Pin Setup
--------------
-
-Camera Display Controller (CDC) signals include data, sync, and clock signals.
-
-.. list-table:: CDC Pins
-   :widths: 20 20 20 20 20
-   :header-rows: 1
-   :align: left
-
-   * - Instance
-     - Data (D0-D23)
-     - HSYNC
-     - VSYNC
-     - PCLK/DE
-   * - CDC
-     - P11_0 to P11_7 (B), P12_0 to P12_7 (B), P13_0 to P13_7 (B), P8_0 to P8_7 (A), P9_0 to P9_7 (A), P10_0 to P10_7 (A)
-     - P5_5 (A), P4_1 (B)
-     - P5_6 (A), P4_0 (B)
-     - P5_3 (A), P0_7 (B), P5_4 (A), P2_3 (B)
 
 GNSS Pin Setup
 --------------

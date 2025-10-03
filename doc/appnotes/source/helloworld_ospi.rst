@@ -55,16 +55,6 @@ For the RTSS-HP (High Performance) configuration, use these flash memory setting
    CONFIG_FLASH_BASE_ADDRESS=0xC0000000
    CONFIG_FLASH_LOAD_OFFSET=0x0
 
-Kconfig Modifications
----------------------
-
-To ensure proper execution from OSPI1 NOR flash, modify the ``soc/arm/alif_ensemble/e7/Kconfig.series`` file by commenting out the following lines:
-
-.. code-block:: text
-
-   # select INIT_ARCH_HW_AT_BOOT
-   # select PLATFORM_SPECIFIC_INIT
-
 Example Build Commands
 ----------------------
 
@@ -75,22 +65,22 @@ Below are example build commands using the west tool for each configuration.
 
 **RTSS-HE Example**
 
-This example builds the hello world sample for the RTSS-HE target on the alif_e7_dk_rtss_he board:
+This example builds the hello world sample for the RTSS-HE target on the alif_e7_dk/ae722f80f55d5xx/rtss_he board:
 
 .. code-block:: bash
 
-   west build -b alif_e7_dk_rtss_he samples/hello_world \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world \
        -DCONFIG_ARM_MPU=n \
        -DCONFIG_FLASH_BASE_ADDRESS=0xC0200000 \
        -p always
 
 **RTSS-HP Example**
 
-This command builds the uart/echo_bot driver sample for the RTSS-HP target on the alif_e7_dk_rtss_hp board:
+This command builds the uart/echo_bot driver sample for the RTSS-HP target on the alif_e7_dk/ae722f80f55d5xx/rtss_hp board:
 
 .. code-block:: bash
 
-   west build -b alif_e7_dk_rtss_hp samples/drivers/uart/echo_bot \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot \
        -DCONFIG_ARM_MPU=n \
        -DCONFIG_FLASH_BASE_ADDRESS=0xC0000000 \
        -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
@@ -166,7 +156,7 @@ Below is the expected console output for RTSS-HP and RTSS-HE:
 .. code-block:: text
 
    *** Booting Zephyr OS build zas-v1.2-30-g25c1cf9151af ***
-   Hello World! alif_e7_dk_rtss_he
+   Hello World! alif_e7_dk/ae722f80f55d5xx/rtss_he
 
 Observation
 ===========

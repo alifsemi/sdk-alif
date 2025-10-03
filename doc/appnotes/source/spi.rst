@@ -50,14 +50,14 @@ Follow these steps to build your Zephyr-based SPI application using the GCC comp
    .. code-block:: bash
 
       rm -rf build
-      west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/spi_dw -p
+      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw -p
 
    If using the M55-HE core, the application will fetch SPI0 and LPSPI instances:
 
    .. code-block:: bash
 
       rm -rf build
-      west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/spi_dw -p
+      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_dw -p
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

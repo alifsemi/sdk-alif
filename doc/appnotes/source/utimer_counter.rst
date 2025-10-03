@@ -32,7 +32,7 @@ Navigate to the SDK directory and build the application with TCM Memory. The pro
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_he samples/drivers/counter/alarm/ \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ \
        -DOVERLAY_CONFIG=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.conf \
        -DDTC_OVERLAY_FILE=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.overlay \
        -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
@@ -43,7 +43,7 @@ Navigate to the SDK directory and build the application with TCM Memory. The pro
 .. code-block:: bash
 
    rm -rf build
-   west build -b alif_e7_dk_rtss_hp samples/drivers/counter/alarm/ \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ \
        -DOVERLAY_CONFIG=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.conf \
        -DDTC_OVERLAY_FILE=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.overlay \
        -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
