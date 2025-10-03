@@ -50,14 +50,14 @@ Follow these steps to build the Zephyr-based OSPI Flash application using the GC
 .. code-block:: bash
 
       rm -rf build
-      west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/ospi_flash -p
+      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ospi_flash -p
 
 3. Build commands for applications on the M55 HP core using the Ninja build command:
 
 .. code-block:: bash
 
       rm -rf build
-      west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/ospi_flash -p
+      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/ospi_flash -p
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

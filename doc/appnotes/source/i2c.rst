@@ -42,6 +42,30 @@ The following are important features of I2C:
 
 .. include:: Prerequisites.rst
 
+Pin Setup
+---------
+
+.. list-table:: I2C Pin Setup
+   :widths: 20 20 20
+   :header-rows: 1
+
+   * - Function
+     - I2C0 Pin
+     - I2C1 Pin
+   * - SDA
+     - P3_5
+     - P7_2
+   * - SCL
+     - P3_4
+     - P7_3
+
+Connection
+~~~~~~~~~~
+
+- **SDA**: Connect I2C0 instance P3_5 (J11-29) to I2C1 pin P7_2 (J11_3).
+- **SCL**: Connect I2C0 instance P3_4 (J11-27) to I2C1 pin P7_3 (J11_5).
+
+
 Building I2C Application in Zephyr
 ====================================
 
@@ -61,14 +85,14 @@ Follow these steps to build your Zephyr-based I2C application using the GCC comp
 .. code-block:: bash
 
         rm -rf build
-        west build -b alif_e7_dk_rtss_hp ../alif/samples/drivers/i2c_dw -p
+        west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/i2c_dw -p
 
 4. Build commands for applications on the M55 HE core using the Ninja build command:
 
 .. code-block:: bash
 
         rm -rf build
-        west build -b alif_e7_dk_rtss_he ../alif/samples/drivers/i2c_dw -p
+        west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2c_dw -p
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
