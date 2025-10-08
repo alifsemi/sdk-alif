@@ -35,7 +35,6 @@
 	aliases {
 		audio-codec = &wm8904;
 		i2s-input = &i2s0;
-		i2s-mic = &i2s2;
 	};
 };
 
@@ -77,21 +76,6 @@
 #endif
 };
 
-&i2s2 {
-	/delete-property/ clock-frequency;
-	/delete-property/ driver_instance;
-	compatible = "alif,i2s-sync";
-	interrupts = <LPI2S_IRQ_NUM LPI2S_IRQ_PRIO>;
-	bit-depth = <16>;
-	sample-rate = <48000>;
-	status = "okay";
-#if MIC_DMA_ENABLED
-	dmas = <&dma2 LPI2S_DMA_RX_CH LPI2S_DMA_RX_REQ>,
-	       <&dma2 LPI2S_DMA_TX_CH LPI2S_DMA_TX_REQ>;
-	dma-names = "rxdma", "txdma";
-#endif
-};
-
 &pinctrl_i2c1 {
 	group0 {
 		pinmux = <PIN_P7_2__I2C1_SDA_C>,
@@ -121,6 +105,7 @@
 &i2s1 {
 	status = "disabled";
 };
+
 &uart_ahi {
 	status = "disabled";
 };

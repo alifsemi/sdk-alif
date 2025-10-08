@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -37,10 +37,4 @@
 			remote-endpoint = <&mt9m114_ep_out>;
 		};
 	};
-};
-
-ns: &ns {
-	/* Set NS region size to 640KB (128KB aligned) */
-	reg = <0x2002a000 DT_SIZE_K(640)>;
-	status = "okay";
 };
