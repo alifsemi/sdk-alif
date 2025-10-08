@@ -21,17 +21,17 @@
 
 &pinctrl_uart0 {
 	group0 {
-		pinmux = < PIN_P0_0__UART0_RX_A >,
-			 < PIN_P0_2__UART0_CTS_A >;
+		pinmux = <PIN_P8_0__UART0_RX_C>,
+			 <PIN_P6_6__UART0_CTS_B>;
 	};
 	group1 {
-		pinmux = < PIN_P0_1__UART0_TX_A >,
-			 < PIN_P0_3__UART0_RTS_A >;
-		read_enable = < 0x0 >;
+		pinmux = <PIN_P8_1__UART0_TX_C>,
+			 <PIN_P6_7__UART0_RTS_B>;
+		read_enable = <0x0>;
 	};
 	group2 {
-		pinmux = < PIN_P0_2__UART0_CTS_A >,
-			 < PIN_P0_3__UART0_RTS_A >;
+		pinmux = <PIN_P6_6__UART0_CTS_B>,
+			 <PIN_P6_7__UART0_RTS_B>;
 		driver_state_control = <1>;
 	};
 };
