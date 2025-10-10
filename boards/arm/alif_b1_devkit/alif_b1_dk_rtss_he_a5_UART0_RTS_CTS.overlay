@@ -1,0 +1,37 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Enable H/W flow control(RTS-CTS) for UART0 */
+/ {
+	chosen {
+		zephyr,shell-uart = &uart0;
+	};
+};
+
+&uart0 {
+	hw-flow-control;
+	status = "okay";
+};
+
+&pinctrl_uart0 {
+	group0 {
+		pinmux = <PIN_P8_0__UART0_RX_C>,
+			 <PIN_P6_6__UART0_CTS_B>;
+	};
+	group1 {
+		pinmux = <PIN_P8_1__UART0_TX_C>,
+			 <PIN_P6_7__UART0_RTS_B>;
+		read_enable = <0x0>;
+	};
+	group2 {
+		pinmux = <PIN_P6_6__UART0_CTS_B>,
+			 <PIN_P6_7__UART0_RTS_B>;
+		driver_state_control = <1>;
+	};
+};
