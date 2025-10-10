@@ -158,6 +158,10 @@ static uint16_t notification_send(void)
 
 	co_buf_release(p_buf);
 
+	if ((env.cnt % 512) == 0) {
+		printk("sent %d packets\n", env.cnt);
+	}
+
 	return status;
 }
 
