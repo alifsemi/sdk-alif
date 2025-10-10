@@ -24,7 +24,7 @@
 
 		audio-codec = &wm8904;
 		i2s-bus = &i2s0;
-		i2s-mic = &i2s2;
+		/*i2s-mic = &i2s2;*/
 	};
 
 	/delete-node/ buttons;
@@ -56,16 +56,11 @@
 	status = "okay";
 };
 
-/* Source (input) use onboard I2S microphones (T5848) */
-&i2s2 {
-	/delete-property/ clock-frequency;
-	/delete-property/ driver_instance;
-	compatible = "alif,i2s-sync";
-	interrupts = <LPI2S_IRQ_NUM LPI2S_IRQ_PRIO>;
-	bit-depth = <16>;
-	sample-rate = <48000>;
-	status = "okay";
-};
+/* Source (input) use onboard I2S microphones (T5848)
+ *
+ * Balletto A5 DevKit does not have I2S mics anymore.
+ * TODO: Need to be replaced by the PDM mics.
+ */
 
 &pinctrl_i2c1 {
 	group0 {

@@ -8,7 +8,6 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/drivers/dac.h>
 #include <zephyr/device.h>
-#include <zephyr/drivers/dac/alif_dac.h>
 #include <stdint.h>
 #include <zephyr/devicetree.h>
 
@@ -30,26 +29,17 @@ int main(void)
 	dac_cfg.resolution = 12;
 	dac_cfg.buffered = 0;
 
-	/* Set DAC capacitance  */
-	dac_set_capacitance(dac_dev, DAC_8PF_CAPACITANCE);
-
-	/* Set DAC IBAIS output current */
-	dac_set_output_current(dac_dev, DAC_1100UA_OUT_CUR);
-
-	dac_channel_setup(dac_dev, &dac_cfg);
-
-		if (ret != 0) {
-			printk("\r\n Setup error:DAC_channel\n");
-			return -1;
-		}
+	ret = dac_channel_setup(dac_dev, &dac_cfg);
+	if (ret != 0) {
+		printk("\r\n Setup error:DAC_channel\n");
+		return -1;
+	}
 
 	input_value = 0;
 
 	while (1) {
-
 		/* set dac input */
-		dac_write_value(dac_dev, 0, input_value);
-
+		ret = dac_write_value(dac_dev, 0, input_value);
 		if (ret != 0) {
 			printk("\r\n Error: DAC Set Input failed\n");
 			return -1;
@@ -81,7 +71,6 @@ int main(void)
 
 			input_value = DAC_MAX_INPUT_VALUE;
 		}
-
 	}
 
 	return 0;
