@@ -45,6 +45,8 @@ static uint16_t service_handle;
 
 K_SEM_DEFINE(gatt_sync_sem, 0, 1);
 
+#define GATT_DISCOVERY_TIMEOUT 50000
+
 /*
  * GATT USER CLIENT HANDLERS
  ****************************************************************************************
@@ -279,7 +281,7 @@ int gatt_client_discover_primary_all(uint8_t const conidx)
 		return -1;
 	}
 
-	if (k_sem_take(&gatt_sync_sem, K_MSEC(5000)) != 0) {
+	if (k_sem_take(&gatt_sync_sem, K_MSEC(GATT_DISCOVERY_TIMEOUT)) != 0) {
 		LOG_ERR("Discovery timeout!");
 		return -1;
 	}
@@ -307,7 +309,7 @@ int gatt_client_discover_primary_by_uuid(struct conn_uuid const uuid,
 		return -1;
 	}
 
-	if (k_sem_take(&gatt_sync_sem, K_MSEC(5000)) != 0) {
+	if (k_sem_take(&gatt_sync_sem, K_MSEC(GATT_DISCOVERY_TIMEOUT)) != 0) {
 		LOG_ERR("Discovery timeout!");
 		return -1;
 	}

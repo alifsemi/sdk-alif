@@ -39,10 +39,20 @@ LOG_MODULE_REGISTER(central, LOG_LEVEL_ERR);
 #define WRITE_SIZE     CONFIG_BLE_MTU_SIZE - GATT_BUFFER_HEADER_LEN - GATT_BUFFER_TAIL_LEN
 #define WRITE_SIZE_MAX CFG_MAX_LE_MTU - GATT_BUFFER_HEADER_LEN - GATT_BUFFER_TAIL_LEN
 
+#define CONNECT_INTERVAL_MIN_DEFAULT 6
+#define CONNECT_INTERVAL_MAX_DEFAULT 200
+#define SUPERVISION_TIMEOUT_DEFAULT  300
+
 /* Environment for the service */
 struct service_env {
 	/* Delay between data sends (ms) */
-	uint32_t send_intervall;
+	uint32_t send_interval;
+	/* Connection interval minimum (ms) */
+	uint32_t conn_interval_min;
+	/* Connection interval maximum (ms) */
+	uint32_t conn_interval_max;
+	/* Supervision timeout (ms) */
+	uint32_t supervision_to;
 	/* Peripheral BD address */
 	gap_bdaddr_t periph_addr;
 	/* SCAN activity index */
@@ -56,6 +66,9 @@ struct service_env {
 };
 
 static struct service_env env = {
+	.conn_interval_min = CONNECT_INTERVAL_MIN_DEFAULT,
+	.conn_interval_max = CONNECT_INTERVAL_MAX_DEFAULT,
+	.supervision_to = SUPERVISION_TIMEOUT_DEFAULT,
 	.scan_actv_idx = GAP_INVALID_ACTV_IDX,
 	.init_actv_idx = GAP_INVALID_ACTV_IDX,
 };
@@ -138,20 +151,18 @@ static void on_scan_report_received(uint32_t metainfo, uint8_t actv_idx,
 		}
 	}
 
-	printk("[%d] %02X:%02X:%02X:%02X:%02X:%02X %s\n", actv_idx, p_info->trans_addr.addr[0],
-	       p_info->trans_addr.addr[1], p_info->trans_addr.addr[2], p_info->trans_addr.addr[3],
-	       p_info->trans_addr.addr[4], p_info->trans_addr.addr[5], temp_name);
-
-	if (is_match_in_report(p_report, periph_device_name)) {
-		printk("Peripheral found!\n");
-		printk("Type 'tp run' to start test\n");
-		env.periph_addr = p_info->trans_addr;
-		env.periph_found = true;
-
-		scan_stop(false);
-
-		app_transition_to(APP_STATE_STANDBY);
+	if (!is_match_in_report(p_report, periph_device_name)) {
+		return;
 	}
+
+	scan_stop(false);
+
+	printk("Peripheral found! connecting...\n");
+
+	env.periph_addr = p_info->trans_addr;
+	env.periph_found = true;
+
+	app_transition_to(APP_STATE_STANDBY);
 }
 
 /* Callback structure required to create a scan activity */
@@ -324,7 +335,11 @@ static int connection_create_and_start(void)
 		return -2;
 	}
 
-	uint8_t conn_intv = 6, ce_len_min = 5, ce_len_max = 10;
+	const uint32_t conn_intv_min = env.conn_interval_min;
+	const uint32_t conn_intv_max = env.conn_interval_max;
+	const uint32_t supervision_to = env.supervision_to;
+	const uint32_t ce_len_min = 5;
+	const uint32_t ce_len_max = 10;
 
 	gapm_le_init_param_t param = {
 		.prop = (GAPM_INIT_PROP_1M_BIT | GAPM_INIT_PROP_2M_BIT),
@@ -336,24 +351,24 @@ static int connection_create_and_start(void)
 		.scan_param_coded.scan_intv = 0, /* disabled */
 		.scan_param_coded.scan_wd = 0,   /* disabled */
 
-		.conn_param_1m.conn_intv_min = conn_intv,
-		.conn_param_1m.conn_intv_max = conn_intv,
+		.conn_param_1m.conn_intv_min = conn_intv_min,
+		.conn_param_1m.conn_intv_max = conn_intv_max,
 		.conn_param_1m.conn_latency = 0,
-		.conn_param_1m.supervision_to = 100, /* 1000 ms */
+		.conn_param_1m.supervision_to = supervision_to,
 		.conn_param_1m.ce_len_min = ce_len_min,
 		.conn_param_1m.ce_len_max = ce_len_max,
 
-		.conn_param_2m.conn_intv_min = conn_intv,
-		.conn_param_2m.conn_intv_max = conn_intv,
+		.conn_param_2m.conn_intv_min = conn_intv_min,
+		.conn_param_2m.conn_intv_max = conn_intv_max,
 		.conn_param_2m.conn_latency = 0,
-		.conn_param_2m.supervision_to = 100, /* 1000 ms */
+		.conn_param_2m.supervision_to = supervision_to,
 		.conn_param_2m.ce_len_min = ce_len_min,
 		.conn_param_2m.ce_len_max = ce_len_max,
 
-		.conn_param_coded.conn_intv_min = conn_intv,
-		.conn_param_coded.conn_intv_max = conn_intv,
+		.conn_param_coded.conn_intv_min = conn_intv_min,
+		.conn_param_coded.conn_intv_max = conn_intv_max,
 		.conn_param_coded.conn_latency = 0,
-		.conn_param_coded.supervision_to = 100, /* 1000 ms */
+		.conn_param_coded.supervision_to = supervision_to,
 		.conn_param_coded.ce_len_min = ce_len_min,
 		.conn_param_coded.ce_len_max = ce_len_max,
 
@@ -452,6 +467,7 @@ int central_app_exec(uint32_t const app_state)
 	}
 
 	case APP_STATE_PERIPHERAL_FOUND: {
+		LOG_INF("Connecting...");
 		if (connection_create_and_start()) {
 			app_transition_to(APP_STATE_STANDBY);
 		} else {
@@ -509,7 +525,12 @@ int central_app_exec(uint32_t const app_state)
 
 		gatt_client_register_event(service_handle);
 
-		app_transition_to((0 > res) ? APP_STATE_ERROR : APP_STATE_CENTRAL_READY);
+		if (res < 0) {
+			app_transition_to(APP_STATE_ERROR);
+		} else {
+			printk("Type 'tp run' to start test\n");
+			app_transition_to(APP_STATE_CENTRAL_READY);
+		}
 		break;
 	}
 
@@ -526,11 +547,11 @@ int central_app_exec(uint32_t const app_state)
 		tp_stats.write_len += tx_size;
 
 		if ((tp_stats.write_count % 512) == 0) {
-			printk("TP test ongoing, sent %d packets\n", tp_stats.write_count);
+			printk("sent %d packets\n", tp_stats.write_count);
 		}
 
-		if (env.send_intervall) {
-			k_sleep(K_MSEC(env.send_intervall));
+		if (env.send_interval) {
+			k_sleep(K_MSEC(env.send_interval));
 		}
 
 		if (CONFIG_BLE_THROUGHPUT_DURATION <= (current_ms - last_tp_read)) {
@@ -545,10 +566,9 @@ int central_app_exec(uint32_t const app_state)
 	}
 
 	case APP_STATE_DATA_READ: {
-		printk("\nReading results\n");
+		printk("\nReading results:\n");
 		gatt_client_read(service_handle, READ_SIZE);
 		app_transition_to(APP_STATE_CENTRAL_READY);
-
 		break;
 	}
 
@@ -598,9 +618,78 @@ int central_get_service_uuid_str(char *p_uuid, uint8_t max_len)
 	return convert_uuid_with_len_to_string(p_uuid, max_len, service_uuid, sizeof(service_uuid));
 }
 
-int central_set_send_intervall(uint32_t intervall)
+int central_set_send_interval(uint32_t const interval)
 {
-	env.send_intervall = intervall;
+	env.send_interval = interval;
 
 	return 0;
+}
+
+static int central_set_connection_interval(uint32_t const interval_min, uint32_t const interval_max)
+{
+	if (interval_min < 6 || interval_min > 3200) {
+		LOG_ERR("connection interval min out of bounds: %u", interval_min);
+		return -EINVAL;
+	}
+
+	if (interval_max < 6 || interval_max > 3200) {
+		LOG_ERR("connection interval max out of bounds: %u", interval_max);
+		return -EINVAL;
+	}
+
+	if (interval_max < interval_min) {
+		LOG_ERR("connection interval min cannot be greater than max!");
+		return -EINVAL;
+	}
+
+	env.conn_interval_min = interval_min;
+	env.conn_interval_max = interval_max;
+
+	LOG_INF("connection interval set to min: %fms max: %fms", 1.25 * interval_min,
+		1.25 * interval_max);
+
+	return 0;
+}
+
+static int central_set_supervision_timeout(uint32_t const timeout)
+{
+	if (timeout < 10 || 3200 < timeout) {
+		LOG_ERR("supervision timeout out of bounds: %u", timeout);
+		return -EINVAL;
+	}
+
+	env.supervision_to = timeout;
+
+	LOG_INF("supervision timeout set to %dms", timeout * 10);
+
+	return 0;
+}
+
+int central_connection_params_get(struct central_env_info *const p_env_info)
+{
+	if (!p_env_info) {
+		return -EINVAL;
+	}
+
+	p_env_info->conn_interval_min = env.conn_interval_min;
+	p_env_info->conn_interval_max = env.conn_interval_max;
+	p_env_info->supervision_to = env.supervision_to;
+
+	return 0;
+}
+
+int central_connection_params_set(struct central_env_info const *const p_env_info)
+{
+	if (!p_env_info) {
+		return -EINVAL;
+	}
+
+	const int err = central_set_supervision_timeout(p_env_info->supervision_to);
+
+	if (err) {
+		return err;
+	}
+
+	return central_set_connection_interval(p_env_info->conn_interval_min,
+					       p_env_info->conn_interval_max);
 }
