@@ -11,6 +11,12 @@
 
 #include <stdint.h>
 
+struct central_env_info {
+	uint32_t conn_interval_min;
+	uint32_t conn_interval_max;
+	uint32_t supervision_to;
+};
+
 /**
  * Init BLE central functionality
  */
@@ -25,6 +31,39 @@ void central_app_init(void);
  */
 int central_app_exec(uint32_t const state);
 
+/**
+ * Get service UUID string
+ *
+ * @param[out] p_uuid Service UUID string
+ * @param[in] max_len Maximum length of UUID string
+ *
+ * @return 0 in case of success, otherwise -1
+ */
 int central_get_service_uuid_str(char *p_uuid, uint8_t max_len);
 
-int central_set_send_intervall(uint32_t intervall);
+/**
+ * Set send interval
+ *
+ * @param[in] interval Send interval in ms
+ *
+ * @return 0 in case of success, otherwise -1
+ */
+int central_set_send_interval(uint32_t interval);
+
+/**
+ * Get connection parameters
+ *
+ * @param[out] p_env_info Connection parameters
+ *
+ * @return 0 in case of success, otherwise -1
+ */
+int central_connection_params_get(struct central_env_info *p_env_info);
+
+/**
+ * Set connection parameters
+ *
+ * @param[in] p_env_info Connection parameters
+ *
+ * @return 0 in case of success, otherwise -1
+ */
+int central_connection_params_set(struct central_env_info const *p_env_info);
