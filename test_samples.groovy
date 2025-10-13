@@ -32,6 +32,7 @@ def zephyr_init() {
               git fetch origin pull/\${CHANGE_ID}/head:pr-\${CHANGE_ID}
               git checkout pr-\${CHANGE_ID}
             fi
+            west forall -c "git clean -fdx"
             west update
             west zephyr-export
             pip install -r scripts/requirements.txt
@@ -44,6 +45,7 @@ def zephyr_init() {
             eval `ssh-agent -s`
             west init zephyrproject -m git@github.com:alifsemi/sdk-alif.git
             cd zephyrproject/alif
+            west forall -c "git clean -fdx"
             west update
             west zephyr-export
             pip install -r scripts/requirements.txt
