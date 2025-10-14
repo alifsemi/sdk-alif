@@ -15,7 +15,7 @@ Direct Memory Access (DMA) enhances system performance by offloading the CPUs fr
 
 Since this core has numerous peripherals, we have a MUX for DMA0, which allows mapping peripherals to the DMA. This application note covers a sample test application for DMA with SPI (HE core).
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Hardware Design
 ---------------
@@ -105,3 +105,5 @@ SPI data transfer occurs using the selected DMA. The following output is display
 
 .. note::
    The console output displays the results of SPI data transfer using DMA, including transferred data and status messages. Refer to the SPI_dw sample application (``../alif/samples/drivers/spi_dw/``) for specific output details.
+
+.. include:: west_debug.rst

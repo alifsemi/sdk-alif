@@ -24,7 +24,7 @@ This document describes two demo applications available on the Alif DevKit:
 
 **SPI0 (Master) to SPI1 (Slave) Data Transfer**: This demo application showcases data transfer between the SPI0 peripheral as master and the SPI1 peripheral as slave. This application can be executed on either the M55-HE or M55-HP cores. By default, this application has DMA enabled. DMA can be disabled by configuring ``CONFIG_SPI_DW_USE_DMA=n`` in the ``prj.conf`` file.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building SPI Application in Zephyr
 ===================================
@@ -95,3 +95,5 @@ Output Logs
    :align: center
 
    Validation of SPI Functionality on DevKit-E7 Board
+
+.. include:: west_debug.rst

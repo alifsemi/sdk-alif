@@ -15,7 +15,7 @@ This application note provides an overview of the Cyclic Redundancy Check (CRC),
 - **Customized Polynomials**: Allows customization of polynomials for specific applications.
 - **AHB Interface**: Interfaces with the Advanced High-performance Bus (AHB).
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 CRC Operation
 =============
@@ -248,3 +248,5 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+.. include:: west_debug.rst

@@ -1,7 +1,7 @@
 .. _appnote-zephyr-low-power-timer:
 
 ===============
-Low Power Timer
+LP Timer
 ===============
 
 Introduction
@@ -32,7 +32,7 @@ The LPTIMER IP, sourced from Synopsys DesignWare, can be utilized as a timer dri
 
 Furthermore, the LPTIMER is integrated into the Alarm application as a demo application, where it functions as expected. The same demo app is also utilized by the RTC (Real-Time Clock) and UTIMER. To facilitate configuration, separate overlay and config files for the RTC, UTIMER, and LPTIMER reside in the board’s directory of the Alarm application. Users can select these files using the west build command.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building LPTIMER Application in Zephyr
 ======================================
@@ -77,3 +77,5 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+.. include:: west_debug.rst

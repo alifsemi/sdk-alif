@@ -11,7 +11,7 @@ The Alif UTimer IP on the Alif Devkit supports counter mode, enabling precise co
 
 Furthermore, the UTIMER is integrated into the Alarm application as a demo application, where it functions as expected. The same demo app is also utilized by the RTC (Real-Time Clock) and LPTIMER. To facilitate configuration, separate overlay and config files for the RTC, UTIMER, and LPTIMER reside in the board’s directory of the Alarm application. Users can select these files using the west build command.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building Counter Application in Zephyr
 ========================================
@@ -79,4 +79,6 @@ Sample Output
       :align: center
 
       Sample Output of the Counter Application
+
+.. include:: west_debug.rst
 

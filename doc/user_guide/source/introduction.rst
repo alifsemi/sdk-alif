@@ -39,6 +39,10 @@ Ensure you have one of the following development kits to proceed with your proje
 - Ensemble E1C Devkit (DK-E1C)
 - Balletto Devkit (DK-B1)
 
+Ensure you have the following debugger available to proceed with your project setup:
+
+- For debugging, use the J-Link debugger
+
 **Software Requirements**
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -57,8 +61,23 @@ Ensure you have one of the following development kits to proceed with your proje
 
 .. figure:: _static/mcu_families.png
    :alt: Alif MCU Families
-   :width: 500px
+   :width: 800px
+   :height: 400px
    :align: center
+
+
+   *Balletto and Ensemble Family (E1, E3, E5 and E7)*
+
+
+.. figure:: _static/E8.png
+   :alt: Alif MCU Families
+   :width: 800px
+   :height: 400px
+   :align: center
+
+
+   *Ensemble Family (E4, E6 and E8)*
+
 
 The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
 

@@ -40,7 +40,7 @@ The following are important features of I2C:
 - Programmable SDA hold time
 - Bus clear feature
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Pin Setup
 ---------
@@ -118,3 +118,5 @@ Upon reviewing the output logs, the I2C functionality has been successfully vali
     :align: center
 
     I2C Output Logs
+
+.. include:: west_debug.rst

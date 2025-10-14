@@ -9,7 +9,7 @@ Introduction
 
 This application note describes how to build and execute a "HelloWorld" application using the Zephyr RTOS, configured to run from OSPI1 NOR flash on the Alif E7 DevKit. The application prints a "Hello World" message along with the board name and targets the Real-Time Subsystem High-Performance (RTSS-HP) and Real-Time Subsystem High-Efficiency (RTSS-HE) cores. Optionally, the Zephyr Application Binary (ZAS) can be encrypted with AES for secure execution.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Execution Path
 ==============

@@ -10,8 +10,6 @@ Application Notes of Zephyr Alif SDK
    :maxdepth: 2
    :caption: Contents:
 
-   clock_control.rst
-   helloworld_ospi.rst
    utimer_counter.rst
    sdmmc.rst
    qdec.rst
@@ -31,6 +29,8 @@ Application Notes of Zephyr Alif SDK
    se_tool_flash.rst
    ensemble_pins.rst
    balletto_pins.rst
+   clock_control.rst
+   helloworld_ospi.rst
 
 Document History
 ================

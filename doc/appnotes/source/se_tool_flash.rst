@@ -20,7 +20,7 @@ The SE Tool is a Python-based utility from Alif Semiconductor for programming ap
 - Core Targeting: Supports RTSS-HP (Cortex-M55_0) and RTSS-HE (Cortex-M55_1).
 - Memory Flexibility: Supports execution from SRAM, TCM, or OSPI NOR flash.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building the Application
 ========================

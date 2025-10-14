@@ -20,7 +20,7 @@ This document explains how to create, compile, and run a demo application for th
 
    PDM Hardware
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Hardware Connections and Setup for PDM
 --------------------------------------
@@ -275,6 +275,9 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+
+.. include:: west_debug.rst
 
 Procedure to Test PDM and LPPDM
 ===============================

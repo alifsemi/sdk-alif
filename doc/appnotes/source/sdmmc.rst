@@ -40,7 +40,7 @@ To run the SDMMC application, you need:
 
 - **Alif DevKit**
 - **SD card (formatted with FAT32)**
-- **Debugger: JLink (optional)**
+- **Debugger: JLink**
 
 Software Requirements
 -----------------------
@@ -167,3 +167,5 @@ Sample output:
    [FILE] TestFile34.txt (size = 5757)
    [FILE] some.dat (size = 5757)
    [FILE] some9.txt (size = 5757)
+
+.. include:: west_debug.rst

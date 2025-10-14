@@ -20,7 +20,7 @@ The Inter-IC Sound (I2S™) is an electrical serial bus interface standard used 
 
    I2S Hardware Connections
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 
 Hardware Setup I2S
@@ -80,3 +80,5 @@ To execute binaries on the DevKit follow the command
 Observations
 ============
 The echo application plays back (or echoes) the sound from the microphone through the connected speaker, enabling real-time audio feedback.
+
+.. include:: west_debug.rst

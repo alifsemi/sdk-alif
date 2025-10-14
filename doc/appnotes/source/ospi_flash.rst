@@ -26,7 +26,7 @@ This document covers the demo application for the Alif DevKit:
 .. note::
    For more details, refer to the `Zephyr Flash API Reference <https://docs.zephyrproject.org/latest/reference/peripherals/flash.html>`_.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Hardware Connections
 --------------------
@@ -141,3 +141,5 @@ The following logs demonstrate the OSPI Flash functionality:
    Content read from OSPI Flash in XiP mode successfully.
    Read from flash command while XiP mode enabled.
    XiP Read Test Succeeded!
+
+.. include:: west_debug.rst

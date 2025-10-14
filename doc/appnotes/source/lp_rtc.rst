@@ -35,7 +35,7 @@ Required Config Features
 - ``CONFIG_COUNTER_RTC_SNPS_DW=y``
 - ``CONFIG_COUNTER_ALIF_UTIMER=n``
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building LPRTC Application in Zephyr
 =====================================
@@ -108,3 +108,5 @@ The sample alarm application will run continuously until manually stopped, gener
    !!! Alarm !!!
    Now: 31
    Set alarm in 64 sec (2097152 ticks)
+
+.. include:: west_debug.rst

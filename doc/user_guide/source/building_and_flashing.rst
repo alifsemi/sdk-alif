@@ -211,7 +211,15 @@ for SE-UART device communication.
 
       west flash
 
-6. The application boots automatically:
+6. Debug the application:
+
+   From the Zephyr build directory, start a debug session on your board:
+
+   .. code-block:: console
+
+      west debug
+
+7. The application boots automatically:
 
    a. Open a serial console application on the host PC with a baud rate of 115200.
 

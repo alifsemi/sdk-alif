@@ -26,7 +26,7 @@ The Digital-to-Analog Converter (DAC12) module converts 12-bit digital values in
 
    Diagram of the DAC Configuration
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Output Calculation
 ==================
@@ -134,3 +134,5 @@ The sample Output will be as follows
       :align: center
 
       DAC Sample Output
+
+.. include:: west_debug.rst

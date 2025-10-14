@@ -15,7 +15,7 @@ This document explains how to create, compile, and run a demo application for th
 
    LPI2C Block Diagram
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 
 LPI2C Interface
@@ -106,4 +106,6 @@ You can observe the console output as shown below
       :alt: Console Output
       :align: center
 
-      LPI2C COnsole Output
+      LPI2C Console Output
+
+.. include:: west_debug.rst
