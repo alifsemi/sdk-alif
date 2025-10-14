@@ -128,17 +128,16 @@ static void on_discovery_completed(uint8_t conidx, uint8_t user_lid, uint16_t me
 static void on_read_attribute_value_received(uint8_t conidx, uint8_t user_lid, uint16_t metainfo,
 					     uint16_t hdl, uint16_t offset, co_buf_t *p_data)
 {
-	struct tp_data received_data_s;
+	extern struct tp_data transmit_throughput_results;
 
 	if (p_data->data_len != sizeof(struct tp_data)) {
 		LOG_ERR("Received data error");
 		return;
 	}
 
-	memcpy(&received_data_s, (p_data->buf + p_data->head_len), p_data->data_len);
+	memcpy(&transmit_throughput_results, (p_data->buf + p_data->head_len), p_data->data_len);
 
-	printk("Peer received %u packets - total %u bytes at %u bps\n", received_data_s.write_count,
-	       received_data_s.write_len, received_data_s.write_rate);
+	app_transition_to(APP_STATE_DATA_SEND_READY);
 }
 
 /* This function is called when GATT client user read procedure is over. */
@@ -175,39 +174,50 @@ static void on_write_completed(uint8_t conidx, uint8_t user_lid, uint16_t metain
 static void on_ntf_or_ind_received(uint8_t conidx, uint8_t user_lid, uint16_t token,
 				   uint8_t evt_type, bool complete, uint16_t hdl, co_buf_t *p_data)
 {
-	static struct tp_data tp_stats;
-	static uint32_t clock_cycles;
-	uint64_t delta;
+	extern struct tp_data receive_throughput_results;
+	extern struct tp_data tp_stats;
 
-	if (clock_cycles == 0) {
-		clock_cycles = k_cycle_get_32();
+	static bool clock_cycle_init = true;
+	static uint32_t clock_cycles_last;
+	static uint64_t accumulated_time_ns;
+
+	uint32_t const cycle_now = k_cycle_get_32();
+
+	size_t const data_len = co_buf_data_len(p_data);
+
+	if (clock_cycle_init) {
+		clock_cycle_init = false;
+		clock_cycles_last = cycle_now;
+		memset(&receive_throughput_results, 0, sizeof(receive_throughput_results));
 	}
 
-	delta = k_cycle_get_32() - clock_cycles;
-	delta = k_cyc_to_ns_floor64(delta);
+	accumulated_time_ns += k_cyc_to_ns_floor64(cycle_now - clock_cycles_last);
+	clock_cycles_last = cycle_now;
 
 	if (evt_type == GATT_INDICATE) {
-		struct tp_data received_data;
+		if (accumulated_time_ns) {
+			receive_throughput_results.write_rate =
+				(((uint64_t)receive_throughput_results.write_len << 3) *
+				 1000000000) /
+				accumulated_time_ns;
+		}
 
-		printk("\nReceived %u bytes %u packets in %u bps\n", tp_stats.write_len,
-		       tp_stats.write_count, tp_stats.write_rate);
-
-		if (co_buf_data_len(p_data) == sizeof(tp_stats)) {
-			memcpy(&received_data, co_buf_data(p_data), sizeof(tp_stats));
-			printk("Peer sent %u bytes %u packets in %u bps\n", received_data.write_len,
-			       received_data.write_count, received_data.write_rate);
+		printk("\r\n");
+		if (data_len == sizeof(tp_stats)) {
+			memcpy(&tp_stats, co_buf_data(p_data), sizeof(tp_stats));
 		} else {
 			LOG_ERR("Peer result read failed");
 		}
+		app_transition_to(APP_STATE_DATA_RECEIVE_READY);
 
-		tp_stats.write_count = 0;
-		tp_stats.write_len = 0;
-		tp_stats.write_rate = 0;
-		clock_cycles = 0;
+		accumulated_time_ns = 0;
+		clock_cycle_init = true;
 	} else {
-		tp_stats.write_count++;
-		tp_stats.write_len += co_buf_data_len(p_data);
-		tp_stats.write_rate = ((uint64_t)tp_stats.write_len << 3) * 1000000000 / delta;
+		receive_throughput_results.write_count++;
+		receive_throughput_results.write_len += data_len;
+		if ((receive_throughput_results.write_count % 256) == 0) {
+			printk(".");
+		}
 	}
 
 	gatt_cli_att_event_cfm(conidx, user_lid, token);

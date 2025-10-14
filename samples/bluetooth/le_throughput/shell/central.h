@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-struct central_env_info {
+struct central_conn_params {
 	uint32_t conn_interval_min;
 	uint32_t conn_interval_max;
 	uint32_t supervision_to;
@@ -53,17 +53,26 @@ int central_set_send_interval(uint32_t interval);
 /**
  * Get connection parameters
  *
- * @param[out] p_env_info Connection parameters
+ * @param[out] p_params Connection parameters
  *
  * @return 0 in case of success, otherwise -1
  */
-int central_connection_params_get(struct central_env_info *p_env_info);
+int central_connection_params_get(struct central_conn_params *p_params);
 
 /**
  * Set connection parameters
  *
- * @param[in] p_env_info Connection parameters
+ * @param[in] p_params Connection parameters
  *
  * @return 0 in case of success, otherwise -1
  */
-int central_connection_params_set(struct central_env_info const *p_env_info);
+int central_connection_params_set(struct central_conn_params const *p_params);
+
+/**
+ * Set test duration
+ *
+ * @param[in] duration Test duration in seconds
+ *
+ * @return 0 in case of success, otherwise -1
+ */
+int central_set_test_duration(uint32_t duration_s);

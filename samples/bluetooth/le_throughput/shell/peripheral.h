@@ -11,6 +11,12 @@
 
 #include <stdint.h>
 
+struct peripheral_conn_params {
+	uint32_t conn_interval_min;
+	uint32_t conn_interval_max;
+	uint32_t supervision_to;
+};
+
 void peripheral_app_init(void);
 
 int peripheral_app_exec(uint32_t const state);
@@ -21,3 +27,12 @@ int peripheral_app_exec(uint32_t const state);
  * @return 0 in case of success, negative value is case of error
  */
 int peripheral_get_service_uuid_str(char *p_uuid, uint8_t max_len);
+
+/**
+ * Set connection parameters
+ *
+ * @param[in] p_params Connection parameters
+ *
+ * @return 0 in case of success, otherwise -1
+ */
+int peripheral_connection_params_set(struct peripheral_conn_params const *p_params);

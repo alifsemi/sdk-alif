@@ -35,6 +35,10 @@ LOG_MODULE_REGISTER(central, LOG_LEVEL_ERR);
 #error "MTU size is too small!"
 #endif
 
+#if (60 * 60 * 1000) <= CONFIG_BLE_THROUGHPUT_DURATION
+#error "Test duration maximum is an hour!"
+#endif
+
 #define READ_SIZE      64
 #define WRITE_SIZE     CONFIG_BLE_MTU_SIZE - GATT_BUFFER_HEADER_LEN - GATT_BUFFER_TAIL_LEN
 #define WRITE_SIZE_MAX CFG_MAX_LE_MTU - GATT_BUFFER_HEADER_LEN - GATT_BUFFER_TAIL_LEN
@@ -46,7 +50,9 @@ LOG_MODULE_REGISTER(central, LOG_LEVEL_ERR);
 /* Environment for the service */
 struct service_env {
 	/* Delay between data sends (ms) */
-	uint32_t send_interval;
+	uint32_t send_interval_ms;
+	/* Test duration (ms) */
+	uint32_t test_duration_ms;
 	/* Connection interval minimum (ms) */
 	uint32_t conn_interval_min;
 	/* Connection interval maximum (ms) */
@@ -72,6 +78,10 @@ static struct service_env env = {
 	.scan_actv_idx = GAP_INVALID_ACTV_IDX,
 	.init_actv_idx = GAP_INVALID_ACTV_IDX,
 };
+
+struct tp_data transmit_throughput_results;
+struct tp_data receive_throughput_results;
+struct tp_data tp_stats;
 
 static const char periph_device_name[] = CONFIG_BLE_TP_DEVICE_NAME;
 static uint8_t tx_buffer[WRITE_SIZE];
@@ -111,6 +121,29 @@ static bool is_match_in_report(co_buf_t *p_data, const char *p_exp_name)
 	}
 
 	return false;
+}
+
+static void pretty_print_result(struct tp_data *p_data)
+{
+	if (!p_data) {
+		LOG_ERR("Invalid data pointer");
+		return;
+	}
+
+	char buff[32];
+	double rate = p_data->write_rate;
+	const char *unit = "bps";
+
+	if (rate > (1024 * 1024)) {
+		rate = rate / (1024 * 1024);
+		unit = "Mbps";
+	} else if (rate > 1024) {
+		rate = rate / 1024;
+		unit = "Kbps";
+	}
+
+	snprintf(buff, sizeof(buff), "%.2f %s", rate, unit);
+	printk("%u packets, %u bytes @ %s\r\n", p_data->write_count, p_data->write_len, buff);
 }
 
 /* ---------------------------------------------------------------------------------------- */
@@ -157,7 +190,7 @@ static void on_scan_report_received(uint32_t metainfo, uint8_t actv_idx,
 
 	scan_stop(false);
 
-	printk("Peripheral found! connecting...\n");
+	printk("Peripheral found! connecting...\r\n");
 
 	env.periph_addr = p_info->trans_addr;
 	env.periph_found = true;
@@ -245,7 +278,7 @@ int scan_create_and_start(struct scan_config const *const p_config)
 	LOG_INF("Start scanning: type=%u, prop=%u, filter=%u, interval=%u, window=%u", param.type,
 		param.prop, param.dup_filt_pol, param.scan_param_1m.scan_intv,
 		param.scan_param_1m.scan_wd);
-	printk("Start scanning\n");
+	printk("Start scanning\r\n");
 
 	uint16_t status;
 
@@ -440,13 +473,14 @@ void central_app_init(void)
 {
 	gatt_client_register();
 	tx_size = sizeof(tx_buffer);
+
+	env.test_duration_ms = CONFIG_BLE_THROUGHPUT_DURATION;
 }
 
 int central_app_exec(uint32_t const app_state)
 {
 
 	static uint32_t last_tp_read;
-	static struct tp_data tp_stats;
 
 	uint32_t const current_ms = k_uptime_get_32();
 
@@ -528,7 +562,7 @@ int central_app_exec(uint32_t const app_state)
 		if (res < 0) {
 			app_transition_to(APP_STATE_ERROR);
 		} else {
-			printk("Type 'tp run' to start test\n");
+			printk("Type 'tp run' to start test\r\n");
 			app_transition_to(APP_STATE_CENTRAL_READY);
 		}
 		break;
@@ -543,47 +577,76 @@ int central_app_exec(uint32_t const app_state)
 			app_transition_to(APP_STATE_ERROR);
 		}
 
-		tp_stats.write_count++;
-		tp_stats.write_len += tx_size;
+		size_t const current_cnt = tp_stats.write_count + 1;
+		size_t const current_len = tp_stats.write_len + tx_size;
 
-		if ((tp_stats.write_count % 512) == 0) {
-			printk("sent %d packets\n", tp_stats.write_count);
+		tp_stats.write_count = current_cnt;
+		tp_stats.write_len = current_len;
+
+		if ((current_cnt % 256) == 0) {
+			printk(".");
 		}
 
-		if (env.send_interval) {
-			k_sleep(K_MSEC(env.send_interval));
+		if (env.send_interval_ms) {
+			k_sleep(K_MSEC(env.send_interval_ms));
 		}
 
-		if (CONFIG_BLE_THROUGHPUT_DURATION <= (current_ms - last_tp_read)) {
+		if (env.test_duration_ms <= (current_ms - last_tp_read)) {
+			printk("\r\n");
 			app_transition_to(APP_STATE_DATA_READ);
-
-			printk("\nSent %u packets %u bytes %u bps\n", tp_stats.write_count,
-			       tp_stats.write_len,
-			       ((tp_stats.write_len << 3) / ((current_ms - last_tp_read) / 1000)));
 		}
 
 		break;
 	}
 
 	case APP_STATE_DATA_READ: {
-		printk("\nReading results:\n");
+		app_transition_to(APP_STATE_CENTRAL_READY);
+		LOG_DBG("Reading results");
 		gatt_client_read(service_handle, READ_SIZE);
+		break;
+	}
+
+	case APP_STATE_DATA_SEND_READY: {
+		LOG_DBG("Transmit test ready");
+		LOG_DBG("Sent %u packets %u bytes %u bps", tp_stats.write_count, tp_stats.write_len,
+			((tp_stats.write_len << 3) / ((current_ms - last_tp_read) / 1000)));
+		printk(" >>> TRASMIT RESULT: ");
+		pretty_print_result(&transmit_throughput_results);
+
+		if (IS_ENABLED(CONFIG_BLE_TP_BIDIRECTIONAL_TEST)) {
+			printk("\r\n <<< Reception test starts\r\n");
+		}
+
+		app_transition_to(APP_STATE_CENTRAL_READY);
+		memset(&tp_stats, 0, sizeof(tp_stats));
+		break;
+	}
+
+	case APP_STATE_DATA_RECEIVE_READY: {
+		LOG_DBG("Peer sent %u bytes %u packets in %u bps", tp_stats.write_len,
+			tp_stats.write_count, tp_stats.write_rate);
+		printk(" <<< RECEIVE RESULT: ");
+		pretty_print_result(&receive_throughput_results);
 		app_transition_to(APP_STATE_CENTRAL_READY);
 		break;
 	}
 
 	case APP_STATE_STATS_RESET: {
 		/* Clear a buffer by sending a byte */
-		uint8_t reset = 0;
+		struct tp_client_ctrl command = {
+			.type = TP_CLIENT_CTRL_TYPE_RESET,
+			.test_duration_ms = env.test_duration_ms,
+			.send_interval_ms = env.send_interval_ms,
+		};
 
-		gatt_client_write_noack(service_handle, (void *)&reset, sizeof(reset));
+		memset(&tp_stats, 0, sizeof(tp_stats));
+
+		gatt_client_write_noack(service_handle, (void *)&command, sizeof(command));
 
 		last_tp_read = current_ms;
-		tp_stats.write_count = 0;
-		tp_stats.write_len = 0;
 
 		app_transition_to(APP_STATE_DATA_TRANSMIT);
-		printk("--- Starting throughput test ---\n");
+		printk(" >>> Transmit test starts\r\n");
 		break;
 	}
 
@@ -620,7 +683,7 @@ int central_get_service_uuid_str(char *p_uuid, uint8_t max_len)
 
 int central_set_send_interval(uint32_t const interval)
 {
-	env.send_interval = interval;
+	env.send_interval_ms = interval;
 
 	return 0;
 }
@@ -665,31 +728,43 @@ static int central_set_supervision_timeout(uint32_t const timeout)
 	return 0;
 }
 
-int central_connection_params_get(struct central_env_info *const p_env_info)
+int central_connection_params_get(struct central_conn_params *const p_params)
 {
-	if (!p_env_info) {
+	if (!p_params) {
 		return -EINVAL;
 	}
 
-	p_env_info->conn_interval_min = env.conn_interval_min;
-	p_env_info->conn_interval_max = env.conn_interval_max;
-	p_env_info->supervision_to = env.supervision_to;
+	p_params->conn_interval_min = env.conn_interval_min;
+	p_params->conn_interval_max = env.conn_interval_max;
+	p_params->supervision_to = env.supervision_to;
 
 	return 0;
 }
 
-int central_connection_params_set(struct central_env_info const *const p_env_info)
+int central_connection_params_set(struct central_conn_params const *const p_params)
 {
-	if (!p_env_info) {
+	if (!p_params) {
 		return -EINVAL;
 	}
 
-	const int err = central_set_supervision_timeout(p_env_info->supervision_to);
+	const int err = central_set_supervision_timeout(p_params->supervision_to);
 
 	if (err) {
 		return err;
 	}
 
-	return central_set_connection_interval(p_env_info->conn_interval_min,
-					       p_env_info->conn_interval_max);
+	return central_set_connection_interval(p_params->conn_interval_min,
+					       p_params->conn_interval_max);
+}
+
+int central_set_test_duration(uint32_t const duration_s)
+{
+	if (duration_s < 2 || duration_s > (60 * 60)) {
+		LOG_ERR("Test duration maximum is an hour!");
+		return -EINVAL;
+	}
+
+	env.test_duration_ms = 1000LU * duration_s;
+
+	return 0;
 }

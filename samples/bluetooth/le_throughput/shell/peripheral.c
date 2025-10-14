@@ -28,12 +28,10 @@
 #include "peripheral.h"
 #include "service_uuid.h"
 
-LOG_MODULE_REGISTER(peripheral, LOG_LEVEL_ERR);
+LOG_MODULE_REGISTER(peripheral, LOG_LEVEL_INF);
 
 #define ATT_16_TO_128_ARRAY(uuid)                                                                  \
-	{                                                                                          \
-		(uuid) & 0xFF, (uuid >> 8) & 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0        \
-	}
+	{(uuid) & 0xFF, (uuid >> 8) & 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
 
 /* Service Definitions */
 #define ATT_128_PRIMARY_SERVICE ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
@@ -65,6 +63,13 @@ static const gatt_att_desc_t lbs_att_db[LBS_IDX_NB] = {
 
 /* Environment for the service */
 static struct service_env {
+	/* Accumulated reception time in microseconds */
+	uint64_t accumulated_time_ns;
+	/* Test duration (ms) */
+	uint32_t test_duration_ms;
+	/* Delay between data sends (ms) */
+	uint32_t send_interval_ms;
+
 	uint16_t start_hdl;
 	uint8_t user_lid;
 	uint8_t adv_actv_idx;
@@ -84,25 +89,38 @@ K_SEM_DEFINE(app_sem, 0, 1);
 /* ---------------------------------------------------------------------------------------- */
 /* GATT SERVER CONFIG */
 
-static void on_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token, uint16_t hdl,
-			    uint16_t offset, uint16_t max_length)
+static void on_att_read_get(uint8_t const conidx, uint8_t const user_lid, uint16_t const token,
+			    uint16_t const hdl, uint16_t const offset, uint16_t const max_length)
 {
+	ARG_UNUSED(offset);
+	ARG_UNUSED(max_length);
+
 	co_buf_t *p_buf = NULL;
 	uint16_t status = GAP_ERR_NO_ERROR;
 	uint16_t att_val_len = 0;
-	uint8_t att_idx = hdl - env.start_hdl;
+	uint8_t const att_idx = hdl - env.start_hdl;
 
 	switch (att_idx) {
 	case LBS_IDX_CHAR1_VAL: {
-		printk("Send response: %u packets %u bps\n", env.resp_data.write_count,
-		       env.resp_data.write_rate);
+		printk("\r\n >>> RX done\r\n");
+
 		att_val_len = sizeof(env.resp_data);
 
 		status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, att_val_len,
 				      GATT_BUFFER_TAIL_LEN);
 		if (status != CO_BUF_ERR_NO_ERROR) {
-			LOG_ERR("alloc error");
-			return;
+			LOG_ERR("alloc error. Unable to send results!");
+			p_buf = NULL;
+			att_val_len = 0;
+			status = ATT_ERR_APP_ERROR;
+			app_transition_to(APP_STATE_ERROR);
+			break;
+		}
+
+		if (env.accumulated_time_ns) {
+			env.resp_data.write_rate =
+				(((uint64_t)env.resp_data.write_len << 3) * 1000000000) /
+				env.accumulated_time_ns;
 		}
 
 		memcpy(p_buf->buf + p_buf->head_len, &env.resp_data, att_val_len);
@@ -114,6 +132,7 @@ static void on_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token, ui
 		break;
 	}
 	default: {
+		status = ATT_ERR_INVALID_HANDLE;
 		LOG_DBG("Read get undefined value %u", att_idx);
 		break;
 	}
@@ -126,6 +145,32 @@ static void on_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token, ui
 	}
 }
 
+static int indication_send(void const *const p_data, size_t const size)
+{
+	static co_buf_t *p_buf;
+	uint16_t status;
+
+	status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, size, GATT_BUFFER_TAIL_LEN);
+	if (status != CO_BUF_ERR_NO_ERROR) {
+		LOG_ERR("Failed to allocate buffer");
+		co_buf_release(p_buf);
+		return -ENOMEM;
+	}
+	if (k_sem_take(&app_sem, K_MSEC(1000)) != 0) {
+		LOG_ERR("Indication send error: failed to take semaphore");
+		co_buf_release(p_buf);
+		return -ENOEXEC;
+	}
+
+	memcpy(co_buf_data(p_buf), p_data, size);
+
+	status = gatt_srv_event_send(0, env.user_lid, 0, GATT_INDICATE,
+				     env.start_hdl + LBS_IDX_CHAR1_VAL, p_buf);
+	co_buf_release(p_buf);
+
+	return 0;
+}
+
 static uint16_t notification_send(void)
 {
 	uint16_t status = GAP_ERR_NO_ERROR;
@@ -133,24 +178,26 @@ static uint16_t notification_send(void)
 	uint16_t metainfo = LBS_METAINFO_CHAR0_NTF_SEND;
 	static co_buf_t *p_buf;
 
-	uint16_t data_len = env.mtu - 3;
+	size_t const data_len = env.mtu - 3;
 
 	status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, data_len, GATT_BUFFER_TAIL_LEN);
 	if (status != CO_BUF_ERR_NO_ERROR) {
+		LOG_ERR("alloc error. Unable to send package!");
+		app_transition_to(APP_STATE_ERROR);
 		return GAP_ERR_INSUFF_RESOURCES;
 	}
 
 	env.total_len += data_len;
 	env.cnt++;
 
+	if ((int32_t)(k_uptime_get_32() - env.start_time) >= env.test_duration_ms) {
+		metainfo = LBS_METAINFO_CHAR0_NTF_SEND_LAST;
+		app_transition_to(APP_STATE_PERIPHERAL_SEND_RESULTS);
+	}
+
 	if (k_sem_take(&app_sem, K_MSEC(1000)) != 0) {
 		co_buf_release(p_buf);
 		return -1;
-	}
-
-	if ((k_uptime_get_32() - env.start_time) >= CONFIG_BLE_THROUGHPUT_DURATION) {
-		metainfo = LBS_METAINFO_CHAR0_NTF_SEND_LAST;
-		app_transition_to(APP_STATE_PERIPHERAL_SEND_RESULTS);
 	}
 
 	status = gatt_srv_event_send(conidx, env.user_lid, metainfo, GATT_NOTIFY,
@@ -158,53 +205,68 @@ static uint16_t notification_send(void)
 
 	co_buf_release(p_buf);
 
-	if ((env.cnt % 512) == 0) {
-		printk("sent %d packets\n", env.cnt);
-	}
-
 	return status;
 }
 
-static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uint16_t hdl,
-			   uint16_t offset, co_buf_t *p_data)
+static void on_att_val_set(uint8_t const conidx, uint8_t const user_lid, uint16_t const token,
+			   uint16_t const hdl, uint16_t const offset, co_buf_t *const p_data)
 {
+	ARG_UNUSED(offset);
 
-	static uint32_t clock_cycles;
-	uint64_t delta;
+	static uint32_t clock_cycles_last;
+
+	uint32_t const cycle_now = k_cycle_get_32();
 	uint16_t status = GAP_ERR_NO_ERROR;
 
-	delta = k_cycle_get_32() - clock_cycles;
-	delta = k_cyc_to_ns_floor64(delta);
-	do {
-		uint8_t att_idx = hdl - env.start_hdl;
+	uint8_t const att_idx = hdl - env.start_hdl;
 
-		switch (att_idx) {
-		case LBS_IDX_CHAR1_VAL: {
-			if (p_data->data_len == 1) {
-				printk("Reset measurement data, ready for test\n");
-				env.resp_data.write_count = 0, env.resp_data.write_len = 0;
+	switch (att_idx) {
+	case LBS_IDX_CHAR1_VAL: {
+		size_t const data_len = co_buf_data_len(p_data);
+
+		/* Check if the control message was received */
+		if (data_len == sizeof(struct tp_client_ctrl)) {
+			struct tp_client_ctrl *p_ctrl =
+				(struct tp_client_ctrl *)co_buf_data(p_data);
+
+			if (p_ctrl->type == TP_CLIENT_CTRL_TYPE_RESET) {
+				printk(" >>> Reception starts\r\n");
+
+				env.test_duration_ms = p_ctrl->test_duration_ms;
+				env.send_interval_ms = p_ctrl->send_interval_ms;
+
+				env.accumulated_time_ns = 0;
+				env.resp_data.write_count = 0;
+				env.resp_data.write_len = 0;
 				env.resp_data.write_rate = 0;
-				clock_cycles = k_cycle_get_32();
+
+				clock_cycles_last = cycle_now;
 				app_transition_to(APP_STATE_PERIPHERAL_RECEIVING);
-			} else {
-				env.resp_data.write_len += p_data->data_len;
-				env.resp_data.write_count++;
-				env.resp_data.write_rate =
-					((uint64_t)env.resp_data.write_len << 3) * 1000000000 /
-					delta;
+				break;
 			}
-			break;
 		}
-		case LBS_IDX_CHAR1_NTF_CFG: {
-			app_transition_to(APP_STATE_PERIPHERAL_PREPARE_SENDING);
-			break;
+
+		env.resp_data.write_len += data_len;
+		env.resp_data.write_count++;
+
+		env.accumulated_time_ns += k_cyc_to_ns_floor64(cycle_now - clock_cycles_last);
+		clock_cycles_last = cycle_now;
+
+		if ((env.resp_data.write_count % 256) == 0) {
+			printk(".");
 		}
-		default:
-			LOG_ERR("Request not supported");
-			status = ATT_ERR_REQUEST_NOT_SUPPORTED;
-			break;
-		}
-	} while (0);
+
+		break;
+	}
+	case LBS_IDX_CHAR1_NTF_CFG: {
+		app_transition_to(APP_STATE_PERIPHERAL_PREPARE_SENDING);
+		break;
+	}
+	default:
+		LOG_ERR("Request not supported");
+		status = ATT_ERR_REQUEST_NOT_SUPPORTED;
+		break;
+	}
 
 	status = gatt_srv_att_val_set_cfm(conidx, user_lid, token, status);
 	if (status != GAP_ERR_NO_ERROR) {
@@ -212,19 +274,24 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 	}
 }
 
-static void on_event_sent(uint8_t conidx, uint8_t user_lid, uint16_t metainfo, uint16_t status)
+static void on_event_sent(uint8_t const conidx, uint8_t const user_lid, uint16_t const metainfo,
+			  uint16_t const status)
 {
-	uint32_t delta = (k_uptime_get_32() - env.start_time);
+	ARG_UNUSED(conidx);
+	ARG_UNUSED(user_lid);
+	ARG_UNUSED(status);
 
 	if (metainfo == LBS_METAINFO_CHAR0_NTF_SEND_LAST) {
-		uint32_t bps = (env.total_len << 3) / (delta / 1000);
+		uint32_t const delta_ms = k_uptime_get_32() - env.start_time;
 
 		env.resp_data.write_count = env.cnt;
 		env.resp_data.write_len = env.total_len;
-		env.resp_data.write_rate = bps;
+		env.resp_data.write_rate = (((uint64_t)env.total_len << 3) * 1000LLU) / delta_ms;
 
-		printk("Done. Sent %d bytes %u packets %d bps\n", env.total_len, env.cnt, bps);
-		printk("Sending results to central\n");
+		printk("\r\n <<< TX done\r\n");
+		LOG_DBG("Sending results to central");
+	} else if ((env.cnt % 256) == 0) {
+		printk(".");
 	}
 
 	k_sem_give(&app_sem);
@@ -340,10 +407,12 @@ static void start_le_adv(uint8_t const actv_idx)
 
 static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t reason)
 {
-	LOG_DBG("Advertising activity index %u stopped for reason %u", actv_idx, reason);
-	if (reason == GAP_ERR_NO_ERROR) {
-		printk("Connected!\n");
+	if (reason != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Advertising activity index %u stopped for reason %u", actv_idx, reason);
+		app_transition_to(APP_STATE_ERROR);
+		return;
 	}
+	printk("Client connected!\r\n");
 }
 
 static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
@@ -412,11 +481,11 @@ static uint16_t create_advertising(void)
 #endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-				.adv_intv_min = 160,
-				.adv_intv_max = 500,
-				.ch_map = ADV_ALL_CHNLS_EN,
-				.phy = GAPM_PHY_TYPE_LE_1M,
-			},
+			.adv_intv_min = 160,
+			.adv_intv_max = 500,
+			.ch_map = ADV_ALL_CHNLS_EN,
+			.phy = GAPM_PHY_TYPE_LE_1M,
+		},
 	};
 	uint16_t const err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_cfg, &le_adv_cbs);
 
@@ -471,7 +540,7 @@ int peripheral_app_exec(uint32_t const app_state)
 		break;
 	}
 	case APP_STATE_DISCONNECTED: {
-		printk("Disconnected! Restart advertising\n");
+		printk("Disconnected! Restart advertising\r\n");
 		start_le_adv(env.adv_actv_idx);
 		app_transition_to(APP_STATE_STANDBY);
 		break;
@@ -486,7 +555,7 @@ int peripheral_app_exec(uint32_t const app_state)
 		env.total_len = 0;
 		env.cnt = 0;
 
-		printk("Start sending data to central\n");
+		printk("\r\n <<< transmit starts\r\n");
 		k_sem_give(&app_sem);
 
 		app_transition_to(APP_STATE_PERIPHERAL_SENDING);
@@ -497,25 +566,14 @@ int peripheral_app_exec(uint32_t const app_state)
 		break;
 	}
 	case APP_STATE_PERIPHERAL_SEND_RESULTS: {
-		static co_buf_t *p_buf;
-		uint16_t status;
+		int const err = indication_send(&env.resp_data, sizeof(env.resp_data));
 
-		status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, sizeof(env.resp_data),
-				      GATT_BUFFER_TAIL_LEN);
-		if (status != CO_BUF_ERR_NO_ERROR) {
-			co_buf_release(p_buf);
-			return GAP_ERR_INSUFF_RESOURCES;
-		}
-		if (k_sem_take(&app_sem, K_MSEC(1000)) != 0) {
-			co_buf_release(p_buf);
-			return -1;
+		if (err != 0) {
+			LOG_ERR("Indication send error: failed to send data");
+			app_transition_to(APP_STATE_ERROR);
+			return err;
 		}
 
-		memcpy(p_buf->buf + p_buf->head_len, &env.resp_data, sizeof(env.resp_data));
-
-		status = gatt_srv_event_send(0, env.user_lid, 0, GATT_INDICATE,
-					     env.start_hdl + LBS_IDX_CHAR1_VAL, p_buf);
-		co_buf_release(p_buf);
 		app_transition_to(APP_STATE_STANDBY);
 		break;
 	}
@@ -526,7 +584,60 @@ int peripheral_app_exec(uint32_t const app_state)
 	return 0;
 }
 
-int peripheral_get_service_uuid_str(char *p_uuid, uint8_t max_len)
+int peripheral_get_service_uuid_str(char *const p_uuid, uint8_t const max_len)
 {
 	return convert_uuid_with_len_to_string(p_uuid, max_len, service_uuid, sizeof(service_uuid));
+}
+
+K_SEM_DEFINE(gapm_cmp_wait_sem, 0, 1);
+
+static void on_gapc_proc_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
+				uint16_t const status)
+{
+	ARG_UNUSED(conidx);
+	ARG_UNUSED(metainfo);
+
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapc_le_update_params failed. status=%u", status);
+		if (status == GAP_ERR_DISCONNECTED) {
+			app_transition_to(APP_STATE_DISCONNECTED);
+		} else {
+			app_transition_to(APP_STATE_ERROR);
+		}
+	} else {
+		LOG_INF("LE Parameter update success");
+	}
+	k_sem_give(&gapm_cmp_wait_sem);
+}
+
+int peripheral_connection_params_set(struct peripheral_conn_params const *p_params)
+{
+	if (!p_params) {
+		return -EINVAL;
+	}
+
+	const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
+		.ce_len_min = 5,
+		.ce_len_max = 10,
+		.hdr.interval_min = p_params->conn_interval_min,
+		.hdr.interval_max = p_params->conn_interval_max,
+		.hdr.latency = 0,
+		.hdr.sup_to = p_params->supervision_to};
+
+	uint16_t const ret =
+		gapc_le_update_params(0, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
+
+	if (ret != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapc_le_update_params failed. status=%u", ret);
+		return -EINVAL;
+	}
+
+	LOG_INF("Updating connection params... waiting ready for 10seconds");
+	if (k_sem_take(&gapm_cmp_wait_sem, K_SECONDS(10)) != 0) {
+		LOG_ERR("Param update not ready");
+		app_transition_to(APP_STATE_ERROR);
+		return -ENOEXEC;
+	}
+
+	return 0;
 }
