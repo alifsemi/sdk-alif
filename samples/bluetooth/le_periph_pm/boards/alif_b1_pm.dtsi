@@ -28,7 +28,8 @@
 
 	power-states {
 		off: off {
-			min-residency-us = < 100000 >;
+			/* 4ms is time reserved for os wakeup and sleep */
+			min-residency-us = < 4000 >;
 		};
 	};
 };
