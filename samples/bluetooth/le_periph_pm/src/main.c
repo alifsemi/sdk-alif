@@ -41,6 +41,25 @@
 #include "ke_mem.h"
 #include <power_mgr.h>
 
+/* Configuration for different BLE and application timing parameters
+ */
+#ifdef WAKEUP_STRESS_TEST
+int n __attribute__((noinit));
+#define ADV_INT_MIN_SLOTS                100
+#define ADV_INT_MAX_SLOTS                150
+#define CONN_INT_MIN_SLOTS               20
+#define CONN_INT_MAX_SLOTS               100
+#define RTC_WAKEUP_INTERVAL_MS           (20 + (n++ % 50))
+#define RTC_CONNECTED_WAKEUP_INTERVAL_MS 400
+#else
+#define ADV_INT_MIN_SLOTS                1000
+#define ADV_INT_MAX_SLOTS                1000
+#define CONN_INT_MIN_SLOTS               800
+#define CONN_INT_MAX_SLOTS               800
+#define RTC_WAKEUP_INTERVAL_MS           20000
+#define RTC_CONNECTED_WAKEUP_INTERVAL_MS 2150
+#endif
+
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index __attribute__((noinit));
 
@@ -144,12 +163,13 @@ struct service_env {
 	uint16_t ntf_cfg;
 };
 
-const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {.ce_len_min = 5,
-									 .ce_len_max = 10,
-									 .hdr.interval_min = 800,
-									 .hdr.interval_max = 800,
-									 .hdr.latency = 0,
-									 .hdr.sup_to = 800};
+const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
+	.ce_len_min = 5,
+	.ce_len_max = 10,
+	.hdr.interval_min = CONN_INT_MIN_SLOTS,
+	.hdr.interval_max = CONN_INT_MAX_SLOTS,
+	.hdr.latency = 0,
+	.hdr.sup_to = 800};
 
 /* Macros */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -513,8 +533,8 @@ static uint16_t create_advertising(void)
 #endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-				.adv_intv_min = 2500,
-				.adv_intv_max = 2500,
+				.adv_intv_min = ADV_INT_MIN_SLOTS,
+				.adv_intv_max = ADV_INT_MAX_SLOTS,
 				.ch_map = ADV_ALL_CHNLS_EN,
 				.phy = GAPM_PHY_TYPE_LE_1M,
 			},
@@ -803,7 +823,7 @@ int main(void)
 		printk("Init complete!\n");
 	}
 
-	printk("RTC wc=%u\n", wakeup_reason);
+	LOG_DBG("RTC wc=%u", wakeup_reason);
 
 	if (wakeup_reason && conn_status == BT_CONN_STATE_CONNECTED) {
 		/* RTC wakeups when connection is active */
@@ -822,7 +842,7 @@ int main(void)
 			if (conn_status != BT_CONN_STATE_CONNECTED || sleep_in_subscription) {
 				break;
 			}
-			k_sleep(K_MSEC(2150));
+			k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
 			conn_count++;
 			if (conn_count == 2) {
 				uint16_t ret = gapc_le_update_params(conn_idx, 0,
@@ -839,7 +859,7 @@ int main(void)
 	while (1) {
 
 		if (conn_status == BT_CONN_STATE_CONNECTED) {
-			k_sleep(K_MSEC(2150));
+			k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
 			conn_count++;
 			if (conn_count == 2) {
 				uint16_t ret = gapc_le_update_params(conn_idx, 0,
@@ -850,7 +870,7 @@ int main(void)
 			/* Update text at 2.15 second periods */
 			service_notification_send(UINT32_MAX);
 		} else {
-			k_sleep(K_SECONDS(30));
+			k_sleep(K_MSEC(RTC_WAKEUP_INTERVAL_MS));
 		}
 	}
 	return 0;
