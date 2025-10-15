@@ -417,15 +417,12 @@ static void i2s_disable_tx(const struct device *dev)
 	struct i2s_t *i2s = dev_cfg->paddr;
 
 	if (dev_cfg->dma_tx.enabled) {
-		i2s_tx_dma_disable(i2s);
-
 		int ret = dma_stop(dev_cfg->dma_dev, dev_cfg->dma_tx.ch);
 
 		if (ret < 0) {
 			LOG_ERR("I2S:%s tx dma_stop failed %d\n", dev->name, ret);
 		}
 	}
-
 	i2s_tx_channel_disable(i2s);
 	i2s_tx_block_disable(i2s);
 	i2s_tx_fifo_interrupt_disable(i2s);
@@ -447,8 +444,6 @@ static void i2s_disable_rx(const struct device *dev)
 	i2s_rx_overrun_interrupt_disable(i2s);
 
 	if (dev_cfg->dma_rx.enabled) {
-		i2s_rx_dma_disable(i2s);
-
 		int ret = dma_stop(dev_cfg->dma_dev, dev_cfg->dma_rx.ch);
 
 		if (ret < 0) {
