@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -16,7 +16,7 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #include <zephyr/devicetree.h>
 #include <string.h>
 #include <zephyr/drivers/spi.h>
-#include <soc.h>
+#include <soc_common.h>
 
 #define Mhz		1000000
 #define Khz		1000
@@ -254,8 +254,8 @@ static void slave_spi(void *p1, void *p2, void *p3)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
-#if (IS_ENABLED(CONFIG_SOC_SERIES_ENSEMBLE_E1C) ||  \
-	IS_ENABLED(CONFIG_SOC_SERIES_BALLETTO_B1)) /* E1C/B1 dma2 */
+#if (IS_ENABLED(CONFIG_SOC_SERIES_E1C) ||  \
+	IS_ENABLED(CONFIG_SOC_SERIES_B1)) /* E1C/B1 dma2 */
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas) /* E1C/B1 LPSPI0 dma2 */
 static void configure_lpspi0_for_dma2(void)
@@ -491,8 +491,8 @@ int main(void)
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
-#if (IS_ENABLED(CONFIG_SOC_SERIES_ENSEMBLE_E1C) || \
-	IS_ENABLED(CONFIG_SOC_SERIES_BALLETTO_B1)) /* E1C/B1 dma2 */
+#if (IS_ENABLED(CONFIG_SOC_SERIES_E1C) || \
+	IS_ENABLED(CONFIG_SOC_SERIES_B1)) /* E1C/B1 dma2 */
 
 #if DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas) /* E1C/B1 LPSPI0 dma2 */
 	configure_lpspi0_for_dma2();
@@ -542,9 +542,10 @@ int main(void)
 	/* as we are testing Loopback on the same board,
 	 * make sure slave is ready before master starts.
 	 */
+	k_msleep(100);
 	k_tid_t tidm = k_thread_create(&MasterT_data, MasterT_stack, STACKSIZE,
 			&master_spi, NULL, NULL, NULL,
-			MASTER_PRIORITY, 0, K_MSEC(100));
+			MASTER_PRIORITY, 0, K_NO_WAIT);
 	if (tidm == NULL) {
 		printk("Error creating Master Thread\n");
 	}

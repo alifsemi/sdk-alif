@@ -11,6 +11,8 @@ The Alif DevKit is a development board featuring an Alif multi-core SoC, offerin
 
 The **Ensemble DevKit (DK-E7)**  allows you to configure the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
 
+The **Ensemble DevKit (DK-E8)**  allows you to configure the E8 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E6, and E4 series devices using a single kit.
+
 The **Ensemble E1C DevKit (DK-E1C)** is designed to explore the Compact series of Ensemble devices.
 
 The **Balletto DevKit (DK-B1)** introduces the Balletto B1 series, a wireless MCU with integrated hardware acceleration for AI/ML workloads. It combines Bluetooth Low Energy 5.3 and 802.15.4 based Thread protocols, an Ethos-U55 microNPU for AI acceleration, and a Cortex-M55 MCU core.
@@ -52,12 +54,6 @@ The following toolchains have been tested for the SDK application:
    * - GCC (GNU Compiler Collection)
      - v12.2.0
      - `GCC Download`_
-   * - ArmCLang
-     - v6.18
-     - `ArmCLang Download`_
-   * - LLVM (Low-Level Virtual Machine)
-     - v17.0.1
-     - `LLVM Download`_
 
 Software Components
 -------------------
@@ -67,7 +63,7 @@ The following are the software components used in the latest release.
 +--------------+----------------------------------------+-------------+
 | **Component**| **Source**                             | **Version** |
 +==============+========================================+=============+
-| Zephyr OS    | `Zephyr OS GitHub`_                    | v3.6-branch |
+| Zephyr OS    | `Zephyr OS GitHub`_                    | v4.1-branch |
 +--------------+----------------------------------------+-------------+
 
 List of Supported Peripheral Devices and Features
@@ -82,14 +78,8 @@ List of Supported Peripheral Devices and Features
 - **HWSEM (Hardware Semaphore)**:
   HWSEM provides synchronization for shared resources (memory or peripherals) across independent subsystems, preventing race conditions, deadlocks, and abnormal behavior. Supported in the E7 series.
 
-- **CDC-200 (Customizable Display Controller-200)**:
-  The TES CDC-200 is a configurable VHDL IP for driving pixel displays, supporting multiple layers and composition (blending).
-
 - **GPIO (General-Purpose Input/Output)**:
   Uncommitted digital signal pins controllable by software, usable as inputs, outputs, or both.
-
-- **LPSPI (Low Power Serial Peripheral Interface)**:
-  Synopsys DW_apb_ssi, an AMBA 2.0-compliant component, operates in master mode only on RTSS-HE.
 
 - **SPI (Serial Peripheral Interface)**:
   Synopsys DWC_ssi is a full-duplex, configurable synchronous serial interface supporting 4 instances on RTSS-HE and RTSS-HP. SPI1 is configured as master; SPI0, SPI2, and SPI3 are slaves.
@@ -106,12 +96,6 @@ List of Supported Peripheral Devices and Features
 - **I2S (Inter-IC Sound)**:
   DW_apb_i2s supports four instances for digital audio processing; I2S3_b connects internally to a microphone.
 
-- **MIPI-DSI**:
-  The DesignWare MIPI DSI Host Controller interfaces with DSI-compliant displays via the MIPI D-PHY layer.
-
-- **MIPI-CSI2**:
-  Uses MIPI D-PHY to transmit captured images to the SoC in individual frames.
-
 - **RTC (Real-Time Counter)**:
   The Low-Power Real-Time Counter (LPRTC) in PD-0 operates in low-power states, supporting a 32-bit counter and interrupt generation.
 
@@ -121,7 +105,7 @@ List of Supported Peripheral Devices and Features
 - **PWM (Pulse Width Modulation)**:
   Alif UTIMER IP generates up to 24 simultaneous PWM signals across 12 channels.
 
-- **Quadrature Decoder (QDEC)**:
+- **QDEC (Quadrature Decoder)**:
   Alif UTIMER IP on Ensemble Devkit supports QDEC mode for precise rotary encoder position tracking.
 
 - **UTimer Counter**:
@@ -145,72 +129,15 @@ List of Supported Peripheral Devices and Features
 - **AES (Advanced Encryption Standard)**:
   Enables on-the-fly decryption of XIP data from external memory.
 
-- **ADC (Analog-to-Digital Converter)**:
-  Features ADC12 (12-bit, 8 channels) and ADC24 (24-bit, 4 differential channels) for analog-to-digital conversion.
-
 - **DAC 12 (Digital to Analog Converter)**:
   Features a DAC12 module that converts 12-bit digital values to analog voltages, with a 0 V to 1.8 V output range in Low-Power mode.
 
-- **LPTimer (Low-Power Timer)**:
-  A 32-bit timer in the M55 core for precise low-power timing.
-
-- **Parallel Camera**:
-  Supports frame capture via LPCAM/CAM with sensors like MT9M114.
-
-- **AiPM (Advanced Intelligent Power Management)**:
-  Optimizes power modes (STOP, OFF) with autonomous transitions and wake-up sources.
-
-- **Ethos U55**:
-  Pairs with Cortex-M55 for AI/ML acceleration using Arm v8.1 and Helium MVE.
-
-- **MCU-BOOT**:
-  A secure bootloader for firmware upgrades, leveraging Zephyr’s HAL.
-
-- **BLE (Bluetooth Low Energy)**:
-  Supported in Balletto B1 with a host stack in ROM.
-
-- **LC3 (Low Complexity Communication Codec)**:
-  In Balletto B1 ROM for BLE isochronous audio.
-
-- **CANFD (Controller Area Network Flexible Data-Rate)**:
-  Supports ECU communication with error detection and higher data rates.
-
-- **Touch Screen**:
-  GT911 touch screen supports 5-point touch via I2C for 7"-8" displays.
-
-- **I3C (Improved Inter-Integrated Circuit)**:
-  A next-gen interface with dynamic addressing and multi-master support.
-
-- **SDMMC (Secure Digital Multimedia Card)**:
-  Alif SDMMC driver supports eMMC/SD interfaces.
-
-Improvements and Fixes
-----------------------
-
-1. **Linker Workarounds for LLVM/Clang**:
-
-   Added a new linker module that addresses several issues when building with LLVM/Clang:
-
-   - Fixes linker errors caused by exception tables when code spans memory regions far apart in the address space (e.g., MRAM and TCM)
-   - Provides options to discard unwanted exception tables
-   - Eliminates symbol table placement warnings from LLVM's linker
+- **MRAM**:
+  Supports MRAM Read and Write.
 
 Known Issues
 ------------
 
-1. The Zephyr CDC200 driver supports only ARGB8888, RGB888, and RGB565 formats (subset of CDC200 IP capabilities).
-2. Demo application restricts Layer 2 to ARGB8888; Layer 1 formats are configurable.
-3. Building from DTCM fails with open-source Clang (LLVM).
-4. Ethos-U application untested with ArmClang and Clang.
-5. Ethos-U lacks MRAM/ITCM support; runs from SRAM0 (0x0200 0000).
-6. I2S applications on RTSS-HE/HP run from SRAM0/DTCM in non-XIP mode.
-7. I2S compilation fails with Clang.
-8. Camera:
-   - Non-standard video buffer allocations to SRAM1.
-   - RGB format support pending.
-   - CMOS/CSI configured for RAW10, but Camera controller uses RAW8; RAW8 rework needed.
-   - Untested with LLVM.
-9. No LPCMP sample application.
 
 External References
 -------------------

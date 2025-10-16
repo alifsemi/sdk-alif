@@ -70,7 +70,7 @@ manifest:
     - name: mcuboot_alif
       repo-path: mcuboot_alif
       path: bootloader/mcuboot
-      revision: main
+      revision: 346f7374ff4467e40b5594658f8ac67a5e9813c9
 
     - name: cmsis_alif
       revision: 85f6b92af0f6ac72594d391f895c45cc30847e41

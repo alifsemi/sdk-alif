@@ -3,4 +3,4 @@ sample:
 tests:
   sample.drivers.lpi2c:
     tags: drivers lpi2c
-    depends_on: lpi2c
+    depends_on: lpi2c0
