@@ -27,6 +27,9 @@
 #include "ke_mem.h"
 #include "address_verification.h"
 #include <zephyr/drivers/gpio.h>
+#if defined(CONFIG_PM)
+#include <power_mgr.h>
+#endif
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED2_NODE DT_ALIAS(led2)
@@ -64,19 +67,20 @@ static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {
 enum service_att_list {
 	LBS_IDX_SERVICE = 0,
 	/* First characteristic is readable + supports notifications */
-	LBS_IDX_CHAR0_CHAR,
-	LBS_IDX_CHAR0_VAL,
-	LBS_IDX_CHAR0_NTF_CFG,
+	LBS_IDX_BUTTON_CHAR,
+	LBS_IDX_BUTTON_VAL,
+	LBS_IDX_BUTTON_NTF_CFG,
 	/* Second characteristic is writable */
-	LBS_IDX_CHAR1_CHAR,
-	LBS_IDX_CHAR1_VAL,
+	LBS_IDX_LED_CHAR,
+	LBS_IDX_LED_VAL,
 	/* Number of items*/
 	LBS_IDX_NB,
 };
 
-static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
-static uint8_t adv_actv_idx;
-static struct service_env env;
+static uint8_t conn_status __attribute__((noinit));
+static uint8_t conn_idx __attribute__((noinit));
+static uint8_t adv_actv_idx __attribute__((noinit));
+static struct service_env env __attribute__((noinit));
 static bool led_state;
 static uint8_t led_cnt;
 
@@ -92,13 +96,13 @@ static const uint8_t lbs_service_uuid[] = LBS_UUID_128_SVC;
 static const gatt_att_desc_t lbs_att_db[LBS_IDX_NB] = {
 	[LBS_IDX_SERVICE] = {ATT_128_PRIMARY_SERVICE, ATT_UUID(16) | PROP(RD), 0},
 
-	[LBS_IDX_CHAR0_CHAR] = {ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0},
-	[LBS_IDX_CHAR0_VAL] = {LBS_UUID_128_CHAR0, ATT_UUID(128) | PROP(RD) | PROP(N),
+	[LBS_IDX_BUTTON_CHAR] = {ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0},
+	[LBS_IDX_BUTTON_VAL] = {LBS_UUID_128_CHAR0, ATT_UUID(128) | PROP(RD) | PROP(N),
 			       OPT(NO_OFFSET)},
-	[LBS_IDX_CHAR0_NTF_CFG] = {ATT_128_CLIENT_CHAR_CFG, ATT_UUID(16) | PROP(RD) | PROP(WR), 0},
+	[LBS_IDX_BUTTON_NTF_CFG] = {ATT_128_CLIENT_CHAR_CFG, ATT_UUID(16) | PROP(RD) | PROP(WR), 0},
 
-	[LBS_IDX_CHAR1_CHAR] = {ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0},
-	[LBS_IDX_CHAR1_VAL] = {LBS_UUID_128_CHAR1, ATT_UUID(128) | PROP(WR),
+	[LBS_IDX_LED_CHAR] = {ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0},
+	[LBS_IDX_LED_VAL] = {LBS_UUID_128_CHAR1, ATT_UUID(128) | PROP(WR),
 			       OPT(NO_OFFSET) | sizeof(uint16_t)},
 };
 
@@ -127,8 +131,8 @@ static gapm_config_t gapm_cfg = {
 struct service_env {
 	uint16_t start_hdl;
 	uint8_t user_lid;
-	uint8_t char0_val;
-	uint8_t char1_val;
+	uint8_t button_state_val;
+	uint8_t led0_val;
 	bool ntf_ongoing;
 	uint16_t ntf_cfg;
 };
@@ -177,6 +181,7 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 	led_cnt = 0;
 	gpio_pin_set_dt(&led2, led_state);
 	conn_status = BT_CONN_STATE_CONNECTED;
+	conn_idx = conidx;
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -199,8 +204,17 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 
 	led_state = false;
 	led_cnt = 0;
-	gpio_pin_set_dt(&led0, 0);
+	if (env.led0_val) {
+#if defined(CONFIG_PM)
+		/* Update back to Stop mode */
+		power_mgr_set_offprofile(PM_STATE_MODE_STOP);
+#endif
+		gpio_pin_set_dt(&led0, 0);
+		env.led0_val = 0;
+	}
+
 	conn_status = BT_CONN_STATE_DISCONNECTED;
+	conn_idx = 0;
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -471,13 +485,13 @@ static void on_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token, ui
 		uint8_t att_idx = hdl - env.start_hdl;
 
 		switch (att_idx) {
-		case LBS_IDX_CHAR0_VAL:
-			att_val_len = sizeof(env.char0_val);
-			att_val = &env.char0_val;
+		case LBS_IDX_BUTTON_VAL:
+			att_val_len = sizeof(env.button_state_val);
+			att_val = &env.button_state_val;
 			LOG_DBG("read button state");
 			break;
 
-		case LBS_IDX_CHAR0_NTF_CFG:
+		case LBS_IDX_BUTTON_NTF_CFG:
 			att_val_len = sizeof(env.ntf_cfg);
 			att_val = &env.ntf_cfg;
 			break;
@@ -523,23 +537,34 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 		uint8_t att_idx = hdl - env.start_hdl;
 
 		switch (att_idx) {
-		case LBS_IDX_CHAR1_VAL: {
-			if (sizeof(env.char1_val) != co_buf_data_len(p_data)) {
+		case LBS_IDX_LED_VAL: {
+			if (sizeof(env.led0_val) != co_buf_data_len(p_data)) {
 				LOG_DBG("Incorrect buffer size");
 				status = ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN;
 			} else {
-				memcpy(&env.char1_val, co_buf_data(p_data), sizeof(env.char1_val));
-				LOG_DBG("TOGGLE LED, state %d", env.char1_val);
-				if (env.char1_val) {
-					gpio_pin_set_dt(&led0, 1);
-				} else {
-					gpio_pin_set_dt(&led0, 0);
+				uint8_t led0_val;
+
+				led0_val = env.led0_val;
+				memcpy(&env.led0_val, co_buf_data(p_data), sizeof(env.led0_val));
+				if (led0_val != env.led0_val) {
+					LOG_DBG("TOGGLE LED, state %d", env.led0_val);
+					if (env.led0_val) {
+						gpio_pin_set_dt(&led0, 1);
+					} else {
+						gpio_pin_set_dt(&led0, 0);
+
+					}
+#if defined(CONFIG_PM)
+					/* Update off profile based on led state */
+					power_mgr_set_offprofile(env.led0_val ? PM_STATE_MODE_IDLE
+									      : PM_STATE_MODE_STOP);
+#endif
 				}
 			}
 			break;
 		}
 
-		case LBS_IDX_CHAR0_NTF_CFG: {
+		case LBS_IDX_BUTTON_NTF_CFG: {
 			if (sizeof(uint16_t) != co_buf_data_len(p_data)) {
 				LOG_DBG("Incorrect buffer size");
 				status = ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN;
@@ -612,7 +637,12 @@ static uint16_t service_notification_send(uint32_t conidx_mask, uint8_t val)
 	uint16_t status;
 	uint8_t conidx = 0;
 
-	env.char0_val = val;
+	if (env.button_state_val == val) {
+		/* Do not send if no update to state */
+		return GAP_ERR_NO_ERROR;
+	}
+
+	env.button_state_val = val;
 
 	/* Cannot send another notification unless previous one is completed */
 	if (env.ntf_ongoing) {
@@ -625,16 +655,16 @@ static uint16_t service_notification_send(uint32_t conidx_mask, uint8_t val)
 	}
 
 	/* Get a buffer to put the notification data into */
-	status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, sizeof(env.char0_val),
+	status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, sizeof(env.button_state_val),
 			      GATT_BUFFER_TAIL_LEN);
 	if (status != CO_BUF_ERR_NO_ERROR) {
 		return GAP_ERR_INSUFF_RESOURCES;
 	}
 
-	memcpy(co_buf_data(p_buf), &env.char0_val, sizeof(env.char0_val));
+	memcpy(co_buf_data(p_buf), &env.button_state_val, sizeof(env.button_state_val));
 
 	status = gatt_srv_event_send(conidx, env.user_lid, LBS_METAINFO_CHAR0_NTF_SEND, GATT_NOTIFY,
-				     env.start_hdl + LBS_IDX_CHAR0_VAL, p_buf);
+				     env.start_hdl + LBS_IDX_BUTTON_VAL, p_buf);
 
 	co_buf_release(p_buf);
 
@@ -647,27 +677,46 @@ static uint16_t service_notification_send(uint32_t conidx_mask, uint8_t val)
 
 int main(void)
 {
+	uint16_t ble_status;
 	uint16_t err;
 	int res;
 
-	/* Start up bluetooth host stack */
-	alif_ble_enable(NULL);
+#if defined(CONFIG_PM)
+	if (power_mgr_cold_boot()) {
 
-	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
-		LOG_ERR("Address verification failed");
-		return -EADV;
+		res = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
+
+		if (res) {
+			LOG_DBG("off profile set ERROR: %d", res);
+			return res;
+		}
 	}
+#endif
 
-	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
-	if (err) {
-		LOG_ERR("gapm_configure error %u", err);
-		return -1;
+	/* Start up bluetooth host stack. */
+	ble_status = alif_ble_enable(NULL);
+
+	if (ble_status == 0) {
+		conn_status = BT_CONN_STATE_DISCONNECTED;
+		conn_idx = 0;
+		memset(&env, 0, sizeof(struct service_env));
+
+		if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+			LOG_ERR("Address verification failed");
+			return -EADV;
+		}
+
+		err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
+		if (err) {
+			LOG_ERR("gapm_configure error %u", err);
+			return -1;
+		}
+
+		LOG_DBG("Waiting for init...\n");
+		k_sem_take(&init_sem, K_FOREVER);
+
+		LOG_DBG("Init complete!\n");
 	}
-
-	LOG_DBG("Waiting for init...\n");
-	k_sem_take(&init_sem, K_FOREVER);
-
-	LOG_DBG("Init complete!\n");
 
 	/* Configure LED 0 */
 	if (!gpio_is_ready_dt(&led0)) {
@@ -681,8 +730,8 @@ int main(void)
 		return 0;
 	}
 
-	/* LED initial state */
-	gpio_pin_set_dt(&led0, 0);
+	/* LED state */
+	gpio_pin_set_dt(&led0, env.led0_val);
 
 	/* Configure LED 2 */
 	if (!gpio_is_ready_dt(&led2)) {
@@ -714,8 +763,28 @@ int main(void)
 	}
 
 	while (1) {
-		k_sleep(K_MSEC(100));
+#if defined(CONFIG_PM)
 
+		if (conn_status != BT_CONN_STATE_CONNECTED) {
+			/* Blinky Advertisement status */
+			gpio_pin_set_dt(&led2, 1);
+			k_sleep(K_USEC(100));
+			gpio_pin_set_dt(&led2, 0);
+		} else if ((conn_status == BT_CONN_STATE_CONNECTED) &&
+			   (env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
+			err = service_notification_send(UINT32_MAX, !gpio_pin_get_dt(&button));
+			if (err) {
+				LOG_ERR("Error %u sending measurement", err);
+			}
+		}
+
+		if (IS_ENABLED(CONFIG_SLEEP_ENABLED)) {
+			power_mgr_set_subsys_off_period(100);
+		} else {
+			k_sleep(K_MSEC(100));
+		}
+#else
+		k_sleep(K_MSEC(100));
 		if (conn_status != BT_CONN_STATE_CONNECTED) {
 			led_cnt++;
 			if (led_cnt >= 10) {
@@ -730,6 +799,7 @@ int main(void)
 				LOG_ERR("Error %u sending measurement", err);
 			}
 		}
+#endif
 	}
 	return 0;
 }
