@@ -198,6 +198,7 @@ void power_mgr_ready_for_sleep(void)
 
 void power_mgr_set_subsys_off_period(uint32_t period_ms)
 {
+	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	k_sleep(K_MSEC(period_ms));
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 }
