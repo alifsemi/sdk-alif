@@ -6,7 +6,7 @@
  * License Agreement with this file. If not, please write to:
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
-
+#include "alif_b1_pm.dtsi"
 
 
 &{/} {
