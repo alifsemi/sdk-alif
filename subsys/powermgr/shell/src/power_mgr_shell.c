@@ -41,7 +41,6 @@ static int pm_application_init(void)
 				return 0;
 			}
 			wakeup_counter--;
-			power_mgr_ready_for_sleep();
 			power_mgr_set_subsys_off_period(sleep_period);
 		}
 	}
@@ -70,7 +69,6 @@ static int cmd_subsys_off_configure(const struct shell *shell)
 		wakeup_counter = 0;
 		return ret;
 	}
-	power_mgr_ready_for_sleep();
 	power_mgr_set_subsys_off_period(sleep_period);
 
 	return ret;
