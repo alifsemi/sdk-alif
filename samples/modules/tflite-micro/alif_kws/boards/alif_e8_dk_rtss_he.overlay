@@ -1,0 +1,18 @@
+/*
+ * Copyright (c) 2025 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* 
+ * I2S_4(LPI2S) => Mic Input
+ */
+
+/ {
+	aliases {
+		i2s-mic = &i2s_rx;
+	};
+};
+
+i2s_rx: &i2s4 {
+	status = "okay";
+};
