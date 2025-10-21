@@ -33,6 +33,8 @@
 
 LOG_MODULE_REGISTER(bt_srv_hello, CONFIG_BT_HOST_LOG_LEVEL);
 
+#define BLE_MUTEX_TIMEOUT_MS 10000
+
 #define ATT_16_TO_128_ARRAY(uuid)                                                          \
 {                                                                                          \
 	(uuid) & 0xFF, (uuid >> 8) & 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0        \
@@ -148,6 +150,7 @@ static void on_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token, ui
 	} while (0);
 
 	/* Send the GATT response */
+	/* No mutex needed - callback runs in BLE thread which already holds the mutex */
 	gatt_srv_att_read_get_cfm(conidx, user_lid, token, status, att_val_len, p_buf);
 	if (p_buf != NULL) {
 		co_buf_release(p_buf);
@@ -220,6 +223,7 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 	} while (0);
 
 	/* Send the GATT write confirmation */
+	/* No mutex needed - callback runs in BLE thread which already holds the mutex */
 	gatt_srv_att_val_set_cfm(conidx, user_lid, token, status);
 }
 
@@ -261,20 +265,28 @@ int bt_srv_hello_init(void)
 	srv_env.hello_arr_index = 0;
 
 	/* Register a GATT user */
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	status = gatt_user_srv_register(L2CAP_LE_MTU_MIN, 0, &gatt_cbs, &srv_env.user_lid);
+	alif_ble_mutex_unlock();
 	if (status != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Cannot register GATT user service, error code: 0x%02x", status);
 		return -EIO;
 	}
 
 	/* Add the GATT service */
+	lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	status = gatt_db_svc_add(srv_env.user_lid, SVC_UUID(128), hello_service_uuid, HELLO_IDX_NB,
 				 NULL, hello_att_db, HELLO_IDX_NB, &srv_env.start_hdl);
 	if (status != GAP_ERR_NO_ERROR) {
 		gatt_user_unregister(srv_env.user_lid);
+		alif_ble_mutex_unlock();
 		LOG_ERR("Cannot add GATT service to database, error code: 0x%02x", status);
 		return -EIO;
 	}
+	alif_ble_mutex_unlock();
 
 	LOG_DBG("Hello service initialized");
 
@@ -304,8 +316,12 @@ int bt_srv_hello_notify(uint8_t conn_idx, const void *data, uint16_t len)
 
 	memcpy(co_buf_data(p_buf), data, len);
 
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	status = gatt_srv_event_send(conn_idx, srv_env.user_lid, HELLO_METAINFO_CHAR0_NTF_SEND,
 				     GATT_NOTIFY, srv_env.start_hdl + HELLO_IDX_CHAR0_VAL, p_buf);
+	alif_ble_mutex_unlock();
 	co_buf_release(p_buf);
 
 	if (status != GAP_ERR_NO_ERROR) {

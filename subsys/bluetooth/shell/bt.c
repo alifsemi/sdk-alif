@@ -39,6 +39,8 @@
 #include <alif/bluetooth/bt_srv_hello.h>
 
 LOG_MODULE_REGISTER(bt_shell, CONFIG_BT_SHELL_LOG_LEVEL);
+
+#define BLE_MUTEX_TIMEOUT_MS       10000
 #define BT_CONN_STATE_CONNECTED	   0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
 
@@ -189,6 +191,7 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
 {
 	LOG_INF("Connection request on index %u", conidx);
+	/* No mutex needed - callback runs in BLE thread which already holds the mutex */
 	gapc_le_connection_cfm(conidx, 0, NULL);
 
 	LOG_INF("Connection parameters: interval %u, latency %u, supervision timeout %u",
@@ -219,6 +222,7 @@ static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint1
 	const size_t device_name_len = strlen(bt_device_name);
 	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
 
+	/* No mutex needed - callback runs in BLE thread which already holds the mutex */
 	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
 			     (const uint8_t *)bt_device_name);
 }
@@ -226,6 +230,7 @@ static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint1
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 {
 	/* Send 'unknown' appearance */
+	/* No mutex needed - callback runs in BLE thread which already holds the mutex */
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
@@ -438,7 +443,13 @@ static int cmd_init(const struct shell *sh, size_t argc, char *argv[])
 	/* Enable only fails if it was already enabled */
 	if (sync) {
 		err = alif_ble_enable(NULL);
+
+		int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+		__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 		on_ble_enabled();
+		alif_ble_mutex_unlock();
+
 		k_sem_take(&bt_init_sem, K_FOREVER);
 	} else {
 		err = alif_ble_enable(on_ble_enabled);
@@ -527,7 +538,11 @@ static int cmd_adv_create(const struct shell *sh, size_t argc, char *argv[])
 		return -ECANCELED;
 	}
 
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &param, &le_adv_cbs);
+	alif_ble_mutex_unlock();
 
 	if (!err) {
 		memcpy(&stored_adv.param, &param, sizeof(gapm_le_adv_create_param_t));
@@ -640,7 +655,11 @@ static int cmd_adv_param(const struct shell *sh, size_t argc, char *argv[])
 	k_sem_reset(&bt_process_sem);
 
 	/* Recreate advertising with updated parameters */
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_delete_activity(stored_adv.actv_idx);
+	alif_ble_mutex_unlock();
 	if (err) {
 		shell_error(sh, "Cannot delete existing advertising set, error code: 0x%02x", err);
 		return err;
@@ -654,7 +673,11 @@ static int cmd_adv_param(const struct shell *sh, size_t argc, char *argv[])
 
 	k_sem_reset(&bt_process_sem);
 
+	lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &param, &le_adv_cbs);
+	alif_ble_mutex_unlock();
 	if (err) {
 		shell_error(sh, "Cannot modify advertising set, error code: 0x%02x", err);
 		return err;
@@ -717,7 +740,11 @@ static int cmd_adv_start(const struct shell *sh, size_t argc, char *argv[])
 
 	k_sem_reset(&bt_process_sem);
 
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_le_start_adv(stored_adv.actv_idx, &adv_params);
+	alif_ble_mutex_unlock();
 	if (err) {
 		shell_error(sh, "Cannot start LE advertising, error code: 0x%02x", err);
 	} else {
@@ -758,7 +785,11 @@ static int cmd_adv_stop(const struct shell *sh, size_t argc, char *argv[])
 
 	k_sem_reset(&bt_process_sem);
 
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_stop_activity(stored_adv.actv_idx);
+	alif_ble_mutex_unlock();
 
 	if (err) {
 		shell_error(sh, "Cannot stop advertising, error code: 0x%02x", err);
@@ -791,7 +822,11 @@ static int cmd_adv_delete(const struct shell *sh, size_t argc, char *argv[])
 
 	k_sem_reset(&bt_process_sem);
 
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_delete_activity(stored_adv.actv_idx);
+	alif_ble_mutex_unlock();
 	if (err) {
 		shell_error(sh, "Cannot delete advertising, error code: 0x%02x", err);
 		return err;

@@ -25,6 +25,7 @@
 LOG_MODULE_REGISTER(bt_adv_data, CONFIG_BT_HOST_LOG_LEVEL);
 
 #define GAPM_ADV_AD_TYPE_FLAGS_LENGTH 3
+#define BLE_MUTEX_TIMEOUT_MS 10000
 
 /**
  * @brief Advertising data buffer
@@ -238,7 +239,11 @@ static int update_adv_data(uint8_t actv_idx)
 	LOG_HEXDUMP_DBG(co_buf_data(adv_buf_final), data_len, "ADV DATA");
 
 	/* Set advertising data using the copy */
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	err = gapm_le_set_adv_data(actv_idx, adv_buf_final);
+	alif_ble_mutex_unlock();
 
 	/* If there was an error setting the advertising data */
 	if (err) {
@@ -386,7 +391,12 @@ int bt_adv_data_init(void)
 	/* Query the controller for maximum advertising data length
 	 * Buffer will be allocated in the callback
 	 */
+	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
+
+	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
 	uint16_t gap_err = gapm_le_get_max_adv_data_len(0, on_max_adv_data_len_cb);
+
+	alif_ble_mutex_unlock();
 
 	if (gap_err != GAP_ERR_NO_ERROR) {
 		LOG_WRN("Failed to query maximum advertising data length, error: 0x%04x", gap_err);
