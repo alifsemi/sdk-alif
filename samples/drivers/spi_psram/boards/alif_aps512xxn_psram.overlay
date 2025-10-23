@@ -1,0 +1,69 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * For OSPI0 Test with APS512XXN RAM
+ */
+
+/ {
+	aliases {
+		spi-psram = &aps512xxn;
+	};
+};
+
+&pinctrl {
+	pinctrl_ospi0:pinctrl_ospi0 {
+		group0 {
+			pinmux = < PIN_P2_0__OSPI0_D0_B >,
+				 < PIN_P2_1__OSPI0_D1_B >,
+				 < PIN_P2_2__OSPI0_D2_B >,
+				 < PIN_P2_3__OSPI0_D3_B >,
+				 < PIN_P2_4__OSPI0_D4_B >,
+				 < PIN_P2_5__OSPI0_D5_B >,
+				 < PIN_P2_6__OSPI0_D6_B >,
+				 < PIN_P2_7__OSPI0_D7_B >;
+			read_enable = <0x1>;
+			drive_strength = <4>;
+			schmitt_enable = <0x1>;
+		};
+		group1 {
+			pinmux = < PIN_P3_0__OSPI0_SCLK_B >,
+				 < PIN_P3_2__OSPI0_SS0_B >;
+			read_enable = <0x1>;
+			drive_strength = <4>;
+		};
+		group2 {
+			pinmux = < PIN_P1_6__OSPI0_RXDS_B >;
+			read_enable = <0x1>;
+			drive_strength = <4>;
+			slew_rate = <0x1>;
+			schmitt_enable = <0x1>;
+		};
+	};
+};
+
+
+&ospi0 {
+	pinctrl-0 = <&pinctrl_ospi0>;
+	bus-speed = <100000000>;
+	clock-frequency = <400000000>;
+	cs-pin = <0>;
+	rx-ds-delay = <17>;
+	xip-wait-cycles = <255>;
+	tx-fifo-threshold = <0>;
+	ddr-drive-edge = <1>;
+	xip-base-address = <0xA0000000 0x10000000>;
+	status = "okay";
+
+	aps512xxn: aps512xxn {
+		compatible = "alif,apmemory-aps512xxn";
+		size = <DT_SIZE_M(64)>;
+		status = "okay";
+	};
+};

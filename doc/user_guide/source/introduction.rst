@@ -35,6 +35,7 @@ Zephyr uses a meta-tool called `west` to execute Kconfig, CMake, and build syste
 Ensure you have one of the following development kits to proceed with your project setup:
 
 - Ensemble Devkit (DK-E7)
+- Ensemble Devkit (DK-E8)
 - Ensemble E1C Devkit (DK-E1C)
 - Balletto Devkit (DK-B1)
 
@@ -42,12 +43,12 @@ Ensure you have one of the following development kits to proceed with your proje
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 1. **For Host PC:**
-    - Ubuntu 20.04 64-bit or later.
+    - Ubuntu 22.04.5 LTS or above.
 
     *Note: While different flavors of Linux distributions may also work, they have not been thoroughly tested.*
 
 2. **Alif Security Toolkit:**
-    - Version 1.98.3 or later.
+    - Version 1.108 or above.
 
     * Available at `Alif Toolkit Download`_
 
@@ -67,6 +68,13 @@ The Alif DevKit is a development board featuring an Alif multi-core SoC, offerin
         - Two Ethos-U55 neural network processor cores
         - Two Cortex-A32 MPU cores
     - Allows configuration of the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
+
+- **DK-E8:**
+    - Features:
+        - Two Cortex-M55 CPU cores
+        - Two Ethos-U55 + One Ethos-U85 neural network processor cores
+        - Two Cortex-A32 MPU cores
+        - Allows configuration of the E8 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E6, and E4 series devices using a single kit.
 
 - **DK-E1C:**
     - Designed to explore the Compact series of Ensemble devices.
@@ -97,18 +105,15 @@ The following toolchains have been tested for the SDK application:
    * - GCC (GNU Compiler Collection)
      - v12.2.0
      - `GCC Download`_
-   * - ArmCLang
-     - v6.18
-     - `ArmCLang Download`_
-   * - LLVM (Low-Level Virtual Machine)
-     - v17.0.1
-     - `LLVM Download`_
+
 
 **Target Reference Board**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 - Alif Devkit Ensemble E3
+- Alif Devkit Ensemble E4
 - Alif Devkit Ensemble E7
+- Alif Devkit Ensemble E8
 - Alif Devkit Ensemble E1C
 - Alif Devkit Balletto B1
 
