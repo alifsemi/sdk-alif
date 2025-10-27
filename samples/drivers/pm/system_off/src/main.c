@@ -8,27 +8,22 @@
  *
  */
 
+#include "aipm.h"
 #include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/init.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
+#if defined(CONFIG_POWEROFF)
 #include <zephyr/sys/poweroff.h>
+#endif
 #include <zephyr/drivers/counter.h>
-#include <cmsis_core.h>
-#include <soc.h>
 #include <se_service.h>
+#include <zephyr/sys/util.h>
 
-/**
- * Enable this if we need systop to be ON in the early boot.
- *
- * We normally use SE Services to enable the SYSTOP. In the warmboot, depending on the
- * power domain set in the OFF profile, SYSTOP might not be ON. The SE services will be invoked
- * (much later in the boot process) after the devices are configured. So the devices in the SYSTOP
- * region, may not be configured correctly.
- */
-#define EARLY_BOOT_SYSTOP_ON 1
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 
 /**
  * As per the application requirements, it can remove the memory blocks which are not in use.
@@ -55,101 +50,66 @@
 #error "Wakeup Device not enabled in the dts"
 #endif
 
-#define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
-
-#define NORMAL_SLEEP_IN_USEC (3 * 1000 * 1000)
-#define DEEP_SLEEP_IN_USEC (20 * 1000 * 1000)
-
-#define OFF_STATE_NODE_ID DT_PHANDLE_BY_IDX(DT_NODELABEL(cpu0), cpu_power_states, 0)
-BUILD_ASSERT((NORMAL_SLEEP_IN_USEC < DT_PROP_OR(OFF_STATE_NODE_ID, min_residency_us, 0)),
-	"Normal Sleep should be less than min-residency-us");
-
-
-#define SOC_STANDBY_MODE_PD PD_SSE700_AON_MASK
-#define SOC_STOP_MODE_PD PD_VBAT_AON_MASK
-
-/**
- * By default STOP mode is requested.
- * For Standby, set the SOC_REQUESTED_POWER_MODE to SOC_STANDBY_MODE_PD
- */
-#define SOC_REQUESTED_POWER_MODE SOC_STOP_MODE_PD
-
-static uint32_t wakeup_reason;
-
-static inline uint32_t get_wakeup_irq_status(void)
-{
-	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
-}
-
-#ifdef EARLY_BOOT_SYSTOP_ON
-/**
- * This function will be invoked in the PRE_KERNEL_1 phase of the init routine.
- * This is required to do only when we need the SYSTOP to be ON.
- *
- * This will make sure SYSTOP be ON before initializing the peripherals.
- */
-static uint32_t host_bsys_pwr_req;
-#define HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON 0x20
-
-static inline void app_force_host_systop_on(void)
-{
-	host_bsys_pwr_req = sys_read32(HOST_BSYS_PWR_REQ);
-	sys_write32(host_bsys_pwr_req | HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON, HOST_BSYS_PWR_REQ);
-}
-
-static inline void app_restore_host_systop(void)
-{
-	sys_write32(host_bsys_pwr_req, HOST_BSYS_PWR_REQ);
-}
-
-static int app_pre_kernel1_init(void)
-{
-	app_force_host_systop_on();
-
-	return 0;
-}
-SYS_INIT(app_pre_kernel1_init, PRE_KERNEL_1, 39); /* (CONFIG_KERNEL_INIT_PRIORITY_DEFAULT - 1) */
-#endif
-
-/**
- * Use the HFOSC clock for the UART console
- */
-#if DT_SAME_NODE(DT_NODELABEL(uart4), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 4
-#elif DT_SAME_NODE(DT_NODELABEL(uart2), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 2
-#else
-#error "Specify the uart console number"
-#endif
-
-#define UART_CTRL_CLK_SEL_POS 8
-
-static int app_pre_console_init(void)
-{
-	/* Enable HFOSC in CGU */
-	sys_set_bits(CGU_CLK_ENA, BIT(23));
-
-	/* Enable HFOSC for the UART console */
-	sys_clear_bits(EXPSLV_UART_CTRL, BIT((CONSOLE_UART_NUM + UART_CTRL_CLK_SEL_POS)));
-
-	return 0;
-}
-SYS_INIT(app_pre_console_init, PRE_KERNEL_1, 50);
+/* Sleep duration for PM_STATE_RUNTIME_IDLE */
+#define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
+#define S2RAM_STANDBY_SLEEP_USEC (20 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
+#define S2RAM_STOP_SLEEP_USEC (22 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SOFT_OFF */
+#define SOFT_OFF_SLEEP_USEC (24 * 1000 * 1000)
+/* Wakeup duration for sys_poweroff (permanent power off) */
+#define POWEROFF_WAKEUP_USEC (30 * 1000 * 1000)
 
 /*
- * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
- * We can read the wakeup reason from reading the RESET STATUS register
- * and from the pending IRQ.
+ * MRAM base address - used to determine boot location
+ * TCM boot: VTOR = 0x0
+ * MRAM boot: VTOR >= 0x80000000
  */
-static int app_pre_kernel_init(void)
-{
-	wakeup_reason = get_wakeup_irq_status();
+#define MRAM_BASE_ADDRESS 0x80000000
 
-	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+/*
+ * Helper macro to check if booting from MRAM
+ */
+#define IS_BOOTING_FROM_MRAM() (SCB->VTOR >= MRAM_BASE_ADDRESS)
 
-	return 0;
-}
-SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
+/*
+ * PM_STATE_SUSPEND_TO_RAM (S2RAM) support:
+ * - HP core: NOT supported (no retention capability)
+ * - HE core + TCM boot: SUPPORTED (TCM retention keeps code and context)
+ */
+#if defined(CONFIG_RTSS_HE)
+#define S2RAM_SUPPORTED (!IS_BOOTING_FROM_MRAM())
+#else
+#define S2RAM_SUPPORTED 0
+#endif
+
+/*
+ * PM_STATE_SOFT_OFF support:
+ * - HP core: Always supported (no retention, must use SOFT_OFF)
+ * - HE core + MRAM boot: Supported (MRAM preserved, wakeup possible)
+ * - HE core + TCM boot: Skip (use S2RAM with retention instead)
+ */
+#if defined(CONFIG_RTSS_HP)
+#define SOFT_OFF_SUPPORTED 1
+#elif defined(CONFIG_RTSS_HE)
+#define SOFT_OFF_SUPPORTED IS_BOOTING_FROM_MRAM()
+#else
+#define SOFT_OFF_SUPPORTED 0
+#endif
+
+#define OFF_STATE_NODE_ID DT_PHANDLE_BY_IDX(DT_NODELABEL(cpu0), cpu_power_states, 0)
+
+BUILD_ASSERT((RUNTIME_IDLE_SLEEP_USEC < DT_PROP_OR(OFF_STATE_NODE_ID, min_residency_us, 0)),
+	"RUNTIME_IDLE sleep should be less than min-residency-us");
+
+#if defined(CONFIG_RTSS_HE)
+/* Additional validation for power state sleep durations */
+BUILD_ASSERT((S2RAM_STOP_SLEEP_USEC > S2RAM_STANDBY_SLEEP_USEC),
+	"STOP sleep duration should be greater than STANDBY sleep duration");
+BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
+	"SOFT_OFF sleep duration should be greater than STOP sleep duration");
+#endif
 
 /**
  * Set the RUN profile parameters for this application.
@@ -159,114 +119,256 @@ static int app_set_run_params(void)
 	run_profile_t runp;
 	int ret;
 
-	ret = se_service_sync();
-	if (ret) {
-		printk("SE: not responding to service calls %d\n", ret);
-		return 0;
-	}
-
-	ret = se_service_get_run_cfg(&runp);
-	if (ret) {
-		printk("SE: get_run_cfg failed = %d.\n", ret);
-		return 0;
-	}
-
 	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
 	runp.dcdc_voltage  = 825;
 	runp.dcdc_mode     = DCDC_MODE_PWM;
 	runp.aon_clk_src   = CLK_SRC_LFXO;
 	runp.run_clk_src   = CLK_SRC_PLL;
+	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	runp.ip_clock_gating = 0;
+	runp.phy_pwr_gating = 0;
 #if defined(CONFIG_RTSS_HP)
 	runp.cpu_clk_freq  = CLOCK_FREQUENCY_400MHZ;
 #else
 	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
 #endif
-	if (SCB->VTOR) {
-		runp.memory_blocks |= MRAM_MASK;
-	}
+
+	runp.memory_blocks = MRAM_MASK;
 
 	ret = se_service_set_run_cfg(&runp);
 	if (ret) {
-		printk("SE: set_run_cfg failed = %d.\n", ret);
-		return 0;
+		__ASSERT(false, "SE: set_run_cfg failed = %d", ret);
 	}
-#ifdef EARLY_BOOT_SYSTOP_ON
-	app_restore_host_systop();
-#endif
 
 	return 0;
 }
+/*
+ * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
+ *
+ * Priority 46 ensures this runs:
+ *   - AFTER SE Services (priority 45) - SE must be ready for set_run_cfg()
+ *   - BEFORE Power Domain (priority 47) - Power domain needs SYSTOP enabled
+ *   - BEFORE UART and peripherals (priority 50+) - Peripherals need SYSTOP ON
+ *
+ * On cold boot: SYSTOP is already ON by default, safe to call.
+ * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
+ */
+SYS_INIT(app_set_run_params, PRE_KERNEL_1, 46);
 
-static int app_set_off_params(void)
+static int app_set_off_params(enum pm_state state, uint8_t substate_id)
 {
 	int ret;
 	off_profile_t offp;
 
-	ret = se_service_get_off_cfg(&offp);
-	if (ret) {
-		printk("SE: get_off_cfg failed = %d.\n", ret);
-		printk("ERROR: Can't establish SE connection, app exiting..\n");
-		return ret;
-	}
-
-	offp.power_domains = SOC_REQUESTED_POWER_MODE;
+	offp.dcdc_voltage  = 825;
+	offp.dcdc_mode     = DCDC_MODE_OFF;
+	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
 	offp.aon_clk_src   = CLK_SRC_LFXO;
-	offp.stby_clk_src  = CLK_SRC_HFXO;
+	offp.stby_clk_src  = CLK_SRC_HFRC;
+	offp.vtor_address  = SCB->VTOR;
+	offp.ip_clock_gating = 0;
+	offp.phy_pwr_gating = 0;
+	offp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
 	offp.ewic_cfg      = SE_OFFP_EWIC_CFG;
 	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
-	offp.vtor_address  = SCB->VTOR;
 	offp.memory_blocks = MRAM_MASK;
+
 
 #if defined(CONFIG_RTSS_HE)
 	/*
-	 * Enable the HE TCM retention only if the VTOR is present.
-	 * This is just for this test application.
+	 * HE core retention configuration:
+	 * - TCM boot (VTOR = 0): Enable TCM retention (SERAM + APP_RET_MEM_BLOCKS)
+	 * - MRAM boot (VTOR >= 0x80000000): Only SERAM retention needed
 	 */
-	if (!SCB->VTOR) {
-		offp.memory_blocks = APP_RET_MEM_BLOCKS | SERAM_MEMORY_BLOCKS_IN_USE;
+	if (!IS_BOOTING_FROM_MRAM()) {
+		/* TCM boot: enable full retention including TCM memory blocks */
+		offp.memory_blocks |= APP_RET_MEM_BLOCKS | SERAM_MEMORY_BLOCKS_IN_USE;
 	} else {
+		/* MRAM boot */
 		offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
 	}
 #else
 	/*
-	 * Retention is not possible with HP-TCM
+	 * HP core: Retention is not possible with HP-TCM
 	 */
-	if (SCB->VTOR) {
-		printf("\r\nHP TCM Retention is not possible\n");
-		printk("ERROR: VTOR is set to TCM, app exiting..\n");
-		return ret;
+	if (!IS_BOOTING_FROM_MRAM()) {
+		__ASSERT(false, "HP TCM Retention is not possible - VTOR is set to TCM");
 	}
-
-	offp.memory_blocks = MRAM_MASK;
 #endif
 
-	printk("SE: VTOR = %x\n", offp.vtor_address);
-	printk("SE: MEMBLOCKS = %x\n", offp.memory_blocks);
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+		if (substate_id == 0) {
+			offp.power_domains = PD_SSE700_AON_MASK;
+		} else if (substate_id == 1) {
+			offp.power_domains = PD_VBAT_AON_MASK;
+
+		}
+		break;
+	case PM_STATE_SOFT_OFF:
+		offp.memory_blocks = MRAM_MASK | SERAM_MEMORY_BLOCKS_IN_USE;
+		offp.power_domains = PD_VBAT_AON_MASK;
+		break;
+	default:
+		break;
+	}
 
 	ret = se_service_set_off_cfg(&offp);
 	if (ret) {
-		printk("SE: set_off_cfg failed = %d.\n", ret);
-		printk("ERROR: Can't establish SE connection, app exiting..\n");
+		__ASSERT(false, "SE: set_off_cfg failed = %d", ret);
 		return ret;
 	}
 
 	return 0;
 }
 
-#if !defined(CONFIG_CORTEX_M_SYSTICK_IDLE_TIMER)
+/**
+ * PM Notifier callback for power state entry
+ */
+static void pm_notify_state_entry(enum pm_state state)
+{
+	const struct pm_state_info *next_state = pm_state_next_get(0);
+	uint8_t substate_id = next_state ? next_state->substate_id : 0;
+	int ret;
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+	case PM_STATE_SOFT_OFF:
+		ret = app_set_off_params(state, substate_id);
+		if (ret) {
+			__ASSERT(false, "app_set_off_params failed = %d", ret);
+		}
+		break;
+	default:
+		__ASSERT(false, "Entering unknown power state %d", state);
+		break;
+	}
+}
+
+/**
+ * PM Notifier callback called BEFORE devices are resumed
+ *
+ * This restores SE run configuration when resuming from S2RAM states.
+ * Note: For SOFT_OFF, the system resets completely and app_set_run_params()
+ * runs during normal PRE_KERNEL_1 initialization, so this callback is not needed.
+ */
+static void pm_notify_pre_device_resume(enum pm_state state)
+{
+	int ret;
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+		ret = app_set_run_params();
+		if (ret) {
+			__ASSERT(false, "app_set_run_params failed = %d", ret);
+		}
+		break;
+	case PM_STATE_SOFT_OFF:
+		/* No action needed - SOFT_OFF causes reset, not resume */
+		break;
+	default:
+		__ASSERT(false, "Pre-resume for unknown power state %d", state);
+		break;
+	}
+}
+
+/**
+ * PM Notifier structure
+ */
+static struct pm_notifier app_pm_notifier = {
+	.state_entry = pm_notify_state_entry,
+	.pre_device_resume = pm_notify_pre_device_resume,
+};
+
+/**
+ * Helper function to lock/unlock deeper power states
+ * @param lock true to lock deeper states (allow only RUNTIME_IDLE), false to unlock all
+ */
+static void app_pm_lock_deeper_states(bool lock)
+{
+	const char *state_desc;
+
+#if defined(CONFIG_RTSS_HP)
+	/* HP core: only SOFT_OFF (no S2RAM support) */
+	enum pm_state deep_states[] = {
+		PM_STATE_SOFT_OFF
+	};
+	state_desc = "SOFT_OFF";
+
+	for (int i = 0; i < ARRAY_SIZE(deep_states); i++) {
+		if (lock) {
+			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
+		} else {
+			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
+		}
+	}
+
+#elif defined(CONFIG_RTSS_HE)
+	/*
+	 * HE core: States depend on boot location
+	 * - TCM boot: S2RAM only (SOFT_OFF not needed with retention)
+	 * - MRAM boot: SOFT_OFF only
+	 */
+	enum pm_state deep_states[2];
+	int num_states = 0;
+
+	if (S2RAM_SUPPORTED) {
+		/* TCM boot: S2RAM works with retention */
+		deep_states[num_states++] = PM_STATE_SUSPEND_TO_RAM;
+		state_desc = "S2RAM";
+	}
+
+	if (SOFT_OFF_SUPPORTED) {
+		/* MRAM boot: SOFT_OFF is the only deep sleep option for now */
+		deep_states[num_states++] = PM_STATE_SOFT_OFF;
+		state_desc = "SOFT_OFF";
+	}
+
+	for (int i = 0; i < num_states; i++) {
+		if (lock) {
+			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
+		} else {
+			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
+		}
+	}
+
+#else
+	#error "Unknown core type"
+#endif
+
+	LOG_DBG("%s deeper power state(s) (%s)",
+	       lock ? "Locked" : "Unlocked", state_desc);
+}
+
+/*
+ * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
+ */
+static int app_pre_kernel_init(void)
+{
+	/* Lock deeper power states to allow only RUNTIME_IDLE */
+	app_pm_lock_deeper_states(true);
+
+	/* Register PM notifier callbacks */
+	pm_notifier_register(&app_pm_notifier);
+
+	return 0;
+}
+SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
+
+#if !defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 static volatile uint32_t alarm_cb_status;
 static void alarm_callback_fn(const struct device *wakeup_dev,
 				uint8_t chan_id, uint32_t ticks,
 				void *user_data)
 {
-	printk("%s: !!! Alarm !!!\n", wakeup_dev->name);
+	LOG_DBG("%s: Alarm triggered", wakeup_dev->name);
 	alarm_cb_status = 1;
 }
 #endif
 
 static int app_enter_normal_sleep(uint32_t sleep_usec)
 {
-#if defined(CONFIG_CORTEX_M_SYSTICK_IDLE_TIMER)
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 	k_sleep(K_USEC(sleep_usec));
 #else
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
@@ -280,10 +382,10 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
-		printk("Couldnt set the alarm\n");
+		LOG_ERR("Could not set the alarm");
 		return ret;
 	}
-	printk("Set alarm for %u microseconds\n", sleep_usec);
+	LOG_DBG("Set alarm for %u microseconds", sleep_usec);
 
 	k_sleep(K_USEC(sleep_usec));
 
@@ -297,9 +399,10 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 	return 0;
 }
 
+#if !defined(CONFIG_POWEROFF)
 static int app_enter_deep_sleep(uint32_t sleep_usec)
 {
-#if defined(CONFIG_CORTEX_M_SYSTICK_IDLE_TIMER)
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 	/**
 	 * Set a delay more than the min-residency-us configured so that
 	 * the sub-system will go to OFF state.
@@ -315,23 +418,21 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
-		printk("Failed to set the alarm (err %d)", ret);
+		LOG_ERR("Failed to set the alarm (err %d)", ret);
 		return ret;
 	}
 
-	printk("Set alarm for %u microseconds\n\n", sleep_usec);
-
-	if (ret) {
-		printk("Couldnt set the alarm\n");
-		return ret;
-	}
-
-	sys_poweroff();
-
+	LOG_DBG("Set alarm for %u microseconds", sleep_usec);
+	/*
+	 * Wait for the alarm to trigger. The idle thread will
+	 * take care of entering the deep sleep state via PM framework.
+	 */
+	k_sleep(K_USEC(sleep_usec));
 #endif
 
 	return 0;
 }
+#endif /* !CONFIG_POWEROFF */
 
 int main(void)
 {
@@ -340,68 +441,175 @@ int main(void)
 	int ret;
 
 	if (!device_is_ready(cons)) {
-		printk("%s: device not ready.\n", cons->name);
-		printk("ERROR: app exiting..\n");
-		return 0;
+		__ASSERT(false, "%s: device not ready", cons->name);
 	}
 
 	if (!device_is_ready(wakeup_dev)) {
-		printk("%s: device not ready.\n", wakeup_dev->name);
-		printk("ERROR: app exiting..\n");
-		return 0;
+		__ASSERT(false, "%s: device not ready", wakeup_dev->name);
 	}
 
-	printk("\n%s System Off Demo\n", CONFIG_BOARD);
+#if defined(CONFIG_RTSS_HE)
+	/* Boot location determines which PM states are available */
+	bool is_mram_boot = IS_BOOTING_FROM_MRAM();
 
-	if (wakeup_reason) {
-		printk("\r\nWakeup Interrupt Reason : %s\n\n", wakeup_dev->name);
+	if (is_mram_boot) {
+		LOG_INF("\n%s RTSS_HE (MRAM boot): PM states demo (RUNTIME_IDLE, SOFT_OFF)",
+			CONFIG_BOARD);
+	} else {
+		LOG_INF("\n%s RTSS_HE (TCM boot): PM states demo (RUNTIME_IDLE, S2RAM)",
+			CONFIG_BOARD);
 	}
-
-	ret = app_set_run_params();
-	if (ret) {
-		printk("ERROR: app exiting..\n");
-		return 0;
-	}
-
-	ret = app_set_off_params();
-	if (ret) {
-		printk("ERROR: app exiting..\n");
-		return 0;
-	}
-
-	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+#else
+	LOG_INF("\n%s RTSS_HP: PM states demo (RUNTIME_IDLE, SOFT_OFF)", CONFIG_BOARD);
+#endif
 
 	ret = counter_start(wakeup_dev);
-	if (ret) {
-		printk("Failed to start counter (err %d)", ret);
-		printk("ERROR: app exiting..\n");
-		return 0;
+	if (ret && ret != -EALREADY) {
+		__ASSERT(false, "Failed to start counter (err %d)", ret);
 	}
 
-	printk("\nEnter Normal Sleep for (%d microseconds)\n", NORMAL_SLEEP_IN_USEC);
-	ret = app_enter_normal_sleep(NORMAL_SLEEP_IN_USEC);
+	LOG_INF("POWER STATE SEQUENCE:");
+#if defined(CONFIG_POWEROFF)
+	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	LOG_INF("  2. Power off (sys_poweroff)");
+#elif defined(CONFIG_RTSS_HE)
+	/* HE core: sequence depends on boot location */
+	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	if (!is_mram_boot) {
+		/* TCM boot: S2RAM works (TCM retention) */
+		LOG_INF("  2. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)");
+		LOG_INF("  3. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)");
+		LOG_INF("  4. (SOFT_OFF skipped - TCM boot, using retention)");
+	} else {
+		/* MRAM boot: Only SOFT_OFF (S2RAM disabled - TODO: investigate) */
+		LOG_INF("  2. (S2RAM skipped - MRAM boot, not supported yet)");
+		LOG_INF("  3. PM_STATE_SOFT_OFF");
+	}
+#else
+	/* HP core: no retention, only SOFT_OFF supported */
+	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	LOG_INF("  2. PM_STATE_SOFT_OFF");
+#endif
+
+	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
+	ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
 	if (ret) {
-		printk("ERROR: app exiting..\n");
-		return 0;
+		__ASSERT(false, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
 	}
 
-	printk("Exited from Normal Sleep\n\n");
+	LOG_INF("Exited from RUNTIME_IDLE sleep");
 
-	printk("\nEnter Subsystem OFF\n");
-	printk("SoC may go to STOP/STANDBY/IDLE depending on the global power mode\n");
+#if defined(CONFIG_POWEROFF)
+	/* Configure wakeup source for permanent power off */
+	struct counter_alarm_cfg alarm_cfg;
 
-	printk("\nEnter Deep Sleep for (%d microseconds)\n", DEEP_SLEEP_IN_USEC);
-	ret = app_enter_deep_sleep(DEEP_SLEEP_IN_USEC);
+	LOG_INF("=== Enter (sys_poweroff) ===");
+	LOG_INF("System will power off and can only wake via external event (RTC/Timer)");
+	k_sleep(K_SECONDS(2));
+
+	/* Set alarm for wakeup from power off */
+	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, POWEROFF_WAKEUP_USEC);
+	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
-		printk("ERROR: app exiting..\n");
-		return 0;
+		LOG_ERR("Failed to set wakeup alarm (err %d)", ret);
+	} else {
+		LOG_INF("Wakeup alarm set for %u seconds", POWEROFF_WAKEUP_USEC / 1000000);
 	}
 
-	printk("ERROR: Failed to enter Subsystem OFF\n");
+	/* Configure OFF profile for wakeup capability */
+	app_set_off_params(PM_STATE_SOFT_OFF, 0);
+
+	LOG_INF("Calling sys_poweroff() - system will power off permanently");
+	sys_poweroff();
+
+	/* Should never reach here */
+	LOG_ERR("Failed to execute sys_poweroff()");
+
+	return -1;
+#else
+	/* Unlock deeper power states to allow S2RAM and/or SOFT_OFF */
+	app_pm_lock_deeper_states(false);
+
+#if defined(CONFIG_RTSS_HE)
+	/* HE core: S2RAM only if booting from TCM */
+	if (S2RAM_SUPPORTED) {
+		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
+			S2RAM_STANDBY_SLEEP_USEC);
+		ret = app_enter_deep_sleep(S2RAM_STANDBY_SLEEP_USEC);
+		if (ret) {
+			__ASSERT(false, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
+		}
+
+		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
+
+		/* Verify main thread is running properly */
+		for (int i = 0; i < 3; i++) {
+			LOG_INF("Main thread running - iteration %d - tick: %llu",
+				i, k_uptime_ticks());
+			k_sleep(K_SECONDS(2));
+		}
+
+		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (%d microseconds)",
+			S2RAM_STOP_SLEEP_USEC);
+		ret = app_enter_deep_sleep(S2RAM_STOP_SLEEP_USEC);
+		if (ret) {
+			__ASSERT(false, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
+		}
+
+		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===");
+
+		/* Verify main thread is running properly */
+		for (int i = 0; i < 3; i++) {
+			LOG_INF("Main thread running - iteration %d - tick: %llu",
+				i, k_uptime_ticks());
+			k_sleep(K_SECONDS(2));
+		}
+	} else {
+		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot - not supported yet)");
+	}
+#endif /* CONFIG_RTSS_HE */
+
+	/* PM_STATE_SOFT_OFF (deepest sleep with wake capability) */
+#if defined(CONFIG_RTSS_HP)
+	/* HP core: always SOFT_OFF */
+	LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
+	LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
+	ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
+	if (ret) {
+		__ASSERT(false, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
+	}
+
+	/* Should never reach here - SOFT_OFF causes full reset on wakeup */
+	LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
+	__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
+
+#elif defined(CONFIG_RTSS_HE)
+	/* HE core: only SOFT_OFF when booting from MRAM */
+	if (SOFT_OFF_SUPPORTED) {
+		LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
+		LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
+		ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
+		if (ret) {
+			__ASSERT(false, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
+		}
+
+		/* Should never reach here - SOFT_OFF causes full reset on wakeup */
+		LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
+		__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
+	} else {
+		LOG_INF("Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)");
+	}
+#endif
+
+	LOG_INF("=== POWER STATE SEQUENCE COMPLETED ===");
+
+	app_pm_lock_deeper_states(true);
+
 	while (true) {
 		/* spin here */
 		k_sleep(K_SECONDS(1));
 	}
+#endif
 
 	return 0;
 }
