@@ -8,29 +8,50 @@
  *
  */
 
-/*
- * Enable RTC and Set the counter to increment every 1sec
- */
 &rtc0 {
-	prescaler = < 32768 >;
+	prescaler = <1>;
 	status = "okay";
 };
 
-/**
- * Set the console uart frequency to use the HFOSC(38.4)
- */
+&lpgpio {
+	status = "disabled";
+};
+
 &uart4 {
-	clock-frequency = < 38400000 >;
+	status = "disabled";
+};
+
+&utimer5 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&lpuart {
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <25000000>;
+	status = "okay";
+};
+
+&standby_s2ram {
+	min-residency-us = <19000000>;
+	status = "okay";
+};
+
+&stop_s2ram {
+	min-residency-us = <21000000>;
+	status = "okay";
 };
 
 / {
 	chosen {
 		zephyr,cortex-m-idle-timer = &rtc0;
-	};
-
-	power-states {
-		off: off {
-			min-residency-us = < 5000000 >;
-		};
+		zephyr,console = &uart2;
+		zephyr,shell-uart = &lpuart;
 	};
 };

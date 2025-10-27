@@ -7,6 +7,6 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 
-mainmenu "Alif System Off Demo"
+mainmenu "Alif Power Management States Demo"
 
 source "Kconfig.zephyr"
