@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -8,8 +8,7 @@
  *
  */
 
-&rtc0 {
-	prescaler = <1>;
+&timer0 {
 	status = "okay";
 };
 
@@ -21,11 +20,11 @@
 	status = "disabled";
 };
 
-&uart2 {
-	status = "okay";
+&utimer5 {
+	status = "disabled";
 };
 
-&lpuart {
+&uart2 {
 	status = "okay";
 };
 
@@ -34,20 +33,8 @@
 	status = "okay";
 };
 
-&standby_s2ram {
-	min-residency-us = <19000000>;
-	status = "okay";
-};
-
-&stop_s2ram {
-	min-residency-us = <21000000>;
-	status = "okay";
-};
-
 / {
 	chosen {
-		zephyr,cortex-m-idle-timer = &rtc0;
 		zephyr,console = &uart2;
-		zephyr,shell-uart = &lpuart;
 	};
 };
