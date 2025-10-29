@@ -54,6 +54,7 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.imgconverter',
     'sphinx_tabs.tabs',
+    'sphinx.ext.autosectionlabel',   # ✅ Added for better section linking
 ]
 
 templates_path = ['_templates']
@@ -66,7 +67,9 @@ html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.png"
 html_theme_options = {
     "logo_only": True,
-    "navigation_depth": 4,
+    "collapse_navigation": False,    # ✅ Keeps sidebar expanded
+    "navigation_depth": 4,           # ✅ Enables deep section nesting
+    "titles_only": False,            # ✅ Shows subsections under each page
     "prev_next_buttons_location": None,
     "style_nav_header_background": "#2980b9",
 }
@@ -84,6 +87,10 @@ html_context = {
     ]
 }
 
+# ✅ Enable automatic section labels for cross-referencing and sidebar consistency
+autosectionlabel_prefix_document = True
+autosectionlabel_maxdepth = 2
+
 # Substitution for version in RST files and links.txt inclusion
 rst_epilog = f"""
 .. include:: /links.txt
@@ -91,7 +98,7 @@ rst_epilog = f"""
 .. |release| replace:: {release}
 """
 
-# **Options for LaTeX output** (only the modified section)
+# **Options for LaTeX output**
 latex_elements = {
     'papersize': 'a4paper',
     'extraclassoptions': 'openany,oneside',
@@ -123,36 +130,28 @@ latex_elements = {
         \pretocmd{\tableofcontents}{\clearpage}{}{}
         \AddToShipoutPictureFG*{
             \AtPageUpperLeft{
-                \hspace*{0.1\textwidth} % Adjust horizontal offset here
-                \vspace*{0.1\textheight} % Adjust vertical offset here
-                \includegraphics[width=2cm]{_static/logo.png} % Adjust size here
+                \hspace*{0.1\textwidth}
+                \vspace*{0.1\textheight}
+                \includegraphics[width=2cm]{_static/logo.png}
             }
         }
         \addto\captionsenglish{\renewcommand{\contentsname}{Table of Contents}}
-        % Added for Unicode micro sign support
         \usepackage{textcomp}
         \DeclareUnicodeCharacter{03BC}{\textmu}
-        % Added for Unicode minus sign support
         \DeclareUnicodeCharacter{2212}{-}
-        % Added for long URLs and unbreakable strings
         \usepackage{url}
         \usepackage{seqsplit}
-        % Added for better figure placement
         \floatplacement{figure}{H}
-        % Added for hyphenation of specific terms
         \hyphenation{Unencrypted Encrypted}
-        % Added to suppress Inconsolata italic font warning
         \makeatletter
         \def\FV@ObeyVerbFont{%
           \ifx\FancyVerbFont\FV@Inconsolata
-            \fontshape{n}\selectfont % Force normal shape instead of italic
+            \fontshape{n}\selectfont
           \else
             \FancyVerbFont
           \fi}
         \makeatother
-        % Added for better table handling
         \usepackage{longtable}
-        % Ensure compatibility with existing packages
         \usepackage{needspace}
     ''',
 }

@@ -25,6 +25,10 @@ Application Notes of Zephyr Alif SDK
    i2s.rst
    spi.rst
    pdm.rst
+   mhu.rst
+   psram.rst
+   hwsem.rst
+   entrophy.rst
    ospi_flash.rst
    se_tool_flash.rst
    ensemble_pins.rst
