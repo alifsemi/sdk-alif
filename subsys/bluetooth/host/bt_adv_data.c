@@ -241,7 +241,11 @@ static int update_adv_data(uint8_t actv_idx)
 	/* Set advertising data using the copy */
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		co_buf_release(adv_buf_final);
+		return -ETIMEDOUT;
+	}
 	err = gapm_le_set_adv_data(actv_idx, adv_buf_final);
 	alif_ble_mutex_unlock();
 
@@ -393,7 +397,10 @@ int bt_adv_data_init(void)
 	 */
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return -ETIMEDOUT;
+	}
 	uint16_t gap_err = gapm_le_get_max_adv_data_len(0, on_max_adv_data_len_cb);
 
 	alif_ble_mutex_unlock();
