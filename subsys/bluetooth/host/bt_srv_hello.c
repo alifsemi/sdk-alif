@@ -267,7 +267,10 @@ int bt_srv_hello_init(void)
 	/* Register a GATT user */
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return -ETIMEDOUT;
+	}
 	status = gatt_user_srv_register(L2CAP_LE_MTU_MIN, 0, &gatt_cbs, &srv_env.user_lid);
 	alif_ble_mutex_unlock();
 	if (status != GAP_ERR_NO_ERROR) {
@@ -277,7 +280,12 @@ int bt_srv_hello_init(void)
 
 	/* Add the GATT service */
 	lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		/* No sense to try to unregister if unable to acquire mutex - user is on its own */
+		return -ETIMEDOUT;
+	}
 	status = gatt_db_svc_add(srv_env.user_lid, SVC_UUID(128), hello_service_uuid, HELLO_IDX_NB,
 				 NULL, hello_att_db, HELLO_IDX_NB, &srv_env.start_hdl);
 	if (status != GAP_ERR_NO_ERROR) {
@@ -318,7 +326,11 @@ int bt_srv_hello_notify(uint8_t conn_idx, const void *data, uint16_t len)
 
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		co_buf_release(p_buf);
+		return -ETIMEDOUT;
+	}
 	status = gatt_srv_event_send(conn_idx, srv_env.user_lid, HELLO_METAINFO_CHAR0_NTF_SEND,
 				     GATT_NOTIFY, srv_env.start_hdl + HELLO_IDX_CHAR0_VAL, p_buf);
 	alif_ble_mutex_unlock();

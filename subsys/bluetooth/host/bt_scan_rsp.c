@@ -77,7 +77,11 @@ int bt_scan_rsp_set(uint8_t actv_idx)
 	/* Set scan response data */
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		co_buf_release(p_buf);
+		return -ETIMEDOUT;
+	}
 	err = gapm_le_set_scan_response_data(actv_idx, p_buf);
 	alif_ble_mutex_unlock();
 	co_buf_release(p_buf);
@@ -202,7 +206,11 @@ static int update_scan_rsp_data(uint8_t actv_idx)
 	/* Set scan response data using the copy */
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		co_buf_release(scan_rsp_buf_final);
+		return -ETIMEDOUT;
+	}
 	err = gapm_le_set_scan_response_data(actv_idx, scan_rsp_buf_final);
 	alif_ble_mutex_unlock();
 	co_buf_release(scan_rsp_buf_final);
