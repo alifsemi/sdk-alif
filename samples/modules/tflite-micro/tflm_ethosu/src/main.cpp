@@ -16,14 +16,21 @@
 #include <vector>
 #include <zephyr/kernel.h>
 
-/* Model data */
-#include "ethosu/models/keyword_spotting_cnn_small_int8/input.h"
-#include "ethosu/models/keyword_spotting_cnn_small_int8/output.h"
+/* Model data - Conditional compilation for U55/U85 */
+#if defined(ETHOSU_ARCH_U85)
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u85/input.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u85/output.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u85/model_u85_256.h"
+#endif
 
+#if defined(ETHOSU_ARCH_U55)
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/input.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/output.h"
 #if defined(CONFIG_ARM_ETHOS_U55_256)
-#include "ethosu/models/keyword_spotting_cnn_small_int8/model_u55_256.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/model_u55_256.h"
 #else
-#include "ethosu/models/keyword_spotting_cnn_small_int8/model_u55_128.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/model_u55_128.h"
+#endif
 #endif
 
 using namespace std;
@@ -49,12 +56,8 @@ using namespace InferenceProcess;
 #define NUM_JOBS_PER_TASK 2
 #endif
 
-/* Tensor arena size */
-#ifdef TENSOR_ARENA_SIZE /* If defined in model.h */
-#define TENSOR_ARENA_SIZE_PER_INFERENCE TENSOR_ARENA_SIZE
-#else /* If not defined, use maximum available */
-#define TENSOR_ARENA_SIZE_PER_INFERENCE 2000000 / NUM_INFERENCE_TASKS
-#endif
+/* Tensor arena size - use the model's tensorArenaSize variable */
+/* Note: tensorArenaSize is defined in the model header file */
 
 /****************************************************************************
  * InferenceJob
@@ -100,11 +103,12 @@ struct xInferenceJob : public InferenceJob {
  * NUM_JOB_TASKS > 1 */
 volatile int totalCompletedJobs = 0;
 
-/* TensorArena static initialisation */
-const size_t arenaSize = TENSOR_ARENA_SIZE_PER_INFERENCE;
-
+/* TensorArena dynamic allocation - use model's tensorArenaSize
+ * Note: tensorArenaSize is defined in the model header (e.g., model_u85_256.h)
+ * For keyword_spotting: U55 uses ~50KB, U85 uses ~50KB
+ */
 __attribute__((section(".bss.tflm_arena"), aligned(16)))
-uint8_t inferenceProcessTensorArena[NUM_INFERENCE_TASKS][arenaSize];
+uint8_t inferenceProcessTensorArena[NUM_INFERENCE_TASKS][50000];
 
 /* Allocate and initialize heap */
 void *allocateHeap(const size_t size)
@@ -264,7 +268,7 @@ int main()
 		auto &thread = threads[nthreads];
 		auto &taskParam = taskParams[n];
 		taskParam = InferenceProcessParams(&inferenceQueue, inferenceProcessTensorArena[n],
-						   arenaSize);
+						   tensorArenaSize);
 		string *name = new string("runner " + to_string(n));
 
 		thread.id = k_thread_create(&thread.thread, stack, stackSize, inferenceProcessTask,
