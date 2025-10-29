@@ -446,7 +446,11 @@ static int cmd_init(const struct shell *sh, size_t argc, char *argv[])
 
 		int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-		__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+		if (lock_ret) {
+			__ASSERT(false, "BLE mutex lock timeout");
+			shell_error(sh, "BLE mutex lock timeout");
+			return lock_ret;
+		}
 		on_ble_enabled();
 		alif_ble_mutex_unlock();
 
@@ -540,7 +544,11 @@ static int cmd_adv_create(const struct shell *sh, size_t argc, char *argv[])
 
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		shell_error(sh, "BLE mutex lock timeout");
+		return lock_ret;
+	}
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &param, &le_adv_cbs);
 	alif_ble_mutex_unlock();
 
@@ -657,7 +665,11 @@ static int cmd_adv_param(const struct shell *sh, size_t argc, char *argv[])
 	/* Recreate advertising with updated parameters */
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		shell_error(sh, "BLE mutex lock timeout");
+		return lock_ret;
+	}
 	err = gapm_delete_activity(stored_adv.actv_idx);
 	alif_ble_mutex_unlock();
 	if (err) {
@@ -675,7 +687,11 @@ static int cmd_adv_param(const struct shell *sh, size_t argc, char *argv[])
 
 	lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		shell_error(sh, "BLE mutex lock timeout");
+		return lock_ret;
+	}
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &param, &le_adv_cbs);
 	alif_ble_mutex_unlock();
 	if (err) {
@@ -742,7 +758,11 @@ static int cmd_adv_start(const struct shell *sh, size_t argc, char *argv[])
 
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		shell_error(sh, "BLE mutex lock timeout");
+		return lock_ret;
+	}
 	err = gapm_le_start_adv(stored_adv.actv_idx, &adv_params);
 	alif_ble_mutex_unlock();
 	if (err) {
@@ -787,7 +807,11 @@ static int cmd_adv_stop(const struct shell *sh, size_t argc, char *argv[])
 
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		shell_error(sh, "BLE mutex lock timeout");
+		return lock_ret;
+	}
 	err = gapm_stop_activity(stored_adv.actv_idx);
 	alif_ble_mutex_unlock();
 
@@ -824,7 +848,11 @@ static int cmd_adv_delete(const struct shell *sh, size_t argc, char *argv[])
 
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
 
-	__ASSERT(lock_ret == 0, "BLE mutex lock timeout");
+	if (lock_ret) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		shell_error(sh, "BLE mutex lock timeout");
+		return lock_ret;
+	}
 	err = gapm_delete_activity(stored_adv.actv_idx);
 	alif_ble_mutex_unlock();
 	if (err) {
