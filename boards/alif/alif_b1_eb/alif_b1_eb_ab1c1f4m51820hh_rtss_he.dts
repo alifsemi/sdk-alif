@@ -1,0 +1,124 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+/dts-v1/;
+
+#include <alif/balletto/b1/ab1c1f4m51820hh.dtsi>
+#include "balletto-eb-pinctrl.dtsi"
+
+/ {
+	compatible = "arm,alif-b1-eb-ab1c1f4m51820hh-rtss-he";
+	#address-cells = <1>;
+	#size-cells = <1>;
+};
+
+&ieee802154 {
+	status = "okay";
+};
+&{/} {
+	chosen {
+		zephyr,console = &uart2;
+		zephyr,shell-uart = &uart2;
+		zephyr,bt-hci = &uart_hci;
+		zephyr,hci-uart = &uart_hci;
+		zephyr,uart-mcumgr = &uart2;
+		zephyr,entropy = &rng;
+	};
+
+	aliases {
+		led0 = &aled0;
+		sw0 = &button0;
+		watchdog0 = &wdog0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		aled0: led_0 {
+			gpios = <&gpio4 5 0>;
+			label = "LED0_G";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = < &gpio5 7 0 >;
+			label = "SW0";
+		};
+	};
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&uart_hci {
+	clock-frequency = <160000000>;
+	dmas = <&dma2 HCI_UART_DMA_RX_CH HCI_UART_DMA_RX_REQ>,
+	       <&dma2 HCI_UART_DMA_TX_CH HCI_UART_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
+
+&uart_ahi {
+	clock-frequency = <160000000>;
+	pinctrl-0 = <&pinctrl_ahi_trace>;
+	pinctrl-names = "default";
+	dmas = <&dma2 AHI_UART_DMA_RX_CH AHI_UART_DMA_RX_REQ>,
+	       <&dma2 AHI_UART_DMA_TX_CH AHI_UART_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&gpio4 {
+	status = "okay";
+};
+
+&gpio5 {
+	status = "okay";
+};
+
+&mram_storage {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		boot_partition: partition@0 {
+			label = "mcuboot";
+			reg = <0x00000000 DT_SIZE_K(64)>;
+			read-only;
+		};
+
+		slot0_partition: partition@10000 {
+			label = "image-0";
+			reg = <0x00010000 DT_SIZE_K(843)>;
+		};
+
+		slot1_partition: partition@E2C00 {
+			label = "image-1";
+			reg = <0x000E2C00 DT_SIZE_K(843)>;
+		};
+
+		scratch_partition: partition@1B5800 {
+			label = "image-scratch";
+			reg = <0x001B5800 DT_SIZE_K(64)>;
+		};
+
+		storage_partition: partition@1C5800 {
+			label = "storage";
+			reg = <0x001C5800 DT_SIZE_K(10)>;
+		};
+	};
+};

@@ -1,0 +1,6 @@
+board:
+  name: alif_b1_eb
+  full_name: alif b1 EB
+  vendor: alif
+  socs:
+  - name: ab1c1f4m51820hh
