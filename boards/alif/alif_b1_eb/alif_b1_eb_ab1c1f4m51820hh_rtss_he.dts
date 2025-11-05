@@ -16,7 +16,7 @@
 	chosen {
 		zephyr,console = &uart2;
 		zephyr,shell-uart = &uart2;
-		zephyr,bt-hci = &uart_hci;
+		zephyr,bt-hci = &alif_hci_uart;
 		zephyr,hci-uart = &uart_hci;
 		zephyr,uart-mcumgr = &uart2;
 		zephyr,entropy = &rng;
