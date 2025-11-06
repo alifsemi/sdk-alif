@@ -1,0 +1,4 @@
+name: pm-system-off-he
+append:
+  EXTRA_DTC_OVERLAY_FILE: snippet.overlay
+  EXTRA_CONF_FILE: prj.conf
