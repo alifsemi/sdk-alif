@@ -68,6 +68,7 @@ Build for HE core (TCM boot with retention):
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
        ../alif/samples/drivers/pm/system_off \
+       -S pm-system-off-he \
        -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
        -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
        -DCONFIG_FLASH_SIZE=256
@@ -77,14 +78,16 @@ Build for HE core (MRAM boot):
 .. code-block:: console
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-       ../alif/samples/drivers/pm/system_off
+       ../alif/samples/drivers/pm/system_off \
+       -S pm-system-off-he
 
 Build for HP core:
 
 .. code-block:: console
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-       ../alif/samples/drivers/pm/system_off
+       ../alif/samples/drivers/pm/system_off \
+       -S pm-system-off-hp
 
 Flash the binary using SE Tools. See :ref:`programming_an_application` for details.
 
