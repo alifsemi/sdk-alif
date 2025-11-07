@@ -47,6 +47,23 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 static uint32_t wakeup_reason;
 static bool cold_boot;
 
+#define VBAT_RESUME_ENABLED 0xcafecafe
+
+uint32_t vbat_resume __attribute__((noinit));
+
+static void balletto_vbat_resume_enable(void)
+{
+	vbat_resume = VBAT_RESUME_ENABLED;
+}
+
+static bool balletto_vbat_resume_enabled(void)
+{
+	if (vbat_resume == VBAT_RESUME_ENABLED) {
+		return true;
+	}
+	return false;
+}
+
 /**
  * Use the HFOSC clock for the UART console
  */
