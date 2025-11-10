@@ -59,7 +59,7 @@
 
 &i2s0 {
 	/delete-property/ clock-frequency;
-	/delete-property/ driver_instance;
+	/delete-property/ driver-instance;
 	compatible = "alif,i2s-sync";
 	interrupts = <I2S0_IRQ_NUM I2S0_IRQ_PRIO>;
 	bit-depth = <16>;
@@ -87,8 +87,8 @@
 &pinctrl_gpio5 {
 	group1 {
 		pinmux = <PIN_P5_7__GPIO>;
-		driver_state_control = <1>;
-		read_enable = < 0x1 >;
+		driver-state-control = <1>;
+		read-enable = < 0x1 >;
 	};
 };
 
@@ -98,8 +98,8 @@
 		pinmux = <PIN_P4_3__GPIO>,
 			 <PIN_P4_5__GPIO>,
 			 <PIN_P4_7__GPIO>;
-		read_enable = < 0x0 >;
-		drive_strength = < 8 >;
+		read-enable = < 0x0 >;
+		drive-strength = < 8 >;
 	};
 };
 

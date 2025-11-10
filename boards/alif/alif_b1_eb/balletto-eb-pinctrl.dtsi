@@ -19,16 +19,16 @@
 			pinmux = < PIN_P2_6__UART4_RX_A >,
 				 < PIN_P2_7__UART4_TX_A >;
 			/* pad config default values
-			 * read_enable = < 0x1 >; 0 for disable, 1 for enable
-			 * schmitt_enable = < 0x1 >; 0x0 for disable
+			 * read-enable = < 0x1 >; 0 for disable, 1 for enable
+			 * schmitt-enable = < 0x1 >; 0x0 for disable
 			 *			  0x1 for enable
-			 * slew_rate = < 0x0 > ; 0 for slow, 1 for fast
-			 * driver_state_control = <0>;
+			 * slew-rate = < 0x0 > ; 0 for slow, 1 for fast
+			 * driver-state-control = <0>;
 			 *			0 for high z
 			 *			1 for pull up
 			 *			2 for pull down
 			 *			3 for bus repeater
-			 * drive_strength = <4>;
+			 * drive-strength = <4>;
 			 *			2 for 2mA
 			 *			4 for 4mA
 			 *			8 for 8mA
@@ -49,7 +49,7 @@
 		group0 {
 			pinmux = < PIN_P4_0__UT0_T0_A >,
 				 < PIN_P4_1__UT0_T1_A >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -57,7 +57,7 @@
 		group0 {
 			pinmux = <PIN_P6_2__UT1_T0_B>,
 				 <PIN_P6_3__UT1_T1_B>;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -65,7 +65,7 @@
 		group0 {
 			pinmux = < PIN_P4_4__UT2_T0_A >,
 				 < PIN_P4_5__UT2_T1_A >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -73,7 +73,7 @@
 		group0 {
 			pinmux = < PIN_P4_6__UT3_T0_A >,
 				 < PIN_P4_7__UT3_T1_A >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -113,7 +113,7 @@
 		group1 {
 			pinmux = < PIN_P4_1__EXT_TX_A >,
 				 < PIN_P3_6__EXT_RTS_A >;
-			read_enable = < 0x0 >;
+			read-enable = < 0x0 >;
 		};
 	};
 	pinctrl_ahi_trace: pinctrl_ahi_trace {
@@ -121,7 +121,7 @@
 			pinmux = < PIN_P4_1__EXT_TX_A >,
 				 < PIN_P3_6__EXT_RTS_A >,
 				 < PIN_P4_2__EXT_TRACE_A >;
-			read_enable = < 0x0 >;
+			read-enable = < 0x0 >;
 		};
 	};
 
@@ -137,8 +137,8 @@
 			pinmux = < PIN_P7_0__I2C0_SDA_C >,
 				 < PIN_P7_1__I2C0_SCL_C >;
 
-			read_enable = < 0x1 >;
-			driver_state_control = < 0x1 >;
+			read-enable = < 0x1 >;
+			driver-state-control = < 0x1 >;
 		};
 	};
 
@@ -146,8 +146,8 @@
 		group0 {
 			pinmux = < PIN_P7_2__I2C1_SDA_C >,
 				 < PIN_P7_3__I2C1_SCL_C >;
-			read_enable = < 0x1 >;
-			driver_state_control = < 0x1 >;
+			read-enable = < 0x1 >;
+			driver-state-control = < 0x1 >;
 		};
 	};
 
@@ -156,8 +156,8 @@
 			pinmux = < PIN_P0_0__LPI2C0_SCL_A >,
 				 < PIN_P0_1__LPI2C0_SDA_A >;
 
-			read_enable = < 0x1 >;
-			driver_state_control = < 0x1 >;
+			read-enable = < 0x1 >;
+			driver-state-control = < 0x1 >;
 		};
 	};
 
@@ -169,7 +169,7 @@
 			<PIN_P0_3__ANA_S3>,
 			<PIN_P0_4__ANA_S4>,
 			<PIN_P0_5__ANA_S5>;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -181,7 +181,7 @@
 			<PIN_P2_5__ANA_S13>,
 			<PIN_P2_6__ANA_S14>,
 			<PIN_P2_7__ANA_S15>;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -195,7 +195,7 @@
 				< PIN_P2_1__ANA_S9 >,
 				< PIN_P4_3__CMP0_OUT_B >;
 
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -209,7 +209,7 @@
 				< PIN_P2_1__ANA_S9 >,
 				< PIN_P4_7__CMP1_OUT_B >;
 
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -223,7 +223,7 @@
 				< PIN_P2_1__ANA_S9 >,
 				< PIN_P2_2__ANA_S10 >;
 
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -233,14 +233,14 @@
 				 < PIN_P5_5__LPPDM_C1_C >,
 				 < PIN_P7_4__LPPDM_C2_C >,
 				 < PIN_P7_6__LPPDM_C3_C >;
-			read_enable = < 0x0 >;
+			read-enable = < 0x0 >;
 		};
 		group1 {
 			pinmux = < PIN_P5_6__LPPDM_D0_C >,
 				 < PIN_P5_7__LPPDM_D1_C >,
 				 < PIN_P7_5__LPPDM_D2_C >,
 				 < PIN_P7_7__LPPDM_D3_C >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -250,7 +250,7 @@
 				 < PIN_P5_1__SPI0_MOSI_B >,
 				 < PIN_P5_2__SPI0_SCLK_B >,
 				 < PIN_P5_3__SPI0_SS0_B >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -260,7 +260,7 @@
 				 < PIN_P8_5__SPI1_MOSI_C >,
 				 < PIN_P8_6__SPI1_SCLK_C >,
 				 < PIN_P8_7__SPI1_SS0_C >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -270,7 +270,7 @@
 				 < PIN_P7_1__SPI2_MOSI_B >,
 				 < PIN_P7_2__SPI2_SCLK_B >,
 				 < PIN_P7_3__SPI2_SS0_B >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -280,7 +280,7 @@
 				 < PIN_P1_4__LPSPI_MOSI_A >,
 				 < PIN_P1_5__LPSPI_SCLK_A >,
 				 < PIN_P2_0__LPSPI_SS_A >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -322,9 +322,9 @@
 				 < PIN_P3_5__OSPI0_D5_A >,
 				 < PIN_P3_6__OSPI0_D6_A >,
 				 < PIN_P3_7__OSPI0_D7_A >;
-			read_enable = <0x1>;
-			drive_strength = <12>;
-			slew_rate = <0x1>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
 		};
 	};
 
@@ -356,7 +356,7 @@
 				 < PIN_P0_5__GPIO >,
 				 < PIN_P0_6__GPIO >,
 				 < PIN_P0_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -370,7 +370,7 @@
 				 < PIN_P1_5__GPIO >,
 				 < PIN_P1_6__GPIO >,
 				 < PIN_P1_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -384,7 +384,7 @@
 				 < PIN_P2_5__GPIO >,
 				 < PIN_P2_6__GPIO >,
 				 < PIN_P2_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -398,7 +398,7 @@
 				 < PIN_P3_5__GPIO >,
 				 < PIN_P3_6__GPIO >,
 				 < PIN_P3_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -412,7 +412,7 @@
 				 < PIN_P4_5__GPIO >,
 				 < PIN_P4_6__GPIO >,
 				 < PIN_P4_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -426,7 +426,7 @@
 				 < PIN_P5_5__GPIO >,
 				 < PIN_P5_6__GPIO >,
 				 < PIN_P5_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -440,7 +440,7 @@
 				 < PIN_P6_5__GPIO >,
 				 < PIN_P6_6__GPIO >,
 				 < PIN_P6_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -454,7 +454,7 @@
 				 < PIN_P7_5__GPIO >,
 				 < PIN_P7_6__GPIO >,
 				 < PIN_P7_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -468,7 +468,7 @@
 				 < PIN_P8_5__GPIO >,
 				 < PIN_P8_6__GPIO >,
 				 < PIN_P8_7__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -477,7 +477,7 @@
 			pinmux = < PIN_P9_0__GPIO >,
 				 < PIN_P9_1__GPIO >,
 				 < PIN_P9_2__GPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -485,7 +485,7 @@
 		group0 {
 			pinmux = < PIN_P15_0__LPGPIO >,
 				 < PIN_P15_1__LPGPIO >;
-			read_enable = < 0x1 >;
+			read-enable = < 0x1 >;
 		};
 	};
 
@@ -525,7 +525,7 @@
 	pinctrl_dac0: pinctrl_dac0 {
 		group0 {
 			pinmux = <PIN_P2_3__ANA_S11>;
-			read_enable = <0x0>;
+			read-enable = <0x0>;
 		};
 	};
 
@@ -537,8 +537,8 @@
 						<PINMUX_PIN(PIN_P6_1, 5)>,
 						<PINMUX_PIN(PIN_P6_2, 5)>,
 						<PINMUX_PIN(PIN_P6_3, 5)>;
-			read_enable = <0x1>;
-			drive_strength = <8>;
+			read-enable = <0x1>;
+			drive-strength = <8>;
 		};
 	};
 };

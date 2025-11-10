@@ -64,7 +64,7 @@
 			 < PIN_P8_4__SPI1_MOSI_B >,
 			 < PIN_P8_5__SPI1_SCLK_B >,
 			 < PIN_P6_4__GPIO >;
-		read_enable = < 0x1 >;
+		read-enable = < 0x1 >;
 	};
 };
 

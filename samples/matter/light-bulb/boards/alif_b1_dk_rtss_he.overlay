@@ -65,11 +65,11 @@
 			 < PIN_P5_5__GPIO >,
 			 < PIN_P5_6__GPIO >,
 			 < PIN_P5_7__GPIO >;
-		read_enable = < 0x1 >;
+		read-enable = < 0x1 >;
 	};
 
 	group1 {
 		pinmux = < PIN_P5_7__GPIO >;
-		driver_state_control = <1>;
+		driver-state-control = <1>;
 	};
 };

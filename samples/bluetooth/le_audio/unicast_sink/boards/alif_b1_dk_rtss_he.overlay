@@ -48,7 +48,7 @@
 /* Sink (output) to WM8904 codec IC */
 &i2s0 {
 	/delete-property/ clock-frequency;
-	/delete-property/ driver_instance;
+	/delete-property/ driver-instance;
 	compatible = "alif,i2s-sync";
 	interrupts = <I2S0_IRQ_NUM I2S0_IRQ_PRIO>;
 	bit-depth = <16>;
