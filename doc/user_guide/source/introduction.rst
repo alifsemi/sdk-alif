@@ -34,10 +34,14 @@ Zephyr uses a meta-tool called `west` to execute Kconfig, CMake, and build syste
 
 Ensure you have one of the following development kits to proceed with your project setup:
 
-- Ensemble Devkit (DK-E7)
-- Ensemble Devkit (DK-E8)
-- Ensemble E1C Devkit (DK-E1C)
-- Balletto Devkit (DK-B1)
+- Ensemble DevKit (DK-E7)
+- Ensemble DevKit (DK-E8)
+- Ensemble E1C DevKit (DK-E1C)
+- Balletto DevKit (DK-B1)
+
+Ensure you have the following debugger available to proceed with your project setup:
+
+- For debugging, use the J-Link debugger
 
 **Software Requirements**
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,9 +60,19 @@ Ensure you have one of the following development kits to proceed with your proje
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. figure:: _static/mcu_families.png
-   :alt: Alif MCU Families
+   :alt: Balletto and Ensemble)
    :width: 500px
    :align: center
+
+   Balletto and Ensemble Family (E1, E3, E5 and E7)
+
+.. figure:: _static/E8.png
+   :alt: Ensemble Family (E4, E6 and E8)
+   :width: 500px
+   :align: center
+
+   Ensemble Family (E4, E6 and E8)
+
 
 The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
 
@@ -110,12 +124,12 @@ The following toolchains have been tested for the SDK application:
 **Target Reference Board**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Alif Devkit Ensemble E3
-- Alif Devkit Ensemble E4
-- Alif Devkit Ensemble E7
-- Alif Devkit Ensemble E8
-- Alif Devkit Ensemble E1C
-- Alif Devkit Balletto B1
+- Alif DevKit Ensemble E3
+- Alif DevKit Ensemble E4
+- Alif DevKit Ensemble E7
+- Alif DevKit Ensemble E8
+- Alif DevKit Ensemble E1C
+- Alif DevKit Balletto B1
 
 **Software Components**
 ~~~~~~~~~~~~~~~~~~~~~~~

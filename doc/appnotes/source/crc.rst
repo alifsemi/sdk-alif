@@ -15,7 +15,7 @@ This application note provides an overview of the Cyclic Redundancy Check (CRC),
 - **Customized Polynomials**: Allows customization of polynomials for specific applications.
 - **AHB Interface**: Interfaces with the Advanced High-performance Bus (AHB).
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 CRC Operation
 =============
@@ -60,19 +60,17 @@ Follow these steps to create your Zephyr-based CRC application using the GCC com
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/crc/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/crc/
 
-3. Build commands for applications on the M55 HP core using the Ninja build command:
+3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/crc/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/crc/
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -109,11 +107,13 @@ Example code:
 
     Web CRC 8 Output
 
-.. figure:: _static/flatboard_crc8_output.png
-    :alt: Flatboard CRC 8 Output
-    :align: center
+Flatboard CRC 8 Output
+-----------------------
 
-    Flatboard CRC 8 Output
+.. code-block:: text
+
+   CRC output: 0xCD
+
 
 CRC-16-CCITT
 ------------
@@ -142,11 +142,13 @@ Example code:
 
     Web CRC 16 Output
 
-.. figure:: _static/flatboard_crc16_output.png
-    :alt: Flatboard CRC 16 Output
-    :align: center
+Flatboard CRC 16 Output
+-----------------------
 
-    Flatboard CRC 16 Output
+.. code-block:: text
+
+   CRC output: 0xCD4D
+
 
 CRC-32
 ------
@@ -171,11 +173,29 @@ Example code:
    uint8_t input_value[] = {0x67, 0x3F, 0x90, 0xC9, 0x25, 0xF0, 0x4A, 0xB1, 0x12}; /* CRC unaligned input data */
    uint32_t seed_value = 0xFFFFFFFF; /* Seed value for 32 bit */
 
-.. figure:: _static/sample_code_crc32.png
-    :alt: CRC 32 Sample Code
-    :align: center
+CRC 32 Sample Code
+------------------
 
-    CRC 32 Sample Code
+.. code-block:: c
+
+    uint32_t seed_value = 0xFFFFFFFF;
+
+    void main(void)
+    {
+        const struct device *const crc_dev = DEVICE_DT_GET(DT_NODELABEL(crc));
+
+        uint32_t crc_output;
+
+        params.data_in     = (uint8_t *)arr;
+        params.len         = ARRAY_SIZE(arr);
+        params.bit_swap    = TRUE;
+        params.byte_swap   = TRUE;
+        params.reflect     = TRUE;
+        params.invert      = TRUE;
+        params.custum_poly = FALSE;
+        params.data_out    = &crc_output;
+    }
+
 
 .. figure:: _static/web_crc32_output.png
     :alt: Web CRC 16 Output
@@ -183,11 +203,12 @@ Example code:
 
     Web CRC 32 Output
 
-.. figure:: _static/flatboard_crc32_output.png
-    :alt: Flatboard CRC 32 Output
-    :align: center
+Flatboard CRC 32 Output
+-----------------------
 
-    Flatboard CRC 32 Output
+.. code-block:: text
+
+   CRC output: 0xA7E4D026
 
 Custom CRC32C
 -------------
@@ -216,17 +237,55 @@ Example code:
    uint32_t seed_value = 0xFFFFFFFF; /* Seed value for custom CRC32 */
    uint32_t polynomial = 0x2CEEA6C8; /* Polynomial value for custom CRC32 */
 
-.. figure:: _static/sample_code_custom_crc32.png
-    :alt: CRC 32 Sample Code
-    :align: center
+Custom CRC 32 Sample Code
+-------------------------
 
-    Custom CRC 32 Sample Code
+.. code-block:: c
 
-.. figure:: _static/sample_code_custom_crc32_cont.png
-    :alt: CRC 32 Sample Code Continued
-    :align: center
+    uint32_t polynomial = 0x2CEEAC68;
+    uint32_t seed_value = 0xFFFFFFFF;
 
-    Custom CRC 32 Sample Code Continued
+    void main(void)
+    {
+        const struct device *const crc_dev = DEVICE_DT_GET(DT_NODELABEL(crc));
+
+        uint32_t crc_output;
+
+        params.data_in     = (uint8_t *)arr;
+        params.len         = ARRAY_SIZE(arr);
+        params.bit_swap    = TRUE;
+        params.byte_swap   = TRUE;
+        params.reflect     = FALSE;
+        params.invert      = TRUE;
+        params.custum_poly = TRUE;
+        params.data_out    = &crc_output;
+    }
+
+
+Custom CRC 32 Sample Code Continued
+-----------------------------------
+
+.. code-block:: c
+
+    if (!crc_dev) {
+        printk("crc_dev not found\n");
+        return;
+    }
+
+    if (!device_is_ready(crc_dev)) {
+        printk("device not ready\n");
+        return;
+    }
+
+    /* Add seed value */
+    crc_seed(crc_dev, seed_value);
+
+    crc_polycustom(crc_dev, polynomial);
+
+    /* Calculate crc output */
+    crc_compute(crc_dev, &params);
+
+    printk("CRC output: 0x%x\n", *params.data_out);
 
 .. figure:: _static/web_custom_crc32_output.png
     :alt: Web Custom CRC 16 Output
@@ -234,11 +293,12 @@ Example code:
 
     Web Custom CRC 32 Output
 
-.. figure:: _static/flatboard_custom_crc32_output.png
-    :alt: Flatboard Custom CRC 32 Output
-    :align: center
+Flatboard Custom CRC 32 Output
+-------------------------------
 
-    Flatboard Custom CRC 32 Output
+.. code-block:: text
+
+   CRC output: 0x5AD2831F
 
 Executing Binary on the DevKit
 ===============================
@@ -248,3 +308,5 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+.. include:: west_debug.rst

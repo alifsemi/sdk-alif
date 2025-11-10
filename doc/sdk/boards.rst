@@ -5,10 +5,38 @@ Development Boards
 
 This section describes the Alif development kits supported by this SDK.
 
+Ensemble E8 DevKit (DK-E8)
+***************************
+
+The Ensemble E8 DevKit features the full E8 SoC capabilities.
+
+**Key Features:**
+
+* Two Cortex-M55 CPU cores (RTSS-HE and RTSS-HP)
+* Two Ethos-U55 + One Ethos-U85 neural network processor cores
+* Two Cortex-A32 MPU cores
+* Full E8 hardware support
+    .. note::
+        This refers to the DK-E8 board providing access to all the physical hardware features of the Ensemble E8 SoC, including its full complement of CPU cores (Cortex-M55, Ethos-U55/U85, Cortex-A32), memory interfaces, peripherals, and I/Os as defined in the E8 SoC specification. It does not imply that all software drivers or firmware are fully implemented for every peripheral out-of-the-box; developers may need to configure or enable specific features via software.
+
+**Important Note:**
+
+The E4 and E6 devices are scaled-down versions of the E8 with fewer cores and features, available as end devices (production silicon).
+
+The DK-E8 is an Ensemble development kit.
+The E8 SoC on the devkit can be configured to emulate these lower-tier devices by disabling cores and features in software, allowing developers to prototype for the entire Ensemble family using a single development kit.
+
+**Use Cases:**
+
+* High-performance embedded applications
+* AI/ML workload development and testing
+* Multi-core application development
+* Prototyping for E8, E6, and E4 target devices
+
 Ensemble E7 DevKit (DK-E7)
 ***************************
 
-The Ensemble E7 DevKit is the only Ensemble development kit available and features the full E7 SoC capabilities.
+The Ensemble E7 DevKit features the full E7 SoC capabilities.
 
 **Key Features:**
 
@@ -21,7 +49,7 @@ The Ensemble E7 DevKit is the only Ensemble development kit available and featur
 
 The E3 and E5 devices are scaled-down versions of the E7 with fewer cores and features, available as end devices (production silicon).
 
-The DK-E7 is the only Ensemble development kit.
+The DK-E7 is an Ensemble development kit.
 The E7 SoC on the devkit can be configured to emulate these lower-tier devices by disabling cores and features in software, allowing developers to prototype for the entire Ensemble family using a single development kit.
 
 **Use Cases:**
@@ -56,7 +84,10 @@ Board Selection
 
 When selecting a development kit:
 
+* Use **DK-E8** for maximum flexibility and performance, or when targeting multiple Ensemble variants
+
 * Use **DK-E7** for maximum flexibility and performance, or when targeting multiple Ensemble variants
+
 * Use **DK-B1** for wireless connectivity and AI-enabled IoT applications
 
 For detailed hardware specifications, refer to the Alif Hardware Reference Manuals.

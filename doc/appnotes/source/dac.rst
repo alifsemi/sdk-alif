@@ -26,7 +26,7 @@ The Digital-to-Analog Converter (DAC12) module converts 12-bit digital values in
 
    Diagram of the DAC Configuration
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Output Calculation
 ==================
@@ -77,11 +77,36 @@ Users can modify parameters to convert two's complement to unsigned binary data 
 - ``dac_twoscomp_in = 0``: Positive input.
 - ``dac_twoscomp_in = 1``: Negative input.
 
-.. figure:: _static/device_tree_code_dac.png
-   :alt: Device Tree Code Snippet
-   :align: center
+Device Tree Code Snippet
+------------------------
 
-   Device Tree Code Snippet
+.. code-block:: dts
+
+   dac0: dac0@49028000 {
+       compatible = "alif,dac";
+       reg = <0x49028000 0x1000>,
+             <0x49023000 0x100>;
+       reg-names = "dac_reg","cmp_reg";
+       pinctrl-names = "default";
+       clocks = <&clock ALIF_DAC0_CLK>;
+       pinctrl-0 = <&pinctrl_dac0>;
+       dac_twoscomp_in = <0>;
+       input_mux_val = <0>;
+       status = "disabled";
+   };
+
+   dac1: dac1@49029000 {
+       compatible = "alif,dac";
+       reg = <0x49029000 0x1000>,
+             <0x49023000 0x100>;
+       reg-names = "dac_reg","cmp_reg";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_dac1>;
+       dac_twoscomp_in = <0>;
+       input_mux_val = <0>;
+       status = "disabled";
+   };
+
 
 Building DAC Application in Zephyr
 ==================================
@@ -96,20 +121,18 @@ Follow these steps to build the DAC application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-1. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   rm -rf build/
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/dac -p -- -G"Unix Makefiles"
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/dac -- -G"Unix Makefiles"
 
 
-2. Build commands for applications on the M55 HP core using the Ninja build command:
+3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   rm -rf build/
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/dac -p -- -G"Unix Makefiles"
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/dac -- -G"Unix Makefiles"
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
@@ -134,3 +157,5 @@ The sample Output will be as follows
       :align: center
 
       DAC Sample Output
+
+.. include:: west_debug.rst
