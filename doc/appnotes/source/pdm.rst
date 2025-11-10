@@ -20,7 +20,7 @@ This document explains how to create, compile, and run a demo application for th
 
    PDM Hardware
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Hardware Connections and Setup for PDM
 --------------------------------------
@@ -212,19 +212,17 @@ Follow these steps to build your Zephyr-based PDM application using the GCC comp
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/audio/dmic_alif/
 
-3. Build commands for applications on the M55 HP core using the Ninja build command:
+3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
 Building LPPDM Application in Zephyr
 ======================================
@@ -264,8 +262,7 @@ Follow these steps to build your Zephyr-based LPPDM application using the GCC co
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
 Executing Binary on the DevKit
 ===============================
@@ -276,27 +273,33 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
+.. include:: west_debug.rst
+
 Procedure to Test PDM and LPPDM
 ===============================
 
 1. Select PDM channels 4 and 5 in the test application.
 
-.. figure:: _static/test_pdm_channels_4_5.png
-      :alt: Selecting Channels 4 and 5 in Test Application
-      :align: center
+.. code-block:: c
 
-      Selecting Channels 4 and 5 in Test Application
+    /**
+     * The list of channels to test
+     * The number of channels should match the PDM_CHANNELS
+     */
+    #define PDM_CHANNELS    PDM_MASK_CHANNEL_4 | PDM_MASK_CHANNEL_5
 
 
 For multiple channels, consider enabling channels 0, 1, 2, and 3.
 
-.. figure:: _static/test_multiple_channels_pdm.png
-      :alt: Selecting Multiple Channels in Test Application
-      :align: center
+.. code-block:: c
 
-      Selecting Multiple Channels in Test Application
+    /**
+     * The list of channels to test
+     * The number of channels should match the PDM_CHANNELS
+     */
+    #define PDM_CHANNELS    PDM_MASK_CHANNEL_0 | PDM_MASK_CHANNEL_1 | PDM_MASK_CHANNEL_2 | PDM_MASK_CHANNEL_3
 
-2. Specify the block size to store the PCM data.
+1. Specify the block size to store the PCM data.
 
 .. code-block:: bash
 
@@ -332,13 +335,33 @@ For multiple channels, consider enabling channels 0, 1, 2, and 3.
 
 12. The PCM samples will be stored in the `pcmj_data` buffer. Print the base address of the `pcmj_data` buffer.
 
-    The screenshot below shows channels 4 and 5 enabled, with the buffer address at `0x20000c3c`. 50,000 PCM samples are stored in the `pcmj_data` buffer, and the stored PCM samples are being printed.
+The text below shows channels 4 and 5 enabled, with the buffer address at `0x20000c3c`. 50,000 PCM samples are stored in the `pcmj_data` buffer, and the stored PCM samples are being printed.
 
-    .. figure:: _static/pdm_buffer_samples.png
-       :alt: PCM Samples Buffer
-       :align: center
+PCM Samples Buffer (Channels 4 and 5, Address 0x20000c3c)
+---------------------------------------------------------
 
-       PCM Samples Buffer (Channels 4 and 5, Address 0x20000c3c)
+.. code-block:: text
+
+   Start Speaking or Play some Audio!
+   [00:00:00.000,000] <inf> alif_pdm: Memory block allocated : 0x2000dfd8
+   [00:00:01.563,000] <inf> PDM: Block freed at address: 0x2000dfd8
+
+   stop recording
+   [00:00:01.563,000] <inf> PDM: PCM samples will be stored in 0x20000c3c address and size of buffer is 50000
+   [00:00:01.563,000] <inf> PDM: pcm data : 0x20000c3c
+
+   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
+   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
+   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
+   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
+
+   [00:00:01.563,000] <inf> PDM:   ff ff 0 0 fb ff 0 0
+   [00:00:01.563,000] <inf> PDM:   f2 ff 5 0 ee ff 2 0
+   [00:00:01.563,000] <inf> PDM:   14 0 ee ff b 0 e0 ff
+   [00:00:01.563,000] <inf> PDM:   49 0 f7 ff 68 0 fa ff
+   [00:00:01.563,000] <inf> PDM:   91 0 1d 0 15 1 94 0
+   [00:00:01.564,000] <inf> PDM:   16 1 71 0 e0 1 a2 ff
+
 
 13. Copy the buffer address for channels 4 and 5.
 

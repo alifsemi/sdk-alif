@@ -35,7 +35,7 @@ Hardware Requirements
 Software Requirements
 ~~~~~~~~~~~~~~~~~~~~~
 
-Ubuntu 20.04 64-bit or later
+Ubuntu 22.04.5 LTS or above
 
 .. note::
    While other Linux distributions may work, they have not been thoroughly tested.

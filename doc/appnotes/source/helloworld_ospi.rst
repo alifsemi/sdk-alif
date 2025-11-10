@@ -9,7 +9,7 @@ Introduction
 
 This application note describes how to build and execute a "HelloWorld" application using the Zephyr RTOS, configured to run from OSPI1 NOR flash on the Alif E7 DevKit. The application prints a "Hello World" message along with the board name and targets the Real-Time Subsystem High-Performance (RTSS-HP) and Real-Time Subsystem High-Efficiency (RTSS-HE) cores. Optionally, the Zephyr Application Binary (ZAS) can be encrypted with AES for secure execution.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Execution Path
 ==============
@@ -69,10 +69,9 @@ This example builds the hello world sample for the RTSS-HE target on the alif_e7
 
 .. code-block:: bash
 
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world \
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world \
        -DCONFIG_ARM_MPU=n \
        -DCONFIG_FLASH_BASE_ADDRESS=0xC0200000 \
-       -p always
 
 **RTSS-HP Example**
 
@@ -80,11 +79,10 @@ This command builds the uart/echo_bot driver sample for the RTSS-HP target on th
 
 .. code-block:: bash
 
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot \
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot \
        -DCONFIG_ARM_MPU=n \
        -DCONFIG_FLASH_BASE_ADDRESS=0xC0000000 \
        -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
-       -p always
 
 Encrypting the ZAS Application Binary (Optional)
 ================================================
