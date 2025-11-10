@@ -19,8 +19,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <cmsis_core.h>
-#include <soc.h>
-#include <pm_rtss.h>
+#include <soc_common.h>
 #include <power_mgr.h>
 
 #define LOG_MODULE_NAME alif_power_mgr_lib
