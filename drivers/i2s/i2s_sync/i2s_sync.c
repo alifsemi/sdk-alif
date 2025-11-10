@@ -16,6 +16,7 @@
 #include <zephyr/drivers/dma.h>
 #include <drivers/i2s_sync.h>
 #include <soc.h>
+#include <soc_common.h>
 
 #include "i2s_sync_int.h"
 
