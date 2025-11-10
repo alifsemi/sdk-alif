@@ -7,8 +7,8 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-/* This application demonstrates the communication and control of a device
- * allowing to remotely control an LED, and to transmit the state of a button.
+/* This application sends a string to the connected peer device.
+ * The string length can be configured.
  */
 
 #include <zephyr/kernel.h>
