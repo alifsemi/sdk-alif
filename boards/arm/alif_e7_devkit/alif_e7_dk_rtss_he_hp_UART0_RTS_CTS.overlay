@@ -27,11 +27,11 @@
 	group1 {
 		pinmux = < PIN_P0_1__UART0_TX_A >,
 			 < PIN_P0_3__UART0_RTS_A >;
-		read_enable = < 0x0 >;
+		read-enable = < 0x0 >;
 	};
 	group2 {
 		pinmux = < PIN_P0_2__UART0_CTS_A >,
 			 < PIN_P0_3__UART0_RTS_A >;
-		driver_state_control = <1>;
+		driver-state-control = <1>;
 	};
 };

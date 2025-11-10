@@ -28,22 +28,22 @@
 				 < PIN_P2_5__OSPI0_D5_B >,
 				 < PIN_P2_6__OSPI0_D6_B >,
 				 < PIN_P2_7__OSPI0_D7_B >;
-			read_enable = <0x1>;
-			drive_strength = <4>;
-			schmitt_enable = <0x1>;
+			read-enable = <0x1>;
+			drive-strength = <4>;
+			schmitt-enable = <0x1>;
 		};
 		group1 {
 			pinmux = < PIN_P3_0__OSPI0_SCLK_B >,
 				 < PIN_P3_2__OSPI0_SS0_B >;
-			read_enable = <0x1>;
-			drive_strength = <4>;
+			read-enable = <0x1>;
+			drive-strength = <4>;
 		};
 		group2 {
 			pinmux = < PIN_P1_6__OSPI0_RXDS_B >;
-			read_enable = <0x1>;
-			drive_strength = <4>;
-			slew_rate = <0x1>;
-			schmitt_enable = <0x1>;
+			read-enable = <0x1>;
+			drive-strength = <4>;
+			slew-rate = <0x1>;
+			schmitt-enable = <0x1>;
 		};
 	};
 };

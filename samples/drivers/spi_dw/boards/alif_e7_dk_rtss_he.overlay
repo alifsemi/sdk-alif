@@ -72,7 +72,7 @@
 			 < PIN_P7_5__LPSPI_MOSI_A >,
 			 < PIN_P7_6__LPSPI_SCLK_A >,
 			 < PIN_P7_7__GPIO >;
-		read_enable = < 0x1 >;
+		read-enable = < 0x1 >;
 	};
 };
 
