@@ -88,10 +88,6 @@
 	status = "disabled";
 };
 
-&i2s2 {
-	status = "disabled";
-};
-
 &uart_ahi {
 	status = "disabled";
 };
