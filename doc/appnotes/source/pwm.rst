@@ -16,7 +16,7 @@ The PWM driver is functional within the Zephyr framework, but the PWM Capture mo
 
 Currently, LED0 (Green) is used for PWM output on the HP core, and LED1 (Red) is used for PWM output on the HE core in these applications. For debugging and output, UART2 is used for the M55 HP core, while UART4 is used for the M55 HE core.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building PWM Application in Zephyr
 ==================================
@@ -60,3 +60,5 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+.. include:: west_debug.rst

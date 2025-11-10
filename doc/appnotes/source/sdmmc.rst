@@ -30,27 +30,7 @@ The Alif SDMMC driver supports the following features:
 - **Voltage**: Operates at 3.3V.
 - **ADMA2**: Enables efficient data transfers with Advanced DMA.
 
-Prerequisites
-===============
-
-Hardware Requirements
------------------------
-
-To run the SDMMC application, you need:
-
-- **Alif DevKit**
-- **SD card (formatted with FAT32)**
-- **Debugger: JLink (optional)**
-
-Software Requirements
------------------------
-
-To develop and run SDMMC applications on the Alif Devkit with Zephyr, you need:
-
-- **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif_2.0.git <https://github.com/alifsemi/sdk-alif_2.0.git>`_
-- **West Tool**: For building Zephyr applications (installed via ``pip install west``)
-- **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
-- **SE Tools (optional)**: For loading binaries (refer to Alif documentation)
+.. include:: prerequisites.rst
 
 Building SDMMC Application in Zephyr
 ----------------------------------------
@@ -167,3 +147,6 @@ Sample output:
    [FILE] TestFile34.txt (size = 5757)
    [FILE] some.dat (size = 5757)
    [FILE] some9.txt (size = 5757)
+
+.. include:: west_debug.rst
+
