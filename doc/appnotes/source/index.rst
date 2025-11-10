@@ -10,8 +10,6 @@ Application Notes of Zephyr Alif SDK
    :maxdepth: 2
    :caption: Contents:
 
-   clock_control.rst
-   helloworld_ospi.rst
    utimer_counter.rst
    sdmmc.rst
    qdec.rst
@@ -27,10 +25,16 @@ Application Notes of Zephyr Alif SDK
    i2s.rst
    spi.rst
    pdm.rst
+   mhu.rst
+   psram.rst
+   hwsem.rst
+   entropy.rst
    ospi_flash.rst
    se_tool_flash.rst
    ensemble_pins.rst
    balletto_pins.rst
+   clock_control.rst
+   helloworld_ospi.rst
 
 Document History
 ================
@@ -50,7 +54,7 @@ Document History
      - Added support for I3C, CAN FD, and touchscreen
    * - 1.3
      - Added support for DAC12, UTimer Counter, QDEC, and SDMMC
-   * - 2.0-Beta
+   * - 2.0
      - - Updated build and flash sections in the User Guide
        - Added application notes for supported drivers
        - Updated release notes with Ethos-U85 support and newly supported DevKits

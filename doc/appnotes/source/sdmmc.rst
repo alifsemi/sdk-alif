@@ -30,42 +30,18 @@ The Alif SDMMC driver supports the following features:
 - **Voltage**: Operates at 3.3V.
 - **ADMA2**: Enables efficient data transfers with Advanced DMA.
 
-Prerequisites
-===============
-
-Hardware Requirements
------------------------
-
-To run the SDMMC application, you need:
-
-- **Alif DevKit**
-- **SD card (formatted with FAT32)**
-- **Debugger: JLink (optional)**
-
-Software Requirements
------------------------
-
-To develop and run SDMMC applications on the Alif Devkit with Zephyr, you need:
-
-- **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif_2.0.git <https://github.com/alifsemi/sdk-alif_2.0.git>`_
-- **West Tool**: For building Zephyr applications (installed via ``pip install west``)
-- **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
-- **SE Tools (optional)**: For loading binaries (refer to Alif documentation)
+.. include:: prerequisites.rst
 
 Building SDMMC Application in Zephyr
 ----------------------------------------
 
-Follow these steps to build the SDMMC application using the Alif Zephyr SDK:
-
-1. For instructions on fetching the Alif Zephyr SDK, please refer to the `ZAS User Guide`_
-
-2. Navigate to the SDK directory and build the FatFS sample:
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository,      please refer to the `ZAS User Guide`_
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-3. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 
 .. code-block:: bash
@@ -73,7 +49,7 @@ Follow these steps to build the SDMMC application using the Alif Zephyr SDK:
    cd alif
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/subsys/fs/fs_sample/
 
-4 .Build commands for applications on the M55 HP core using the Ninja build command:
+3 .Build commands for applications on the M55 HP core:
 
 
 .. code-block:: bash
@@ -167,3 +143,6 @@ Sample output:
    [FILE] TestFile34.txt (size = 5757)
    [FILE] some.dat (size = 5757)
    [FILE] some9.txt (size = 5757)
+
+.. include:: west_debug.rst
+

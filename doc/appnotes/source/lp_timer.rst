@@ -1,7 +1,7 @@
 .. _appnote-zephyr-low-power-timer:
 
 ===============
-Low Power Timer
+LP Timer
 ===============
 
 Introduction
@@ -32,12 +32,12 @@ The LPTIMER IP, sourced from Synopsys DesignWare, can be utilized as a timer dri
 
 Furthermore, the LPTIMER is integrated into the Alarm application as a demo application, where it functions as expected. The same demo app is also utilized by the RTC (Real-Time Clock) and UTIMER. To facilitate configuration, separate overlay and config files for the RTC, UTIMER, and LPTIMER reside in the board’s directory of the Alarm application. Users can select these files using the west build command.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
-Building LPTIMER Application in Zephyr
-======================================
+Building LP TIMER Application in Zephyr
+========================================
 
-Follow these steps to build the LPTIMER application in Zephyr using the Alif Zephyr SDK:
+Follow these steps to build the LP TIMER application in Zephyr using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -47,21 +47,19 @@ Follow these steps to build the LPTIMER application in Zephyr using the Alif Zep
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HP core using the Ninja build command:
+2. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ \
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ \
        -DOVERLAY_CONFIG=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.conf \
        -DDTC_OVERLAY_FILE=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.overlay
 
-3. Build commands for applications on the M55 HE core using the Ninja build command:
+3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ \
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ \
        -DOVERLAY_CONFIG=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.conf \
        -DDTC_OVERLAY_FILE=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.overlay
 
@@ -77,3 +75,5 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+.. include:: west_debug.rst

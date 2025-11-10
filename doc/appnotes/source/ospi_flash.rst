@@ -26,7 +26,7 @@ This document covers the demo application for the Alif DevKit:
 .. note::
    For more details, refer to the `Zephyr Flash API Reference <https://docs.zephyrproject.org/latest/reference/peripherals/flash.html>`_.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Hardware Connections
 --------------------
@@ -45,19 +45,17 @@ Follow these steps to build the Zephyr-based OSPI Flash application using the GC
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-      rm -rf build
-      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ospi_flash -p
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_flash
 
-3. Build commands for applications on the M55 HP core using the Ninja build command:
+3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-      rm -rf build
-      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/ospi_flash -p
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_flash
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
@@ -141,3 +139,6 @@ The following logs demonstrate the OSPI Flash functionality:
    Content read from OSPI Flash in XiP mode successfully.
    Read from flash command while XiP mode enabled.
    XiP Read Test Succeeded!
+
+
+.. include:: west_debug.rst

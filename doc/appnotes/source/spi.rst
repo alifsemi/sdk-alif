@@ -24,7 +24,7 @@ This document describes two demo applications available on the Alif DevKit:
 
 **SPI0 (Master) to SPI1 (Slave) Data Transfer**: This demo application showcases data transfer between the SPI0 peripheral as master and the SPI1 peripheral as slave. This application can be executed on either the M55-HE or M55-HP cores. By default, this application has DMA enabled. DMA can be disabled by configuring ``CONFIG_SPI_DW_USE_DMA=n`` in the ``prj.conf`` file.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building SPI Application in Zephyr
 ===================================
@@ -49,31 +49,51 @@ Follow these steps to build your Zephyr-based SPI application using the GCC comp
 
    .. code-block:: bash
 
-      rm -rf build
-      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw -p
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw
 
    If using the M55-HE core, the application will fetch SPI0 and LPSPI instances:
 
    .. code-block:: bash
 
-      rm -rf build
-      west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_dw -p
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_dw
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
 **DMA Configuration**
 
-By default, the Alif Zephyr SDK v0.5.0 enables DMA (Direct Memory Access) support for SPI transactions. To disable Tx/Rx with DMA on SPI, set the following in ``../alif/samples/drivers/spi_dw/prj.conf``:
+By default, the Alif Zephyr SDK enables DMA (Direct Memory Access) support for SPI transactions. To disable Tx/Rx with DMA on SPI, set the following in ``../alif/samples/drivers/spi_dw/prj.conf``:
 
 .. code-block:: bash
 
    CONFIG_SPI_DW_USE_DMA=n
 
-.. figure:: _static/spi_proj_conf.png
-      :alt: Proj.conf Settings
-      :align: center
 
-      Proj.conf Settings
+Proj.conf Settings
+---------------------
+
+.. code-block:: text
+
+    # Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+    # Use, distribution and modification of this code is permitted under the
+    # terms stated in the Alif Semiconductor Software License Agreement
+    #
+    # You should have received a copy of the Alif Semiconductor Software
+    # License Agreement with this file. If not, please write to:
+    # contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+    CONFIG_STDOUT_CONSOLE=y
+    CONFIG_SPI=y
+    CONFIG_SPI_DW=y
+    CONFIG_SPI_SLAVE=y
+    CONFIG_SPI_LOG_LEVEL_INF=n
+    CONFIG_SPI_LOG_LEVEL_DBG=n
+    CONFIG_LOG=n
+    CONFIG_DMA=y
+    CONFIG_DMA_PL330=y
+    CONFIG_SPI_DW_USE_DMA=y
+    CONFIG_PRINTK=y
+    CONFIG_DMA_LOG_LEVEL_INF=n
+
 
 Executing Binary on the DevKit
 ===============================
@@ -90,8 +110,57 @@ Validating SPI
 Output Logs
 -----------
 
-.. figure:: _static/spi_validation_screenshot.png
-   :alt: SPI Validation
-   :align: center
+.. code-block:: text
 
-   Validation of SPI Functionality on DevKit-E7 Board
+    *** Booting Zephyr OS build af3dd9578d5e ***
+
+    Slave Transceive Iter= 10
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+
+    Slave Transceive Iter= 9
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+
+    Slave Transceive Iter= 8
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+
+    Slave Transceive Iter= 7
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+
+    Slave Transceive Iter= 6
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+
+    Slave Transceive Iter= 5
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+
+    Slave Transceive Iter= 4
+    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+
+.. include:: west_debug.rst
