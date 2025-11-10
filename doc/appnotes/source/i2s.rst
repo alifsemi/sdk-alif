@@ -20,7 +20,7 @@ The Inter-IC Sound (I2S™) is an electrical serial bus interface standard used 
 
    I2S Hardware Connections
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 
 Hardware Setup I2S
@@ -59,12 +59,18 @@ Follow these steps to build your Zephyr-based I2S application using the GCC comp
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2s/echo
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/i2s/echo
+
+3. Build commands for Balletto B1:
+
+.. code-block:: bash
+
+   west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/drivers/i2s/output
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -80,3 +86,6 @@ To execute binaries on the DevKit follow the command
 Observations
 ============
 The echo application plays back (or echoes) the sound from the microphone through the connected speaker, enabling real-time audio feedback.
+
+.. include:: west_debug.rst
+

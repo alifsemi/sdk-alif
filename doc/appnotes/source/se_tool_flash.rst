@@ -20,7 +20,7 @@ The SE Tool is a Python-based utility from Alif Semiconductor for programming ap
 - Core Targeting: Supports RTSS-HP (Cortex-M55_0) and RTSS-HE (Cortex-M55_1).
 - Memory Flexibility: Supports execution from SRAM, TCM, or OSPI NOR flash.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building the Application
 ========================
@@ -112,7 +112,7 @@ Encrypt the binary for secure applications using a 16-byte AES key.
 
 .. code-block:: bash
 
-   /home/$USER/ZAS-v1.2.0-Beta/prebuilt-images/CSPI_AES128_ECB -i build/zephyr/zephyr.bin -o build/zephyr/zephyr_en.bin -k 0123456789ABCDEF -d 1
+   /home/$USER/prebuilt-images/CSPI_AES128_ECB -i build/zephyr/zephyr.bin -o build/zephyr/zephyr_en.bin -k 0123456789ABCDEF -d 1
 
 - Replace the key with your 16-byte AES key.
 - Update the JSON to use "binary": "zephyr_en.bin" and "signed": true.

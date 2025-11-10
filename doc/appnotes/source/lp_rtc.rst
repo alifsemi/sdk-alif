@@ -35,7 +35,7 @@ Required Config Features
 - ``CONFIG_COUNTER_RTC_SNPS_DW=y``
 - ``CONFIG_COUNTER_ALIF_UTIMER=n``
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building LPRTC Application in Zephyr
 =====================================
@@ -46,25 +46,21 @@ Follow these steps to build the LPRTC alarm application using the GCC compiler a
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
-2. Remove the existing build directory and build the application:
-
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-3. Build commands for applications on the M55 HP core using the Ninja build command:
+2. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
 
-4. Build commands for applications on the M55 HE core using the Ninja build command:
+3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=samples/drivers/counter/alarm/boards/alif_rtc.conf -DDTC_OVERLAY_FILE=samples/drivers/counter/alarm/boards/alif_rtc.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
@@ -108,3 +104,5 @@ The sample alarm application will run continuously until manually stopped, gener
    !!! Alarm !!!
    Now: 31
    Set alarm in 64 sec (2097152 ticks)
+
+.. include:: west_debug.rst
