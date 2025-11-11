@@ -149,7 +149,7 @@ int power_mgr_set_offprofile(pm_state_mode_type_e pm_mode)
 
 	switch (pm_mode) {
 	case PM_STATE_MODE_IDLE:
-		offp.power_domains |= PD_SYST_MASK | PD_SSE700_AON_MASK;
+		offp.power_domains |= PD_SYST_MASK | PD_SSE700_AON_MASK | PD_SESS_MASK;
 		offp.memory_blocks |= SRAM5_3_MASK;
 		offp.ip_clock_gating = LDO_PHY_MASK;
 		offp.phy_pwr_gating = LDO_PHY_MASK;
