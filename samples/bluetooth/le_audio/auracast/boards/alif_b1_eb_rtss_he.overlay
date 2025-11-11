@@ -1,0 +1,27 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+#include "alif_b1_dk_rtss_he.overlay"
+
+&pinctrl_i2c0 {
+	group0 {
+		pinmux = <PIN_P7_0__I2C0_SDA_C>,
+			 <PIN_P7_1__I2C0_SCL_C>;
+	};
+};
+
+&pinctrl_i2s0 {
+	group0 {
+		pinmux = <PIN_P8_0__I2S0_SDI_C>,
+			 <PIN_P8_1__I2S0_SDO_C>,
+			 <PIN_P8_3__I2S0_WS_C>,
+			 <PIN_P8_2__I2S0_SCLK_C>;
+	};
+};
