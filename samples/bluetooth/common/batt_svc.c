@@ -31,14 +31,8 @@ LOG_MODULE_REGISTER(alif_batt, LOG_LEVEL_DBG);
 
 static uint8_t battery_level = 99;
 
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 /* Notifications bit field */
 uint16_t ccc_bf;
-#else
-static bool READY_TO_SEND_BASS;
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
-
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 
 __STATIC co_buf_t *battery_server_prepare_buf_level(void)
 {
@@ -121,61 +115,14 @@ uint16_t get_batt_id(void)
 {
 	return GATT_SVC_BATTERY;
 }
-#else
-
-static void on_bass_batt_level_upd_cmp(uint16_t status)
-{
-	READY_TO_SEND_BASS = true;
-}
-
-static void on_bass_bond_data_upd(uint8_t conidx, uint8_t ntf_ind_cfg)
-{
-	switch (ntf_ind_cfg) {
-	case PRF_CLI_STOP_NTFIND:
-		LOG_INF("Client requested BASS stop notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND_BASS = false;
-		break;
-
-	case PRF_CLI_START_NTF:
-	case PRF_CLI_START_IND:
-		LOG_INF("Client requested BASS start notification/indication (conidx: %u)", conidx);
-		READY_TO_SEND_BASS = true;
-		LOG_DBG("Sending battery level");
-		break;
-	default:
-		LOG_WRN("Unknown notification/indocation update");
-		break;
-	}
-}
-
-static const bass_cb_t bass_cb = {
-	.cb_batt_level_upd_cmp = on_bass_batt_level_upd_cmp,
-	.cb_bond_data_upd = on_bass_bond_data_upd,
-};
-
-uint16_t get_batt_id(void)
-{
-	return GATT_SVC_BATTERY_SERVICE;
-}
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 void config_battery_service(void)
 {
 	uint16_t err;
 	uint16_t start_hdl = 0;
-
-	#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 	uint8_t bass_cfg_bf = 0;
 
 	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg_bf, &bass_cb, &start_hdl);
-
-	#else
-	struct bass_db_cfg bass_cfg;
-
-	bass_cfg.bas_nb = 1;
-	bass_cfg.features[0] = 1;
-	err = prf_add_profile(TASK_ID_BASS, 0, 0, &bass_cfg, &bass_cb, &start_hdl);
-	#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 	if (err) {
 		LOG_ERR("Error adding service: 0x%02x", err);
@@ -196,16 +143,11 @@ void battery_process(void)
 
 	/* Check if connection is available */
 	if (!s_shared_ptr->connected) {
-		#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 		ccc_bf = 0;
-		#else
-		READY_TO_SEND_BASS = 0;
-		#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		return;
 	}
 
 	/* Proceed to send measurement */
-	#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 	if ((ccc_bf & CO_BIT(BASS_CHAR_TYPE_LEVEL)) != 0u) {
 		co_buf_t *p_buf;
 		uint8_t evt_type;
@@ -222,16 +164,6 @@ void battery_process(void)
 
 		co_buf_release(p_buf);
 	}
-	#else
-	if (READY_TO_SEND_BASS) {
-		/* Sending dummy battery level to first battery instance*/
-		err = bass_batt_level_upd(BATT_INSTANCE, battery_level);
-
-		if (err) {
-			LOG_ERR("Error %u sending battery level", err);
-		}
-	}
-	#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 }
 
 void service_conn(struct shared_control *ctrl)
