@@ -20,7 +20,6 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
     src/main.c
+    src/prxp_rom_1_2.c
     ${COMMON_SRCS}
 )
-target_sources_ifdef(CONFIG_ALIF_BLE_ROM_IMAGE_V1_0	app PRIVATE src/prxp_rom_1_0.c)
-target_sources_ifdef(CONFIG_ALIF_BLE_ROM_IMAGE_V1_2	app PRIVATE src/prxp_rom_1_2.c)
