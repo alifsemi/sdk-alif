@@ -50,6 +50,9 @@ def generate_ble_stage(sample) {
 
 pipeline {
     agent none
+    options{
+        disableConcurrentBuilds abortPrevious: true
+    }
     parameters {
         booleanParam(name: "FORCE_CLEAN_CACHE", defaultValue: false, description: "Clean cached Zephyr base package")
     }

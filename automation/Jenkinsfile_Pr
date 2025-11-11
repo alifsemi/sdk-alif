@@ -32,7 +32,9 @@ def Build_SW_SMP_Service = 'Pending'
 
 pipeline {
     agent any
-
+    options {
+        disableConcurrentBuilds abortPrevious: true
+    }
     stages {
         stage('Checkout') {
             steps {
@@ -74,7 +76,7 @@ pipeline {
                             cd /root/alif/public/zephyr/scripts
                             pip install -r requirements.txt
                             cd /root/alif/public
-                            west build -p always -b alif_b1_dk_rtss_he zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                            west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
                             cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
                             cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
                             mv /root/alif/public/build $WORKSPACE
@@ -97,7 +99,7 @@ pipeline {
                             try {
                                 sh '''#!/bin/bash -xe
                                 cd /root/alif/public
-                                west build -p always -b alif_b1_dk_rtss_he zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                                west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
                                 cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
                                 cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
                                 mv /root/alif/public/build $WORKSPACE
@@ -1521,7 +1523,7 @@ pipeline {
                             west update
                             cd /root/alif/sdk-alif/
                             ls -la
-                            west build -p always -b alif_b1_dk_rtss_he applications/testapp
+                            west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he applications/testapp
                             cp /root/alif/sdk-alif/build/zephyr/zephyr.bin $WORKSPACE
                             mv /root/alif/sdk-alif/build $WORKSPACE
                             cd $WORKSPACE
