@@ -1553,10 +1553,6 @@ pipeline {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         try {
                             unstash 'zephyr.bin'
-                            checkout changelog: false, poll: false, scm: scmGit(branches: [[name: '*/main']],
-                                extensions: [submodule(parentCredentials: true, reference: '')],
-                                userRemoteConfigs: [[credentialsId: '533fc6b7-f0f5-4514-9629-1c55a011e1d3',
-                                    url: 'git@github.com:AlifSemiDev/jenkins_automation.git']])
                             sh """#!/bin/bash -xe
                                 ls -lart
                                 rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
