@@ -7,10 +7,6 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-/* This application demonstrates the communication and control of a device
- * allowing to remotely control an LED, and to transmit the state of a button.
- */
-
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
