@@ -1,0 +1,544 @@
+#include <dt-bindings/pinctrl/balletto-pinctrl.h>
+&{/soc} {
+	pinctrl: pin-controller@1a603000 {
+		compatible = "alif,pinctrl";
+		reg = <0x1A603000 0x00001000>, <0x42007000 0x00001000>;
+		reg-names = "pinctrl", "lpgpio_pinctrl";
+		/* Note:
+		 * "lpgpio_pinctrl" reg must be added,
+		 *   if pinctrl is added into "lpgpio" node
+		 *   otherwise it will give hard-fault
+		 *   (due to invalid pinmux address in "pinctrl_configure_pin" api).
+		 */
+	};
+};
+
+&pinctrl {
+	pinctrl_uart4: pinctrl_uart4 {
+		group0 {
+			pinmux = < PIN_P2_6__UART4_RX_A >,
+				 < PIN_P2_7__UART4_TX_A >;
+			/* pad config default values
+			 * read-enable = < 0x1 >; 0 for disable, 1 for enable
+			 * schmitt-enable = < 0x1 >; 0x0 for disable
+			 *			  0x1 for enable
+			 * slew-rate = < 0x0 > ; 0 for slow, 1 for fast
+			 * driver-state-control = <0>;
+			 *			0 for high z
+			 *			1 for pull up
+			 *			2 for pull down
+			 *			3 for bus repeater
+			 * drive-strength = <4>;
+			 *			2 for 2mA
+			 *			4 for 4mA
+			 *			8 for 8mA
+			 *			12 for 12mA
+			 * driver = < 0x0 >; 0 for push pull, 1 for open drain
+			 */
+		};
+	};
+
+	pinctrl_uart3: pinctrl_uart3 {
+		group0 {
+			pinmux = < PIN_P8_6__UART3_RX_C >,
+				 < PIN_P8_7__UART3_TX_C >;
+		};
+	};
+
+	pinctrl_ut0: pinctrl_utimer0 {
+		group0 {
+			pinmux = < PIN_P4_0__UT0_T0_A >,
+				 < PIN_P4_1__UT0_T1_A >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_ut1: pinctrl_utimer1 {
+		group0 {
+			pinmux = <PIN_P6_2__UT1_T0_B>,
+				 <PIN_P6_3__UT1_T1_B>;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_ut2: pinctrl_utimer2 {
+		group0 {
+			pinmux = < PIN_P4_4__UT2_T0_A >,
+				 < PIN_P4_5__UT2_T1_A >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_ut3: pinctrl_utimer3 {
+		group0 {
+			pinmux = < PIN_P4_6__UT3_T0_A >,
+				 < PIN_P4_7__UT3_T1_A >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_uart0: pinctrl_uart0 {
+		group0 {
+			pinmux = < PIN_P8_0__UART0_RX_C >,
+				 < PIN_P8_1__UART0_TX_C >;
+		};
+	};
+
+	pinctrl_uart1: pinctrl_uart1 {
+		group0 {
+			pinmux = < PIN_P0_4__UART1_RX_A >,
+				 < PIN_P0_5__UART1_TX_A >;
+		};
+	};
+
+	pinctrl_uart2: pinctrl_uart2 {
+		group0 {
+		pinmux = < PIN_P1_6__UART2_RX_A >,
+			 < PIN_P1_7__UART2_TX_A >;
+		};
+	};
+
+	pinctrl_uart5: pinctrl_uart5 {
+		group0 {
+			pinmux = < PIN_P7_6__UART5_RX_B >,
+				 < PIN_P7_7__UART5_TX_B >;
+		};
+	};
+
+	pinctrl_uart_ext_a: pinctrl_uart_ext_a {
+		group0 {
+			pinmux = < PIN_P4_0__EXT_RX_A >,
+				 < PIN_P3_7__EXT_CTS_A >;
+		};
+		group1 {
+			pinmux = < PIN_P4_1__EXT_TX_A >,
+				 < PIN_P3_6__EXT_RTS_A >;
+			read-enable = < 0x0 >;
+		};
+	};
+	pinctrl_ahi_trace: pinctrl_ahi_trace {
+		group0 {
+			pinmux = < PIN_P4_1__EXT_TX_A >,
+				 < PIN_P3_6__EXT_RTS_A >,
+				 < PIN_P4_2__EXT_TRACE_A >;
+			read-enable = < 0x0 >;
+		};
+	};
+
+	pinctrl_lpuart: pinctrl_lpuart {
+		group0 {
+			pinmux = < PIN_P2_0__LPUART_RX_A >,
+				 < PIN_P9_1__LPUART_TX_C >;
+		};
+	};
+
+	pinctrl_i2c0: pinctrl_i2c0 {
+		group0 {
+			pinmux = < PIN_P7_0__I2C0_SDA_C >,
+				 < PIN_P7_1__I2C0_SCL_C >;
+
+			read-enable = < 0x1 >;
+			driver-state-control = < 0x1 >;
+		};
+	};
+
+	pinctrl_i2c1: pinctrl_i2c1 {
+		group0 {
+			pinmux = < PIN_P7_2__I2C1_SDA_C >,
+				 < PIN_P7_3__I2C1_SCL_C >;
+			read-enable = < 0x1 >;
+			driver-state-control = < 0x1 >;
+		};
+	};
+
+	pinctrl_lpi2c0: pinctrl_lpi2c0 {
+		group0 {
+			pinmux = < PIN_P0_0__LPI2C0_SCL_A >,
+				 < PIN_P0_1__LPI2C0_SDA_A >;
+
+			read-enable = < 0x1 >;
+			driver-state-control = < 0x1 >;
+		};
+	};
+
+	pinctrl_adc0:pinctrl_adc0 {
+		group0 {
+			pinmux = <PIN_P0_0__ANA_S0>,
+			<PIN_P0_1__ANA_S1>,
+			<PIN_P0_2__ANA_S2>,
+			<PIN_P0_3__ANA_S3>,
+			<PIN_P0_4__ANA_S4>,
+			<PIN_P0_5__ANA_S5>;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_adc1:pinctrl_adc1 {
+		group0 {
+			pinmux = <PIN_P0_6__ANA_S6>,
+			<PIN_P0_7__ANA_S7>,
+			<PIN_P2_4__ANA_S12>,
+			<PIN_P2_5__ANA_S13>,
+			<PIN_P2_6__ANA_S14>,
+			<PIN_P2_7__ANA_S15>;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_cmp0: pinctrl_cmp0 {
+		group0 {
+			pinmux = < PIN_P0_0__ANA_S0 >,
+				< PIN_P0_2__ANA_S2 >,
+				< PIN_P0_4__ANA_S4 >,
+				< PIN_P0_6__ANA_S6 >,
+				< PIN_P2_0__ANA_S8 >,
+				< PIN_P2_1__ANA_S9 >,
+				< PIN_P4_3__CMP0_OUT_B >;
+
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_cmp1: pinctrl_cmp1 {
+		group0 {
+			pinmux = < PIN_P0_1__ANA_S1 >,
+				< PIN_P0_3__ANA_S3 >,
+				< PIN_P0_5__ANA_S5 >,
+				< PIN_P0_7__ANA_S7 >,
+				< PIN_P2_0__ANA_S8 >,
+				< PIN_P2_1__ANA_S9 >,
+				< PIN_P4_7__CMP1_OUT_B >;
+
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_lpcmp: pinctrl_lpcmp {
+		group0 {
+			pinmux = < PIN_P2_4__ANA_S12 >,
+				< PIN_P2_5__ANA_S13 >,
+				< PIN_P2_6__ANA_S14 >,
+				< PIN_P2_7__ANA_S15 >,
+				< PIN_P2_0__ANA_S8 >,
+				< PIN_P2_1__ANA_S9 >,
+				< PIN_P2_2__ANA_S10 >;
+
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_lppdm: pinctrl_lppdm {
+		group0 {
+			pinmux = < PIN_P5_4__LPPDM_C0_C >,
+				 < PIN_P5_5__LPPDM_C1_C >,
+				 < PIN_P7_4__LPPDM_C2_C >,
+				 < PIN_P7_6__LPPDM_C3_C >;
+			read-enable = < 0x0 >;
+		};
+		group1 {
+			pinmux = < PIN_P5_6__LPPDM_D0_C >,
+				 < PIN_P5_7__LPPDM_D1_C >,
+				 < PIN_P7_5__LPPDM_D2_C >,
+				 < PIN_P7_7__LPPDM_D3_C >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_spi0: pinctrl_spi0 {
+		group0 {
+			pinmux = < PIN_P5_0__SPI0_MISO_B >,
+				 < PIN_P5_1__SPI0_MOSI_B >,
+				 < PIN_P5_2__SPI0_SCLK_B >,
+				 < PIN_P5_3__SPI0_SS0_B >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_spi1: pinctrl_spi1 {
+		group0 {
+			pinmux = < PIN_P8_4__SPI1_MISO_C >,
+				 < PIN_P8_5__SPI1_MOSI_C >,
+				 < PIN_P8_6__SPI1_SCLK_C >,
+				 < PIN_P8_7__SPI1_SS0_C >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_spi2: pinctrl_spi2 {
+		group0 {
+			pinmux = < PIN_P7_0__SPI2_MISO_B >,
+				 < PIN_P7_1__SPI2_MOSI_B >,
+				 < PIN_P7_2__SPI2_SCLK_B >,
+				 < PIN_P7_3__SPI2_SS0_B >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_lpspi0: pinctrl_lpspi0 {
+		group0 {
+			pinmux = < PIN_P1_3__LPSPI_MISO_A >,
+				 < PIN_P1_4__LPSPI_MOSI_A >,
+				 < PIN_P1_5__LPSPI_SCLK_A >,
+				 < PIN_P2_0__LPSPI_SS_A >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_i2s0:pinctrl_i2s0 {
+		group0 {
+			pinmux = < PIN_P2_4__I2S0_SDI_B >,
+				 < PIN_P2_5__I2S0_SDO_B >,
+				 < PIN_P2_6__I2S0_SCLK_B >,
+				 < PIN_P2_7__I2S0_WS_B >;
+		};
+	};
+	pinctrl_i2s1:pinctrl_i2s1 {
+		group0 {
+			pinmux = < PIN_P2_0__I2S1_SDI_A >,
+				 < PIN_P2_1__I2S1_SDO_A >,
+				 < PIN_P2_2__I2S1_SCLK_SLV_A >,
+				 < PIN_P2_3__I2S1_WS_SLV_A >;
+		};
+	};
+	pinctrl_lpi2s:pinctrl_lpi2s {
+		group0 {
+			pinmux = < PIN_P9_0__LPI2S_SDI_C >,
+				 < PIN_P9_1__LPI2S_SDO_C >,
+				 < PIN_P9_2__LPI2S_SCLK_C >,
+				 < PIN_P4_6__LPI2S_WS_B >;
+		};
+	};
+
+	pinctrl_ospi0:pinctrl_ospi0 {
+		group0 {
+			pinmux = < PIN_P4_2__OSPI0_SCLK_A >,
+				 < PIN_P4_1__OSPI0_RXDS_A >,
+				 < PIN_P2_1__OSPI0_SS1_B >,
+				 < PIN_P3_0__OSPI0_D0_A >,
+				 < PIN_P3_1__OSPI0_D1_A >,
+				 < PIN_P3_2__OSPI0_D2_A >,
+				 < PIN_P3_3__OSPI0_D3_A >,
+				 < PIN_P3_4__OSPI0_D4_A >,
+				 < PIN_P3_5__OSPI0_D5_A >,
+				 < PIN_P3_6__OSPI0_D6_A >,
+				 < PIN_P3_7__OSPI0_D7_A >;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+	};
+
+	pinctrl_lpcam: pinctrl_lpcam {
+		/* LP-CAM interface. */
+		group0 {
+			pinmux = < PIN_P8_4__LPCAM_VSYNC_C >,
+				 < PIN_P8_5__LPCAM_HSYNC_C >,
+				 < PIN_P8_6__LPCAM_PCLK_C >,
+				 < PIN_P8_7__LPCAM_XVCLK_C >,
+				 < PIN_P9_0__LPCAM_D0_C >,
+				 < PIN_P9_1__LPCAM_D1_C >,
+				 < PIN_P7_2__LPCAM_D2_B >,
+				 < PIN_P7_3__LPCAM_D3_B >,
+				 < PIN_P7_4__LPCAM_D4_B >,
+				 < PIN_P7_5__LPCAM_D5_B >,
+				 < PIN_P7_6__LPCAM_D6_B >,
+				 < PIN_P7_7__LPCAM_D7_B >;
+		};
+	};
+
+	pinctrl_gpio0:pinctrl_gpio0 {
+		group0 {
+			pinmux = < PIN_P0_0__GPIO >,
+				 < PIN_P0_1__GPIO >,
+				 < PIN_P0_2__GPIO >,
+				 < PIN_P0_3__GPIO >,
+				 < PIN_P0_4__GPIO >,
+				 < PIN_P0_5__GPIO >,
+				 < PIN_P0_6__GPIO >,
+				 < PIN_P0_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio1:pinctrl_gpio1 {
+		group0 {
+			pinmux = < PIN_P1_0__GPIO >,
+				 < PIN_P1_1__GPIO >,
+				 < PIN_P1_2__GPIO >,
+				 < PIN_P1_3__GPIO >,
+				 < PIN_P1_4__GPIO >,
+				 < PIN_P1_5__GPIO >,
+				 < PIN_P1_6__GPIO >,
+				 < PIN_P1_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio2:pinctrl_gpio2 {
+		group0 {
+			pinmux = < PIN_P2_0__GPIO >,
+				 < PIN_P2_1__GPIO >,
+				 < PIN_P2_2__GPIO >,
+				 < PIN_P2_3__GPIO >,
+				 < PIN_P2_4__GPIO >,
+				 < PIN_P2_5__GPIO >,
+				 < PIN_P2_6__GPIO >,
+				 < PIN_P2_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio3:pinctrl_gpio3 {
+		group0 {
+			pinmux = < PIN_P3_0__GPIO >,
+				 < PIN_P3_1__GPIO >,
+				 < PIN_P3_2__GPIO >,
+				 < PIN_P3_3__GPIO >,
+				 < PIN_P3_4__GPIO >,
+				 < PIN_P3_5__GPIO >,
+				 < PIN_P3_6__GPIO >,
+				 < PIN_P3_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio4:pinctrl_gpio4 {
+		group0 {
+			pinmux = < PIN_P4_0__GPIO >,
+				 < PIN_P4_1__GPIO >,
+				 < PIN_P4_2__GPIO >,
+				 < PIN_P4_3__GPIO >,
+				 < PIN_P4_4__GPIO >,
+				 < PIN_P4_5__GPIO >,
+				 < PIN_P4_6__GPIO >,
+				 < PIN_P4_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio5:pinctrl_gpio5 {
+		group0 {
+			pinmux = < PIN_P5_0__GPIO >,
+				 < PIN_P5_1__GPIO >,
+				 < PIN_P5_2__GPIO >,
+				 < PIN_P5_3__GPIO >,
+				 < PIN_P5_4__GPIO >,
+				 < PIN_P5_5__GPIO >,
+				 < PIN_P5_6__GPIO >,
+				 < PIN_P5_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio6:pinctrl_gpio6 {
+		group0 {
+			pinmux = < PIN_P6_0__GPIO >,
+				 < PIN_P6_1__GPIO >,
+				 < PIN_P6_2__GPIO >,
+				 < PIN_P6_3__GPIO >,
+				 < PIN_P6_4__GPIO >,
+				 < PIN_P6_5__GPIO >,
+				 < PIN_P6_6__GPIO >,
+				 < PIN_P6_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio7:pinctrl_gpio7 {
+		group0 {
+			pinmux = < PIN_P7_0__GPIO >,
+				 < PIN_P7_1__GPIO >,
+				 < PIN_P7_2__GPIO >,
+				 < PIN_P7_3__GPIO >,
+				 < PIN_P7_4__GPIO >,
+				 < PIN_P7_5__GPIO >,
+				 < PIN_P7_6__GPIO >,
+				 < PIN_P7_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio8:pinctrl_gpio8 {
+		group0 {
+			pinmux = < PIN_P8_0__GPIO >,
+				 < PIN_P8_1__GPIO >,
+				 < PIN_P8_2__GPIO >,
+				 < PIN_P8_3__GPIO >,
+				 < PIN_P8_4__GPIO >,
+				 < PIN_P8_5__GPIO >,
+				 < PIN_P8_6__GPIO >,
+				 < PIN_P8_7__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_gpio9:pinctrl_gpio9 {
+		group0 {
+			pinmux = < PIN_P9_0__GPIO >,
+				 < PIN_P9_1__GPIO >,
+				 < PIN_P9_2__GPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_lpgpio:pinctrl_lpgpio {
+		group0 {
+			pinmux = < PIN_P15_0__LPGPIO >,
+				 < PIN_P15_1__LPGPIO >;
+			read-enable = < 0x1 >;
+		};
+	};
+
+	pinctrl_cdc200: pinctrl_cdc200 {
+		group0 {
+			pinmux = < PIN_P1_4__CDC_PCLK_A >,
+				 < PIN_P5_0__CDC_D0_A >,
+				 < PIN_P5_1__CDC_D1_A >,
+				 < PIN_P5_2__CDC_D2_A >,
+				 < PIN_P5_3__CDC_D3_A >,
+				 < PIN_P5_4__CDC_D4_A >,
+				 < PIN_P5_5__CDC_D5_A >,
+				 < PIN_P5_6__CDC_D6_A >,
+				 < PIN_P5_7__CDC_D7_A >,
+				 < PIN_P6_0__CDC_D8_A >,
+				 < PIN_P6_1__CDC_D9_A >,
+				 < PIN_P6_2__CDC_D10_A >,
+				 < PIN_P6_3__CDC_D11_A >,
+				 < PIN_P6_4__CDC_D12_A >,
+				 < PIN_P6_5__CDC_D13_A >,
+				 < PIN_P6_6__CDC_D14_A >,
+				 < PIN_P6_7__CDC_D15_A >,
+				 < PIN_P7_0__CDC_D16_A >,
+				 < PIN_P7_1__CDC_D17_A >,
+				 < PIN_P7_2__CDC_D18_A >,
+				 < PIN_P7_3__CDC_D19_A >,
+				 < PIN_P7_4__CDC_D20_A >,
+				 < PIN_P7_5__CDC_D21_A >,
+				 < PIN_P7_6__CDC_D22_A >,
+				 < PIN_P7_7__CDC_D23_A >,
+				 < PIN_P1_5__CDC_DE_A >,
+				 < PIN_P1_6__CDC_HSYNC_A >,
+				 < PIN_P1_7__CDC_VSYNC_A >;
+		};
+	};
+
+	pinctrl_dac0: pinctrl_dac0 {
+		group0 {
+			pinmux = <PIN_P2_3__ANA_S11>;
+			read-enable = <0x0>;
+		};
+	};
+
+	pinctrl_sdmmc:pinctrl_sdmmc {
+		group0 {
+			pinmux =	<PINMUX_PIN(PIN_P2_6, 5)>,
+						<PINMUX_PIN(PIN_P2_7, 5)>,
+						<PINMUX_PIN(PIN_P6_0, 5)>,
+						<PINMUX_PIN(PIN_P6_1, 5)>,
+						<PINMUX_PIN(PIN_P6_2, 5)>,
+						<PINMUX_PIN(PIN_P6_3, 5)>;
+			read-enable = <0x1>;
+			drive-strength = <8>;
+		};
+	};
+};

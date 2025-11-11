@@ -62,7 +62,7 @@
 			 < PIN_P14_5__SPI1_MOSI_C >,
 			 < PIN_P14_6__SPI1_SCLK_C >,
 			 < PIN_P14_7__GPIO >;
-		read_enable = < 0x1 >;
+		read-enable = < 0x1 >;
 	};
 };
 

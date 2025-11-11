@@ -239,28 +239,17 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 	}
 }
 
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 static void on_gapm_err(uint32_t metainfo, uint8_t code)
 {
 	LOG_ERR("gapm error %d", code);
 }
-#else
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
-}
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 static uint16_t utils_create_adv(void)
 {
 	static const gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 		.tx_pwr = 0,
-#else
-		.max_tx_pwr = 0,
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
 				.adv_intv_min = 160,
@@ -438,7 +427,6 @@ static uint16_t utils_config_gapm(void)
 
 	static const gapc_le_config_cb_t gapc_le_cfg_cbs = {};
 
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 	static const gapm_cb_t gapm_err_cbs = {
 		.cb_hw_error = on_gapm_err,
 	};
@@ -451,20 +439,6 @@ static uint16_t utils_config_gapm(void)
 		.p_bt_config_cbs = NULL, /* BT classic so not required */
 		.p_gapm_cbs = &gapm_err_cbs,
 	};
-#else
-	static const gapm_err_info_config_cb_t gapm_err_cbs = {
-		.ctrl_hw_error = on_gapm_err,
-	};
-
-	static const gapm_callbacks_t gapm_cbs = {
-		.p_con_req_cbs = &gapc_con_cbs,
-		.p_sec_cbs = &gapc_sec_cbs,
-		.p_info_cbs = &gapc_con_inf_cbs,
-		.p_le_config_cbs = &gapc_le_cfg_cbs,
-		.p_bt_config_cbs = NULL, /* BT classic so not required */
-		.p_err_info_config_cbs = &gapm_err_cbs,
-	};
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 
 	return gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 }

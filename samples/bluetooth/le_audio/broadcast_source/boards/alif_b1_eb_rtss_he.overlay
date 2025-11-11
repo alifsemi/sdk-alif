@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -50,7 +50,7 @@
 			  "abort";
 };
 
-&i2c1 {
+&i2c0 {
 	clock-frequency = <I2C_BITRATE_STANDARD>;
 	status = "okay";
 
@@ -63,7 +63,7 @@
 
 &i2s0 {
 	/delete-property/ clock-frequency;
-	/delete-property/ driver-instance;
+	/delete-property/ driver_instance;
 	compatible = "alif,i2s-sync";
 	interrupts = <I2S0_IRQ_NUM I2S0_IRQ_PRIO>;
 	bit-depth = <16>;
@@ -76,19 +76,19 @@
 #endif
 };
 
-&pinctrl_i2c1 {
+&pinctrl_i2c0 {
 	group0 {
-		pinmux = <PIN_P7_2__I2C1_SDA_C>,
-			 <PIN_P7_3__I2C1_SCL_C>;
+		pinmux = <PIN_P7_0__I2C0_SDA_C>,
+			 <PIN_P7_1__I2C0_SCL_C>;
 	};
 };
 
 &pinctrl_i2s0 {
 	group0 {
-		pinmux = <PIN_P2_4__I2S0_SDI_B>,
-			 <PIN_P2_5__I2S0_SDO_B>,
-			 <PIN_P1_7__I2S0_WS_A>,
-			 <PIN_P1_6__I2S0_SCLK_A>;
+		pinmux = <PIN_P8_0__I2S0_SDI_C>,
+			 <PIN_P8_1__I2S0_SDO_C>,
+			 <PIN_P8_3__I2S0_WS_C>,
+			 <PIN_P8_2__I2S0_SCLK_C>;
 	};
 };
 
@@ -96,8 +96,8 @@
 &pinctrl_gpio5 {
 	group1 {
 		pinmux = <PIN_P5_7__GPIO>;
-		driver-state-control = <1>;
-		read-enable = < 0x1 >;
+		driver_state_control = <1>;
+		read_enable = < 0x1 >;
 	};
 };
 

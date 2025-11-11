@@ -22,11 +22,10 @@
 #include <zephyr/drivers/counter.h>
 #include <zephyr/drivers/uart.h>
 #include <cmsis_core.h>
-#include <soc.h>
+#include <soc_common.h>
 #include <se_service.h>
 #include <es0_power_manager.h>
 
-#include <pm_rtss.h>
 #include "alif_ble.h"
 #include "gapm.h"
 #include "gap_le.h"
@@ -39,7 +38,7 @@
 #include "gatt_db.h"
 #include "gatt_srv.h"
 #include "ke_mem.h"
-#include <power_mgr.h>
+#include "power_mgr.h"
 
 /* Configuration for different BLE and application timing parameters
  */

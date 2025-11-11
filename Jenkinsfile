@@ -2,20 +2,20 @@
 
 def common_funcs
 
-def samples1 = ['beacon', 'broadcast_audio_sink', 'broadcast_audio_source', 'broadcaster', 'broadcaster_multiple', 'central',
-               'central_gatt_write', 'central_hr', 'central_ht', 'central_iso', 'central_multilink']
+def samples1 = ['beacon', 'bap_broadcast_sink', 'bap_broadcast_source', 'broadcaster', 'broadcaster_multiple', 'central',
+               'central_gatt_write', 'central_hr', 'central_ht', 'iso_central', 'central_multilink']
 
 def samples2 = ['central_past', 'direct_adv', 'direction_finding_central', 'direction_finding_connectionless_rx', 'direction_finding_connectionless_tx', 'direction_finding_peripheral',
-               'eddystone', 'handsfree', 'hap_ha', 'hci_pwr_ctrl']
+               'eddystone', 'handsfree', 'hap_ha']
 
-def samples3 = ['ibeacon', 'ipsp', 'iso_broadcast',
+def samples3 = ['ibeacon', 'iso_broadcast',
                'iso_broadcast_benchmark', 'iso_connected_benchmark', 'iso_receive', 'mesh', 'mesh_demo', 'mesh_provisioner']
 
 def samples4 = ['observer', 'periodic_adv', 'periodic_sync', 'peripheral', 'peripheral_accept_list',
                'peripheral_csc', 'peripheral_dis', 'peripheral_esp', 'peripheral_gatt_write', 'peripheral_hids', 'peripheral_hr']
 
-def samples5 = ['peripheral_ht', 'peripheral_identity', 'peripheral_iso', 'peripheral_ots', 'peripheral_past',
-               'peripheral_sc_only', 'scan_adv', 'unicast_audio_client', 'unicast_audio_server']
+def samples5 = ['peripheral_ht', 'peripheral_identity', 'iso_peripheral', 'peripheral_ots', 'peripheral_past',
+               'peripheral_sc_only', 'scan_adv', 'bap_unicast_client', 'bap_unicast_server']
 
 def bleStagesMap1 = samples1.collectEntries {
     ["${it}" : generate_ble_stage(it)]
@@ -42,7 +42,7 @@ def generate_ble_stage(sample) {
         stage("Build ${sample} sample") {
             script {
                 def testing = load 'test_samples.groovy'
-                testing.build_zephyr("samples/bluetooth/${sample}", "build-b1-${sample}", "alif_b1_dk_rtss_he");
+                testing.build_zephyr("samples/bluetooth/${sample}", "build-b1-${sample}", "alif_b1_eb/ab1c1f4m51820hh/rtss_he");
             }
         }
     }
@@ -101,12 +101,12 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
-                            common_funcs.build_zephyr("samples/hello_world", "build-e7-hello-world_he", "alif_e7_dk_rtss_he");
-                            common_funcs.build_zephyr("samples/hello_world", "build-e7-hello-world_hp", "alif_e7_dk_rtss_hp");
-                            common_funcs.build_zephyr("samples/hello_world", "build-e3-hello-world_he", "alif_e3_dk_rtss_he");
-                            common_funcs.build_zephyr("samples/hello_world", "build-e3-hello-world_hp", "alif_e3_dk_rtss_hp");
-                            common_funcs.build_zephyr("samples/hello_world", "build-e1c-hello-world", "alif_e1c_dk_rtss_he");
-                            common_funcs.build_zephyr("samples/hello_world", "build-b1-hello-world", "alif_b1_dk_rtss_he");
+                            common_funcs.build_zephyr("samples/hello_world", "build-e7-hello-world_he", "alif_e7_dk/ae722f80f55d5xx/rtss_he");
+                            common_funcs.build_zephyr("samples/hello_world", "build-e7-hello-world_hp", "alif_e7_dk/ae722f80f55d5xx/rtss_hp");
+                            common_funcs.build_zephyr("samples/hello_world", "build-e3-hello-world_he", "alif_e3_dk/ae302f80f55d5xx/rtss_he");
+                            common_funcs.build_zephyr("samples/hello_world", "build-e3-hello-world_hp", "alif_e3_dk/ae302f80f55d5xx/rtss_hp");
+                            common_funcs.build_zephyr("samples/hello_world", "build-e1c-hello-world", "alif_e1c_dk/ae1c1f4051920hh/rtss_he");
+                            common_funcs.build_zephyr("samples/hello_world", "build-b1-hello-world", "alif_b1_eb/ab1c1f4m51820hh/rtss_he");
                         }
                     }
                     post {

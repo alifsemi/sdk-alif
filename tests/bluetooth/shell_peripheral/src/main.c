@@ -159,5 +159,5 @@ ZTEST_SUITE(bluetooth_shell_basic, NULL, NULL, NULL, NULL, NULL);
 /* Define test_main to control test execution order */
 void test_main(void)
 {
-	ztest_run_test_suite(bluetooth_shell_basic, false, 1, 1);
+	ztest_run_test_suite(bluetooth_shell_basic, false, 1, 1, NULL);
 }
