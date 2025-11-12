@@ -5,6 +5,7 @@ config TFLM_ETHOSU_TAINT_BLOBS
 	bool
 	default y
 	select TAINT_BLOBS
+
 config TENSORFLOW_LITE_MICRO
 	bool
 	default y
@@ -12,6 +13,20 @@ config TENSORFLOW_LITE_MICRO
 config ETHOS_U_AXI0_ONLY
 	bool "Only use AXI0 port on the Ethos"
 	default false
+
+config ETHOSU_ARCH_U55
+	bool "Ethos NPU U55"
+	default n
+	help
+		Enable support for Ethos-U55 NPU architecture.
+		This is set automatically by CMakeLists.txt based on ETHOSU_TARGET_NPU_CONFIG.
+
+config ETHOSU_ARCH_U85
+	bool "Ethos NPU U85"
+	default n
+	help
+		Enable support for Ethos-U85 NPU architecture.
+		This is set automatically by CMakeLists.txt based on ETHOSU_TARGET_NPU_CONFIG.
 
 config MODEL_IN_EXT_FLASH
 	bool "Put ML model to external flash"

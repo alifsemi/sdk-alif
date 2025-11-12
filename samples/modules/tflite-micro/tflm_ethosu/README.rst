@@ -1,36 +1,87 @@
 .. _tflm_ethosu:
 
-Arm(R) Ethos(TM)-U Tensorflow Lite for Microcontrollers test application
-########################################################################
+Arm(R) Ethos(TM)-U TensorFlow Lite Micro Application
+#####################################################
 
-A sample application that demonstrates how to run an inference using the TFLM
-framework and the Arm Ethos-U NPU.
+Overview
+********
 
-The sample application runs a model that has been downloaded from the
-`Arm model zoo <https://github.com/ARM-software/ML-zoo>`_. This model has then
-been optimized using the
-`Vela compiler <https://git.mlplatform.org/ml/ethos-u/ethos-u-vela.git>`_.
+ML inference application using TensorFlow Lite Micro (TFLM) with Arm Ethos-U NPU acceleration.
+Runs keyword spotting CNN model optimized with Vela compiler.
 
-Vela takes a tflite file as input and produces another tflite file as output,
-where the operators supported by Ethos-U have been replaced by an Ethos-U custom
-operator. In an ideal case the complete network would be replaced by a single
-Ethos-U custom operator.
+Supported Boards
+****************
 
-Building and running
-********************
++-------+--------+---------+-------------------------+
+| Board | U55    | U85     | Notes                   |
++=======+========+=========+=========================+
+| B1    | Yes    | No      | U55 only                |
++-------+--------+---------+-------------------------+
+| E1C   | Yes    | No      | U55 only                |
++-------+--------+---------+-------------------------+
+| E3    | Yes    | No      | U55 only                |
++-------+--------+---------+-------------------------+
+| E4    | Yes    | Yes     | Dual NPU                |
++-------+--------+---------+-------------------------+
+| E7    | Yes    | No      | U55 only                |
++-------+--------+---------+-------------------------+
+| E8    | Yes    | Yes     | Dual NPU                |
++-------+--------+---------+-------------------------+
 
-This application can be built and run on any Arm Ethos-U capable platform, for
-example Corstone(TM)-300. A reference implementation of Corstone-300 can be
-downloaded either as a FPGA bitfile for the
-`MPS3 FPGA prototyping board <https://developer.arm.com/tools-and-software/development-boards/fpga-prototyping-boards/mps3>`_,
-or as a
-`Fixed Virtual Platform <https://developer.arm.com/tools-and-software/open-source-software/arm-platforms-software/arm-ecosystem-fvps>`_
-that can be emulated on a host machine.
+Core Type Restrictions
+**********************
 
-Assuming that the Corstone-300 FVP has been downloaded, installed and added to
-the ``PATH`` variable, then building and testing can be done with following
-commands.
+- **HE cores (rtss_he)**: U55 supports 128 MACs only
+- **HP cores (rtss_hp)**: U55 supports 256 MACs only
+- **U85**: Always 256 MACs (both HE and HP cores)
+
+Quick Start
+***********
+
+**U55-128 on HE Core:**
 
 .. code-block:: bash
 
-    $ west build -b alif_e7_dk_rtss_he ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -G"Unix Makefiles"
+    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_he \\
+      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \\
+      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
+      -G"Unix Makefiles"
+
+**U55-256 on HP Core:**
+
+.. code-block:: bash
+
+    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_hp \\
+      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \\
+      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
+      -G"Unix Makefiles"
+
+**U85-256 (E4/E8 only):**
+
+.. code-block:: bash
+
+    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \\
+      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \\
+      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" \\
+      -G"Unix Makefiles"
+
+Configuration Options
+*********************
+
+**NPU Configuration:**
+
+- ``ETHOSU_TARGET_NPU_CONFIG``: ethos-u55-128, ethos-u55-256, or ethos-u85-256
+
+**Overlay Files:**
+
+- ``boards/enable_ethosu55.overlay``: Enable U55 NPU
+- ``boards/enable_ethosu85.overlay``: Enable U85 NPU (E4/E8 only)
+
+**Performance Tuning:**
+
+- ``NUM_INFERENCE_TASKS``: Worker threads (default: 1)
+- ``NUM_JOB_TASKS``: Sender tasks (default: 2)
+- ``NUM_JOBS_PER_TASK``: Inferences per task (default: 2)
