@@ -766,9 +766,7 @@ static void on_bap_bc_sink_status(uint8_t grp_lid, uint8_t state, uint32_t strea
 
 static void on_bap_bc_sink_enable_req(uint8_t grp_lid, uint8_t src_lid, uint8_t con_lid,
 				       uint32_t stream_pos_bf
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 				       , uint32_t stream_pos_bf_opt
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 						       )
 {
 	LOG_INF("SINK enable_req: grp=%u src=%u con=%u stream_bf=0x%08x",
@@ -1007,11 +1005,7 @@ int broadcast_sink_start_solicitation(const char *device_name, uint16_t appearan
 		.phy_prim          = GAPM_PHY_TYPE_LE_1M,
 		.phy_second        = GAPM_PHY_TYPE_LE_2M,
 		.adv_sid           = 0x01,
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 		.tx_pwr = -2,
-#else
-		.max_tx_pwr = -2,
-#endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 	};
 
 	uint16_t err = bap_bc_deleg_start_solicite(0, &adv_param,
