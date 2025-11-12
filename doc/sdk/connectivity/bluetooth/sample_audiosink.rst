@@ -44,7 +44,7 @@ Additionally there is need to set:
 
 	# Driver support for audio
 	CONFIG_I2S=y
-	CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL=y
+	CONFIG_I2S_SYNC_BUFFER_FORMAT_SEQUENTIAL=n
 
 	# Determine left and right channels by index, not GAF
 	CONFIG_AUDIO_LOCATION_IMPLICIT=y

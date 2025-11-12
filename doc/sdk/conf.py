@@ -17,7 +17,7 @@ from sphinx.util import logging
 project = 'SDK documentation'
 copyright = '2024, Alif Semiconductor'
 author = 'Alif Semiconductor'
-release = '1.1'
+release = '2.0'
 
 SDK_BASE = Path(__file__).absolute().parents[2]
 
@@ -58,7 +58,7 @@ if LOCAL_ZEPHYR_INV.exists():
     }
 else:
     intersphinx_mapping = {
-        'zephyr': ('https://docs.zephyrproject.org/3.6.0/', None),
+        'zephyr': ('https://docs.zephyrproject.org/4.1.0/', None),
     }
 
 # -- Extension configuration ---------------------------------------------------
