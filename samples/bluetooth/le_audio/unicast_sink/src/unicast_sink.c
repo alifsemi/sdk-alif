@@ -560,7 +560,6 @@ bap_codec_config_cfm:
 		0, ase_lid_cfm, &qos_req, p_ase_codec_cfg, CONTROL_DELAY_US, DATA_PATH_CONFIG);
 }
 
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 static void on_unicast_server_cb_configure_qos_req(uint8_t const ase_lid, uint8_t const stream_lid,
 						   const bap_qos_cfg_t *const p_qos_cfg)
 {
@@ -594,7 +593,6 @@ static void on_unicast_server_cb_configure_qos_req(uint8_t const ase_lid, uint8_
 	bap_uc_srv_configure_qos_cfm(ase_lid, rsp_code, reason);
 	LOG_DBG("Configure QoS requested (ASE %d)", ase_lid);
 }
-#endif
 
 static void on_unicast_server_cb_enable_req(uint8_t const ase_lid,
 					    bap_cfg_metadata_ptr_t *const p_metadata)
@@ -713,9 +711,7 @@ static const struct bap_uc_srv_cb bap_uc_srv_cb = {
 	.cb_ase_state = on_unicast_server_cb_ase_state,
 	.cb_cis_state = on_unicast_server_cb_cis_state,
 	.cb_configure_codec_req = on_unicast_server_cb_configure_codec_req,
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 	.cb_configure_qos_req = on_unicast_server_cb_configure_qos_req,
-#endif
 	.cb_enable_req = on_unicast_server_cb_enable_req,
 	.cb_update_metadata_req = on_unicast_server_cb_update_metadata_req,
 	.cb_release_req = on_unicast_server_cb_release_req,
@@ -733,9 +729,7 @@ static void on_capabilities_server_cb_bond_data(uint8_t const conidx, uint8_t co
 }
 
 static void on_capabilities_server_cb_location_req(uint8_t const conidx,
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 						   uint16_t const token,
-#endif
 						   uint8_t const direction,
 						   uint32_t const location_bf)
 {
@@ -745,11 +739,7 @@ static void on_capabilities_server_cb_location_req(uint8_t const conidx,
 
 static struct bap_capa_srv_cb capa_srv_cbs = {
 	.cb_bond_data = on_capabilities_server_cb_bond_data,
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 	.cb_location_req = on_capabilities_server_cb_location_req,
-#else /* ROM version 1.0 */
-	.cb_location = on_capabilities_server_cb_location_req,
-#endif
 };
 
 /** Maximum number of records per PAC characteristic - Shall be higher than 0 */
