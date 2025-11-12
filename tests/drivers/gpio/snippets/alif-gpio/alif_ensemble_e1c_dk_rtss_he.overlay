@@ -1,0 +1,22 @@
+/* Copyright (c) 2025 Alif Semiconductor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/{
+	aliases {
+		led1 = &aled1;
+		led0 = &aled0;
+	};
+
+	leds {
+		aled1: led_1 {
+			gpios = <&gpio1 0 0>;
+		};
+		aled0: led_0 {
+			gpios = <&gpio4 5 0>;
+			label = "LED0_G";
+		};
+	};
+};
+
