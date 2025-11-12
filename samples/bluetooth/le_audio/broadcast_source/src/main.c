@@ -54,7 +54,6 @@ static const gapm_config_t gapm_cfg = {
 	.dflt_link_policy = 0, /* BT Classic only */
 };
 
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 static void on_gapm_err(uint32_t metainfo, uint8_t code)
 {
 	LOG_ERR("gapm error %d", code);
@@ -73,26 +72,6 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_bt_config_cbs = NULL,
 	.p_gapm_cbs = &gapm_err_cbs,
 };
-#else /* ROM version 1.0 */
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("gapm error %d", err);
-}
-
-static const gapm_err_info_config_cb_t gapm_err_cbs = {
-	.ctrl_hw_error = on_gapm_err,
-};
-
-/* For the broadcaster role, callbacks are not mandatory */
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = NULL,
-	.p_sec_cbs = NULL,
-	.p_info_cbs = NULL,
-	.p_le_config_cbs = NULL,
-	.p_bt_config_cbs = NULL,
-	.p_err_info_config_cbs = &gapm_err_cbs,
-};
-#endif
 
 static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 {
