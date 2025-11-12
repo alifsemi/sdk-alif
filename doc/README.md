@@ -1,14 +1,14 @@
 List of documents
 =================
 
-|Folder         | Document Name     |
-|---------------|-------------------|
-| .             | SDK documentation |
-| user_guide    | User Guide        |
-| release_notes | Release Notes     |
+| Folder         | Document Name               | Formats   | Description                            |
+|----------------|-----------------------------|-----------|----------------------------------------|
+| sdk            | SDK Technical Documentation | HTML      | SDK Technical documentation            |
+| user_guide     | User Guide                  | HTML, PDF | Getting started guide                  |
+| release_notes  | Release Notes               | HTML, PDF | Release information                    |
+| appnotes       | Application Notes           | HTML, PDF | Detailed guides for specific use cases |
 
-As of now you're supposed to build all the documents separately.
-The goal is to build the documentation in html- and pdf-format.
+Each document is built separately.
 
 Prerequisites
 =============
@@ -25,7 +25,7 @@ pip install -r alif/scripts/requirements-doc.txt
 
 For PDF output install:
 ```
-sudo apt-get install texlive-full
+sudo apt-get install texlive-latex-recommended texlive-fonts-extra texlive-fonts-recommended texlive-latex-extra latexmk
 ```
 
 Building
@@ -50,3 +50,4 @@ PDF
 cd ONE_OF_THE_DOC_FOLDERS
 make latexpdf
 ```
+
