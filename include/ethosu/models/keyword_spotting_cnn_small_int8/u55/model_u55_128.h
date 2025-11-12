@@ -6,6 +6,8 @@
 
 #define TENSOR_ARENA_SIZE 50000
 
+const size_t tensorArenaSize = TENSOR_ARENA_SIZE;
+
 #if CONFIG_MODEL_IN_EXT_FLASH
 #define MODEL_SECTION section(".alif_extflash_" \
 	DT_PROP(DT_NODELABEL(ext_flash_xip), zephyr_memory_region))
