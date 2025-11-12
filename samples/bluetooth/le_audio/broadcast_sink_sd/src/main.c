@@ -476,7 +476,6 @@ static const gapc_connection_info_cb_t gapc_inf_cbs = {
 
 static const gapc_le_config_cb_t gapc_le_cfg_cbs = {0};
 
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 /* ROM version > 1.0 */
 static void on_gapm_err(uint32_t metainfo, uint8_t code)
 {
 	LOG_ERR("GAPM error %d", code);
@@ -485,16 +484,6 @@ static void on_gapm_err(uint32_t metainfo, uint8_t code)
 static const gapm_cb_t gapm_err_cbs = {
 	.cb_hw_error = on_gapm_err,
 };
-#else
-static void on_gapm_err(enum co_error err)
-{
-	LOG_ERR("GAPM error %d", err);
-}
-
-static const gapm_err_info_config_cb_t gapm_err_cbs = {
-	.ctrl_hw_error = on_gapm_err,
-};
-#endif
 
 static const gapm_callbacks_t gapm_cbs = {
 	.p_con_req_cbs = &gapc_con_cbs,
@@ -502,11 +491,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_info_cbs = &gapc_inf_cbs,
 	.p_le_config_cbs = &gapc_le_cfg_cbs,
 	.p_bt_config_cbs = NULL,
-#if !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0
 	.p_gapm_cbs = &gapm_err_cbs,
-#else
-	.p_err_info_config_cbs = &gapm_err_cbs,
-#endif
 };
 
 static void on_gapm_process_complete(uint32_t const metainfo, uint16_t const status)
