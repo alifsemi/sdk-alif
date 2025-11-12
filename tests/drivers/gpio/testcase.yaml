@@ -1,0 +1,18 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+sample:
+  name: Blinky Sample
+tests:
+  sample.basic.blinky:
+    tags: LED gpio
+    filter: dt_enabled_alias_with_parent_compat("led0", "gpio-leds")
+    depends_on: gpio
+    harness: led
+    integration_platforms:
+      - frdm_k64f
