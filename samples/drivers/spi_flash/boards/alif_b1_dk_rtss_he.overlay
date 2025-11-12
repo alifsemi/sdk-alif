@@ -28,7 +28,7 @@
 				 <PIN_P3_5__OSPI0_D5_A>,
 				 <PIN_P3_6__OSPI0_D6_A>,
 				 <PIN_P3_7__OSPI0_D7_A>;
-			read_enable = <0x1>;
+			read-enable = <0x1>;
 			drive_strength = <12>;
 			slew_rate = <0x1>;
 		};
@@ -40,7 +40,7 @@
 			pinmux = <PIN_P8_7__EXT_TX_B>,
 				 <PIN_P8_3__EXT_RTS_B>,
 				 <PIN_P8_5__EXT_TRACE_B>;
-			read_enable = < 0x0 >;
+			read-enable = < 0x0 >;
 		};
 	};
 };
