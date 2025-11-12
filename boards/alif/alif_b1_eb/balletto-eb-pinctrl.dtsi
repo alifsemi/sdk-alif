@@ -79,8 +79,8 @@
 
 	pinctrl_uart0: pinctrl_uart0 {
 		group0 {
-			pinmux = < PIN_P8_0__UART0_RX_C >,
-				 < PIN_P8_1__UART0_TX_C >;
+			pinmux = < PIN_P0_0__UART0_RX_A >,
+				 < PIN_P0_1__UART0_TX_A >;
 		};
 	};
 
@@ -134,8 +134,8 @@
 
 	pinctrl_i2c0: pinctrl_i2c0 {
 		group0 {
-			pinmux = < PIN_P7_0__I2C0_SDA_C >,
-				 < PIN_P7_1__I2C0_SCL_C >;
+			pinmux = <PIN_P7_0__I2C0_SDA_C>,
+				 <PIN_P7_1__I2C0_SCL_C>;
 
 			read-enable = < 0x1 >;
 			driver-state-control = < 0x1 >;
@@ -286,10 +286,10 @@
 
 	pinctrl_i2s0:pinctrl_i2s0 {
 		group0 {
-			pinmux = < PIN_P2_4__I2S0_SDI_B >,
-				 < PIN_P2_5__I2S0_SDO_B >,
-				 < PIN_P2_6__I2S0_SCLK_B >,
-				 < PIN_P2_7__I2S0_WS_B >;
+			pinmux = <PIN_P8_0__I2S0_SDI_C>,
+				 <PIN_P8_1__I2S0_SDO_C>,
+				 <PIN_P8_3__I2S0_WS_C>,
+				 <PIN_P8_2__I2S0_SCLK_C>;
 		};
 	};
 	pinctrl_i2s1:pinctrl_i2s1 {
