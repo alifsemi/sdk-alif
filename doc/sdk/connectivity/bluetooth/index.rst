@@ -29,6 +29,10 @@ When working with Zephyr's BLE host implementation you should refer to the Zephy
 
 For BLE audio use cases Alif provides |**Alif_LC3**| codec as a ROM code library.
 
+.. note::
+
+   The SDK supports BLE ROM version 1.2. Support for BLE ROM v1.0 has been removed. The ROM version is hardware-specific and automatically detected from device tree.
+
 The |**Alif_BLE**| and |**Alif_LC3**| APIs are part of Alif's HAL layer. Samples demonstrating usage of these libraries are part of the SDK.
 Bear in mind that samples demonstrating the Zephyr BLE host stack are found in Zephyr's own samples directory.
 
