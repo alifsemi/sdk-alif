@@ -135,6 +135,15 @@ List of Supported Peripheral Devices and Features
 - **MRAM**:
   Supports MRAM Read and Write.
 
+Breaking Changes
+----------------
+
+- **Balletto B1 Hardware Support**:
+  This release supports only Balletto B1 revA6 or newer. Earlier revisions are not supported.
+
+- **BLE ROM Version Configuration**:
+  BLE ROM version is now hardware-specific and defined in device tree. Support for BLE ROM v1.0 has been removed. Only BLE ROM v1.2 is supported. The ROM version is automatically detected from hardware and cannot be manually configured by users.
+
 Known Issues
 ------------
 
@@ -149,6 +158,9 @@ Copyright/Trademark
 
 The Alif logo is a trademark of Alif Semiconductor. please refer to `Alif Trademarks`_.
 Arm, Cortex, CoreSight, and Ethos are trademarks of Arm Limited (or its subsidiaries).
-Zephyr is an open-source RTOS under the Apache License 2.0, maintained by the Zephyr Project <https://www.zephyrproject.org/>.
-The Zephyr logo is a trademark of The Linux Foundation, subject to its Trademark Usage Guidelines <https://www.linuxfoundation.org/trademark-usage/>.
+Zephyr is an open-source RTOS under the Apache License 2.0, maintained by the `Zephyr Project`_.
+The Zephyr logo is a trademark of The Linux Foundation, subject to The Linux Foundation's `Trademark Usage Guidelines`_.
 All other names are property of their respective owners.
+
+.. _Zephyr Project: https://www.zephyrproject.org/
+.. _Trademark Usage Guidelines: https://www.linuxfoundation.org/trademark-usage/
