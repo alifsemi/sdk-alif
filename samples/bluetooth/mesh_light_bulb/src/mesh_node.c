@@ -9,7 +9,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/random/rand32.h>
+#include <zephyr/random/random.h>
 #include "prf.h"
 #include "mesh_api.h"
 #include "mesh_defines.h"
