@@ -7,7 +7,7 @@ Broadcast Source
 |ble_audio_intro|. This sample demonstrates a source device.
 
 All the audio samples share the same basic structure with all the other :ref:`BLE profile samples<zas-connection-ble-sample>`.
-The forementioned samples follow standard connection procedures defined in the Generic Access Profile(GAP).
+The aforementioned samples follow standard connection procedures defined in the Generic Access Profile(GAP).
 Basic Audio Profile(BAP) API is used to configure and broadcast audio.
 
 .. figure:: /images/alif_ble_source_flowchart.drawio.png
@@ -16,7 +16,7 @@ Basic Audio Profile(BAP) API is used to configure and broadcast audio.
 Kconfig
 *******
 
-The sink sample chooces |**Alif_BLE**| and |**Alif_LC3**| by setting a configuration flag on their *prj.conf* file.
+The source sample chooses |**Alif_BLE**| and |**Alif_LC3**| by setting a configuration flag on their *prj.conf* file.
 Additionally there is need to set:
 
 *  Presentation compensation configuration
@@ -58,7 +58,7 @@ Before entering main the sample will initialize datapath, which means:
 Main
 ****
 Where the things start to deviate from the basic profile setup is when we define the role of the device during GAPM configuration phase.
-The role is set to be an *broadcaster* to be able to advertise and broadcast audio for other devices without a connection process.
+The role is set to be a *broadcaster* to be able to advertise and broadcast audio for other devices without a connection process.
 
 .. code-block:: c
 
@@ -66,15 +66,26 @@ The role is set to be an *broadcaster* to be able to advertise and broadcast aud
 		.role = GAP_ROLE_LE_BROADCASTER,
 	};
 
-**NOTE** All the other members of the configuration structure are assumed to be be the same as with the basic profile config.
-
-You don't need to set GAPM callbacks when acting as a *broadcaster*, except the error callbacks.
+.. note::
+   All the other members of the configuration structure are assumed to be the same as with
+   the basic profile config. When acting as a *broadcaster*, you don't need to set GAPM
+   callbacks except the error callbacks.
 
 ******************
 Audio Source Start
 ******************
 
-Once GAPM configuration is complete broadcast source is configured and started.
+Once GAPM configuration is complete, the broadcast source is configured and started
+through the following steps:
+
+1. Configure the BAP Broadcast Source module with callbacks
+2. Configure advertising parameters (extended and periodic)
+3. Create the broadcast group and fill the BASE (Broadcast Audio Source Endpoint) structure
+4. Configure subgroup with codec settings and metadata
+5. Configure and enable individual audio streams
+6. Enable periodic advertising with device and broadcast names
+
+The implementation:
 
 .. code-block:: c
 
@@ -86,20 +97,34 @@ Once GAPM configuration is complete broadcast source is configured and started.
 	int broadcast_source_start(void)
 	{
 		bap_bc_src_configure(&bap_bc_src_cbs);
-
 		broadcast_source_configure_group();
-
 		return broadcast_source_enable();
 	}
 
-1. Configure use of BAP Broadcast Source module
-2. Configure Advertising
-3. Fill the BIG, group and subgroup info, known as the Broadcast Audio Source Endpoint(BASE) structure
-4. Configure and enable streams
-5. Enable Periodic advertising
-
 Configure
 =========
+
+The BIG structure hierarchy::
+
+    Broadcast Group (BIG)
+    │
+    ├── BIG Parameters (timing, PHY, reliability)
+    │
+    └── Subgroup(s)
+        │
+        ├── Codec Configuration (LC3, sampling rate, frame duration)
+        ├── Metadata (context, language, etc.)
+        │
+        └── BIS Stream(s)
+            │
+            ├── Stream 0 (Left channel)
+            ├── Stream 1 (Right channel)
+            └── Stream N...
+
+A BIG contains one or more subgroups, each with its own codec configuration.
+Each subgroup contains one or more BIS (Broadcast Isochronous Stream) streams
+that inherit the subgroup's codec settings but can specify individual audio
+channel locations (e.g., left, right).
 
 Configuring Broadcast Source module:
 
@@ -107,102 +132,120 @@ Configuring Broadcast Source module:
 
 	bap_bc_src_configure(&bap_bc_src_cbs);
 
-* **BAP Broadcast Source Callbacks**: All the different events originating from the Broadcast Source module:
+This initializes the BAP Broadcast Source module with callback functions that handle
+asynchronous events during the broadcast lifecycle.
 
-  * **Command Complete**: Called each time a Broadcast Source command has been completed. This is triggered when PA is enabled, broadcast group is enabled or streaming is started.
-  * **Broadcast Source Info**: Called when a group has been created
+* **BAP Broadcast Source Callbacks**:
 
-Configure Advertising, fill the BASE structure and enable left and right streams:
+  * **cb_cmp_evt**: Command complete callback - invoked when operations finish (enabling PA, enabling broadcast group, starting streaming)
+  * **cb_info**: Broadcast source info callback - invoked when a broadcast group is successfully created, providing group information
+
+**Step 1: Configure BIG parameters**
+
+Define the Broadcast Isochronous Group (BIG) parameters according to the Bluetooth Core Specification.
 
 .. code-block:: c
 
-	int broadcast_source_configure_group(void)
-	{
-		const bap_bc_grp_param_t grp_param = {.sdu_intv_us = 10000,
-						.max_sdu = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
-						.max_tlatency_ms = CONFIG_ALIF_BLE_AUDIO_MAX_TLATENCY,
-						.packing = 0,
-						.framing = ISO_UNFRAMED_MODE,
-						.phy_bf = GAPM_PHY_TYPE_LE_2M,
-						.rtn = CONFIG_ALIF_BLE_AUDIO_RTN};
+	const bap_bc_grp_param_t grp_param = {
+		.sdu_intv_us = 10000,
+		.max_sdu = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
+		.max_tlatency_ms = CONFIG_ALIF_BLE_AUDIO_MAX_TLATENCY,
+		.packing = 0,
+		.framing = ISO_UNFRAMED_MODE,
+		.phy_bf = GAPM_PHY_TYPE_LE_2M,
+		.rtn = CONFIG_ALIF_BLE_AUDIO_RTN
+	};
 
-		const gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
+**Step 2: Configure advertising parameters**
 
-		const bap_bc_adv_param_t adv_param = {
-			.adv_intv_min_slot = 160,
-			.adv_intv_max_slot = 160,
-			.ch_map = ADV_ALL_CHNLS_EN,
-			.phy_prim = GAPM_PHY_TYPE_LE_1M,
-			.phy_second = GAPM_PHY_TYPE_LE_2M,
-			.adv_sid = 1,
-			.max_tx_pwr = -2,
-		};
+Set up extended and periodic advertising:
 
-		const bap_bc_per_adv_param_t per_adv_param = {
-			.adv_intv_min_frame = 160,
-			.adv_intv_max_frame = 160,
-		};
+.. code-block:: c
 
-		bap_bcast_id_t bcast_id;
+	const bap_bc_adv_param_t adv_param = {
+		.adv_intv_min_slot = 160,
+		.adv_intv_max_slot = 160,
+		.ch_map = ADV_ALL_CHNLS_EN,
+		.phy_prim = GAPM_PHY_TYPE_LE_1M,
+		.phy_second = GAPM_PHY_TYPE_LE_2M,
+		.adv_sid = 1,
+		.tx_pwr = -2,
+		.own_addr_type = GAPM_STATIC_ADDR,
+		.max_skip = 0,
+		.send_tx_pwr = false,
+	};
 
-		sys_rand_get(bcast_id.id, sizeof(bcast_id.id));
+	const bap_bc_per_adv_param_t per_adv_param = {
+		.adv_intv_min_frame = 160,
+		.adv_intv_max_frame = 160,
+	};
 
-		bap_bc_src_add_group(&bcast_id, NULL, 2, 1, &grp_param, &adv_param,
-						&per_adv_param, PRESENTATION_DELAY_US, &bcast_grp_lid);
+**Step 3: Create broadcast group**
 
-		/* Must be accessible to the BLE stack for the lifetime of the BIG -> statically allocated */
-		static bap_cfg_t sgrp_cfg = {
-			.param = {
-					.location_bf = 0, /* Location is unspecified at subgroup level */
-					.frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
-					.frame_dur = BAP_FRAME_DUR_10MS,
-					.frames_sdu =
-						0, /* 0 is unspecified, data will not be placed in BASE */
-				},
-			.add_cfg.len = 0,
-		};
+Generate a broadcast ID and add the group. The Broadcast_ID is a 3-octet random value
+that uniquely identifies the broadcast group according to the Bluetooth Core Specification.
+It must be randomly generated to avoid collisions with other broadcast sources, and must
+remain constant for the entire lifetime of the BIG.
 
-		sgrp_cfg.param.sampling_freq =
-			bap_sampling_freq_from_hz(CONFIG_ALIF_BLE_AUDIO_FS_HZ);
+.. code-block:: c
 
-		/* Must be accessible to the BLE stack for the lifetime of the BIG -> statically allocated */
-		static const bap_cfg_metadata_t sgrp_meta = {
-			.param.context_bf = BAP_CONTEXT_TYPE_UNSPECIFIED_BIT | BAP_CONTEXT_TYPE_MEDIA_BIT,
-			.add_metadata.len = 0,
-		};
+	bap_bcast_id_t bcast_id;
+	sys_rand_get(bcast_id.id, sizeof(bcast_id.id));
 
-		bap_bc_src_set_subgroup(bcast_grp_lid, 0, &codec_id, &sgrp_cfg, &sgrp_meta);
+	bap_bc_src_add_group(&bcast_id, NULL, 2, 1, &grp_param, &adv_param,
+			     &per_adv_param, PRESENTATION_DELAY_US, &bcast_grp_lid);
 
-		const uint16_t dp_id = GAPI_DP_ISOOSHM;
+**Step 4: Configure subgroup**
 
-		/* Must be accessible to the BLE stack for the lifetime of the BIG -> statically allocated */
-		static const bap_cfg_t stream_cfg_l = {
-			.param = {
-					.sampling_freq =
-						BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
-					.frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
-					.frames_sdu = 0,                    /* Inherited from subgroup */
-					.frame_octet = 0,                   /* Inherited from subgroup */
-					.location_bf = GAF_LOC_FRONT_LEFT_BIT,
-				},
-			.add_cfg.len = 0};
+Set up the codec configuration and metadata for the subgroup. The subgroup defines the
+codec parameters (LC3, sampling frequency, frame duration, frame size) that will be
+inherited by all streams within this subgroup. The metadata specifies the audio context
+(e.g., media playback). Note that ``location_bf = 0`` at the subgroup level means the
+audio location is unspecified here and will be defined per-stream.
 
-		static const bap_cfg_t stream_cfg_r = {
-			.param = {
-					.sampling_freq =
-						BAP_SAMPLING_FREQ_UNKNOWN,  /* Inherited from subgroup */
-					.frame_dur = BAP_FRAME_DUR_UNKNOWN, /* Inherited from subgroup */
-					.frames_sdu = 0,                    /* Inherited from subgroup */
-					.frame_octet = 0,                   /* Inherited from subgroup */
-					.location_bf = GAF_LOC_FRONT_RIGHT_BIT,
-				},
-			.add_cfg.len = 0};
+.. code-block:: c
 
-		bap_bc_src_set_stream(bcast_grp_lid, 0, 0, dp_id, 0, &stream_cfg_l);
-		bap_bc_src_set_stream(bcast_grp_lid, 1, 0, dp_id, 0, &stream_cfg_r);
+	const gaf_codec_id_t codec_id = GAF_CODEC_ID_LC3;
 
-		return 0;
-	}
+	bap_cfg_t *sgrp_cfg = ke_malloc_user(sizeof(*sgrp_cfg), KE_MEM_PROFILE);
+	sgrp_cfg->param = (bap_cfg_param_t){
+		.location_bf = 0,
+		.frame_octet = CONFIG_ALIF_BLE_AUDIO_OCTETS_PER_CODEC_FRAME,
+		.frame_dur = IS_ENABLED(CONFIG_ALIF_BLE_AUDIO_FRAME_DURATION_10MS)
+				? BAP_FRAME_DUR_10MS : BAP_FRAME_DUR_7_5MS,
+		.frames_sdu = 0,
+		.sampling_freq = audio_hz_to_bap_sampling_freq(CONFIG_ALIF_BLE_AUDIO_FS_HZ),
+	};
+	sgrp_cfg->add_cfg.len = 0;
+
+	bap_cfg_metadata_t *sgrp_meta = ke_malloc_user(sizeof(*sgrp_meta), KE_MEM_PROFILE);
+	sgrp_meta->param.context_bf = BAP_CONTEXT_TYPE_UNSPECIFIED_BIT | BAP_CONTEXT_TYPE_MEDIA_BIT;
+	sgrp_meta->add_metadata.len = 0;
+
+	bap_bc_src_set_subgroup(bcast_grp_lid, 0, &codec_id, sgrp_cfg, sgrp_meta);
+
+**Step 5: Configure audio streams**
+
+Set up left and right channel streams. Each stream represents an individual audio channel
+and must specify its audio location (left or right). The streams inherit codec parameters
+from the subgroup, so only the ``location_bf`` needs to be set. The datapath ID
+``GAPI_DP_ISOOSHM`` specifies the ISO data path using shared memory for efficient audio
+transfer between the application and the BLE controller.
+
+.. code-block:: c
+
+	const uint16_t dp_id = GAPI_DP_ISOOSHM;
+
+	/* Configure left channel stream */
+	bap_cfg_t *stream_cfg_l = ke_malloc_user(sizeof(*stream_cfg_l), KE_MEM_PROFILE);
+	stream_cfg_l->param = (bap_cfg_param_t){
+		.location_bf = GAF_LOC_FRONT_LEFT_BIT,
+		/* Other parameters inherited from subgroup */
+	};
+	stream_cfg_l->add_cfg.len = 0;
+	bap_bc_src_set_stream(bcast_grp_lid, 0, 0, dp_id, 0, stream_cfg_l);
+
+	/* Repeat for right channel with GAF_LOC_FRONT_RIGHT_BIT */
 
 Periodic advertising
 ====================
@@ -211,18 +254,19 @@ Enable Periodic Advertising. This will set the device name and the broadcast nam
 
 .. code-block:: c
 
-	int broadcast_source_enable(void)
-	{
-		uint8_t ad_data[1 + sizeof(CONFIG_BLE_DEVICE_NAME)];
+	uint8_t ad_data[1 + sizeof(CONFIG_BLE_DEVICE_NAME)];
 
-		ad_data[0] = sizeof(ad_data) - 1; /* Size of data following the size byte */
-		ad_data[1] = 0x09;                /* Complete local name */
+	ad_data[0] = sizeof(ad_data) - 1;
+	ad_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
 
-		memcpy(&ad_data[2], CONFIG_BLE_DEVICE_NAME, sizeof(ad_data) - 2);
+	memcpy(&ad_data[2], CONFIG_BLE_DEVICE_NAME, sizeof(ad_data) - 2);
 
-		bap_bc_src_enable_pa(bcast_grp_lid, sizeof(ad_data), 0, ad_data, NULL,
-						sizeof(CONFIG_BROADCAST_NAME) - 1,
-						CONFIG_BROADCAST_NAME, 0, NULL);
+	bap_bc_src_enable_pa(bcast_grp_lid, sizeof(ad_data), 0, ad_data, NULL,
+			     sizeof(CONFIG_BROADCAST_NAME) - 1,
+			     CONFIG_BROADCAST_NAME, 0, NULL);
 
-		return 0;
-	}
+.. note::
+   Legacy advertising has a 31-byte payload limit. If the device name is too long,
+   it may need to be shortened to fit within this constraint. In such cases, use
+   ``GAP_AD_TYPE_SHORTENED_NAME`` instead of ``GAP_AD_TYPE_COMPLETE_NAME``.
+   This example uses the complete name for demonstration purposes.
