@@ -15,7 +15,7 @@ This document explains how to create, compile, and run a demo application for th
 
    LPI2C Block Diagram
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 
 LPI2C Interface
@@ -54,6 +54,9 @@ Connection
 
 - **SDA**: Connect I2C0 instance P3_5 (J11-29) to LPI2C0 pin P7_5 (J11_9).
 - **SCL**: Connect I2C0 instance P3_4 (J11-27) to LPI2C0 pin P7_4 (J10_27).
+
+.. note::
+   In the Balletto A5 SoC, the SCL and SDA lines of I2C0 (configured as Master) are not pulled up. Therefore, it is recommended to use I2C1 as the bus master in such cases.
 
 
 Building LPI2C Application in Zephyr
@@ -100,10 +103,15 @@ To execute binaries on the DevKit follow the command
 Console Output
 ==============
 
-You can observe the console output as shown below
+You can observe the LPI2C console output as shown below
 
-   .. figure:: _static/lpi2c_console_output.png
-      :alt: Console Output
-      :align: center
+.. code-block:: console
 
-      LPI2C COnsole Output
+    *** Booting Zephyr OS build Zephyr-Alif-SDK-v0.5.0-17-g17b360353343 ***
+
+    <inf> ALIF_LPI2C: Start Master transmit and Slave receive
+    <inf> ALIF_LPI2C: Master transmit and slave receive successful
+    <inf> ALIF_LPI2C: Start Slave transmit and Master receive
+    <inf> ALIF_LPI2C: Slave transmit and Master receive successful
+
+.. include:: west_debug.rst

@@ -9,7 +9,7 @@ Introduction
 
 The Alif UTIMER IP on the Alif Devkit supports Quadrature Decoder (QDEC) mode, enabling precise position tracking of a mechanical rotary encoder. This mode is ideal for applications requiring angular position feedback, such as motor control, robotics, or user interface dials. This application note guides developers through configuring, building, and running a Zephyr-based QDEC application (``samples/sensor/qdec/``) using the UTIMER peripheral on the Alif Devkit.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building QDEC Application in Zephyr
 =====================================
@@ -84,4 +84,6 @@ Sample Output:
    Position = 86 degrees
    Position = 93 degrees
    …
+
+.. include:: west_debug.rst
 

@@ -4,7 +4,7 @@ Prerequisites
 Hardware Requirements
 ---------------------
 - Alif Devkit
-- Debugger: JLink (optional)
+- Debugger: JLink
 
 Software Requirements
 ---------------------

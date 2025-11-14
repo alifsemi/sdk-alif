@@ -26,7 +26,7 @@ The Digital-to-Analog Converter (DAC12) module converts 12-bit digital values in
 
    Diagram of the DAC Configuration
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Output Calculation
 ==================
@@ -77,11 +77,36 @@ Users can modify parameters to convert two's complement to unsigned binary data 
 - ``dac_twoscomp_in = 0``: Positive input.
 - ``dac_twoscomp_in = 1``: Negative input.
 
-.. figure:: _static/device_tree_code_dac.png
-   :alt: Device Tree Code Snippet
-   :align: center
+Device Tree Code Snippet
+------------------------
 
-   Device Tree Code Snippet
+.. code-block:: dts
+
+   dac0: dac0@49028000 {
+       compatible = "alif,dac";
+       reg = <0x49028000 0x1000>,
+             <0x49023000 0x100>;
+       reg-names = "dac_reg","cmp_reg";
+       pinctrl-names = "default";
+       clocks = <&clock ALIF_DAC0_CLK>;
+       pinctrl-0 = <&pinctrl_dac0>;
+       dac_twoscomp_in = <0>;
+       input_mux_val = <0>;
+       status = "disabled";
+   };
+
+   dac1: dac1@49029000 {
+       compatible = "alif,dac";
+       reg = <0x49029000 0x1000>,
+             <0x49023000 0x100>;
+       reg-names = "dac_reg","cmp_reg";
+       pinctrl-names = "default";
+       pinctrl-0 = <&pinctrl_dac1>;
+       dac_twoscomp_in = <0>;
+       input_mux_val = <0>;
+       status = "disabled";
+   };
+
 
 Building DAC Application in Zephyr
 ==================================
@@ -134,3 +159,5 @@ The sample Output will be as follows
       :align: center
 
       DAC Sample Output
+
+.. include:: west_debug.rst

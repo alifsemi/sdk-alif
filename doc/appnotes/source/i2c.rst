@@ -40,7 +40,7 @@ The following are important features of I2C:
 - Programmable SDA hold time
 - Bus clear feature
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Pin Setup
 ---------
@@ -113,8 +113,33 @@ Console Output
 
 Upon reviewing the output logs, the I2C functionality has been successfully validated.
 
-.. figure:: _static/i2c_output_logs.png
-    :alt: I2C Output Logs
-    :align: center
+.. code-block:: none
 
-    I2C Output Logs
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x60 from slave
+   Read processed_cb called
+   Master received Data 0x60 From Slave
+
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x60 from slave
+   Read processed_cb called
+   Master received Data 0x60 From Slave
+
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x60 from slave
+   Read processed_cb called
+   Master received Data 0x60 From Slave
+
+.. include:: west_debug.rst

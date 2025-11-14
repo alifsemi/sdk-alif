@@ -24,7 +24,7 @@ The SoC device includes:
 - Up to eight UART modules in Shared Peripherals
 - One Low-Power UART module (LPUART) in the RTSS-HE
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Hardware Connections and Setup
 ==============================
@@ -84,3 +84,5 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
+
+.. include:: west_debug.rst
