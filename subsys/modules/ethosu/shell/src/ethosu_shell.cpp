@@ -8,13 +8,13 @@
  */
 #include "inference_process.hpp"
 
-#include "ethosu/models/keyword_spotting_cnn_small_int8/input.h"
-#include "ethosu/models/keyword_spotting_cnn_small_int8/output.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/input.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/output.h"
 
 #if defined(CONFIG_ARM_ETHOS_U55_256)
-#include "ethosu/models/keyword_spotting_cnn_small_int8/model_u55_256.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/model_u55_256.h"
 #else
-#include "ethosu/models/keyword_spotting_cnn_small_int8/model_u55_128.h"
+#include "ethosu/models/keyword_spotting_cnn_small_int8/u55/model_u55_128.h"
 #endif
 
 #include <zephyr/shell/shell.h>
