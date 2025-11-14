@@ -45,6 +45,7 @@ target_sources(app PRIVATE
                src/main.cpp
                src/AppTask.cpp
                src/ZclCallbacks.cpp
+               ${CHIP_ROOT}/src/app/util/persistence/DeferredAttributePersistenceProvider.cpp
                ${ALIF_COMMON}/icd/icdHandler.cpp
                ${ALIF_COMMON}/pwmdevice/PWMDevice.cpp
                ${ALIF_COMMON}/common/MatterStack.cpp

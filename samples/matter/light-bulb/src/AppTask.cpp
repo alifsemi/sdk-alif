@@ -17,11 +17,12 @@
 #include <app/InteractionModelEngine.h>
 #include <DeviceInfoProviderImpl.h>
 #include <app-common/zap-generated/attributes/Accessors.h>
-#include <app/DeferredAttributePersistenceProvider.h>
 #include <app/clusters/identify-server/identify-server.h>
 #include <app/server/Dnssd.h>
-#include <app/server/OnboardingCodesUtil.h>
+#include <setup_payload/OnboardingCodesUtil.h>
 #include <app/server/Server.h>
+#include <app/util/persistence/DefaultAttributePersistenceProvider.h>
+#include <app/util/persistence/DeferredAttributePersistenceProvider.h>
 #include <credentials/DeviceAttestationCredsProvider.h>
 #include <credentials/examples/DeviceAttestationCredsExample.h>
 #include <lib/core/ErrorStr.h>
@@ -39,7 +40,6 @@ LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 using namespace ::chip;
 using namespace ::chip::app;
 using namespace ::chip::DeviceLayer;
-
 namespace
 {
 
@@ -59,8 +59,11 @@ chip::DeviceLayer::DeviceInfoProviderImpl gExampleDeviceInfoProvider;
 DeferredAttribute gCurrentLevelPersister(
 	ConcreteAttributePath(kLightEndpointId, Clusters::LevelControl::Id,
 			      Clusters::LevelControl::Attributes::CurrentLevel::Id));
+
+DefaultAttributePersistenceProvider gSimpleAttributePersistence;
+
 DeferredAttributePersistenceProvider
-	gDeferredAttributePersister(Server::GetInstance().GetDefaultAttributePersister(),
+	gDeferredAttributePersister(gSimpleAttributePersistence,
 				    Span<DeferredAttribute>(&gCurrentLevelPersister, 1),
 				    System::Clock::Milliseconds32(5000));
 
@@ -105,6 +108,8 @@ CHIP_ERROR AppTask::DevInit()
 	gExampleDeviceInfoProvider.SetStorageDelegate(
 		&Server::GetInstance().GetPersistentStorage());
 	chip::DeviceLayer::SetDeviceInfoProvider(&gExampleDeviceInfoProvider);
+
+	VerifyOrDie(gSimpleAttributePersistence.Init(&Server::GetInstance().GetPersistentStorage()) == CHIP_NO_ERROR);
 	app::SetAttributePersistenceProvider(&gDeferredAttributePersister);
 	MatterUi::Instance().Init(AppTask::ButtonUpdateHandler);
 
