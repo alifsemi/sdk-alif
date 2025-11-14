@@ -1,0 +1,5 @@
+config TEST_XIP_MODE
+	bool "To Test ospi-flash xip mode"
+	default n
+
+source "Kconfig.zephyr"
