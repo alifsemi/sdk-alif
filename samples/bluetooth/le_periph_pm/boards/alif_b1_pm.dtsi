@@ -6,30 +6,54 @@
 /*
  * Enable RTC and Set the counter to increment every 1sec
  */
+
 &rtc0 {
-	prescaler = < 0 >;
+	prescaler = <1>;
 	status = "okay";
 };
 
-&uart_ahi {
+&lpgpio {
 	status = "disabled";
 };
 
-/**
- * Set the console uart frequency to use the HFOSC(38.4)
- */
-&uart2 {
-	clock-frequency = < 38400000 >;
+&uart4 {
+	status = "disabled";
 };
+
+&uart2 {
+	status = "okay";
+};
+
+&lpuart {
+	status = "okay";
+};
+
+&pd_syst {
+	status = "disabled";
+};
+&pd_sse700_aon {
+	status = "disabled";
+};
+
+&subsys_off {
+	min-residency-us = <4000>;
+	exit-latency-us = <3000>;
+	status = "disabled";
+};
+
+&standby_s2ram {
+	min-residency-us = <19000000>;
+	status = "disabled";
+};
+
+&stop_s2ram {
+	min-residency-us = <4000>;
+	exit-latency-us = <3000>;
+	status = "okay";
+};
+
 / {
 	chosen {
 		zephyr,cortex-m-idle-timer = &rtc0;
-	};
-
-	power-states {
-		off: off {
-			/* 4ms is time reserved for os wakeup and sleep */
-			min-residency-us = < 4000 >;
-		};
 	};
 };

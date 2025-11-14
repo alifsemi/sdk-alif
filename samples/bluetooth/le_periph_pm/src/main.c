@@ -36,6 +36,31 @@
 #include "ke_mem.h"
 #include "power_mgr.h"
 
+/**
+ * As per the application requirements, it can remove the memory blocks which are not in use.
+ */
+#if defined(CONFIG_SOC_SERIES_E1C) || defined(CONFIG_SOC_SERIES_B1)
+	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | \
+					SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |\
+					SRAM5_5_MASK
+	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
+#else
+	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK
+	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
+#endif
+
+#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
+	#define SE_OFFP_EWIC_CFG EWIC_RTC_A
+	#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
+#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
+	#define SE_OFFP_EWIC_CFG EWIC_VBAT_TIMER
+	#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
+#else
+#error "Wakeup Device not enabled in the dts"
+#endif
+
 /* Configuration for different BLE and application timing parameters
  */
 #ifdef WAKEUP_STRESS_TEST
@@ -51,7 +76,7 @@ int n __attribute__((noinit));
 #define ADV_INT_MAX_SLOTS                1000
 #define CONN_INT_MIN_SLOTS               800
 #define CONN_INT_MAX_SLOTS               800
-#define RTC_WAKEUP_INTERVAL_MS           20000
+#define RTC_WAKEUP_INTERVAL_MS           5000
 #define RTC_CONNECTED_WAKEUP_INTERVAL_MS 2150
 #endif
 
@@ -379,18 +404,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	uint16_t err;
 
-	/* gatt service identifier */
-	uint16_t svc[8] = {0xd123, 0xeabc, 0x785f, 0x1523, 0xefde, 0x1212, 0x1523, 0x0000};
-
-	/* Name advertising length */
-	const size_t device_name_len = sizeof(device_name) - 1;
-	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-
-	/* Service advertising length */
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_128_LEN;
-
 	/* Create advertising data with necessary services */
-	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
+	const uint16_t adv_len = 0;
 
 	co_buf_t *p_buf;
 
@@ -399,6 +414,27 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 		LOG_ERR("Buffer allocation failed");
 		return err;
 	}
+
+	err = gapm_le_set_adv_data(actv_idx, p_buf);
+	co_buf_release(p_buf);
+	if (err) {
+		LOG_ERR("Failed to set advertising data with error %u", err);
+	}
+
+	return err;
+}
+
+static uint16_t set_scan_data(uint8_t actv_idx)
+{
+	co_buf_t *p_buf;
+
+	/* gatt service identifier */
+	uint16_t svc[8] = {0xd123, 0xeabc, 0x785f, 0x1523, 0xefde, 0x1212, 0x1523, 0x0000};
+	const size_t device_name_len = sizeof(device_name) - 1;
+	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
+	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_128_LEN;
+	const uint16_t adv_len = adv_uuid_svc+adv_device_name;
+	uint16_t err = co_buf_alloc(&p_buf, 0, adv_len, 0);
 
 	uint8_t *p_data = co_buf_data(p_buf);
 
@@ -415,26 +451,15 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
 	memcpy(p_data + 2, &svc, sizeof(svc));
 
-	err = gapm_le_set_adv_data(actv_idx, p_buf);
-	co_buf_release(p_buf);
-	if (err) {
-		LOG_ERR("Failed to set advertising data with error %u", err);
-	}
-
-	return err;
-}
-
-static uint16_t set_scan_data(uint8_t actv_idx)
-{
-	co_buf_t *p_buf;
-	uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
-
 	__ASSERT(err == 0, "Buffer allocation failed");
+	LOG_ERR("set_scan_data: Buffer allocation failed = %d", err);
 
 	err = gapm_le_set_scan_response_data(actv_idx, p_buf);
-	co_buf_release(p_buf); /* Release ownership of buffer so stack can free it when done */
+	/* Release ownership of buffer so stack can free it when done */
+	co_buf_release(p_buf);
+
 	if (err) {
-		LOG_ERR("Failed to set scan data with error %u", err);
+		LOG_ERR("Failed to set scan data with error %u\n", err);
 	}
 
 	return err;
@@ -753,6 +778,151 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 	return status;
 }
 
+
+/*
+ * MRAM base address - used to determine boot location
+ * TCM boot: VTOR = 0x0
+ * MRAM boot: VTOR >= 0x80000000
+ */
+#define MRAM_BASE_ADDRESS 0x80000000
+
+/*
+ * Helper macro to check if booting from MRAM
+ */
+#define IS_BOOTING_FROM_MRAM() (SCB->VTOR >= MRAM_BASE_ADDRESS)
+
+/*
+ * PM_STATE_SUSPEND_TO_RAM (S2RAM) support:
+ * - HE core + TCM boot: SUPPORTED (TCM retention keeps code and context)
+ *
+ * PM_STATE_SOFT_OFF support:
+ * - HE core + MRAM boot: Supported (MRAM preserved, wakeup possible)
+ */
+#define S2RAM_SUPPORTED (!IS_BOOTING_FROM_MRAM())
+#define SOFT_OFF_SUPPORTED IS_BOOTING_FROM_MRAM()
+
+#define OFF_STATE_NODE_ID DT_PHANDLE_BY_IDX(DT_NODELABEL(cpu0), cpu_power_states, 0)
+
+
+/**
+ * Set the RUN profile parameters for this application.
+ */
+static int app_set_run_params(void)
+{
+	run_profile_t runp;
+	int ret;
+
+	runp.power_domains =
+		PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK | PD_SESS_MASK;
+	runp.dcdc_voltage  = 775;
+	runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+	runp.aon_clk_src   = CLK_SRC_LFXO;
+	runp.run_clk_src   = CLK_SRC_PLL;
+	runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+	runp.phy_pwr_gating = 0;
+	runp.ip_clock_gating = LP_PERIPH_MASK;
+	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	runp.scaled_clk_freq = SCALED_FREQ_XO_HIGH_DIV_38_4_MHZ;
+
+	runp.memory_blocks = MRAM_MASK;
+	runp.memory_blocks |= SRAM2_MASK | SRAM3_MASK;
+	runp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
+	runp.memory_blocks |=
+		SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK; /* M55-HE ITCM */
+	runp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |
+			      SRAM5_5_MASK; /* M55-HE DTCM */
+
+	if (IS_ENABLED(CONFIG_MIPI_DSI)) {
+		runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK | MIPI_PLL_DPHY_MASK;
+		runp.ip_clock_gating |= CDC200_MASK | MIPI_DSI_MASK | GPU_MASK;
+	}
+
+	ret = se_service_set_run_cfg(&runp);
+	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
+	LOG_ERR("SE: set_run_cfg failed = %d", ret);
+
+	return ret;
+}
+/*
+ * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
+ *
+ * On cold boot: SYSTOP is already ON by default, safe to call.
+ * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
+ */
+SYS_INIT(app_set_run_params, PRE_KERNEL_1, 3);
+
+/**
+ * PM Notifier callback for power state entry
+ */
+static void pm_notify_state_entry(enum pm_state state)
+{
+	const struct pm_state_info *next_state = pm_state_next_get(0);
+	uint8_t substate_id = next_state ? next_state->substate_id : 0;
+	int ret;
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+	case PM_STATE_SOFT_OFF:
+		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
+		__ASSERT(ret == 0, "app_set_off_params failed = %d", ret);
+		LOG_ERR("app_set_off_params failed = %d", ret);
+		break;
+	default:
+		__ASSERT(false, "Entering unknown power state %d", state);
+		LOG_ERR("Entering unknown power state %d", state);
+		break;
+	}
+}
+
+/**
+ * PM Notifier callback called BEFORE devices are resumed
+ *
+ * This restores SE run configuration when resuming from S2RAM states.
+ * Note: For SOFT_OFF, the system resets completely and app_set_run_params()
+ * runs during normal PRE_KERNEL_1 initialization, so this callback is not needed.
+ */
+static void pm_notify_pre_device_resume(enum pm_state state)
+{
+	int ret;
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+		ret = app_set_run_params();
+		__ASSERT(ret == 0, "app_set_run_params failed = %d", ret);
+		LOG_ERR("app_set_run_params failed = %d", ret);
+		break;
+	case PM_STATE_SOFT_OFF:
+		/* No action needed - SOFT_OFF causes reset, not resume */
+		break;
+	default:
+		__ASSERT(false, "Pre-resume for unknown power state %d", state);
+		LOG_ERR("Pre-resume for unknown power state %d", state);
+		break;
+	}
+}
+
+/**
+ * PM Notifier structure
+ */
+static struct pm_notifier app_pm_notifier = {
+	.state_entry = pm_notify_state_entry,
+	.pre_device_resume = pm_notify_pre_device_resume,
+};
+
+
+/*
+ * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
+ */
+static int app_pre_kernel_init(void)
+{
+	/* Register PM notifier callbacks */
+	pm_notifier_register(&app_pm_notifier);
+
+	return 0;
+}
+SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
+
+
 int main(void)
 {
 	uint16_t ble_status;
@@ -785,6 +955,7 @@ int main(void)
 		/* Generate random address */
 		se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
 		ble_status = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
+
 		if (ble_status) {
 			printk("gapm_configure error %u", ble_status);
 			return -1;
@@ -825,9 +996,7 @@ int main(void)
 		}
 	}
 
-	if (IS_ENABLED(CONFIG_SLEEP_ENABLED)) {
-		power_mgr_ready_for_sleep();
-	}
+	power_mgr_ready_for_sleep();
 	while (1) {
 
 		if (conn_status == BT_CONN_STATE_CONNECTED) {
