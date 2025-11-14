@@ -12,6 +12,8 @@ git submodule update --init third_party/jsoncpp/repo
 git submodule update --init third_party/perfetto/repo
 git submodule update --init third_party/libwebsockets/repo
 git submodule update --init third_party/editline/repo
+git submodule update --init third_party/lwip/repo
+git submodule update --init third_party/pigweed/repo
 
 # Create a Matter virtual environment and tools
 source scripts/bootstrap.sh
