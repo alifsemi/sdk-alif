@@ -126,7 +126,7 @@ pipeline {
         }
 
         stage('Flash the board for echo_client') {
-            agent { label 'lasse' }
+            agent { label 'lasseNUC2' }
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
@@ -139,8 +139,9 @@ pipeline {
                             cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
                             cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                             pushd $ALIF_SETOOLS_LOCATION
-                            sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                            ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                            sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                            cat isp_config_data.cfg
+                            ./tools-config -p "B1 (AB1C1F4M51820HH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
                             ./app-write-mram -p
                             popd
@@ -156,7 +157,7 @@ pipeline {
         }
 
         stage('Flash the board for echo_server') {
-            agent { label 'lasse' }
+            agent { label 'lasseNUC2' }
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
@@ -169,13 +170,13 @@ pipeline {
                             cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
                             cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                             pushd $ALIF_SETOOLS_LOCATION
-                            sed -e 's/ttyUSB0/ttyAlifSEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                            ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                            sed -e 's/ttyUSB0/$SEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                            cat isp_config_data.cfg
+                            ./tools-config -p "B1 (AB1C1F4M51820HH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
                             ./app-write-mram -p
                             popd
                             """
-                            reset_board()
                             Flash_board_echo_server = 'Pass'
                         } catch (Exception e) {
                             Flash_board_echo_server = 'Fail'
@@ -1450,9 +1451,9 @@ pipeline {
                         try{
                             sh '''#!/bin/bash -xe
                             pwd
-                            cd /root/alif
+                            cd /root/alif/alif
                             west forall -c "git clean -fdx"
-                            cd /root/alif/sdk-alif/
+                            cd /root/alif/alif/
                             git status
                             if [[ -v CHANGE_ID ]]; then
                                 git branch -D pr-${CHANGE_ID} || true
@@ -1465,11 +1466,11 @@ pipeline {
                             fi
                             cd ..
                             west update
-                            cd /root/alif/sdk-alif/
+                            cd /root/alif/alif/
                             ls -la
                             west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he applications/testapp
-                            cp /root/alif/sdk-alif/build/zephyr/zephyr.bin $WORKSPACE
-                            mv /root/alif/sdk-alif/build $WORKSPACE
+                            cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
+                            mv /root/alif/alif/build $WORKSPACE
                             cd $WORKSPACE
                             tar -cvf test_app_build.tar build/
                             pwd
@@ -1491,7 +1492,7 @@ pipeline {
         }
 
         stage('Flash and run Smoke test') {
-            agent { label 'lasse' }
+            agent { label 'lasseNUC2' }
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
@@ -1503,17 +1504,18 @@ pipeline {
                                 cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
                                 cp ble_automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                                 pushd $ALIF_SETOOLS_LOCATION
-                                sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                                ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                                sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                cat isp_config_data.cfg
+                                ./tools-config -p "B1 (AB1C1F4M51820HH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                                 ./app-gen-toc --filename build/config/B1-test-app.json
                                 ./app-write-mram -p
-                                sed -e 's/ttyUSB0/ttyAlifSEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                                ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                                sed -e 's/ttyUSB0/$SEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                cat isp_config_data.cfg
+                                ./tools-config -p "B1 (AB1C1F4M51820HH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                                 ./app-gen-toc --filename build/config/B1-test-app.json
                                 ./app-write-mram -p
                                 popd
                                 """
-                            reset_boards()
                             Flash_board = 'Pass'
                         } catch (Exception e) {
                             Flash_board = 'Fail'
@@ -1608,60 +1610,6 @@ pipeline {
         failure {
             echo " Pr check failed for ${env.BRANCH_NAME}"
         }
-    }
-}
-def reset_board() {
-    def maxRetries = 10
-    def success = false
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        println " Attempt #${attempt} to reset board"
-
-        sh """#!/bin/bash -x
-            ykushcmd ykushxs -s $YKUSHDUT1 -d
-            ykushcmd ykushxs -s $YKUSHDUT2 -d
-            sleep 10
-            ykushcmd ykushxs -s $YKUSHDUT1 -u
-            ykushcmd ykushxs -s $YKUSHDUT2 -u
-            sleep 5
-        """
-        def checkStatus = sh(script: 'python3 $WORKSPACE/automation/check_uart_output.py', returnStatus: true)
-        if (checkStatus == 0) {
-            success = true
-            break
-        } else {
-            println ' Retrying...'
-        }
-    }
-    if (!success) {
-        error " board did not respond after ${maxRetries} attempts!"
-    }
-}
-def reset_boards() {
-    def maxRetries = 10
-    def success = false
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        println " Attempt #${attempt} to reset board"
-
-        sh """#!/bin/bash -x
-            ykushcmd ykushxs -s $YKUSHDUT1 -d
-            ykushcmd ykushxs -s $YKUSHDUT2 -d
-            sleep 10
-            ykushcmd ykushxs -s $YKUSHDUT1 -u
-            ykushcmd ykushxs -s $YKUSHDUT2 -u
-            sleep 5
-        """
-        def checkStatus = sh(script: 'python3 ble_automation/check_uart_output.py', returnStatus: true)
-        if (checkStatus == 0) {
-            success = true
-            break
-        } else {
-            println ' Retrying...'
-        }
-    }
-    if (!success) {
-        error " board did not respond after ${maxRetries} attempts!"
     }
 }
 
