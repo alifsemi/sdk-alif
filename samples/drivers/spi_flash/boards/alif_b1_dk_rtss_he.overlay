@@ -29,8 +29,8 @@
 				 <PIN_P3_6__OSPI0_D6_A>,
 				 <PIN_P3_7__OSPI0_D7_A>;
 			read-enable = <0x1>;
-			drive_strength = <12>;
-			slew_rate = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
 		};
 	};
 
