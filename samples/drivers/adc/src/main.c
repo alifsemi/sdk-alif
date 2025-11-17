@@ -18,8 +18,6 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(ALIF_ADC, LOG_LEVEL_INF);
 
-static uint32_t buffer[8];
-
 #define ADC_CHANNEL_0				(0x00)
 #define ADC_CHANNEL_1				(0x01)
 #define ADC_CHANNEL_2				(0x02)
@@ -48,7 +46,6 @@ static uint32_t buffer[8];
 #define ADC_COMPARATOR_THRESHOLD_BETWEEN_A_B	(1 << 4)
 #define ADC_COMPARATOR_THRESHOLD_OUTSIDE_A_B	(1 << 5)
 
-#define TEMPERATURE_SENSOR			ADC_CHANNEL_6
 #define MAX_NUM_THRESHOLD			(6)
 
 static uint32_t m_samplings_done;
@@ -91,6 +88,7 @@ enum adc_action adc_call_back(const struct device *dev,
 
 int main(void)
 {
+	static uint32_t buffer[1];
 	float temp;
 	int ret;
 
@@ -137,7 +135,7 @@ int main(void)
 	LOG_INF("Allocated memory buffer Address is 0x%X", (uint32_t)buffer);
 
 	if (channel_cfg.channel_id == ADC_CHANNEL_6) {
-		temp = (float)get_temperature(buffer[TEMPERATURE_SENSOR]);
+		temp = get_temperature(buffer[0]);
 		if (temp == -1) {
 			LOG_ERR(" Error: Temperature is outside range");
 		} else {
