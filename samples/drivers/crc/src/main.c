@@ -46,7 +46,7 @@ int main(void)
 	}
 
 	/* Add seed value */
-	crc_seed(crc_dev, seed_value);
+	crc_set_seed(crc_dev, seed_value);
 
 	/* calculate crc output */
 	crc_compute(crc_dev, &params);
