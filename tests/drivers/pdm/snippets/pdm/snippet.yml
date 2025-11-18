@@ -1,0 +1,11 @@
+name: pdm
+
+boards:
+   /(alif_b1|alif_e1c|alif_e3|alif_e4|alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_lppdm_rtss_he.overlay
+
+   /(alif_e3|alif_e4|alif_e7|alif_e8).*/.*/rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_pdm_rtss_hp.overlay
+
