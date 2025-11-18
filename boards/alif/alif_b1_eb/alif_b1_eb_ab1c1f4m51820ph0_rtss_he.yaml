@@ -6,11 +6,10 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-config BOARD_ALIF_B1_EB
-	select SOC_AB1C1F4M51820HH0_RTSS_HE if BOARD_ALIF_B1_EB_AB1C1F4M51820HH0_RTSS_HE
-	select SOC_AB1C1F4M51820PH0_RTSS_HE if BOARD_ALIF_B1_EB_AB1C1F4M51820PH0_RTSS_HE
-
-if BOARD_ALIF_B1_EB
-config UART_DMA_ENABLE
-	bool
-endif
+identifier: alif_b1_eb_ab1c1f4m51820ph0_rtss_he
+name: Alif Engineering board Balletto B1 BGA RTSS-HE MCU
+type: mcu
+arch: arm
+vendor: alif
+toolchain:
+  - zephyr
