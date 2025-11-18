@@ -41,19 +41,20 @@ static uint8_t adv_type;
 
 static uint8_t client_conidx;
 static uint8_t adv_actv_idx;
-static K_SEM_DEFINE(sem_ready_to_send, 0, 1);
+static bool ready_to_send;
 
 static void on_cb_bond_data_upd(uint8_t conidx, uint16_t cfg_val)
 {
 	switch (cfg_val) {
 	case PRF_CLI_STOP_NTFIND: {
 		LOG_INF("Client requested stop notification/indication (conidx: %u)", conidx);
+		ready_to_send = false;
 	} break;
 
 	case PRF_CLI_START_NTF:
 	case PRF_CLI_START_IND: {
 		LOG_INF("Client requested start notification/indication (conidx: %u)", conidx);
-		k_sem_give(&sem_ready_to_send);
+		ready_to_send = true;
 	}
 	}
 }
@@ -64,8 +65,7 @@ static void on_cb_meas_send_cmp(uint8_t conidx, uint16_t status)
 		LOG_ERR("Measurement sending completion callback failed, error: %u", status);
 		return;
 	}
-
-	k_sem_give(&sem_ready_to_send);
+		ready_to_send = true;
 }
 
 static uint16_t utils_add_ltv_field(uint8_t *p_buf, uint16_t *p_len, uint8_t type,
@@ -238,6 +238,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 {
 	uint16_t rc;
 
+	ready_to_send = false;
 	LOG_INF("Client disconnected (conidx: %u), restating advertising", conidx);
 
 	client_conidx = GAP_INVALID_CONIDX;
@@ -441,6 +442,9 @@ static void send_measurement(void)
 	};
 
 	rc = wscs_meas_send(client_conidx, &meas);
+
+	ready_to_send = false;
+
 	if (rc != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Failed to send wscs measurement (conidx: %u), error: %u", client_conidx,
 			rc);
@@ -469,12 +473,10 @@ int main(void)
 
 	LOG_INF("Waiting for a client");
 	while (1) {
-		if (k_sem_take(&sem_ready_to_send, K_FOREVER) != 0) {
-			continue;
+		k_sleep(K_SECONDS(2));
+		if (ready_to_send) {
+			send_measurement();
 		}
-
-		send_measurement();
-		k_sleep(K_SECONDS(1));
 	}
 
 	return 0;
