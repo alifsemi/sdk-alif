@@ -1,0 +1,159 @@
+/dts-v1/;
+
+#include <alif/balletto/b1/ab1c1f4m51820ph0.dtsi>
+#include "balletto-eb-pinctrl.dtsi"
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+
+#define I2S0_IRQ_NUM  141
+#define I2S0_IRQ_PRIO 3
+
+#define LPI2S_IRQ_NUM  48
+#define LPI2S_IRQ_PRIO 3
+
+#define I2S0_DMA_RX_CH  2
+#define I2S0_DMA_RX_REQ 24
+#define I2S0_DMA_TX_CH  3
+#define I2S0_DMA_TX_REQ 28
+
+#define LPI2S_DMA_RX_CH  4
+#define LPI2S_DMA_RX_REQ 14
+#define LPI2S_DMA_TX_CH  5
+#define LPI2S_DMA_TX_REQ 15
+
+#define AUDIO_DMA_ENABLED 1
+#define MIC_DMA_ENABLED 1
+
+/ {
+	compatible = "arm,alif-b1-eb-ab1c1f4m51820hh-rtss-he";
+	#address-cells = <1>;
+	#size-cells = <1>;
+};
+
+&ieee802154 {
+	status = "okay";
+};
+&{/} {
+	chosen {
+		zephyr,console = &uart2;
+		zephyr,shell-uart = &uart2;
+		zephyr,bt-hci = &alif_hci_uart;
+		zephyr,hci-uart = &uart_hci;
+		zephyr,uart-mcumgr = &uart2;
+		zephyr,entropy = &rng;
+	};
+
+	aliases {
+		led0 = &aled0;
+		led1 = &aled1;
+		led2 = &aled2;
+		sw0 = &button0;
+		sw1 = &button1;
+		watchdog0 = &wdog0;
+		audio-codec = &wm8904;
+		i2s-input = &i2s0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		aled0: led_0 {
+			gpios = <&gpio4 5 0>;
+			label = "LED0_G";
+		};
+
+		aled1: led_1 {
+			gpios = <&gpio4 7 0>;
+			label = "LED0_R";
+		};
+
+		aled2: led_2 {
+			gpios = <&gpio4 3 0>;
+			label = "LED0_B";
+		};
+	};
+
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = < &gpio8 6 0 >;
+			label = "SW0";
+		};
+
+		button1: button_1 {
+			gpios = < &gpio8 7 0 >;
+			label = "SW1";
+		};
+	};
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&uart_hci {
+	clock-frequency = <160000000>;
+	dmas = <&dma2 HCI_UART_DMA_RX_CH HCI_UART_DMA_RX_REQ>,
+	       <&dma2 HCI_UART_DMA_TX_CH HCI_UART_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
+
+&uart_ahi {
+	clock-frequency = <160000000>;
+	pinctrl-0 = <&pinctrl_ahi_trace>;
+	pinctrl-names = "default";
+	dmas = <&dma2 AHI_UART_DMA_RX_CH AHI_UART_DMA_RX_REQ>,
+	       <&dma2 AHI_UART_DMA_TX_CH AHI_UART_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
+
+&dma2 {
+	status = "okay";
+	dma-channels = <8>;
+	interrupts = <0 3>, <1 3>, <2 3>, <3 3>, <4 3>, <5 3>,
+		     <6 3>, <7 3>, <32 3>;
+	interrupt-names = "channel0", "channel1",
+			  "channel2", "channel3",
+			  "channel4", "channel5",
+			  "channel6", "channel7",
+			  "abort";
+};
+
+&i2c0 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	status = "okay";
+
+	wm8904: wm8904@1a {
+		compatible = "cirrus,wm8904";
+		reg = <0x1a>;
+		status = "okay";
+	};
+};
+
+&i2s0 {
+	/delete-property/ clock-frequency;
+	/delete-property/ driver-instance;
+	compatible = "alif,i2s-sync";
+	interrupts = <I2S0_IRQ_NUM I2S0_IRQ_PRIO>;
+	bit-depth = <16>;
+	sample-rate = <48000>;
+	status = "okay";
+#if AUDIO_DMA_ENABLED
+	dmas = <&dma2 I2S0_DMA_RX_CH I2S0_DMA_RX_REQ>,
+	       <&dma2 I2S0_DMA_TX_CH I2S0_DMA_TX_REQ>;
+	dma-names = "rxdma", "txdma";
+#endif
+};
+
+/* Enable leds */
+&gpio4 {
+	status = "okay";
+};
+
+/* Enable SW buttons */
+&gpio8 {
+	status = "okay";
+};
