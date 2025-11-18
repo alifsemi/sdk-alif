@@ -15,6 +15,11 @@ Building and Running
 
 The application will build only for a target that has a devicetree entry with :dt compatible:`snps,designware-i2c` as a compatible.
 
+Example command to builf for E7 board (RTSS_HE devkit):
+
+.. code-block::
+   west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2c_dw -S alif-dk
+
 Sample Output
 =============
 
