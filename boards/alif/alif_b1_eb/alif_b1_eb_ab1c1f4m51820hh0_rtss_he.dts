@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include <alif/balletto/b1/ab1c1f4m51820hh.dtsi>
+#include <alif/balletto/b1/ab1c1f4m51820hh0.dtsi>
 #include "balletto-eb-pinctrl.dtsi"
 #include <dt-bindings/i2c/i2c.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -25,7 +25,7 @@
 #define MIC_DMA_ENABLED 1
 
 / {
-	compatible = "arm,alif-b1-eb-ab1c1f4m51820hh-rtss-he";
+	compatible = "arm,alif-b1-eb-ab1c1f4m51820hh0-rtss-he";
 	#address-cells = <1>;
 	#size-cells = <1>;
 };

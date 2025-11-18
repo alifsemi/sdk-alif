@@ -75,7 +75,7 @@ pipeline {
                             cd /root/alif/public/zephyr/scripts
                             pip install -r requirements.txt
                             cd /root/alif/public
-                            west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                            west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
                             cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
                             cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
                             mv /root/alif/public/build $WORKSPACE
@@ -98,7 +98,7 @@ pipeline {
                             try {
                                 sh '''#!/bin/bash -xe
                                 cd /root/alif/public
-                                west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                                west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
                                 cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
                                 cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
                                 mv /root/alif/public/build $WORKSPACE
@@ -141,7 +141,7 @@ pipeline {
                             pushd $ALIF_SETOOLS_LOCATION
                             sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
                             cat isp_config_data.cfg
-                            ./tools-config -p "B1 (AB1C1F4M51820HH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
+                            ./tools-config -p "B1 (ab1c1f4m51820hh0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
                             ./app-write-mram -p
                             popd
@@ -220,7 +220,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_audio/auracast
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_audio/auracast
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -274,7 +274,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_audio/unicast_sink
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_audio/unicast_sink
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -328,7 +328,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_audio/unicast_source
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_audio/unicast_source
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -382,7 +382,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -436,7 +436,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_batt
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_batt
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -490,7 +490,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_blinky
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_blinky
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -544,7 +544,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_blps
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_blps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -598,7 +598,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_cgms
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_cgms
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -652,7 +652,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_cpps
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_cpps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -706,7 +706,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_cscps
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_cscps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -760,7 +760,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_glps
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_glps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -814,7 +814,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_hello
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_hello
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -869,7 +869,7 @@ pipeline {
                                     cd /root/alif/alif/
                                     ls -la
                                     rm -rf build
-                                    west build --pristine=always -d build -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_hr
+                                    west build --pristine=always -d build -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_hr
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -924,7 +924,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_htpt
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_htpt
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -979,7 +979,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_past
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_past
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1033,7 +1033,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_plxp
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_plxp
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1087,7 +1087,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_pm
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_pm
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1141,7 +1141,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_prxp
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_prxp
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1195,7 +1195,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_rscps
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_rscps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1249,7 +1249,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_periph_ws
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_periph_ws
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1303,7 +1303,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/le_throughput
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/le_throughput
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1357,7 +1357,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/mesh_light_bulb
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/mesh_light_bulb
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1411,7 +1411,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he samples/bluetooth/smp_svr
+                                    west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/bluetooth/smp_svr
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1468,7 +1468,7 @@ pipeline {
                             west update
                             cd /root/alif/alif/
                             ls -la
-                            west build -p always -b alif_b1_dk/ab1c1f4m51820hh/rtss_he applications/testapp
+                            west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he applications/testapp
                             cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                             mv /root/alif/alif/build $WORKSPACE
                             cd $WORKSPACE
