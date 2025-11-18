@@ -1,0 +1,18 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+name: alif-dk
+
+boards:
+  /alif_(b1|e1c)_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_e1c_dk.overlay
+
+  /alif_(e4|e7|e8)_dk/.*/rtss_(hp|he)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e4_e7_e8_dk.overlay
