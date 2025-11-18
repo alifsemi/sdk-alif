@@ -13,18 +13,29 @@ By default it uses i2c0 as master and i2c1 as slave.
 Building and Running
 ********************
 
-The application will build only for a target that has a devicetree entry with :dt compatible:`snps,designware-i2c` as a compatible.
+The application will build only for a target that has a devicetree entry
+with :dt compatible:`snps,designware-i2c` as a compatible.
+It does not work on QEMU.
+In this example below the :ref:`alif_e7_dk/ae722f80f55d5xx/rtss_he` board is used.
+
+Use the snippet "alif-dk" to build i2c app on all alif boards.
+The overlay used in the snippet configures i2c master and slave instances.
+
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/i2c_dw
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :gen-args: -S alif-dk
 
 Sample Output
 =============
-
-.. minicom output
-*** Booting Zephyr OS build zephyr-v3.3.0-120-gd948f1171dd4 ***
-Received a byte in slave : 0xaa
-Received a byte in slave : 0xab
-Received a byte in slave : 0xac
-Received a byte in slave : 0xad
-Master wrote 0xaa 0xab 0xac 0xad to slave
-Read requested from Master and send 0x60 from slave
-Read processed_cb called
-Master received Data 0x60 From Slave
+.. code-block:: console
+        Received a byte in slave : 0xaa
+        Received a byte in slave : 0xab
+        Received a byte in slave : 0xac
+        Received a byte in slave : 0xad
+        Master wrote 0xaa 0xab 0xac 0xad to slave
+        Read requested from Master and send 0x60 from slave
+        Read processed_cb called
+        Master received Data 0x60 From Slave
+        <repeats endlessly>
