@@ -133,6 +133,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 		LOG_DBG("Restarting advertising");
 	}
 
+	READY_TO_SEND = false;
 	ctrl.connected = false;
 }
 
