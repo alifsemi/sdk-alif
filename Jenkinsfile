@@ -42,7 +42,7 @@ def generate_ble_stage(sample) {
         stage("Build ${sample} sample") {
             script {
                 def testing = load 'test_samples.groovy'
-                testing.build_zephyr("samples/bluetooth/${sample}", "build-b1-${sample}", "alif_b1_eb/ab1c1f4m51820hh/rtss_he");
+                testing.build_zephyr("samples/bluetooth/${sample}", "build-b1-${sample}", "alif_b1_dk/ab1c1f4m51820ph0/rtss_he");
             }
         }
     }
@@ -107,7 +107,7 @@ pipeline {
                             common_funcs.build_zephyr("samples/hello_world", "build-e3-hello-world_he", "alif_e3_dk/ae302f80f55d5xx/rtss_he");
                             common_funcs.build_zephyr("samples/hello_world", "build-e3-hello-world_hp", "alif_e3_dk/ae302f80f55d5xx/rtss_hp");
                             common_funcs.build_zephyr("samples/hello_world", "build-e1c-hello-world", "alif_e1c_dk/ae1c1f4051920hh/rtss_he");
-                            common_funcs.build_zephyr("samples/hello_world", "build-b1-hello-world", "alif_b1_eb/ab1c1f4m51820hh/rtss_he");
+                            common_funcs.build_zephyr("samples/hello_world", "build-b1-hello-world", "alif_b1_eb/ab1c1f4m51820hh0/rtss_he");
                         }
                     }
                     post {
