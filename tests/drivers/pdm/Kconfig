@@ -1,0 +1,62 @@
+config TEST_PDM_MONO_CH
+	bool "To Test pdm mono channel"
+	default n
+
+config TEST_PDM_MULTI_CH
+	bool "To Test pdm in multi channel"
+	default n
+
+config TEST_PDM_STEREO_CH
+	bool "To Test pdm stereo channel"
+	default n
+
+config TEST_PDM_CH0
+	bool "To Test pdm channel 0"
+	default n
+config TEST_PDM_CH1
+	bool "To Test pdm channel 1"
+	default n
+config TEST_PDM_CH2
+	bool "To Test pdm channel 2"
+	default n
+config TEST_PDM_CH3
+	bool "To Test pdm channel 3"
+	default n
+config TEST_PDM_CH4
+	bool "To Test pdm channel 4"
+	default n
+config TEST_PDM_CH5
+	bool "To Test pdm channel 5"
+	default n
+config TEST_PDM_CH6
+	bool "To Test pdm channel 6"
+	default n
+config TEST_PDM_CH7
+	bool "To Test pdm channel 7"
+	default n
+
+config TEST_PDM_MODE1
+	bool "To Test pdm in mode1"
+	default n
+config TEST_PDM_MODE3
+	bool "To Test pdm in mode3"
+	default n
+config TEST_PDM_MODE4
+	bool "To Test pdm in mode4"
+	default n
+config TEST_PDM_MODE5
+	bool "To Test pdm in mode5"
+	default n
+config TEST_PDM_MODE6
+	bool "To Test pdm in mode6"
+	default n
+config TEST_PDM_MODE7
+	bool "To Test pdm in mode7"
+	default n
+config TEST_PDM_MODE8
+	bool "To Test pdm in mode8"
+	default n
+config TEST_PDM_MODE9
+	bool "To Test pdm in mode9"
+	default n
+source "Kconfig.zephyr"
