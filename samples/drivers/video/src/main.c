@@ -20,7 +20,7 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_BGGR8
 #else
-#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_Y10P
+#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_GREY
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
 int main(void)
@@ -122,7 +122,7 @@ int main(void)
 
 	/* Alloc video buffers and enqueue for capture */
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
-		buffers[i] = video_buffer_alloc(bsize);
+		buffers[i] = video_buffer_alloc(bsize, K_NO_WAIT);
 		if (buffers[i] == NULL) {
 			LOG_ERR("Unable to alloc video buffer");
 			return -1;
@@ -216,3 +216,32 @@ int main(void)
 
 	return 0;
 }
+
+/*
+ * Do application configurations.
+ */
+static int app_set_parameters(void)
+{
+#if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay))
+	/* CPI Pixel clock - Generate XVCLK. Used by ARX3A0 */
+	sys_write32(0x140001, EXPMST_CAMERA_PIXCLK_CTRL);
+	/*
+	 * TODO: Add runp config for DPHY power and Isolation.
+	 */
+#endif
+
+#if (DT_NODE_HAS_STATUS(DT_NODELABEL(lpcam), okay))
+	/* Enable LPCAM controller Pixel Clock (XVCLK). */
+	/*
+	 * Not needed for the time being as LP-CAM supports only
+	 * parallel data-mode of cature and only MT9M114 sensor is
+	 * tested with parallel data capture which generates clock
+	 * internally. But can be used to generate XVCLK from LP CAM
+	 * controller.
+	 * sys_write32(0x140001, M55HE_CFG_HE_CAMERA_PIXCLK);
+	 */
+#endif
+	return 0;
+}
+
+SYS_INIT(app_set_parameters, PRE_KERNEL_1, 46);
