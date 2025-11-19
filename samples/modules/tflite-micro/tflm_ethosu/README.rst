@@ -35,38 +35,10 @@ Core Type Restrictions
 - **HP cores (rtss_hp)**: U55 supports 256 MACs only
 - **U85**: Always 256 MACs (both HE and HP cores)
 
-Quick Start
+Build Notes
 ***********
 
-**U55-128 on HE Core:**
-
-.. code-block:: bash
-
-    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_he \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
-      -G"Unix Makefiles"
-
-**U55-256 on HP Core:**
-
-.. code-block:: bash
-
-    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_hp \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
-      -G"Unix Makefiles"
-
-**U85-256 (E4/E8 only):**
-
-.. code-block:: bash
-
-    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" \\
-      -G"Unix Makefiles"
+Refer to the SDK User Guide for build and flash instructions.
 
 Configuration Options
 *********************
