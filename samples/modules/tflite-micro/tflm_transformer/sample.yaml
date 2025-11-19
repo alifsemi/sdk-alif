@@ -1,0 +1,12 @@
+sample:
+  name: BERT-Tiny Transformer Model with TensorFlow Lite Micro
+  description: BERT-Tiny transformer model running on ARM Ethos-U85 NPU
+tests:
+  sample.modules.tflite-micro.bert_tiny:
+    platform_allow: alif_e8_dk_rtss_he alif_e8_dk_rtss_hp
+    tags: tflite-micro ethos-u85 transformer bert
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "Starting BERT-Tiny Transformer Model Demo"
