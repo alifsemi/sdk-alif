@@ -365,8 +365,10 @@ static int app_set_run_params(void)
 	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
 #endif
 
-	runp.memory_blocks = MRAM_MASK | SRAM0_MASK;
-
+	runp.memory_blocks = MRAM_MASK;
+#if DT_NODE_EXISTS(DT_NODELABEL(sram0))
+	runp.memory_blocks |= SRAM0_MASK;
+#endif
 	runp.phy_pwr_gating = MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK |
 		MIPI_PLL_DPHY_MASK | LDO_PHY_MASK;
 	runp.ip_clock_gating = CDC200_MASK | MIPI_DSI_MASK | GPU_MASK;
