@@ -35,38 +35,44 @@ Core Type Restrictions
 - **HP cores (rtss_hp)**: U55 supports 256 MACs only
 - **U85**: Always 256 MACs (both HE and HP cores)
 
-Quick Start
-***********
+Building and Running
+********************
 
-**U55-128 on HE Core:**
+Building for Alif B1 DK (HP Core with U55)
+------------------------------------------
 
-.. code-block:: bash
+.. zephyr-app-commands::
+   :zephyr-app: samples/modules/tflite-micro/tflm_ethosu/
+   :board: alif_b1_dk/ab1c1f1m41820xx0/rtss_hp
+   :goals: build
+   :gen-args: -DDTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
-    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_he \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
-      -G"Unix Makefiles"
+Building for Alif E1C DK (HP Core with U55)
+-------------------------------------------
 
-**U55-256 on HP Core:**
+.. zephyr-app-commands::
+   :zephyr-app: samples/modules/tflite-micro/tflm_ethosu/
+   :board: alif_e1c_dk/ae510f0agv81xx0/rtss_hp
+   :goals: build
+   :gen-args: -DDTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
-.. code-block:: bash
+Building for Alif E7 DK (HP Core with U55)
+------------------------------------------
 
-    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_hp \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
-      -G"Unix Makefiles"
+.. zephyr-app-commands::
+   :zephyr-app: samples/modules/tflite-micro/tflm_ethosu/
+   :board: alif_e7_dk/ae722f80f55d5xx0/rtss_hp
+   :goals: build
+   :gen-args: -DDTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
-**U85-256 (E4/E8 only):**
+Building for Alif E8 DK (HP Core with U85)
+------------------------------------------
 
-.. code-block:: bash
-
-    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" \\
-      -G"Unix Makefiles"
+.. zephyr-app-commands::
+   :zephyr-app: samples/modules/tflite-micro/tflm_ethosu/
+   :board: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+   :goals: build
+   :gen-args: -DDTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" -DCONFIG_ETHOSU_TARGET_NPU_CONFIG=\"ethos-u85-256\"
 
 Configuration Options
 *********************
