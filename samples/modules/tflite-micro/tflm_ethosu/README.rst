@@ -42,31 +42,28 @@ Quick Start
 
 .. code-block:: bash
 
-    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_he \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
-      -G"Unix Makefiles"
+    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_he \
+      alif/samples/modules/tflite-micro/tflm_ethosu/ \
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
 **U55-256 on HP Core:**
 
 .. code-block:: bash
 
-    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_hp \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" \\
-      -G"Unix Makefiles"
+    west build -b alif_e7_dk/ae722f80f55d5xx0/rtss_hp \
+      alif/samples/modules/tflite-micro/tflm_ethosu/ \
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
+      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
 **U85-256 (E4/E8 only):**
 
 .. code-block:: bash
 
-    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \\
-      alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- \\
-      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \\
-      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" \\
-      -G"Unix Makefiles"
+    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+      alif/samples/modules/tflite-micro/tflm_ethosu/ \
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
+      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
 
 Configuration Options
 *********************
