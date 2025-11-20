@@ -31,10 +31,3 @@ Document History
       - Updated the document to include DAC12, UTimer Counter, QDEC and SDMMC
     * - 2.0
       - Release with Zephyr v4.1.0. Added driver support for I2S, DAC, ISSI Flash, Intel eMMC Host, Utimer, Utimer QDEC, LPTimer, CRC, PDM, MHU, PSRAM, HWSEM, and Entropy.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
