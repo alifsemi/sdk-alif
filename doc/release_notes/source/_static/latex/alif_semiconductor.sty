@@ -1,0 +1,103 @@
+% ============================================================================
+% Zephyr Alif SDK Release Notes - Alif Semiconductor LaTeX Style
+% ============================================================================
+
+\ProvidesPackage{alif_semiconductor_style}
+
+% Font Packages
+% ----------------------------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{charter}
+\usepackage[defaultsans]{lato}
+\usepackage[T1]{fontenc}
+\usepackage{inconsolata}
+
+% Hyperlinks and References
+% ----------------------------------------------------------------------------
+\usepackage{hyperref}
+
+% Floats and Graphics
+% ----------------------------------------------------------------------------
+\usepackage{float}
+
+% Section Spacing (titlesec already loaded by Sphinx)
+% ----------------------------------------------------------------------------
+\titlespacing*{\section}{0pt}{12pt plus 4pt minus 2pt}{6pt plus 2pt minus 2pt}
+\titlespacing*{\subsection}{0pt}{10pt plus 3pt minus 2pt}{4pt plus 2pt minus 2pt}
+\titlespacing*{\subsubsection}{0pt}{8pt plus 2pt minus 2pt}{3pt plus 1pt minus 1pt}
+
+% Section Formatting
+% ----------------------------------------------------------------------------
+\makeatletter
+\renewcommand{\@seccntformat}[1]{\csname the#1\endcsname\quad}
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+    {-3.5ex \@plus -1ex \@minus -.2ex}%
+    {2.3ex \@plus.2ex}%
+    {\normalfont\Large\bfseries}}
+\makeatother
+
+% Paragraph Spacing
+% ----------------------------------------------------------------------------
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+\setlength{\parindent}{0pt}
+
+% List Spacing
+% ----------------------------------------------------------------------------
+\usepackage{enumitem}
+\setlist{itemsep=3pt, parsep=0pt, topsep=6pt}
+
+% Table Formatting
+% ----------------------------------------------------------------------------
+\usepackage{array}
+\renewcommand{\arraystretch}{1.3}
+\setlength{\tabcolsep}{8pt}
+
+% Multi-column Support
+% ----------------------------------------------------------------------------
+\usepackage{multicol}
+
+% Background Pictures
+% ----------------------------------------------------------------------------
+\usepackage{eso-pic}
+\usepackage{tikz}
+
+% Page Geometry
+% ----------------------------------------------------------------------------
+\usepackage{geometry}
+\geometry{
+    a4paper,
+    left=25mm,
+    top=25mm,
+    right=25mm,
+    bottom=25mm
+}
+
+% Line Spacing
+% ----------------------------------------------------------------------------
+\linespread{1.1}
+
+% Prevent Orphans and Widows
+% ----------------------------------------------------------------------------
+\widowpenalty=10000
+\clubpenalty=10000
+
+% Footnote Formatting
+% ----------------------------------------------------------------------------
+\usepackage[bottom]{footmisc}
+\setlength{\footnotesep}{8pt}
+
+% Table of Contents
+% ----------------------------------------------------------------------------
+\usepackage{etoolbox}
+\pretocmd{\tableofcontents}{\clearpage}{}{}
+\addto\captionsenglish{\renewcommand{\contentsname}{Table of Contents}}
+
+% Logo on First Page
+% ----------------------------------------------------------------------------
+\AddToShipoutPictureFG*{
+    \AtPageUpperLeft{
+        \hspace*{0.1\textwidth}
+        \vspace*{0.1\textheight}
+        \includegraphics[width=2cm]{_static/logo.png}
+    }
+}
