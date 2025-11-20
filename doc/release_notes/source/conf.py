@@ -45,7 +45,8 @@ html_favicon = "_static/favicon.png"
 html_theme_options = {
     "logo_only": True,
     "navigation_depth": 4,
-    "style_nav_header_background": "#2980b9",
+    "collapse_navigation": False,
+    "sticky_navigation": True,
 }
 html_title = f"Zephyr Alif SDK Release Notes - v{release}"
 html_last_updated_fmt = "%b %d, %Y"
@@ -57,45 +58,14 @@ html_show_sphinx = False
 latex_elements = {
     'papersize': 'a4paper',
     'extraclassoptions': 'openany,oneside',
+    'pointsize': '11pt',
     'preamble': r'''
-        \usepackage{graphicx}
-        \usepackage{charter}
-        \usepackage[defaultsans]{lato}
-        \usepackage[T1]{fontenc}
-        \usepackage{inconsolata}
-        \usepackage{hyperref}
-        \usepackage{float}
-        \usepackage{titlesec}
-        \titlespacing*{\section}{0pt}{*0}{*0}
-        \titlespacing*{\subsection}{0pt}{*0}{*0}
-        \setlength{\parskip}{0pt}
-        \setlength{\parindent}{0pt}
-        \usepackage{multicol}
-        \usepackage{eso-pic}
-        \usepackage{tikz}
-        \usepackage{geometry}
-        \geometry{
-            a4paper,
-            left=20mm,
-            top=20mm,
-            right=20mm,
-            bottom=20mm
-        }
-        \usepackage{etoolbox}
-        \pretocmd{\tableofcontents}{\clearpage}{}{}
-        \AddToShipoutPictureFG*{
-            \AtPageUpperLeft{
-                \hspace*{0.1\textwidth} % Adjust horizontal offset here
-                \vspace*{0.1\textheight} % Adjust vertical offset here
-                \includegraphics[width=2cm]{_static/logo.png} % Adjust size here
-            }
-        }
-        \addto\captionsenglish{\renewcommand{\contentsname}{Table of Contents}}
+        \usepackage{_static/latex/alif_semiconductor}
     ''',
 }
 
 latex_documents = [
-    ('index', 'ZephyrAlifSDKReleaseNotes.tex', project,
+    ('index', 'release_notes.tex', project,
      author, 'manual', False),
 ]
 
@@ -107,7 +77,6 @@ latex_domain_indices = False
 
 def setup(app):
     app.add_css_file("css/custom.css")
-    app.add_js_file("js/custom.js")
     def copy_static_files(app, exception):
         if not exception:
             static_dir = Path(app.builder.srcdir) / '_static'
