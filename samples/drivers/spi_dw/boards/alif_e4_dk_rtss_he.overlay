@@ -8,7 +8,7 @@
  *
  */
 
-/* setting SPI4 as master and SPI0 instance as slave.
+/* setting LP-SPI0 as master and SPI0 instance as slave.
  * NOTE: use console as UART4, as SPI0_A is clashing with UART2_A.
  */
 
@@ -32,7 +32,7 @@
 
 / {
 	aliases {
-		master-spi = &spi4;
+		master-spi = &lpspi0;
 		slave-spi = &spi0;
 	};
 
@@ -53,10 +53,10 @@
 	status = "okay";
 };
 
-&spi4 {
+&lpspi0 {
 	status = "okay";
 	dmas = <&dma2 0 13>, <&dma2 1 12>;
-/* If user want to use dma0 for master spi(spi4),
+/* If user want to use dma0 for master spi(lpspi0),
  * add below dmas property:
  * dmas = <&dma0 0 25>, <&dma0 1 24>;
  */

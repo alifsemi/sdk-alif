@@ -8,20 +8,20 @@
  *
  */
 
-/* setting SPI4 as master and SPI0 instance as slave.
+/* setting LP-SPI0 as master and SPI0 instance as slave.
  *
  */
 
 /* For SPI master SS(slave select) as:
  * - H/W controlled (default):
  *   - use SS pinmux as H/W
- *     - example for SPI4 as master "PIN_P7_7__LPSPI_SS_A"
+ *     - example for LP-SPI0 as master "PIN_P7_7__LPSPI_SS_A"
  *  "OR"
  * - S/W controlled using gpio:
  *   - use SS pinmux as gpio
- *     - example for SPI4 as master "PIN_P7_7__GPIO"
+ *     - example for LP-SPI0 as master "PIN_P7_7__GPIO"
  *   - define cs-gpios property
- *     - example for SPI4 as master
+ *     - example for LP-SPI0 as master
  *        cs-gpios = <&gpio7 7 GPIO_ACTIVE_LOW>;
  */
 
@@ -32,7 +32,7 @@
 
 / {
 	aliases {
-		master-spi = &spi4;
+		master-spi = &lpspi0;
 		slave-spi = &spi0;
 	};
 };
@@ -45,10 +45,10 @@
 	status = "okay";
 };
 
-&spi4 {
+&lpspi0 {
 	status = "okay";
 	dmas = <&dma2 0 13>, <&dma2 1 12>;
-/* If user want to use dma0 for master spi(spi4),
+/* If user want to use dma0 for master spi(lpspi0),
  * add below dmas property:
  * dmas = <&dma0 0 25>, <&dma0 1 24>;
  */
