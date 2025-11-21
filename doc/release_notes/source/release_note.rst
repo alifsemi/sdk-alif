@@ -218,6 +218,10 @@ Breaking Changes
 Known Issues
 ------------
 
+- **BLE** le_periph_pm application has a RTC related issue which causes M55 RTC alarms to stop working randomly
+- **BLE** audio Unicast initiator fails to open 2nd channel when using Ceva host stack
+- **BLE** Auracast sink does not receive an encryption key sent by Auracast assistant when using Ceva host stack
+- **BLE** Connection param update does not work with Ceva host stack, works fine with Zephyr host stack.
 
 External References
 -------------------
