@@ -38,6 +38,11 @@ In this example below the :ref:`nrf52840dk_nrf52840` board is used.
    :board: nrf52840dk_nrf52840
    :goals: build flash
 
+Example command to builf for E7 board (RTSS_HE devkit):
+
+.. code-block::
+   west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/sensor/bme680 -S alif-dk
+
 Sample Output
 =============
 
