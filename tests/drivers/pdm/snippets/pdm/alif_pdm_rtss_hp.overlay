@@ -1,0 +1,9 @@
+/ {
+	aliases {
+		test-pdm = &pdm;
+	};
+};
+
+&pdm {
+	status = "okay";
+};
