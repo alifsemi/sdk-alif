@@ -1502,7 +1502,7 @@ pipeline {
                                 ls -lart
                                 rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
                                 cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
-                                cp ble_automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
+                                cp automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                                 pushd $ALIF_SETOOLS_LOCATION
                                 sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
                                 cat isp_config_data.cfg
