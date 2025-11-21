@@ -85,13 +85,34 @@ Communication Interfaces
    * - **Peripheral**
      - **Description**
    * - UART
-     - Synopsys DW_apb_uart supporting up to 8 ports. UART2 and UART4 enabled for RTSS-HP and RTSS-HE subsystems.
+     - Synopsys DW_apb_uart supporting up to 8 ports. By default UART2 and UART4 are enabled and used as a console for RTSS-HE and RTSS-HP core respectively.
    * - SPI
      - Synopsys DWC_ssi full-duplex interface with 4 instances. SPI1 (master), SPI0/SPI2/SPI3 (slaves).
    * - I2C
      - DW_apb_i2c with master/slave mode support. Two instances: i2c0 and i2c1.
    * - LPI2C
      - Low-power I2C controller for power-efficient peripheral communication.
+   * - I3C
+     - Improved Inter-Integrated Circuit (I3C) interface supporting high-speed, low-power communication with dynamic addressing, in-band interrupts, and backward compatibility with I2C devices.
+   * - LP-UART
+     - Low-power Universal Asynchronous Receiver/Transmitter supporting extended sleep modes with wake-on-receive capability. Maintains serial communication during system low-power states with reduced power consumption compared to standard UART peripherals.
+   * - LP-SPI
+     - Low-power SPI controller capable of operating in deep sleep modes, enabling communication with external sensors and peripherals while minimizing power consumption, with wake-on-transfer support for event-driven applications in Zephyr.
+
+
+Display Interfaces
+~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - MIPI-DSI
+     - MIPI Display Serial Interface controller supporting high-speed, low-power video data transmission to external LCD/OLED panels, integrated with Zephyr’s display subsystem for frame buffer rendering and panel initialization.
+   * - CDC-200
+     - CDC-200 (Clock and Data Controller) PHY for MIPI DSI, providing precise clock recovery and data serialization/deserialization to ensure reliable high-speed display link operation with Zephyr graphics stacks.
 
 Audio Interfaces
 ~~~~~~~~~~~~~~~~
@@ -103,7 +124,7 @@ Audio Interfaces
    * - **Peripheral**
      - **Description**
    * - I2S
-     - DW_apb_i2s with four instances for digital audio. I2S3_b connects to internal microphone.
+     - DW_apb_i2s with four instances for digital audio.
    * - LPI2S
      - Low-power DW_apb_lpi2s for digital audio signal processing.
    * - PDM
@@ -123,15 +144,22 @@ System Resources
    * - GPIO
      - General-purpose I/O pins controllable by software as inputs or outputs.
    * - MHU
-     - Message Handling Units for interrupt-driven inter-subsystem communication. 12 MHUs for Secure and 12 for Non-Secure access.
+     - Message Handling Units for interrupt-driven inter-subsystem communication.
    * - HWSEM
      - Hardware semaphores for shared resource synchronization across subsystems.
-   * - DMA
-     - **E3/E4/E5/E6/E7/E8**: Three controllers (DMA0, DMA1, DMA2) with MUX. **B1/E1C**: DMA2 only.
    * - RTC
      - Low-Power Real-Time Counter (LPRTC) with 32-bit counter and interrupt generation.
    * - WDT
      - Watchdog timer for fault detection.
+   * - Clk-Ctrl
+     - Clock control module manages peripheral clock generation and its gating.
+   * - PinMUX
+     - Pin multiplexer controlling GPIO pin function selection and routing of peripheral signals to physical pins, enabling flexible I/O configuration.
+   * - System Power Management (suspend to ram)
+     - Power management framework supporting deep sleep states including Suspend-to-RAM (S2RAM), where SRAM is retained, enabling fast resume and ultra-low power idle operation.
+   * -  LP-GPIO
+     - Low-power GPIO controller that maintains state and wake-up capability during system sleep modes, allowing external events to trigger resume from low-power states.
+
 
 Timers and PWM
 ~~~~~~~~~~~~~~
@@ -161,7 +189,10 @@ Memory and Storage
    * - MRAM
      - Magnetoresistive RAM with Read and Write operations.
    * - OSPI Flash
-     - 32MB ISSI Flash (IS25WX256) with Zephyr flash APIs for erase, read, and write operations.
+     - 64MB ISSI Flash (IS25WX512) with Zephyr flash APIs for erase, read, and write operations.
+   * - SD
+     - Secure Digital host controller supporting SD/SDIO/MMC protocols for external memory card interfacing, including command queuing and data transfer at high-speed rates.
+
 
 Security and Data Integrity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -172,10 +203,10 @@ Security and Data Integrity
 
    * - **Peripheral**
      - **Description**
-   * - AES
-     - Advanced Encryption Standard for on-the-fly decryption of XIP data from external memory.
    * - CRC
      - Supports CRC-8-CCITT, CRC-16-CCITT, CRC-32, and CRC-32C with flexible data processing via AHB.
+   * - Entropy
+     - Hardware true random number generator (TRNG) providing high-quality entropy for cryptographic operations, compliant with NIST SP 800-90B, and integrated with Zephyr’s entropy subsystem for secure key generation and randomization.
 
 Analog and Conversion
 ~~~~~~~~~~~~~~~~~~~~~
@@ -188,6 +219,24 @@ Analog and Conversion
      - **Description**
    * - DAC 12
      - 12-bit Digital to Analog Converter with 0 V to 1.8 V output range in Low-Power mode.
+   * - ADC 12
+     - 12-bit Analog-to-Digital Converter with configurable sampling rate and input channels, supporting general-purpose sensor measurements and fast conversion in both active and low-power operating modes.
+
+AI Acceleration
+~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - Ethos
+     - The Ethos U-55/U-85 NPU is a hardware acceleration solution
+       integrated into Alif’s microcontroller platforms that leverages Arm
+       Ethos microNPUs to boost machine learning inference performance
+       for CNN and transformer models.
+
 
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
@@ -222,6 +271,9 @@ Known Issues
 - **BLE** audio Unicast initiator fails to open 2nd channel when using Ceva host stack
 - **BLE** Auracast sink does not receive an encryption key sent by Auracast assistant when using Ceva host stack
 - **BLE** Connection param update does not work with Ceva host stack, works fine with Zephyr host stack.
+- SPI1 DMA operations exhibit inconsistent behavior.
+- Touchscreen events are intermittently dropped.
+
 
 External References
 -------------------
