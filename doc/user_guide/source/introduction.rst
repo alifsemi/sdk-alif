@@ -26,8 +26,8 @@ Zephyr uses a meta-tool called `west` to execute Kconfig, CMake, and build syste
 
 - **Build stage:** The generated build scripts are executed to compile the application.
 
-**Hardware and Software Requirements**
---------------------------------------
+Host Requirements
+--------------------------
 
 **Hardware Requirements**
 ~~~~~~~~~~~~~~~~~~~~~~~~~
