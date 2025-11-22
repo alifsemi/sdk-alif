@@ -27,9 +27,6 @@ Host Requirements
 
 - Ubuntu 22.04.5 LTS or above
 
-.. note::
-   While other Linux distributions may work, they have not been thoroughly tested.
-
 Toolchains
 ----------
 
@@ -112,7 +109,9 @@ Display Interfaces
    * - MIPI-DSI
      - MIPI Display Serial Interface controller supporting high-speed, low-power video data transmission to external LCD/OLED panels, integrated with Zephyr’s display subsystem for frame buffer rendering and panel initialization.
    * - CDC-200
-     - CDC-200 (Clock and Data Controller) PHY for MIPI DSI, providing precise clock recovery and data serialization/deserialization to ensure reliable high-speed display link operation with Zephyr graphics stacks.
+     - CDC-200 (Configurable Display Controller) PHY for MIPI DSI, providing precise clock recovery and data serialization/deserialization to ensure reliable high-speed display link operation with Zephyr graphics stacks.
+   * - Touch screen
+     - Capacitive touch-screen controller supporting multi-touch gestures, interfaced via I2C or SPI. Integrated with Zephyr’s input subsystem for reporting touch coordinates, pressure, and gesture events. Supports low-power operation with wake-on-touch capability for system resume from sleep modes.
 
 Audio Interfaces
 ~~~~~~~~~~~~~~~~
@@ -124,13 +123,13 @@ Audio Interfaces
    * - **Peripheral**
      - **Description**
    * - I2S
-     - DW_apb_i2s with four instances for digital audio.
+     - DW_apb_i2s up to four instances for digital audio.
    * - LPI2S
      - Low-power DW_apb_lpi2s for digital audio signal processing.
    * - PDM
-     - Supports eight PDM microphones, converting 1-bit PDM to 16-bit PCM.
+     - Pulse Density Modulation (PDM) supports eight channels, each PDM interface consists of 4 data inputs, with each input carrying 2 audio channels (left and right).
    * - LPPDM
-     - Low-power PDM supporting up to eight microphones with 1-bit PDM to 16-bit PCM conversion.
+     - Low-Power Pulse Density Modulation supports eight channels, each LPPDM interface consists of 4 data inputs, with each input carrying 2 audio channels (left and right).
 
 System Resources
 ~~~~~~~~~~~~~~~~
@@ -176,6 +175,8 @@ Timers and PWM
      - Quadrature decoder mode for precise rotary encoder position tracking.
    * - UTimer Counter
      - Counter mode for event/clock pulse counting, frequency measurement, and timer-based scheduling.
+   * - LP-Timer
+     - Low-power timer for sleep/idle modes with wake-up events, periodic interrupts, and timekeeping.
 
 Memory and Storage
 ~~~~~~~~~~~~~~~~~~
@@ -237,6 +238,19 @@ AI Acceleration
        Ethos microNPUs to boost machine learning inference performance
        for CNN and transformer models.
 
+Imaging Interfaces
+~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - CPI
+     - Camera Parallel Interface supporting high-speed parallel data capture from CMOS/CCD image sensors. Provides pixel clock, horizontal/vertical sync, and data lanes for raw image streaming. Integrated with Zephyr’s video input subsystem for frame buffering and real-time processing.
+   * - LPCPI
+     - Low-Power Camera Parallel Interface optimized for energy-efficient imaging applications. Supports reduced clocking, sleep modes, and wake-on-frame while maintaining compatibility with standard parallel image sensors.
 
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
@@ -271,8 +285,11 @@ Known Issues
 - **BLE** audio Unicast initiator fails to open 2nd channel when using Ceva host stack
 - **BLE** Auracast sink does not receive an encryption key sent by Auracast assistant when using Ceva host stack
 - **BLE** Connection param update does not work with Ceva host stack, works fine with Zephyr host stack.
-- SPI1 DMA operations exhibit inconsistent behavior.
-- Touchscreen events are intermittently dropped.
+- **SPI1** DMA operations exhibit inconsistent behavior.
+- **Touch Screen** events are intermittently dropped.
+- **OSPI** boot has not been verified.
+- When run from HE-MRAM, the **PM** demo application throws an error message.
+
 
 
 External References

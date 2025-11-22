@@ -11,7 +11,7 @@ This guide covers:
    Examples in this document use the Ensemble E7 DevKit unless otherwise specified.
 
 Setting Up the Host System
---------------------------
+------------------------------
 
 Follow these steps to install dependencies and configure the environment for the Alif SDK.
 
@@ -68,7 +68,7 @@ Fetch the SDK source from the ``main`` branch:
 
    mkdir sdk-alif
    cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif_2.0.git --mr ${revision}
+   west init -m https://github.com/alifsemi/sdk-alif --mr ${revision}
    west update
 
 Replace ``${revision}`` with the desired SDK revision (branch, tag, or commit SHA).
@@ -84,7 +84,7 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 
 .. code-block:: bash
 
-   west init -m https://github.com/alifsemi/sdk-alif_2.0.git --mr main
+   west init -m https://github.com/alifsemi/sdk-alif --mr v2.0-zas-branch
 
 Building an Application
 -----------------------
@@ -101,11 +101,11 @@ Supported Board Targets as per new hardware model v2 (Zephyr v4.1.0 and onwards)
 - alif_e8_dk/ae822fa0e5597xx0/rtss_he
 - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
 - alif_e1c_dk/ae1c1f4051920hh/rtss_he
-- alif_b1_dk/ab1c1f4m51820hh/rtss_he
+- alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+- alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+- alif_b1_dk/ab1c1f1m41820hh0/rtss_he
+- alif_b1_dk/ab1c1f1m41820ph0/rtss_he
 
-.. note::
-   The ``alif_e7_dk/ae722f80f55d5xx/rtss_he`` and ``alif_e7_dk/ae722f80f55d5xx/rtss_hp`` targets can also be run on
-   the DevKit E5.
 
 a. Navigate to the Zephyr directory:
 
