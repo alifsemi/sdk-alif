@@ -38,8 +38,9 @@ The image below illustrates the various components of the SDK for Alif Semicondu
 The SDK offers a comprehensive suite of components to enhance software development:
 
 .. list-table::
-   :widths: 25 75
+   :widths: 30 75
    :header-rows: 1
+   :class: tabulary
 
    * - **Component**
      - **Description**
