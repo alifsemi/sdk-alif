@@ -7,7 +7,7 @@ In this user guide, we cover the following steps:
     - Understand the requirements for building Zephyr OS, a small Real-Time Operating System designed for connected, resource-constrained, and embedded devices for the real-time subsystems in Alif's devices.
 
 2. **Building an Application Using the West Tool:**
-    - Learn how to build an application using the West tool. West is Zephyr’s meta tool written in Python, which calls CMake/Make commands on a Linux host—such as Ubuntu.
+    - West is Zephyr’s meta-tool for building and deploying binaries onto target hardware. Written in Python, West orchestrates CMake and Make commands and is supported on multiple host operating systems, including Linux, Windows and MacOS.
 
 3. **Programming the Application Binary onto ITCM:**
     - Steps to program the application binary onto the ITCM of one of the real-time subsystems and booting the application.
@@ -15,7 +15,7 @@ In this user guide, we cover the following steps:
 4. **Running the Application from MRAM:**
     - Discover how to run applications directly from MRAM. Learn about the supported targets, specific MRAM boot addresses for RTSS-HE and RTSS-HP, and the necessary build commands.
 
-**Zephyr RTOS and Toolchain**
+Zephyr RTOS and Toolchain
 -----------------------------
 
 The real-time subsystems boot with Zephyr OS, a small RTOS for connected, resource-constrained, and embedded devices. Zephyr supports multiple architectures and is available under the Apache 2.0 license.
@@ -49,10 +49,9 @@ Ensure you have the following debugger available to proceed with your project se
 1. **For Host PC:**
     - Ubuntu 22.04.5 LTS or above.
 
-    *Note: While different flavors of Linux distributions may also work, they have not been thoroughly tested.*
 
 2. **Alif Security Toolkit:**
-    - Version 1.108 or above.
+    - SE version is 1.109.0
 
     * Available at `Alif Toolkit Download`_
 
@@ -64,14 +63,14 @@ Ensure you have the following debugger available to proceed with your project se
    :width: 500px
    :align: center
 
-   Balletto and Ensemble Family (E1, E3, E5 and E7)
+   Balletto and Ensemble Family
 
 .. figure:: _static/E8.png
    :alt: Ensemble Family (E4, E6 and E8)
    :width: 500px
    :align: center
 
-   Ensemble Family (E4, E6 and E8)
+   Ensemble Gen2 Family
 
 
 The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
@@ -99,7 +98,7 @@ The Alif DevKit is a development board featuring an Alif multi-core SoC, offerin
 
 - **DK-B1:**
     - Introduces the Balletto B1 series, a wireless MCU with integrated hardware acceleration for AI/ML workloads.
-    - Includes:
+    - Features:
         - Bluetooth Low Energy 5.3
         - 802.15.4 based Thread protocols
         - An Ethos-U55 microNPU for AI acceleration
