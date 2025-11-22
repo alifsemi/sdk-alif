@@ -1,65 +1,43 @@
-# -*- coding: utf-8 -*-
-#
-# **Configuration file for the Sphinx documentation builder.**
-#
-# Reference: https://www.sphinx-doc.org/en/master/usage/configuration.html
-
 import os
 import sys
 from pathlib import Path
-import re
 import shutil
 
-# Path setup
-ZEPHYR_BASE = Path(__file__).resolve().parents[2]
-ZEPHYR_BUILD = Path(os.environ.get("OUTPUT_DIR", "_build")).resolve()
+# -- Path setup --------------------------------------------------------------
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use Path(__file__).resolve().parent.joinpath('relative_path').
 
-# Add paths for Sphinx extensions and utility modules
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_extensions"))
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_scripts"))
-sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "west_commands"))
+# -- Project information -----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-# Initialize version and release with default values
-version = "2.0"
-release = "2.0"
+project = 'Getting Started with Zephyr Alif SDK'
+copyright = '2024-2025, Alif Semiconductor'
+author = 'Alif Semiconductor'
+release = '2.0'
 
-# Read the version from VERSION file if it exists
-if (ZEPHYR_BASE / "VERSION").exists():
-    with open(ZEPHYR_BASE / "VERSION", "r") as file:
-        content = file.read()
-        major_match = re.search(r"VERSION_MAJOR\s*=\s*(\d+)", content)
-        minor_match = re.search(r"VERSION_MINOR\s*=\s*(\d+)", content)
-        patch_match = re.search(r"PATCHLEVEL\s*=\s*(\d+)", content)
-        if major_match and minor_match:
-            major, minor = major_match.group(1), minor_match.group(1)
-            version = f"{major}.{minor}"
-            if patch_match:
-                patch = patch_match.group(1)
-                release = f"{major}.{minor}.{patch}"
-            else:
-                release = version
+# -- General configuration ---------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-# Project information
-project = f"Getting Started with Zephyr Alif SDK"
-copyright = f"2024-2025, Alif Semiconductor"
-author = " "
-
-# General configuration
 extensions = [
     'sphinx_copybutton',
     'sphinx.ext.todo',
-    'sphinx.ext.extlinks',
     'sphinx.ext.autodoc',
-    'sphinx.ext.graphviz',
+    'sphinx.ext.viewcode',
     'sphinx_rtd_theme',
-    'sphinx.ext.imgconverter',
-    'sphinx_tabs.tabs',
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
-# Options for HTML output
+rst_epilog = """
+.. include:: /links.txt
+.. |release| replace:: {release}
+""".format(release=release)
+
+# -- Options for HTML output -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_logo = "_static/logo.png"
@@ -67,101 +45,49 @@ html_favicon = "_static/favicon.png"
 html_theme_options = {
     "logo_only": True,
     "navigation_depth": 4,
-    "prev_next_buttons_location": None,
-    "style_nav_header_background": "#2980b9",
+    "collapse_navigation": False,
+    "sticky_navigation": True,
 }
-html_title = f"Alif SDK Documentation - v{release}"
+html_title = f"Zephyr Alif SDK Release Notes - v{release}"
 html_last_updated_fmt = "%b %d, %Y"
 html_show_sphinx = False
-html_additional_pages = {
-    "search": "search.html"
-}
-html_context = {
-    "current_version": release,
-    "versions": [
-        ("latest", "/"),
-        (release, f"/{release}/"),
-    ]
-}
 
-# Substitution for version in RST files and links.txt inclusion
-rst_epilog = f"""
-.. include:: /links.txt
-.. |version| replace:: {version}
-.. |release| replace:: {release}
-"""
+# -- Options for LaTeX output ------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-latex-output
 
-# **Options for LaTeX output**
 latex_elements = {
     'papersize': 'a4paper',
     'extraclassoptions': 'openany,oneside',
+    'pointsize': '11pt',
     'preamble': r'''
-        \usepackage{graphicx}
-        \usepackage{charter}
-        \usepackage[defaultsans]{lato}
-        \usepackage[T1]{fontenc}
-        \usepackage{inconsolata}
-        \usepackage{hyperref}
         \usepackage{float}
-        \usepackage{titlesec}
-        \titlespacing*{\section}{0pt}{*0}{*0}
-        \titlespacing*{\subsection}{0pt}{*0}{*0}
-        \setlength{\parskip}{0pt}
-        \setlength{\parindent}{0pt}
-        \usepackage{multicol}
-        \usepackage{eso-pic}
-        \usepackage{tikz}
-        \usepackage{geometry}
-        \geometry{
-            a4paper,
-            left=20mm,
-            top=20mm,
-            right=20mm,
-            bottom=20mm
-        }
-        \usepackage{etoolbox}
-        \pretocmd{\tableofcontents}{\clearpage}{}{}
-        \AddToShipoutPictureFG*{
-            \AtPageUpperLeft{
-                \hspace*{0.1\textwidth} % Adjust horizontal offset here
-                \vspace*{0.1\textheight} % Adjust vertical offset here
-                \includegraphics[width=2cm]{_static/logo.png} % Adjust size here
-            }
-        }
-        \addto\captionsenglish{\renewcommand{\contentsname}{Table of Contents}}
+        \usepackage{graphicx}
+        \usepackage{_static/latex/alif_semiconductor}
     ''',
+    'figure_align': 'H',  # Force figures to appear exactly where placed
 }
 
+latex_table_style = ['booktabs', 'colorrows']
+
+latex_use_latex_multicolumn = False
+
 latex_documents = [
-    ('index', 'AlifSDK.tex', project,
-     author, 'manual'),
+    ('index', 'user_guide.tex', 'Getting Started with Zephyr Alif SDK',
+     'Alif Semiconductor', 'manual', False),
 ]
 
 latex_logo = "_static/logo.png"
-latex_show_pagerefs = True
 latex_show_urls = 'footnote'
-latex_appendices = []
 latex_domain_indices = False
-latex_theme = 'manual'
 
-# Image numbering settings
-numfig = True
-numfig_format = {
-    'figure': 'Figure %s',
-    'table': 'Table %s',
-    'code-block': 'Listing %s'
-}
+# -- Custom setup ------------------------------------------------------------
 
 def setup(app):
-    # Adding custom CSS and JS files
     app.add_css_file("css/custom.css")
-    app.add_js_file("js/custom.js")
-    # Function to copy static files to LaTeX build directory
     def copy_static_files(app, exception):
         if not exception:
             static_dir = Path(app.builder.srcdir) / '_static'
             latex_dir = Path(app.builder.outdir)
             if static_dir.exists():
                 shutil.copytree(str(static_dir), str(latex_dir / '_static'), dirs_exist_ok=True)
-    # Connect the callback function to the 'build-finished' event
     app.connect('build-finished', copy_static_files)
