@@ -202,6 +202,7 @@ uint16_t central_itf_gapm_cfg(void)
 
 	LOG_DBG("Waiting for init...\n");
 	k_sem_take(&init_sem, K_FOREVER);
+	LOG_DBG("Init complete.\n");
 
 	return 0;
 }
@@ -326,6 +327,12 @@ uint16_t create_and_start_scan(void)
 	}
 
 	status = gapm_le_start_scan(central_env.scan_actv_idx, &param);
+	if (status != GAP_ERR_NO_ERROR) {
+		return status;
+	}
+
+	LOG_INF("Scanning...\n");
+
 	return 0;
 }
 
