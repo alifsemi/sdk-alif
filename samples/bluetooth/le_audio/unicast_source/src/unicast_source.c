@@ -10,6 +10,8 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include "alif_ble.h"
+
 #include "bap_capa_cli.h"
 #include "bap_uc_cli.h"
 #include "ke_mem.h"
@@ -341,7 +343,9 @@ static void enable_streaming(struct k_work *const p_job)
 	size_t retry_count = 5;
 
 	while (retry_count--) {
+		alif_ble_mutex_lock(K_FOREVER);
 		err = bap_uc_cli_enable(p_ase->ase_lid, &cfg_metadata);
+		alif_ble_mutex_unlock();
 		if (err == GAF_ERR_COMMAND_DISALLOWED) {
 			/* Enable came a bit too near the other command(s). Delay a bit and retry */
 			k_sleep(K_MSEC(1));
@@ -359,7 +363,14 @@ static void enable_streaming_all_ase(struct unicast_peer *p_unicast_env)
 {
 	k_sem_reset(&bap_complete_sem);
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(p_unicast_env->ase); iter++) {
+#if ENABLE_STREAMING_REVERSE_ORDER
+	size_t iter = ARRAY_SIZE(p_unicast_env->ase);
+
+	while (iter--)
+#else
+	for (size_t iter = 0; iter < ARRAY_SIZE(p_unicast_env->ase); iter++)
+#endif
+	{
 		struct unicast_client_ase *const p_ase = &p_unicast_env->ase[iter];
 
 		if (!p_ase->work.handler) {
@@ -446,7 +457,7 @@ static void configure_qos(struct unicast_peer *p_unicast_env)
 			__ASSERT(0, "Invalid ASE direction");
 			continue;
 		}
-
+		alif_ble_mutex_lock(K_FOREVER);
 		err = bap_uc_cli_configure_qos(p_ase->ase_lid,
 #if UC_GROUP_PER_PEER
 					       p_unicast_env->group_lid,
@@ -454,6 +465,7 @@ static void configure_qos(struct unicast_peer *p_unicast_env)
 					       unicast_env.group_lid[p_ase->type],
 #endif
 					       p_ase->cis_id, &qos_cfg);
+		alif_ble_mutex_unlock();
 		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("ASE %u, CIS %u Failed to configure qos! error %u", p_ase->ase_lid,
 				p_ase->cis_id, err);
@@ -471,12 +483,14 @@ static void *get_best_stream(struct pac_capa *p_pac_base, size_t count)
 	struct pac_capa *p_pac = NULL;
 	uint32_t sampling_freq_hz = 0;
 	while (count--) {
+#if PRIORITIZE_32KHZ_STREAM
 		/* Use 32kHz 7.5ms frame duration if available */
 		if ((32000 == p_pac_base[count].sampling_freq_hz) &&
 		    p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) {
 			p_pac = &p_pac_base[count];
 			break;
 		}
+#endif
 		/* Otherwise use the best 10ms sampling freq available */
 		if ((p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_10MS_BIT) &&
 		    sampling_freq_hz < p_pac_base[count].sampling_freq_hz) {
@@ -494,7 +508,9 @@ static void *bap_config_alloc_and_init(enum bap_frame_dur const frame_dur,
 	/* Allocate config buffer
 	 * NOTE: ke_malloc_user must be used to reserve buffer from correct heap!
 	 */
+	alif_ble_mutex_lock(K_FOREVER);
 	struct bap_cfg *p_config = ke_malloc_user((sizeof(*p_config) + 8), KE_MEM_PROFILE);
+	alif_ble_mutex_unlock();
 
 	if (!p_config) {
 		__ASSERT(0, "Failed to allocate memory for codec capability");
@@ -574,8 +590,10 @@ static int configure_codec(struct unicast_peer *const p_unicast_env)
 
 #if UC_GROUP_PER_PEER
 	if (p_unicast_env->group_lid == GAF_INVALID_LID) {
+		alif_ble_mutex_lock(K_FOREVER);
 		err = bap_uc_cli_create_group(1 + type + conidx, &grp_param,
 					      &p_unicast_env->group_lid);
+		alif_ble_mutex_unlock();
 		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("Failed to create group! error %u", err);
 			return -1;
@@ -585,7 +603,9 @@ static int configure_codec(struct unicast_peer *const p_unicast_env)
 	}
 #else
 	if (unicast_env.group_lid[type] == GAF_INVALID_LID) {
+		alif_ble_mutex_lock(K_FOREVER);
 		err = bap_uc_cli_create_group(1 + type, &grp_param, &unicast_env.group_lid[type]);
+		alif_ble_mutex_unlock();
 		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("Failed to create group! error %u", err);
 			return -1;
@@ -642,10 +662,11 @@ static int configure_codec(struct unicast_peer *const p_unicast_env)
 			"octets %uB",
 			ase_type[p_ase->dir], conidx, p_ase->ase_instance_idx, p_ase->ase_lid,
 			p_config->param.frame_octet);
-
+		alif_ble_mutex_lock(K_FOREVER);
 		err = bap_uc_cli_configure_codec(conidx, p_ase->ase_instance_idx, p_ase->ase_lid,
 						 DATA_PATH_CONFIG, &codec_id, BAP_UC_LINK_TYPE,
 						 STREAM_PHY_TYPE, CONTROL_DELAY_US, p_config);
+		alif_ble_mutex_unlock();
 		if (err != GAF_ERR_NO_ERROR) {
 			LOG_ERR("Failed to configure codec! error %u", err);
 			return -1;
