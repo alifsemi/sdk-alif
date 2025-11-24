@@ -12,7 +12,7 @@ mainmenu "Matter Alif SDK Connect Light switch Example Application with shell te
 if NET_L2_OPENTHREAD
 
 choice OPENTHREAD_DEVICE_TYPE
-	default OPENTHREAD_FTD
+	default OPENTHREAD_MTD
 endchoice
 
 endif # NET_L2_OPENTHREAD
