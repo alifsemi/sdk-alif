@@ -62,7 +62,7 @@ config BONDING_ALLOWED
 	default y
 
 config NUMBER_OF_CLIENTS
-	int
+	int "Define the number of clients"
 	range 1 4
 	default 2
 	help
