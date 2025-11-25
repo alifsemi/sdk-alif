@@ -20,3 +20,11 @@ config SLEEP_ENABLED
 	default n
 	help
 	  M55 core can sleep during the operation setting yes allows full STOP mode operation.
+
+menu "Logging"
+
+module = MAIN
+module-str = main
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu # "Logging"
