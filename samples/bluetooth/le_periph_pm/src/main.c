@@ -172,7 +172,7 @@ const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
 	.hdr.sup_to = 800};
 
 /* Macros */
-LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 
 /* function headers */
 static uint16_t service_init(void);
@@ -198,31 +198,31 @@ static uint16_t start_le_adv(uint8_t actv_idx)
  */
 void on_gapc_proc_cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status)
 {
-	printk("%s conn:%d status:%d\n", __func__, conidx, status);
+	LOG_INF("%s conn:%d status:%d\n", __func__, conidx, status);
 }
 
 static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
 				 const gap_bdaddr_t *p_peer_addr,
 				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
 {
-	LOG_INF("Connection request on index %u", conidx);
+	LOG_DBG("Connection request on index %u", conidx);
 	gapc_le_connection_cfm(conidx, 0, NULL);
 
-	printk("Connection parameters: interval %u, latency %u, supervision timeout %u\n",
-	       p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
+	LOG_INF("Connection parameters: interval %u, latency %u, supervision timeout %u",
+		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
 
-	LOG_INF("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
+	LOG_DBG("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
 		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
 		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
 	conn_status = BT_CONN_STATE_CONNECTED;
 	conn_idx = conidx;
 	conn_count = 0;
-	printk("BLE Connected conn:%d\n", conidx);
+	LOG_DBG("BLE Connected conn:%d", conidx);
 
 	k_sem_give(&conn_sem);
 
-	LOG_DBG("Please enable notifications on peer device..");
+	LOG_INF("Please enable notifications on peer device..");
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -234,7 +234,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 {
 	uint16_t err;
 
-	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
+	LOG_DBG("Connection index %u disconnected for reason %u", conidx, reason);
 
 	err = start_le_adv(adv_actv_idx);
 	if (err) {
@@ -246,7 +246,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	conn_status = BT_CONN_STATE_DISCONNECTED;
 	conn_idx = 0;
 	conn_count = 0;
-	printk("BLE disconnected conn:%d. Waiting new connection\n", conidx);
+	LOG_INF("BLE disconnected conn:%d. Waiting new connection", conidx);
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -255,7 +255,7 @@ static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint1
 	const size_t device_name_len = sizeof(device_name) - 1;
 	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
 
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 
 	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
 			     (const uint8_t *)device_name);
@@ -264,7 +264,7 @@ static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint1
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 {
 	/* Send 'unknown' appearance */
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
@@ -277,34 +277,36 @@ static void on_pref_param_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 		.latency = preferred_connection_param.hdr.latency,
 		.conn_timeout = 3200 * 2,
 	};
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 
 	gapc_le_get_preferred_periph_params_cfm(conidx, token, GAP_ERR_NO_ERROR, prefs);
 }
 
 void on_bond_data_updated(uint8_t conidx, uint32_t metainfo, const gapc_bond_data_updated_t *p_data)
 {
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 }
 void on_auth_payload_timeout(uint8_t conidx, uint32_t metainfo)
 {
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 }
 void on_no_more_att_bearer(uint8_t conidx, uint32_t metainfo)
 {
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 }
 void on_cli_hash_info(uint8_t conidx, uint32_t metainfo, uint16_t handle, const uint8_t *p_hash)
 {
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
 }
 void on_name_set(uint8_t conidx, uint32_t metainfo, uint16_t token, co_buf_t *p_buf)
 {
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
+	gapc_le_set_name_cfm(conidx, token, GAP_ERR_NO_ERROR);
 }
 void on_appearance_set(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t appearance)
 {
-	printk("%s\n", __func__);
+	LOG_DBG("%s", __func__);
+	gapc_le_set_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR);
 }
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -332,27 +334,29 @@ static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
 
 void on_param_update_req(uint8_t conidx, uint32_t metainfo, const gapc_le_con_param_nego_t *p_param)
 {
-	printk("%s:%d\n", __func__, conidx);
+	LOG_DBG("%s:%d", __func__, conidx);
+	gapc_le_update_params_cfm(conidx, true, preferred_connection_param.ce_len_min,
+				  preferred_connection_param.ce_len_max);
 }
 void on_param_updated(uint8_t conidx, uint32_t metainfo, const gapc_le_con_param_t *p_param)
 {
-	printk("%s conn:%d\n", __func__, conidx);
+	LOG_DBG("%s conn:%d", __func__, conidx);
 }
 void on_packet_size_updated(uint8_t conidx, uint32_t metainfo, uint16_t max_tx_octets,
 			    uint16_t max_tx_time, uint16_t max_rx_octets, uint16_t max_rx_time)
 {
-	printk("%s conn:%d max_tx_octets:%d max_tx_time:%d  max_rx_octets:%d "
-	       "max_rx_time:%d\n",
-	       __func__, conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
+	LOG_DBG("%s conn:%d max_tx_octets:%d max_tx_time:%d  max_rx_octets:%d "
+		"max_rx_time:%d",
+		__func__, conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
 }
 void on_phy_updated(uint8_t conidx, uint32_t metainfo, uint8_t tx_phy, uint8_t rx_phy)
 {
-	printk("%s conn:%d tx_phy:%d rx_phy:%d\n", __func__, conidx, tx_phy, rx_phy);
+	LOG_DBG("%s conn:%d tx_phy:%d rx_phy:%d", __func__, conidx, tx_phy, rx_phy);
 }
 void on_subrate_updated(uint8_t conidx, uint32_t metainfo,
 			const gapc_le_subrate_t *p_subrate_params)
 {
-	printk("%s conn:%d\n", __func__, conidx);
+	LOG_DBG("%s conn:%d", __func__, conidx);
 }
 /* All callbacks in this struct are optional */
 static const gapc_le_config_cb_t gapc_le_cfg_cbs = {
@@ -533,11 +537,11 @@ static uint16_t create_advertising(void)
 #endif /* !CONFIG_ALIF_BLE_ROM_IMAGE_V1_0 */
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-				.adv_intv_min = ADV_INT_MIN_SLOTS,
-				.adv_intv_max = ADV_INT_MAX_SLOTS,
-				.ch_map = ADV_ALL_CHNLS_EN,
-				.phy = GAPM_PHY_TYPE_LE_1M,
-			},
+			.adv_intv_min = ADV_INT_MIN_SLOTS,
+			.adv_intv_max = ADV_INT_MAX_SLOTS,
+			.ch_map = ADV_ALL_CHNLS_EN,
+			.phy = GAPM_PHY_TYPE_LE_1M,
+		},
 	};
 
 	err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_create_params, &le_adv_cbs);
@@ -789,12 +793,12 @@ int main(void)
 	uint32_t wakeup_reason = power_mgr_get_wakeup_reason();
 
 	if (power_mgr_cold_boot()) {
-		printk("BLE Sleep demo\n");
+		printk("BLE Sleep demo\r\n");
 
 		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
 
 		if (ret) {
-			printk("off profile set ERROR: %d\n", ret);
+			LOG_ERR("off profile set ERROR: %d", ret);
 			return ret;
 		}
 	}
@@ -814,13 +818,13 @@ int main(void)
 		se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
 		ble_status = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
 		if (ble_status) {
-			printk("gapm_configure error %u", ble_status);
+			LOG_ERR("gapm_configure error %u", ble_status);
 			return -1;
 		}
 
-		printk("Waiting for initial BLE init...\n");
+		LOG_DBG("Waiting for initial BLE init...");
 		k_sem_take(&init_sem, K_FOREVER);
-		printk("Init complete!\n");
+		LOG_INF("Init complete!");
 	}
 
 	LOG_DBG("RTC wc=%u", wakeup_reason);
@@ -833,11 +837,11 @@ int main(void)
 		if (conn_count == 2) {
 			uint16_t ret = gapc_le_update_params(
 				conn_idx, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
-			printk("Update connection ret:%d\n", ret);
+			LOG_INF("Update connection ret:%d", ret);
 		}
 		while ((env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
 			/* Subscription is active */
-			printk("Data subscribed\n");
+			LOG_INF("Data subscribed");
 			service_notification_send(UINT32_MAX);
 			if (conn_status != BT_CONN_STATE_CONNECTED || sleep_in_subscription) {
 				break;
@@ -848,7 +852,7 @@ int main(void)
 				uint16_t ret = gapc_le_update_params(conn_idx, 0,
 								     &preferred_connection_param,
 								     on_gapc_proc_cmp_cb);
-				printk("Update connection ret:%d\n", ret);
+				LOG_INF("Update connection ret:%d", ret);
 			}
 		}
 	}
@@ -865,7 +869,7 @@ int main(void)
 				uint16_t ret = gapc_le_update_params(conn_idx, 0,
 								     &preferred_connection_param,
 								     on_gapc_proc_cmp_cb);
-				printk("Update connection ret:%d\n", ret);
+				LOG_INF("Update connection ret:%d", ret);
 			}
 			/* Update text at 2.15 second periods */
 			service_notification_send(UINT32_MAX);
