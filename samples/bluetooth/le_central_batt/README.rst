@@ -43,23 +43,25 @@ On the serial console, you should see output similar to:
 
 .. code-block:: console
 
-	[00:00:00.447,000] <dbg> central_itf: central_itf_gapm_cfg: Waiting for init...
+	*** Booting Zephyr OS build v4.1.0-316-g252c1c636b31 ***
+	D: Waiting for init...
 
-	[00:00:01.860,000] <inf> central_itf: Initiating direct connection
-	[00:00:03.873,000] <inf> central_itf: Connection request on index 0
-	[00:00:03.873,000] <dbg> central_itf: on_le_connection_req: Connection parameters: interval 40, latency 5, supervision timeout 100
-	[00:00:03.873,000] <inf> central_itf: Peer device address DC:D3:D7:51:27:23 (conidx: 0)
-	[00:00:06.022,000] <inf> batt_cli: Battery service discovered
-	[00:00:06.022,000] <inf> batt_cli: Read Battery Level
-	[00:00:07.071,000] <dbg> batt_cli: on_cb_value: Battery level: 66
-	[00:00:07.171,000] <dbg> batt_cli: on_cb_enable_cmp: Notifications enabled
-	[00:00:07.571,000] <dbg> batt_cli: on_cb_value: Battery level: 65
-	[00:00:09.671,000] <dbg> batt_cli: on_cb_value: Battery level: 64
-	[00:00:11.571,000] <dbg> batt_cli: on_cb_value: Battery level: 63
-	[00:00:13.621,000] <dbg> batt_cli: on_cb_value: Battery level: 62
-	[00:00:15.671,000] <dbg> batt_cli: on_cb_value: Battery level: 61
-	[00:00:17.571,000] <dbg> batt_cli: on_cb_value: Battery level: 60
+	I: Scanning...
 
+	D: Init complete.
+
+	I: Initiating direct connection
+	I: Connection request on index 0
+	D: Connection parameters: interval 40, latency 5, supervision timeout 100
+	I: Peer device address C6:17:0B:1F:B7:10 (conidx: 0)
+	I: Battery service discovered
+	I: Read Battery Level
+	D: Battery level: 93
+	D: Notifications enabled
+	D: Battery level: 90
+	D: Battery level: 89
+	D: Battery level: 88
+	D: Battery level: 87
 
 Notice
 ***************
