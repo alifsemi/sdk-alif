@@ -42,6 +42,7 @@ The following are important features of I2C:
 
 .. include:: prerequisites.rst
 
+
 Pin Setup
 ---------
 
@@ -65,11 +66,12 @@ Connection
 - **SDA**: Connect I2C0 instance P3_5 (J11-29) to I2C1 pin P7_2 (J11_3).
 - **SCL**: Connect I2C0 instance P3_4 (J11-27) to I2C1 pin P7_3 (J11_5).
 
+.. include:: note.rst
 
-Building I2C Application in Zephyr
-====================================
+Building an I2C Application with Zephyr
+========================================
 
-Follow these steps to build your Zephyr-based I2C application using the GCC compiler and the Alif Zephyr SDK:
+Follow these steps to build the I2C application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -84,11 +86,23 @@ Follow these steps to build your Zephyr-based I2C application using the GCC comp
 
         west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/i2c_dw
 
+> If using an external **Environment 3 Click Board**, use the build commands for applications on the  M55 HP core:
+
+.. code-block:: bash
+
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/sensor/bme680/
+
 3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
         west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2c_dw
+
+> If using an external **Environment 3 Click Board**, use the build commands for applications on the  M55 HE core:
+
+.. code-block:: bash
+
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/sensor/bme680/
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -101,11 +115,8 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-Validating I2C
-==============
-
 Console Output
---------------
+===============
 
 Upon reviewing the output logs, the I2C functionality has been successfully validated.
 
@@ -138,4 +149,3 @@ Upon reviewing the output logs, the I2C functionality has been successfully vali
    Read processed_cb called
    Master received Data 0x60 From Slave
 
-.. include:: west_debug.rst

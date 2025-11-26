@@ -22,28 +22,33 @@ The SE Tool is a Python-based utility from Alif Semiconductor for programming ap
 
 .. include:: prerequisites.rst
 
-Building the Application
-========================
+.. include:: note.rst
 
-Compile the application to generate the binary (zephyr.bin) using the Alif Zephyr SDK.
+Building an SE Tool Flashing Application with Zephyr
+=====================================================
+
+Follow these steps to build the SE Tool Flashing using the Alif Zephyr SDK:
+
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
 .. note::
+   The build commands shown here are specifically for the Alif E7 DevKit.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-   The application is designed for the Alif Ensemble E7 DevKit. Modify the sample code as needed for other DevKits.
-
-1. For instructions on fetching the Alif Zephyr SDK, please refer to the `ZAS User Guide`_
-
-2. Build the Application:
-   - Example for BLE (RTSS-HE):
+2. Build commands for applications on the M55 HE core:
 
    .. code-block:: bash
 
-      west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_hr
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/bluetooth/le_periph_hr
 
-For other applications, use the appropriate board target (e.g., alif_e1c_dk_rtss_hp) and sample path.
+3. Build commands for applications on the M55 HP core:
 
-3. Locate the Binary:
-   - The binary (zephyr.bin) is in ./build/zephyr/.
+   .. code-block:: bash
+
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/bluetooth/le_periph_hr
+
+
+Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
 SE Tool Flashing Process
 ========================
@@ -140,13 +145,13 @@ Step 4: Run SE Tool Scripts
    .. code-block:: bash
 
       cd <SE tool folder>
-      python3 app-gen-toc.py --filename build/config/ble_hr.json
+      ./app-gen-toc --filename build/config/ble_hr.json
 
 2. Write to MRAM:
 
    .. code-block:: bash
 
-      python3 app-write-mram.py
+      ./app-write-mram
 
 Step 5: Reset the DevKit
 ------------------------

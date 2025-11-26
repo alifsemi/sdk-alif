@@ -11,10 +11,12 @@ The Alif UTIMER IP on the Alif Devkit supports Quadrature Decoder (QDEC) mode, e
 
 .. include:: prerequisites.rst
 
-Building QDEC Application in Zephyr
-=====================================
+.. include:: note.rst
 
-Navigate to the SDK directory and build the application with TCM Memory. Refer to the User Guide for all other build options.
+Building an QDEC Application with Zephyr
+=========================================
+
+Follow these steps to build the QDEC application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -60,11 +62,11 @@ Once the application is loaded and the mechanical encoder is connected:
 - The devkit runs the QDEC sample, reading the UTIMER counter in quadrature decoder mode.
 - The angular position is printed every second to the console via UART4 (M55 HE core).
 
-Sample Output:
+Console Output
+===============
 
 .. code-block:: text
 
-   *** Booting Zephyr OS build zas-v1.2-109-g81dbfb8f3841 ***
    Quadrature decoder sensor test
    Quadrature encoder emulator enabled with 100 ms period
    Position = 0 degrees
@@ -83,5 +85,4 @@ Sample Output:
    Position = 93 degrees
    …
 
-.. include:: west_debug.rst
 

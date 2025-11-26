@@ -9,6 +9,6 @@ Hardware Requirements
 Software Requirements
 ---------------------
 - **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
-- **West Tool**: For building Zephyr applications (installed via ``pip install west``)
+- **West Tool**: For building Zephyr applications (refer to the `ZAS User Guide`_)
 - **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
-- **SE Tools (optional)**: For loading binaries (refer to Alif documentation)
+- **SE Tools**: For loading binaries (refer to the `ZAS User Guide`_)

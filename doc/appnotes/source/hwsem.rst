@@ -11,8 +11,10 @@ This document provides detailed instructions on how to create, compile, and run 
 
 .. include:: prerequisites.rst
 
-Building HWSEM Application in Zephyr
-======================================
+.. include:: note.rst
+
+Building an HWSEM Application with Zephyr
+==========================================
 
 Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 
@@ -22,13 +24,25 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core:
+2. Build commands for applications on the hwsem0_test M55 HE core:
+
+.. code-block:: bash
+
+    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ipm/ipm_alif_hwsem/
+
+3. Build commands for applications on the hwsem_test_all M55 HE core:
 
 .. code-block:: bash
 
     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ipm/ipm_alif_hwsem/ -DHWSEM_ALL=ON
 
-3. Build commands for applications on the M55 HP core:
+4. Build commands for applications on the hwsem0_test M55 HP core:
+
+.. code-block:: bash
+
+    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/ipm/ipm_alif_hwsem/
+
+5. Build commands for applications on the hwsem_test_all M55 HP core:
 
 .. code-block:: bash
 
@@ -55,7 +69,6 @@ Single HWSEM Test Output
 
 .. code-block:: console
 
-    *** Booting Zephyr OS 4.1 build ZAS 2.0  4c97d8baffec ***
     I: Hardware Semaphore (HWSEM) example on alif_e7_dk
     I: hwsem_lock: HWSEM locked!
     I: Locked HWSEM0!
@@ -73,7 +86,6 @@ All HWSEM Output Log
 
 .. code-block:: console
 
-    *** Booting Zephyr OS build 4c97d8baffec ***
     I: Test all 16 Hardware Semaphores(HWSEM) on alif_e7_dk
     I: hwsem_trylock: HWSEM locked!
     I: Locked HWSEM0!
@@ -85,5 +97,3 @@ All HWSEM Output Log
     I: Unlocked HWSEM0!
     ...
     (repeat for HWSEM1 to HWSEM15 outputs)
-
-.. include:: west_debug.rst

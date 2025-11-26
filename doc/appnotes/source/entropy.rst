@@ -11,8 +11,10 @@ This document provides instructions on how to create, compile, and run a demo ap
 
 .. include:: prerequisites.rst
 
-Building Entropy Application in Zephyr
-=======================================
+.. include:: note.rst
+
+Building an Entropy Application with Zephyr
+============================================
 
 Follow these steps to build the Entropy application using the Alif Zephyr SDK:
 
@@ -26,13 +28,13 @@ Follow these steps to build the Entropy application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-    west build -p always -b alif_e7_dk_rtss_he tests/drivers/entropy/api/
+    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he tests/drivers/entropy/api/
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-    west build -p always -b alif_e7_dk_rtss_hp tests/drivers/entropy/api/
+    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp tests/drivers/entropy/api/
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -50,7 +52,6 @@ Console Output
 
 .. code-block:: text
 
-   *** Booting Zephyr OS 4.1 build ZAS 2.0  4c97d8baffec ***
    Running TESTSUITE entropy_api
    ===========================================================
    START - test_entropy_get_entropy
@@ -74,5 +75,3 @@ Console Output
    ------ TESTSUITE SUMMARY END ------
    ===========================================================
    PROJECT EXECUTION SUCCESSFUL
-
-.. include:: west_debug.rst

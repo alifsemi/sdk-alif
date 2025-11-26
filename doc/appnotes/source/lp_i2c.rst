@@ -52,17 +52,18 @@ Hardware Connections and Setup
 Connection
 ~~~~~~~~~~
 
-- **SDA**: Connect I2C0 instance P3_5 (J11-29) to LPI2C0 pin P7_5 (J11_9).
-- **SCL**: Connect I2C0 instance P3_4 (J11-27) to LPI2C0 pin P7_4 (J10_27).
+- **SDA**: Connect I2C0 instance P3_5 to LPI2C pin P7_5.
+- **SCL**: Connect I2C0 instance P3_4 to LPI2C0 pin P7_4.
 
 .. note::
    In the Balletto A5 SoC, the SCL and SDA lines of I2C0 (configured as Master) are not pulled up. Therefore, it is recommended to use I2C1 as the bus master in such cases.
 
+.. include:: note.rst
 
-Building LPI2C Application in Zephyr
-======================================
+Building an LPI2C Application with Zephyr
+==========================================
 
-Follow these steps to build your Zephyr-based LPI2C application using the GCC compiler and the Alif Zephyr SDK:
+Follow these steps to build the LPI2C application using the Alif Zephyr SDK:
 
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
@@ -72,17 +73,11 @@ Follow these steps to build your Zephyr-based LPI2C application using the GCC co
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/lpi2c/
-
-3. Build commands for applications on the M55 HE core:
-
-.. code-block:: bash
-
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/lpi2c/
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/lpi2c
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
@@ -98,17 +93,14 @@ To execute binaries on the DevKit follow the command
    west flash
 
 Console Output
-==============
+================
 
-You can observe the LPI2C console output as shown below
 
 .. code-block:: console
 
-    *** Booting Zephyr OS build Zephyr-Alif-SDK-v0.5.0-17-g17b360353343 ***
+   [00:00:00.000,000] <inf> ALIF_LPI2C: Start Master transmit and Slave receive
+   [00:00:00.001,000] <inf> ALIF_LPI2C: Master transmit and slave receive successful
+   [00:00:00.002,000] <inf> ALIF_LPI2C: Start Slave transmit and Master receive
+   [00:00:00.006,000] <inf> ALIF_LPI2C: Slave transmit and Master receive successful
+   [00:00:00.006,000] <inf> ALIF_LPI2C: Transfer completed
 
-    <inf> ALIF_LPI2C: Start Master transmit and Slave receive
-    <inf> ALIF_LPI2C: Master transmit and slave receive successful
-    <inf> ALIF_LPI2C: Start Slave transmit and Master receive
-    <inf> ALIF_LPI2C: Slave transmit and Master receive successful
-
-.. include:: west_debug.rst

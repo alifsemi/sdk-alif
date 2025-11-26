@@ -7,9 +7,8 @@ PSRAM
 Introduction
 =============
 
-Currently, only **AP Memory RAM** support has been added, which is available exclusively on customized **E8 DevKits**.
-The default DevKits are populated with **ISSI HyperRAM**, while a few units feature the **AP Memory APS512XXN HyperRAM (Octal)**.
-The **OSPI0 SS0** instance is connected to the APS512XXN device, which operates using the **HyperBus protocol**.
+Currently, **AP Memory RAM** support has been implemented exclusively on the customized **E8 AppKit**.
+The **OSPI0 SS0** instance is connected to the APS512XXN device, which operates using the **HyperBus protocol** and supports **only x8 mode** (x16 mode is not supported).
 
 Driver Description
 -------------------
@@ -17,7 +16,7 @@ Driver Description
 The **APS512XXN** driver is fully functional within the **Zephyr** framework.
 The **spi_psram** component from the **ALIF sdk-alif** repository has been integrated with the APS512XXN MEMC driver and verified successfully.
 
-The APS512XXN device is connected to the **OSPI0 SS0** instance of the **DW SPI** peripheral.
+The APS512XXN device is connected to the **OSPI0 SS0** instance of the **DW OSPI** peripheral.
 It currently supports operation up to **100 MHz**. If a higher or different frequency is required, the corresponding **OSPI and RAM parameters** must be tuned accordingly to ensure stable operation.
 
 For debugging and console output:
@@ -26,16 +25,20 @@ For debugging and console output:
 
 .. include:: prerequisites.rst
 
-Building the PSRAM Application in Zephyr
-==========================================
+.. include:: note.rst
 
-Run the following commands to build the PSRAM application:
+Building an PSRAM Application with Zephyr
+===========================================
+
+Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
+
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
 .. note::
-   The PSRAM feature is supported **only** on the **Alif E8 DevKit**.
+   The PSRAM feature is supported **only** on the **Alif E8 AppKit**.
    It is not applicable to other boards.
 
-1. Build commands for applications on the M55 HE core:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: console
 
@@ -43,7 +46,7 @@ Run the following commands to build the PSRAM application:
    ../alif/samples/drivers/spi_psram/ \
    -DDTC_OVERLAY_FILE=$PWD/../alif/samples/drivers/spi_psram/boards/alif_aps512xxn_psram.overlay
 
-2. Build commands for applications on the M55 HP core:
+3. Build commands for applications on the M55 HP core:
 
 
 .. code-block:: bash
@@ -52,10 +55,10 @@ Run the following commands to build the PSRAM application:
    ../alif/samples/drivers/spi_psram/ \
    -DDTC_OVERLAY_FILE=$PWD/../alif/samples/drivers/spi_psram/boards/alif_aps512xxn_psram.overlay
 
-Executing Binary on the DevKit
+Executing Binary on the AppKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the AppKit follow the command
 
 .. code-block:: bash
 
@@ -72,5 +75,3 @@ Below is an example of the expected console output:
    Writing data to the XIP region:
    Reading back: Done,
    total errors = 0
-
-.. include:: west_debug.rst

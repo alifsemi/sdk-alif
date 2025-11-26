@@ -17,6 +17,8 @@ Since this core has numerous peripherals, we have a MUX for DMA0, which allows m
 
 .. include:: prerequisites.rst
 
+.. include:: note.rst
+
 Hardware Design
 ---------------
 
@@ -30,10 +32,10 @@ The block diagram illustrates the hardware design of Zephyr DMA, showing the int
    Block Diagram of Zephyr DMA
 
 
-Building SPI DMA Application in Zephyr
-========================================
+Building an DMA Application with Zephyr
+=========================================
 
-Follow these steps to build your Zephyr-based SPI_dw application using the GCC compiler and the Alif Zephyr SDK:
+Follow these steps to build the DMA application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -131,8 +133,8 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-Sample Output
-=============
+Console Output
+===============
 
 SPI data transfer occurs using the selected DMA. The following output is displayed on the serial terminal, showing the results of the SPI data transfer:
 
@@ -141,7 +143,6 @@ Console Output 1
 
 .. code-block:: console
 
-    *** Booting Zephyr OS build 9b2a6dab0dd5 ***
 
     Slave Transceive Iter= 10
     Master Transceive Iter= 10
@@ -255,4 +256,3 @@ Console Output 3
 .. note::
    The console output displays the results of SPI data transfer using DMA, including transferred data and status messages. Refer to the SPI_dw sample application (``../alif/samples/drivers/spi_dw/``) for specific output details.
 
-.. include:: west_debug.rst

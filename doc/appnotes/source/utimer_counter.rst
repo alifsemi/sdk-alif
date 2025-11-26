@@ -13,12 +13,13 @@ Furthermore, the UTIMER is integrated into the Alarm application as a demo appli
 
 .. include:: prerequisites.rst
 
-Building Counter Application in Zephyr
-========================================
+.. include:: note.rst
 
-Follow these steps to build the counter application using the Alif Zephyr SDK:
+Building an Utimer Counter Application with Zephyr
+===================================================
 
-Navigate to the SDK directory and build the application with TCM Memory. The provided configuration and overlay files ensure the UTimer functions as a counter, with RTC and Timer functionalities disabled.
+Follow these steps to build the utimer counter application using the Alif Zephyr SDK:
+
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository,      please refer to the `ZAS User Guide`_
 
@@ -28,23 +29,17 @@ Navigate to the SDK directory and build the application with TCM Memory. The pro
 
 2. Build commands for applications on the M55 HE core:
 
-
 .. code-block:: bash
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ \
-       -DOVERLAY_CONFIG=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.conf \
        -DDTC_OVERLAY_FILE=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.overlay \
-       -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 3. Build commands for applications on the M55 HP core:
-
 
 .. code-block:: bash
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ \
-       -DOVERLAY_CONFIG=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.conf \
        -DDTC_OVERLAY_FILE=$PWD/zephyr/samples/drivers/counter/alarm/boards/alif_utimer.overlay \
-       -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -70,12 +65,11 @@ When running the emulator-based counter application:
 
 
 
-Sample Output
-=============
+Console Output
+===============
 
 ::
 
-   *** Booting Zephyr OS build 3c2308a265e5 ***
    Counter alarm sample
 
    Set alarm in 2 sec (800000000 ticks)
@@ -142,5 +136,4 @@ Sample Output
    !!! Alarm !!!
    Now: 9
 
-.. include:: west_debug.rst
 

@@ -28,6 +28,8 @@ The Digital-to-Analog Converter (DAC12) module converts 12-bit digital values in
 
 .. include:: prerequisites.rst
 
+.. include:: note.rst
+
 Output Calculation
 ==================
 
@@ -83,33 +85,36 @@ Device Tree Code Snippet
 .. code-block:: dts
 
    dac0: dac0@49028000 {
-       compatible = "alif,dac";
-       reg = <0x49028000 0x1000>,
-             <0x49023000 0x100>;
-       reg-names = "dac_reg","cmp_reg";
-       pinctrl-names = "default";
-       clocks = <&clock ALIF_DAC0_CLK>;
-       pinctrl-0 = <&pinctrl_dac0>;
-       dac_twoscomp_in = <0>;
-       input_mux_val = <0>;
-       status = "disabled";
-   };
+		compatible = "alif,dac";
+		reg = <0x49028000 0x1000>,
+			<0x49023000 0x100>,
+			<0x1A60A000 0x100>,
+			<0x4902B000 0x100>;
+		reg-names = "dac_reg","cmp_reg","vbat_reg","adc_vref";
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_dac0>;
+		output_current = "DAC_1200UA_OUT_CUR";
+		capacitance = "DAC_8PF_CAPACITANCE";
+		status = "disabled";
+	};
 
    dac1: dac1@49029000 {
-       compatible = "alif,dac";
-       reg = <0x49029000 0x1000>,
-             <0x49023000 0x100>;
-       reg-names = "dac_reg","cmp_reg";
-       pinctrl-names = "default";
-       pinctrl-0 = <&pinctrl_dac1>;
-       dac_twoscomp_in = <0>;
-       input_mux_val = <0>;
-       status = "disabled";
+	   compatible = "alif,dac";
+	   reg = <0x49029000 0x1000>,
+		  <0x49023000 0x100>,
+		  <0x1A60A000 0x100>,
+		  <0x4902B000 0x100>;
+	   reg-names = "dac_reg","cmp_reg","vbat_reg","adc_vref";
+	   pinctrl-names = "default";
+	   pinctrl-0 = <&pinctrl_dac1>;
+	   output_current = "DAC_1200UA_OUT_CUR";
+	   capacitance = "DAC_8PF_CAPACITANCE";
+	   status = "disabled";
    };
 
 
-Building DAC Application in Zephyr
-==================================
+Building an DAC Application with Zephyr
+=========================================
 
 Follow these steps to build the DAC application using the Alif Zephyr SDK:
 
@@ -125,15 +130,14 @@ Follow these steps to build the DAC application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/dac -- -G"Unix Makefiles"
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/dac
 
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/dac -- -G"Unix Makefiles"
-
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/dac
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -147,8 +151,12 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-Expected Result
+Sample Output
 ===============
+
+.. code-block:: bash
+
+   >>>Starting up the Zephyr DAC demo!!! <<<
 
 The sample Output will be as follows
 
@@ -158,4 +166,3 @@ The sample Output will be as follows
 
       DAC Sample Output
 
-.. include:: west_debug.rst
