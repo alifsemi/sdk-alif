@@ -17,6 +17,7 @@ This application note provides an overview of the Cyclic Redundancy Check (CRC),
 
 .. include:: prerequisites.rst
 
+
 CRC Operation
 =============
 
@@ -48,11 +49,12 @@ Reading the Result
 
 Once all data has been processed, read the CRC result from the crc_out register (0x18).
 
+.. include:: note.rst
 
-Building CRC Application in Zephyr
-=======================================
+Building an CRC Application with Zephyr
+========================================
 
-Follow these steps to create your Zephyr-based CRC application using the GCC compiler and the Alif Zephyr SDK:
+Follow these steps to build the CRC application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -89,7 +91,7 @@ To verify the output in a web CRC calculator:
 
 To verify the CRC-8-CCITT algorithm in the Alif CRC Hardware module:
 
-1. Navigate to the ``ensemble_rtss_common.dtsi`` file and set ``crc_algo = "CRC_8_BIT_SIZE"``.
+1. Navigate to the ``e1.dtsi`` file and set ``crc_algo = "CRC_8_BIT_SIZE"``.
 2. Provide the input data in the CRC application.
 
 Example code:
@@ -125,7 +127,7 @@ To verify the output in a web CRC calculator:
 
 To verify the CRC-16-CCITT algorithm in the Alif CRC Hardware module:
 
-1. Navigate to the ``ensemble_rtss_common.dtsi`` file and set ``crc_algo = "CRC_16_BIT_SIZE"``.
+1. Navigate to the ``e1.dtsi`` file and set ``crc_algo = "CRC_16_BIT_SIZE"``.
 2. Provide the input data in the CRC application.
 
 Example code:
@@ -162,7 +164,7 @@ To verify the output in a web CRC calculator:
 
 To verify the CRC32 algorithm in the Alif CRC Hardware module:
 
-1. Navigate to the ``ensemble_rtss_common.dtsi`` file and set ``crc_algo = "CRC_32_BIT_SIZE"``.
+1. Navigate to the ``e1.dtsi`` file and set ``crc_algo = "CRC_32_BIT_SIZE"``.
 2. In the application code, enable the bit_swap, byte_swap, reflect, and invert options.
 3. Provide the input data in the CRC application.
 
@@ -224,7 +226,7 @@ To verify the output in a web CRC calculator:
 
 To verify the CRC32C algorithm in the Alif CRC Hardware module:
 
-1. Navigate to the ``ensemble_rtss_common.dtsi`` file and set ``crc_algo = "CRC_32_BIT_SIZE"``.
+1. Navigate to the ``e1.dtsi`` file and set ``crc_algo = "CRC_32_BIT_SIZE"``.
 2. In the application code, enable the bit_swap, byte_swap, reflect, invert, and custom_poly options.
 3. Set the polynomial value to 0x2CEEA6C8 and provide the input data in the CRC application.
 4. Call the ``crc_polycustom`` function (declared in ``include/zephyr/drivers/crc/alif_crc.h``) in your application to use the CRC32C algorithm, passing the polynomial variable as a function parameter.
@@ -278,9 +280,9 @@ Custom CRC 32 Sample Code Continued
     }
 
     /* Add seed value */
-    crc_seed(crc_dev, seed_value);
+    crc_set_seed(crc_dev, seed_value);
 
-    crc_polycustom(crc_dev, polynomial);
+    crc_set_polynomial(crc_dev, polynomial);
 
     /* Calculate crc output */
     crc_compute(crc_dev, &params);
@@ -309,4 +311,3 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-.. include:: west_debug.rst

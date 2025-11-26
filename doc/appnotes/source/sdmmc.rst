@@ -32,13 +32,17 @@ The Alif SDMMC driver supports the following features:
 
 .. include:: prerequisites.rst
 
-Building SDMMC Application in Zephyr
-----------------------------------------
+.. include:: note.rst
+
+Building an SDMMC Application with Zephyr
+===========================================
+
+Follow these steps to build the SDMMC application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository,      please refer to the `ZAS User Guide`_
 
 .. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
+   The build commands shown here are specifically for the Alif E7 DevKit with MRAM Memory.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 2. Build commands for applications on the M55 HE core:
@@ -46,7 +50,6 @@ Building SDMMC Application in Zephyr
 
 .. code-block:: bash
 
-   cd alif
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/subsys/fs/fs_sample/
 
 3 .Build commands for applications on the M55 HP core:
@@ -54,7 +57,6 @@ Building SDMMC Application in Zephyr
 
 .. code-block:: bash
 
-   cd alif
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/subsys/fs/fs_sample/
 
 
@@ -114,15 +116,11 @@ To execute binaries on the DevKit follow the command
    west flash
 
 
-Validating SDMMC on DevKit
-==========================
-
-Output Logs
------------
+Sample output
+===============
 
 The application is expected to list all directories and files available on the SD card.
 
-Sample output:
 
 .. code-block:: text
 
@@ -144,5 +142,4 @@ Sample output:
    [FILE] some.dat (size = 5757)
    [FILE] some9.txt (size = 5757)
 
-.. include:: west_debug.rst
 

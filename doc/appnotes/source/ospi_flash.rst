@@ -7,7 +7,7 @@ OSPI Flash
 Introduction
 ============
 
-The Alif DevKit features a 32MB ISSI Flash (IS25WX256) connected to the Octal SPI 1 (OSPI1) controller. This application note describes how to read from and write to the flash using the Alif Semiconductor Zephyr SDK. The flash driver implements Zephyr's standard flash APIs for erasing, reading, and writing to the flash.
+The Alif DevKit features a 32MB ISSI Flash (IS25WX256) connected to the Octal SPI1 (OSPI1) controller. This application note describes how to read from and write to the flash using the Alif Semiconductor Zephyr SDK. The flash driver implements Zephyr's standard flash APIs for erasing, reading, and writing to the flash.
 
 .. figure:: _static/block_diagram_ospi1_flash.png
    :alt: Block Diagram of OSPI1 Connected to Flash
@@ -33,10 +33,12 @@ Hardware Connections
 
 The ISSI Flash is connected to the DevKit via the OSPI1 interface. No additional connections are required.
 
-Building OSPI Flash Application in Zephyr
-============================================
+.. include:: note.rst
 
-Follow these steps to build the Zephyr-based OSPI Flash application using the GCC compiler and the Alif Zephyr SDK:
+Building an OSPI Flash Application with Zephyr
+================================================
+
+Follow these steps to build the OSPI Flash application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -69,11 +71,8 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-Validating OSPI Flash
-=====================
-
-Output Logs
------------
+Console Output
+=================
 
 The following logs demonstrate the OSPI Flash functionality:
 
@@ -139,6 +138,3 @@ The following logs demonstrate the OSPI Flash functionality:
    Content read from OSPI Flash in XiP mode successfully.
    Read from flash command while XiP mode enabled.
    XiP Read Test Succeeded!
-
-
-.. include:: west_debug.rst

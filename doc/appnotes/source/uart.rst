@@ -1,11 +1,11 @@
 .. _appnote-zephyr-uart:
 
-====
+======
 UART
-====
+======
 
 Overview
-----------
+=========
 
 The Universal Asynchronous Receiver/Transmitter (UART) module implements an asynchronous serial communication interface based on standard Non-Return-to-Zero (NRZ) frame format. This application note describes how to use UART with Alif Semiconductor SoC.
 
@@ -17,7 +17,7 @@ The Universal Asynchronous Receiver/Transmitter (UART) module implements an asyn
    USER COM SELECT Jumper Diagram
 
 Driver Description
-==================
+--------------------
 
 The SoC device includes:
 
@@ -27,14 +27,16 @@ The SoC device includes:
 .. include:: prerequisites.rst
 
 Hardware Connections and Setup
-==============================
+--------------------------------
 
 There is a total of 8 UART instances (UART0-UART7) and one LPUART available in the SoC. A particular UART instance can be selected using Pin-Muxing.
 
 UART2 and UART4 are directly available on the board. With only the power cable and J26 jumper setting, the user can communicate to either UART2 or UART4. Refer to the DevKit schematic for details.
 
-Building UART Application in Zephyr
-===================================
+.. include:: note.rst
+
+Building an UART Application with Zephyr
+=========================================
 
 Follow these steps to build the UART application using the Alif Zephyr SDK:
 
@@ -61,19 +63,14 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
 .. code-block:: bash
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/uart/echo_bot/ \
-       -DDTC_OVERLAY_FILE=/<Zephyr_dir>/alif/boards/arm/alif_e7_devkit/alif_e7_dk/ae722f80f55d5xx/rtss_he_LPUART.overlay
+   -DDTC_OVERLAY_FILE=/<Zephyr_dir>/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
 
-5. Build commands for LPUART application on the M55 HP core:
-
-.. code-block:: bash
-
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot/ \
-       -DDTC_OVERLAY_FILE=/<Zephyr_dir>/alif/boards/arm/alif_e7_devkit/alif_e7_dk/ae722f80f55d5xx/rtss_hp_LPUART.overlay
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
+
 Executing Binary on the DevKit
-==============================================
+=================================
 
 To execute binaries on the DevKit follow the command
 
@@ -81,4 +78,13 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-.. include:: west_debug.rst
+Console Output
+===============
+
+::
+
+  Hello! I'm your echo bot.
+  Tell me something and press enter:
+  Echo: hello
+  Echo: Hello World
+

@@ -201,10 +201,12 @@ The DevKit has internal PDM microphones. To test LPPDM channels 0 and 1, connect
 - **Clock Line (LPPDM_C0_B)**:
   - Connect pin `P6_7` on Flat board J15 to pin `P3_4` on Flat board J11.
 
-Building PDM Application in Zephyr
-====================================
+.. include:: note.rst
 
-Follow these steps to build your Zephyr-based PDM application using the GCC compiler and the Alif Zephyr SDK:
+Building an PDM Application with Zephyr
+========================================
+
+Follow these steps to build the PDM application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -224,8 +226,8 @@ Follow these steps to build your Zephyr-based PDM application using the GCC comp
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
-Building LPPDM Application in Zephyr
-======================================
+Building an LPPDM Application with Zephyr
+===========================================
 
 Both PDM and LPPDM use similar applications. To build the LPPDM application, modify the PDM sample application code from `DT_NODELABEL(pdm)` to `DT_NODELABEL(lppdm)`.
 
@@ -272,8 +274,6 @@ To execute binaries on the DevKit follow the command
 .. code-block:: bash
 
    west flash
-
-.. include:: west_debug.rst
 
 Procedure to Test PDM and LPPDM
 ===============================

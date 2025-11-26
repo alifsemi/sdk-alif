@@ -37,12 +37,14 @@ Required Config Features
 
 .. include:: prerequisites.rst
 
-Building LPRTC Application in Zephyr
-=====================================
+.. include:: note.rst
+
+Building an LPRTC Application with Zephyr
+==========================================
 
 The LPRTC is integrated into the alarm application as a demonstration, shared with the LPTIMER and Utimer modules. Separate overlay and config files for LPRTC, LPTIMER, and Utimer are located in the board's directory within the alarm application. Users can select these files using the west build command.
 
-Follow these steps to build the LPRTC alarm application using the GCC compiler and the Alif Zephyr SDK:
+Follow these steps to build the LPRTC alarm application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -79,30 +81,27 @@ Loading Binaries with SE Tools
 
 For detailed instructions on loading executables using SE Tools, refer to the *Getting Started with ZAS for Ensemble* documentation.
 
-Expected Result
+Sample Output
 ===============
 
 The sample alarm application will run continuously until manually stopped, generating interrupts at the user-specified interval based on the LPRTC configuration. The console output will display as follows:
 
 .. code-block:: text
 
-   *** Booting Zephyr OS build 2d6231a778ac ***
+
    Counter alarm sample
+
    Set alarm in 2 sec (65536 ticks)
    !!! Alarm !!!
-   Now: 1
+   Now: 65372
    Set alarm in 4 sec (131072 ticks)
    !!! Alarm !!!
-   Now: 3middle
+   Now: 65376
    Set alarm in 8 sec (262144 ticks)
    !!! Alarm !!!
-   Now: 7
+   Now: 65384
    Set alarm in 16 sec (524288 ticks)
    !!! Alarm !!!
-   Now: 15
+   Now: 65400
    Set alarm in 32 sec (1048576 ticks)
-   !!! Alarm !!!
-   Now: 31
-   Set alarm in 64 sec (2097152 ticks)
 
-.. include:: west_debug.rst

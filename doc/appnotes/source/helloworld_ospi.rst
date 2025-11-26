@@ -11,8 +11,9 @@ This application note describes how to build and execute a "HelloWorld" applicat
 
 .. include:: prerequisites.rst
 
-Execution Path
-==============
+
+Execution Address
+===================
 
 - **RTSS-HP**: Runs from OSPI1 NOR flash at 0xC0000000.
 - **RTSS-HE**: Runs from OSPI1 NOR flash at 0xC0200000.
@@ -121,8 +122,8 @@ Save the Encrypted Binary
 Executing Binary on DevKit
 =============================
 
-Flash the Binary
-----------------
+Flash the binary using the PC tool
+-----------------------------------
 
 Flash the ZAS binary (encrypted or unencrypted) to OSPI1 NOR flash.
 
@@ -136,8 +137,8 @@ Use the appropriate configuration file to program the Application Table of Conte
 - **RTSS-HP (Encrypted)**: ``/home/$USER/app-release-exec-linux/build/config/zephyr_e7_rtsshp_ospi1_en_helloworld.json``
 - **RTSS-HE (Encrypted)**: ``/home/$USER/app-release-exec-linux/build/config/zephyr_e7_rtsshe_ospi1_en_helloworld.json``
 
-Sample Output
-=============
+Console Output
+================
 
 Below is the expected console output for RTSS-HP and RTSS-HE:
 
@@ -145,7 +146,6 @@ Below is the expected console output for RTSS-HP and RTSS-HE:
 
 .. code-block:: text
 
-   *** Booting Zephyr OS build zas-v1.2-30-g25c1cf9151af ***
    Hello! I'm your echo bot.
    Tell me something and press enter:
 
@@ -153,7 +153,6 @@ Below is the expected console output for RTSS-HP and RTSS-HE:
 
 .. code-block:: text
 
-   *** Booting Zephyr OS build zas-v1.2-30-g25c1cf9151af ***
    Hello World! alif_e7_dk/ae722f80f55d5xx/rtss_he
 
 Observation

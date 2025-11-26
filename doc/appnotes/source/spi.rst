@@ -7,7 +7,7 @@ SPI
 Introduction
 ============
 
-The Serial Peripheral Interface (SPI) module is a programmable low pin count, full-duplex master or slave synchronous serial interface. The device includes up to four SPI modules in Shared Peripherals and one Low-Power SPI module (LPSPI) in the RTSS-HE. SPI instances can be configured as both master and slave devices, but LPSPI only works in master mode. Programmable data item size (4 to 32 bits) is supported for each data transfer. SPI is connected to the AHB interface, and LPSPI is connected to the APB interface.
+The Serial Peripheral Interface (SPI) module is a programmable low pin count, full-duplex master or slave synchronous serial interface. The device includes up to four SPI modules in Shared Peripherals and one Low-Power SPI module (LP SPI) in the RTSS-HE. SPI instances can be configured as both master and slave devices, but LP SPI only works in master mode. Programmable data item size (4 to 32 bits) is supported for each data transfer. SPI is connected to the AHB interface, and LP SPI is connected to the APB interface.
 
 .. figure:: _static/spi_block_diagram.png
    :alt: SPI Block Diagram
@@ -20,38 +20,32 @@ Application Description
 
 This document describes two demo applications available on the Alif DevKit:
 
-**LPSPI (Master) to SPI0 (Slave) Data Transfer**: This demo application demonstrates data transfer between the LPSPI peripheral as master and SPI0 peripheral as slave. It is specifically designed to run on the M55-HE core, which is the only core with access to the LPSPI instance. This application is DMA enabled. DMA can be disabled by configuring ``CONFIG_SPI_DW_USE_DMA=n`` in the ``prj.conf`` file.
+**LP SPI (Master) to SPI0 (Slave) Data Transfer**: This demo application demonstrates data transfer between the LP SPI peripheral as master and SPI0 peripheral as slave. It is specifically designed to run on the M55-HE core, which is the only core with access to the LP SPI instance. This application is DMA enabled. DMA can be disabled by configuring ``CONFIG_SPI_DW_USE_DMA=n`` in the ``prj.conf`` file.
 
 **SPI0 (Master) to SPI1 (Slave) Data Transfer**: This demo application showcases data transfer between the SPI0 peripheral as master and the SPI1 peripheral as slave. This application can be executed on either the M55-HE or M55-HP cores. By default, this application has DMA enabled. DMA can be disabled by configuring ``CONFIG_SPI_DW_USE_DMA=n`` in the ``prj.conf`` file.
 
 .. include:: prerequisites.rst
 
-Building SPI Application in Zephyr
-===================================
+.. include:: note.rst
 
-Follow these steps to build your Zephyr-based SPI application using the GCC compiler and the Alif Zephyr SDK:
+Building an SPI Application with Zephyr
+========================================
+
+Follow these steps to build the SPI application using the Alif Zephyr SDK:
+
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
 
-1. Set up the environment by adding the necessary tools to your PATH:
-
-   .. code-block:: bash
-
-      export PATH=$PATH:$HOME/.local/bin
-
-2. F1. For instructions on fetching the Alif Zephyr SDK, please refer to the `ZAS User Guide`_
-
-3. Remove the existing build directory and build the SPI application:
-
-   If using the M55-HP core, the application will fetch SPI0 and SPI1 instances:
+2. Build commands for applications on the M55 HP core, application will fetch SPI0 and SPI1 instances:
 
    .. code-block:: bash
 
       west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw
 
-   If using the M55-HE core, the application will fetch SPI0 and LPSPI instances:
+3. Build commands for applications on the M55 HE core, application will fetch SPI0 and LP SPI instances:
 
    .. code-block:: bash
 
@@ -104,63 +98,189 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-Validating SPI
-==============
 
-Output Logs
------------
+Console Output
+===============
+
+SPI Output Logs for HP
+-----------------------
 
 .. code-block:: text
 
-    *** Booting Zephyr OS build af3dd9578d5e ***
+    configure spi0 for dma0
 
+    configure spi1 for dma0
     Slave Transceive Iter= 10
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
-    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
-    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master Transceive Iter= 10
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
     SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
-
     Slave Transceive Iter= 9
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
-    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Master Transceive Iter= 9
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
     SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
-    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
-    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
     SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
-
     Slave Transceive Iter= 8
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
-    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Master Transceive Iter= 8
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
     SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
-    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
-    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
     SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
-
     Slave Transceive Iter= 7
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
-    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Master Transceive Iter= 7
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
     SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
-    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
-    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
     SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
-
     Slave Transceive Iter= 6
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
-    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Master Transceive Iter= 6
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
     SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
-    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
-    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
     SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
-
     Slave Transceive Iter= 5
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
-    Master receive: aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
+    Master Transceive Iter= 5
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
     SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
-    Slave wrote:  aaaa0000 aaaa0001 aaaa0002 aaaa0003 aaaa0004
-    Slave read:  ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
     SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
-
     Slave Transceive Iter= 4
-    Master wrote: ffff0000 ffff0001 ffff0002 ffff0003 ffff0004
+    Master Transceive Iter= 4
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 3
+    Master Transceive Iter= 3
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 2
+    Master Transceive Iter= 2
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 1
+    Master Transceive Iter= 1
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transfer Successfully Completed
+    Master Transfer Successfully Completed
 
-.. include:: west_debug.rst
+SPI Output Logs for HE
+-----------------------
+
+.. code-block:: text
+
+     configure spi0 for dma0
+
+     configure lpspi for dma2
+    Slave Transceive Iter= 10
+    Master Transceive Iter= 10
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 9
+    Master Transceive Iter= 9
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 8
+    Master Transceive Iter= 8
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 7
+    Master Transceive Iter= 7
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 6
+    Master Transceive Iter= 6
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 5
+    Master Transceive Iter= 5
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 4
+    Master Transceive Iter= 4
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 3
+    Master Transceive Iter= 3
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 2
+    Master Transceive Iter= 2
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transceive Iter= 1
+    Master Transceive Iter= 1
+    Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    Master receive: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    SUCCESS: SPI Master RX & Slave TX DATA IS MATCHING: 0
+    slave wrote: 5a5a0000 5a5a0001 5a5a0002 5a5a0003 5a5a0004
+    slave read: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
+    SUCCESS: SPI Master TX & Slave RX DATA IS MATCHING: 0
+    Slave Transfer Successfully Completed
+    Master Transfer Successfully Completed
+

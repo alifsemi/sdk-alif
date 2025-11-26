@@ -12,7 +12,7 @@ This document explains how to create, compile, and run a demo application for th
 Overview
 --------
 
-The Inter-IC Sound (I2S™) is an electrical serial bus interface standard used for connecting digital audio devices. It is used to communicate Pulse-Code Modulation (PCM) audio data between integrated circuits in an electronic device. The I2S bus separates clock and serial data signals, resulting in simpler receivers than those required for asynchronous communication systems that need to recover the clock from the data stream.
+The Inter-IC Sound (I2S™) is a digital serial bus interface standard used for connecting digital audio devices. It is used to communicate Pulse-Code Modulation (PCM) audio data between integrated circuits in an electronic device. I2S uses separate lines Bit Clock (BCLK), Word Select (LRCLK / WS), Serial Data (SD), resulting in simpler receivers than those required for asynchronous communication systems that need to recover the clock from the data stream.
 
 .. figure:: _static/i2s_hardware_connections.png
    :alt: I2S Hardware Connections
@@ -48,10 +48,12 @@ For E7 DevKits, connect an external speaker to the board using a level shifter c
 
    Board Setup
 
-Building I2S Application in Zephyr
-====================================
+.. include:: note.rst
 
-Follow these steps to build your Zephyr-based I2S application using the GCC compiler and the Alif Zephyr SDK:
+Building an I2S Application with Zephyr
+========================================
+
+Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -69,7 +71,7 @@ Follow these steps to build your Zephyr-based I2S application using the GCC comp
 
 .. code-block:: bash
 
-   west build -p always -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he samples/drivers/i2s/output
+   west build -p always -b alif_b1_dk/ab1c1f4m51820pho/rtss_he samples/drivers/i2s/output
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
@@ -83,9 +85,20 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-Observations
-============
-The echo application plays back (or echoes) the sound from the microphone through the connected speaker, enabling real-time audio feedback.
+Console Output
+===============
 
-.. include:: west_debug.rst
+.. code-block:: console
+
+   I2S echo sample
+   Press "gpio@42002000" to toggle the echo effect
+   Streams started
+
+
+Observations
+-------------
+* The echo application plays back (or echoes) the sound from the microphone through the connected speaker, enabling real-time audio feedback.
+
+* The output consists of sine wave samples.
+
 

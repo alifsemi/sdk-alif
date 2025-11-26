@@ -25,8 +25,8 @@ The device includes up to four LPTIMER modules. Each LPTIMER module supports the
    LPTIMER Block Diagram
 
 
-Driver Description
-==================
+Description
+============
 
 The LPTIMER IP, sourced from Synopsys DesignWare, can be utilized as a timer driver within the counter driver subsystem for the LPTIMER module. It supports a 32KHz clock and an external clock input, both of which are hardware-specific features. Additionally, the code includes support for a 128KHz clock, although stability issues exist with this source due to hardware limitations. Currently, cascaded input is only partially supported, and the output toggle feature is available for all channels.
 
@@ -34,10 +34,12 @@ Furthermore, the LPTIMER is integrated into the Alarm application as a demo appl
 
 .. include:: prerequisites.rst
 
-Building LP TIMER Application in Zephyr
-========================================
+.. include:: note.rst
 
-Follow these steps to build the LP TIMER application in Zephyr using the Alif Zephyr SDK:
+Building an LP TIMER Application with Zephyr
+==============================================
+
+Follow these steps to build the LP TIMER application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -52,7 +54,6 @@ Follow these steps to build the LP TIMER application in Zephyr using the Alif Ze
 .. code-block:: bash
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ \
-       -DOVERLAY_CONFIG=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.conf \
        -DDTC_OVERLAY_FILE=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.overlay
 
 3. Build commands for applications on the M55 HE core:
@@ -60,12 +61,10 @@ Follow these steps to build the LP TIMER application in Zephyr using the Alif Ze
 .. code-block:: bash
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ \
-       -DOVERLAY_CONFIG=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.conf \
        -DDTC_OVERLAY_FILE=path_to_zephyr_directory/samples/drivers/counter/alarm/boards/alif_lptimer.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
 
 Executing Binary on the DevKit
 ==============================================
@@ -76,4 +75,24 @@ To execute binaries on the DevKit follow the command
 
    west flash
 
-.. include:: west_debug.rst
+Console Output
+===============
+
+  .. code-block:: text
+
+          Counter alarm sample
+
+          Set alarm in 2 sec (65536 ticks)
+          !!! Alarm !!!
+          Now: 0
+          Set alarm in 4 sec (131072 ticks)
+          !!! Alarm !!!
+          Now: 0
+          Set alarm in 8 sec (262144 ticks)
+          !!! Alarm !!!
+          Now: 0
+          Set alarm in 16 sec (524288 ticks)
+          !!! Alarm !!!
+          Now: 0
+          Set alarm in 32 sec (1048576 ticks)
+

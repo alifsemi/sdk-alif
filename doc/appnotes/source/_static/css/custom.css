@@ -1,0 +1,68 @@
+/* ============================================================================
+   Application Notes for the Zephyr Alif SDK
+   ============================================================================ */
+
+/* Layout and Width
+   -------------------------------------------------------------------------- */
+
+/* Make the content area wider */
+.wy-nav-content {
+    max-width: 1200px !important;
+}
+
+/* Adjust for very wide screens */
+@media screen and (min-width: 1400px) {
+    .wy-nav-content {
+        max-width: 1400px !important;
+    }
+}
+
+/* Navigation Header Styling
+   -------------------------------------------------------------------------- */
+
+/* Custom navigation header background color */
+.wy-side-nav-search {
+    background-color: #2980b9 !important;
+}
+
+/* Tables
+   -------------------------------------------------------------------------- */
+
+/* Better table rendering */
+.wy-table-responsive table td,
+.wy-table-responsive table th {
+    white-space: normal !important;
+}
+
+/* Improve table readability */
+table.docutils {
+    width: 100%;
+}
+
+table.docutils td,
+table.docutils th {
+    padding: 8px 12px;
+}
+
+/* Lists
+   -------------------------------------------------------------------------- */
+
+/* Better spacing for lists */
+.rst-content .section ul,
+.rst-content .section ol {
+    margin-bottom: 24px;
+}
+
+.rst-content .section ul li,
+.rst-content .section ol li {
+    margin-bottom: 8px;
+}
+
+/* Code Blocks
+   -------------------------------------------------------------------------- */
+
+/* Improve code block appearance */
+.rst-content pre.literal-block,
+.rst-content div[class^='highlight'] {
+    margin: 24px 0;
+}
