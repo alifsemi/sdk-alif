@@ -46,16 +46,6 @@ uint8_t sTestEventTriggerEnableKey[TestEventTriggerDelegate::kEnableKeyLength] =
 
 Clusters::NetworkCommissioning::InstanceAndDriver<NetworkCommissioning::GenericThreadDriver> sThreadNetworkDriver(0 /* endpointId */);
 
-void LockOpenThreadTask(void)
-{
-    chip::DeviceLayer::ThreadStackMgr().LockThreadStack();
-}
-
-void UnlockOpenThreadTask(void)
-{
-    chip::DeviceLayer::ThreadStackMgr().UnlockThreadStack();
-}
-
 } // namespace
 
 void MatterStack::matter_internal_init()
@@ -70,6 +60,9 @@ void MatterStack::matter_internal_init()
 #elif CONFIG_OPENTHREAD_MTD_SED
 	Instance().sInitResult = ConnectivityMgr().SetThreadDeviceType(
 		ConnectivityManager::kThreadDeviceType_SleepyEndDevice);
+#elif CONFIG_OPENTHREAD_MTD
+	Instance().sInitResult = ConnectivityMgr().SetThreadDeviceType(
+		ConnectivityManager::kThreadDeviceType_MinimalEndDevice);
 #else
 	Instance().sInitResult = ConnectivityMgr().SetThreadDeviceType(
 		ConnectivityManager::kThreadDeviceType_Router);
@@ -111,17 +104,9 @@ void MatterStack::matter_internal_init()
 	initParams.testEventTriggerDelegate = &sTestEventTriggerDelegate;
 	initParams.dataModelProvider        = CodegenDataModelProviderInstance(initParams.persistentStorageDelegate);
 
-	// Set up OpenThread configuration when OpenThread is included
-	chip::Inet::EndPointStateOpenThread::OpenThreadEndpointInitParam nativeParams;
-	nativeParams.lockCb = LockOpenThreadTask;
-	nativeParams.unlockCb = UnlockOpenThreadTask;
-	nativeParams.openThreadInstancePtr = chip::DeviceLayer::ThreadStackMgrImpl().OTInstance();
-	initParams.endpointNativeParams = static_cast<void *>(&nativeParams);
-
 	Instance().sInitResult = chip::Server::GetInstance().Init(initParams);
 	VerifyInitResultOrReturn(Instance().sInitResult, "Server init fail");
 	AppFabricTableDelegate::Init();
-
 	ConfigurationMgr().LogDeviceConfig();
 	PrintOnboardingCodes(
 		chip::RendezvousInformationFlags(chip::RendezvousInformationFlag::kBLE));
