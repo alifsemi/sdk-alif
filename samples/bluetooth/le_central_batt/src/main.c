@@ -7,10 +7,6 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-/*
- * This example demonstrates the Battery Client usage
- */
-
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "alif_ble.h"
