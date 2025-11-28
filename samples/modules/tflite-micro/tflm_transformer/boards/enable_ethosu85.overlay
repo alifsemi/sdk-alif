@@ -1,0 +1,46 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Ethos-U85 NPU Enable Overlay
+ * 
+ * This overlay enables the Ethos-U85 NPU (ethosu1) for boards that support it.
+ * 
+ * Applicable Boards (have both U55 and U85):
+ *   - E4 (alif_e4_dk) - has U55 + U85
+ *   - E8 (alif_e8_dk) - has U55 + U85
+ * 
+ * NOT applicable to:
+ *   - B1, E1C, E3, E7 (have U55 only, no U85)
+ * 
+ * Note: E4, E8 boards have BOTH ethosu0 (U55) and ethosu1 (U85).
+ *       Use this overlay to enable the U85 NPU on these boards.
+ * 
+ * Usage:
+ *   west build -b alif_e8_dk/<variant>/<core> <app_path> -- \
+ *     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
+ * 
+ * Build-time Safety Check:
+ *   If this overlay is applied to a board without U85 support (B1, E1C, E3, E7),
+ *   the build will fail with an error message indicating that ethosu1 node
+ *   does not exist on this board.
+ */
+
+/ {
+	/* Compile-time assertion: ethosu1 must exist */
+	ethosu_u85_check {
+		compatible = "vnd,ethosu-u85-check";
+		ethosu-node = <&ethosu1>;
+	};
+};
+
+&ethosu1 {
+	status = "okay";
+};
