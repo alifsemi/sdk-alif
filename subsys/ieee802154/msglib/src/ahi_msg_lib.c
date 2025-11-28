@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #ifndef UNALIGNED_GET
 struct __attribute__((packed, aligned(1))) T_UINT32_READ {

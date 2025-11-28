@@ -1,0 +1,3 @@
+name: alif-adc
+append:
+  EXTRA_DTC_OVERLAY_FILE: alif-adc.overlay

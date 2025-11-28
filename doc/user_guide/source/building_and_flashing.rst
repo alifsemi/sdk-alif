@@ -5,11 +5,10 @@ Setting Up and Building Zephyr Applications
 
 This guide covers:
 
-- Setting up the host system on Ubuntu 20.04 LTS or later.
 - Building a sample application.
 
 .. note::
-   Examples in this document use the Ensemble E7 Devkit unless otherwise specified.
+   Examples in this document use the Ensemble E7 DevKit unless otherwise specified.
 
 Setting Up the Host System
 --------------------------
@@ -106,7 +105,7 @@ Supported Board Targets as per new hardware model v2 (Zephyr v4.1.0 and onwards)
 
 .. note::
    The ``alif_e7_dk/ae722f80f55d5xx/rtss_he`` and ``alif_e7_dk/ae722f80f55d5xx/rtss_hp`` targets can also be run on
-   the Devkit E5.
+   the DevKit E5.
 
 a. Navigate to the Zephyr directory:
 
@@ -125,13 +124,15 @@ b. Build the Hello World application:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world
+     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world
 
 - Build for ITCM:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world -DCONFIG_
+     FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+
 
 **RTSS-HP**
 
@@ -139,13 +140,14 @@ b. Build the Hello World application:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world
+     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world
 
 - Build for ITCM:
 
   .. code-block:: console
 
-     west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world -DCONFIG_
+     FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 .. note::
    By default, Ninja is used. To switch to Unix Makefiles, add the following option:
@@ -211,7 +213,15 @@ for SE-UART device communication.
 
       west flash
 
-6. The application boots automatically:
+6. Debug the application:
+
+   From the zephyr build directory, start a debug session on your board:
+
+   .. code-block:: console
+
+      west debug
+
+7. The application boots automatically:
 
    a. Open a serial console application on the host PC with a baud rate of 115200.
 

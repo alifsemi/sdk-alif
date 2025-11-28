@@ -1,0 +1,15 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+identifier: alif_b1_eb_ab1c1f4m51820ph0_rtss_he
+name: Alif Engineering board Balletto B1 BGA RTSS-HE MCU
+type: mcu
+arch: arm
+vendor: alif
+toolchain:
+  - zephyr

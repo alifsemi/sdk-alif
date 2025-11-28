@@ -9,7 +9,7 @@ Introduction
 
 The Alif UTIMER IP on the Alif Devkit supports Quadrature Decoder (QDEC) mode, enabling precise position tracking of a mechanical rotary encoder. This mode is ideal for applications requiring angular position feedback, such as motor control, robotics, or user interface dials. This application note guides developers through configuring, building, and running a Zephyr-based QDEC application (``samples/sensor/qdec/``) using the UTIMER peripheral on the Alif Devkit.
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Building QDEC Application in Zephyr
 =====================================
@@ -23,22 +23,20 @@ Navigate to the SDK directory and build the application with TCM Memory. Refer t
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HE core using the Ninja build command:
+2. Build commands for applications on the M55 HE core:
 
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/sensor/qdec/ \
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/sensor/qdec/ \
        -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
-3. Build commands for applications on the M55 HP core using the Ninja build command:
+3. Build commands for applications on the M55 HP core:
 
 
 .. code-block:: bash
 
-   rm -rf build
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/sensor/qdec/ \
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/sensor/qdec/ \
        -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
 
 
@@ -84,4 +82,6 @@ Sample Output:
    Position = 86 degrees
    Position = 93 degrees
    …
+
+.. include:: west_debug.rst
 

@@ -40,7 +40,7 @@ The following are important features of I2C:
 - Programmable SDA hold time
 - Bus clear feature
 
-.. include:: Prerequisites.rst
+.. include:: prerequisites.rst
 
 Pin Setup
 ---------
@@ -73,26 +73,22 @@ Follow these steps to build your Zephyr-based I2C application using the GCC comp
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
-2. Remove the existing build directory and build the application
-
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-3. Build commands for applications on the M55 HP core using the Ninja build command:
+2. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-        rm -rf build
-        west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/i2c_dw -p
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/i2c_dw
 
-4. Build commands for applications on the M55 HE core using the Ninja build command:
+3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-        rm -rf build
-        west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2c_dw -p
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2c_dw
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
@@ -113,8 +109,33 @@ Console Output
 
 Upon reviewing the output logs, the I2C functionality has been successfully validated.
 
-.. figure:: _static/i2c_output_logs.png
-    :alt: I2C Output Logs
-    :align: center
+.. code-block:: none
 
-    I2C Output Logs
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x60 from slave
+   Read processed_cb called
+   Master received Data 0x60 From Slave
+
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x60 from slave
+   Read processed_cb called
+   Master received Data 0x60 From Slave
+
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x60 from slave
+   Read processed_cb called
+   Master received Data 0x60 From Slave
+
+.. include:: west_debug.rst

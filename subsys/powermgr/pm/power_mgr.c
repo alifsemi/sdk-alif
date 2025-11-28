@@ -107,6 +107,7 @@ static int app_pre_kernel_init(void)
 {
 	wakeup_reason = get_wakeup_irq_status();
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 
 	return 0;
 }
@@ -210,6 +211,7 @@ int power_mgr_set_offprofile(pm_state_mode_type_e pm_mode)
 void power_mgr_ready_for_sleep(void)
 {
 	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 }
 
 void power_mgr_set_subsys_off_period(uint32_t period_ms)

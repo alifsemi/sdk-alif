@@ -16,9 +16,13 @@
 #include <DeviceInfoProviderImpl.h>
 #include <app/TestEventTriggerDelegate.h>
 #include <app/clusters/identify-server/identify-server.h>
+#include <app/clusters/network-commissioning/network-commissioning.h>
 #include <app/clusters/ota-requestor/OTATestEventTriggerHandler.h>
-#include <app/server/OnboardingCodesUtil.h>
+#include <data-model-providers/codegen/Instance.h>
+#include <setup_payload/OnboardingCodesUtil.h>
 #include <app/server/Server.h>
+
+#include <platform/OpenThread/GenericNetworkCommissioningThreadDriver.h>
 
 #include <zephyr/fs/nvs.h>
 #include <zephyr/settings/settings.h>
@@ -39,6 +43,9 @@ uint8_t sTestEventTriggerEnableKey[TestEventTriggerDelegate::kEnableKeyLength] =
 #define VerifyInitResultOrReturn(ec, msg)                                                          \
 	VerifyOrReturn(ec == CHIP_NO_ERROR,                                                        \
 		       LOG_ERR(msg " [Error: %d]", Instance().sInitResult.Format()))
+
+Clusters::NetworkCommissioning::InstanceAndDriver<NetworkCommissioning::GenericThreadDriver> sThreadNetworkDriver(0 /* endpointId */);
+
 } // namespace
 
 void MatterStack::matter_internal_init()
@@ -53,11 +60,16 @@ void MatterStack::matter_internal_init()
 #elif CONFIG_OPENTHREAD_MTD_SED
 	Instance().sInitResult = ConnectivityMgr().SetThreadDeviceType(
 		ConnectivityManager::kThreadDeviceType_SleepyEndDevice);
+#elif CONFIG_OPENTHREAD_MTD
+	Instance().sInitResult = ConnectivityMgr().SetThreadDeviceType(
+		ConnectivityManager::kThreadDeviceType_MinimalEndDevice);
 #else
 	Instance().sInitResult = ConnectivityMgr().SetThreadDeviceType(
 		ConnectivityManager::kThreadDeviceType_Router);
 #endif
 	VerifyInitResultOrReturn(Instance().sInitResult, "SetThreadDeviceType fail");
+
+	sThreadNetworkDriver.Init();
 
 #if CONFIG_CHIP_FACTORY_DATA
 	Instance().sInitResult = mFactoryDataProvider.Init();
@@ -90,10 +102,11 @@ void MatterStack::matter_internal_init()
 				 "OTa test event trigger handlertrigger addfail");
 	(void)initParams.InitializeStaticResourcesBeforeServerInit();
 	initParams.testEventTriggerDelegate = &sTestEventTriggerDelegate;
+	initParams.dataModelProvider        = CodegenDataModelProviderInstance(initParams.persistentStorageDelegate);
+
 	Instance().sInitResult = chip::Server::GetInstance().Init(initParams);
 	VerifyInitResultOrReturn(Instance().sInitResult, "Server init fail");
 	AppFabricTableDelegate::Init();
-
 	ConfigurationMgr().LogDeviceConfig();
 	PrintOnboardingCodes(
 		chip::RendezvousInformationFlags(chip::RendezvousInformationFlag::kBLE));

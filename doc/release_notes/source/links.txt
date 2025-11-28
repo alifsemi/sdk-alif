@@ -1,10 +1,16 @@
 .. ### This page lists links used in Alif docs.
 
-.. _`Zephyr`: https://zephyrproject.org/
-.. _`GCC Download`: https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.5/toolchain_linux-x86_64_arm-zephyr-eabi.tar.xz
-.. _`ArmCLang Download`: https://developer.arm.com/Tools%20and%20Software/Arm%20Compiler%20for%20Embedded
-.. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
-.. _`Zephyr OS GitHub`: https://github.com/zephyrproject-rtos/zephyr
 .. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.0.0/user_guide.pdf
 .. _`Alif Trademarks`: https://alifsemi.com/legal
+.. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
+.. _`Alif SDK`: https://github.com/alifsemi/sdk-alif
+.. _`Alif SDK - Zephyr`: https://github.com/alifsemi/zephyr_alif
+.. _`Alif SDK - HAL`: https://github.com/alifsemi/hal_alif
+
+.. ### Zephyr Project
 .. _`Zephyr Project website`: https://www.zephyrproject.org
+.. _`Zephyr OS GitHub`: https://github.com/zephyrproject-rtos/zephyr
+.. _`Zephyr SDK download`: https://github.com/zephyrproject-rtos/sdk-ng/releases/tag/v0.17.0
+
+.. ### Linux Foundation
+.. _Trademark Usage Guidelines: https://www.linuxfoundation.org/legal/trademark-usage/

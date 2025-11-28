@@ -1,41 +1,31 @@
 .. _Release Notes:
 
-Release Notes
-=============
-
 Introduction
 ------------
-The **Zephyr Alif SDK (ZAS)** is a comprehensive suite of tools that makes it possible to configure, build, and deploy applications for Alif's microcontrollers.
+The **Zephyr Alif SDK (ZAS)** is a comprehensive development suite, enabling developers to configure, build, and deploy applications for Alif Semiconductor's microcontrollers.
 
-The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
+Supported Development Kits
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The **Ensemble DevKit (DK-E7)**  allows you to configure the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
+**Ensemble Series** - High-performance multi-core MCUs with Arm Cortex-M55 cores:
 
-The **Ensemble DevKit (DK-E8)**  allows you to configure the E8 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E6, and E4 series devices using a single kit.
+- **DK-E7**: Configurable to emulate E5, and E3 series devices (Ethos-U55 microNPUs)
+- **DK-E8**: Configurable to emulate E6 and E4 series devices (Ethos-U55 and Ethos-U85 microNPUs)
+- **DK-E1C**: Compact series development platform
 
-The **Ensemble E1C DevKit (DK-E1C)** is designed to explore the Compact series of Ensemble devices.
+**Balletto Series** - Wireless-enabled MCUs with AI/ML acceleration:
 
-The **Balletto DevKit (DK-B1)** introduces the Balletto B1 series, a wireless MCU with integrated hardware acceleration for AI/ML workloads. It combines Bluetooth Low Energy 5.3 and 802.15.4 based Thread protocols, an Ethos-U55 microNPU for AI acceleration, and a Cortex-M55 MCU core.
+- **DK-B1**: Features Bluetooth Low Energy 5.3, 802.15.4 Thread support, Ethos-U55 microNPU, and Cortex-M55 core
 
 Installing the SDK and Building the Application
 -----------------------------------------------
 
-For detailed instructions, please refer to the `ZAS User Guide`_
+For detailed instructions, please refer to the `ZAS User Guide`_.
 
 Host Requirements
 -----------------
 
-Hardware Requirements
-~~~~~~~~~~~~~~~~~~~~~
-
-- Personal Computer (PC) with an x86-64 based processor
-- Minimum 4GB RAM
-- At least 256GB of disk space
-
-Software Requirements
-~~~~~~~~~~~~~~~~~~~~~
-
-Ubuntu 20.04 64-bit or later
+- Ubuntu 22.04.5 LTS or above
 
 .. note::
    While other Linux distributions may work, they have not been thoroughly tested.
@@ -48,92 +38,222 @@ The following toolchains have been tested for the SDK application:
 .. list-table::
    :header-rows: 1
 
-   * - Compiler
+   * - Toolchain
      - Version
      - Link
-   * - GCC (GNU Compiler Collection)
-     - v12.2.0
-     - `GCC Download`_
+   * -  Zephyr SDK (GCC)
+     - v0.17.0
+     - `Zephyr SDK download`_
 
 Software Components
 -------------------
 
 The following are the software components used in the latest release.
 
-+--------------+----------------------------------------+-------------+
-| **Component**| **Source**                             | **Version** |
-+==============+========================================+=============+
-| Zephyr OS    | `Zephyr OS GitHub`_                    | v4.1-branch |
-+--------------+----------------------------------------+-------------+
+.. list-table::
+   :header-rows: 1
 
-List of Supported Peripheral Devices and Features
--------------------------------------------------
+   * - Component
+     - Version
+     - Link
+   * -  Alif SDK
+     - v2.0-zas-branch
+     - `Alif SDK`_
+   * -  Alif Zephyr RTOS
+     - v2.0-zas-branch
+     - `Alif SDK - Zephyr`_
+   * -  Alif SDK - HAL
+     - v2.0-zas-branch
+     - `Alif SDK - HAL`_
+   * -  Alif Secure Enclave (SE)
+     - v1.109
+     - `Alif Security Toolkit Quick Start Guide`_
 
-- **UART (Universal Asynchronous Receiver/Transmitter)**:
-  Synopsys DW_apb_uart is a programmable Universal Asynchronous Receiver/Transmitter. This AMBA 2.0-compliant Advanced Peripheral Bus (APB) component supports up to 8 ports. DW UART2 and UART4 are enabled in Zephyr for the RTSS-HP and RTSS-HE subsystems, respectively.
+.. note::
+   This release requires Secure Enclave software version v1.109 or later for proper operation.
 
-- **MHU (Message Handling Unit)**:
-  MHUs enable interrupt-driven communication between subsystems. Each MHU pair consists of a Sender in one subsystem and a Receiver in another. The SoC provides 12 MHUs for Secure access and 12 for Non-Secure access.
+Supported Peripheral Drivers and Features
+------------------------------------------
 
-- **HWSEM (Hardware Semaphore)**:
-  HWSEM provides synchronization for shared resources (memory or peripherals) across independent subsystems, preventing race conditions, deadlocks, and abnormal behavior. Supported in the E7 series.
+Communication Interfaces
+~~~~~~~~~~~~~~~~~~~~~~~~
 
-- **GPIO (General-Purpose Input/Output)**:
-  Uncommitted digital signal pins controllable by software, usable as inputs, outputs, or both.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-- **SPI (Serial Peripheral Interface)**:
-  Synopsys DWC_ssi is a full-duplex, configurable synchronous serial interface supporting 4 instances on RTSS-HE and RTSS-HP. SPI1 is configured as master; SPI0, SPI2, and SPI3 are slaves.
+   * - **Peripheral**
+     - **Description**
+   * - UART
+     - Synopsys DW_apb_uart supporting up to 8 ports. By default UART2 and UART4 are enabled and used as a console for RTSS-HE and RTSS-HP core respectively.
+   * - SPI
+     - Synopsys DWC_ssi full-duplex interface with 4 instances. SPI1 (master), SPI0/SPI2/SPI3 (slaves).
+   * - I2C
+     - DW_apb_i2c with master/slave mode support. Two instances: i2c0 and i2c1.
+   * - LPI2C
+     - Low-power I2C controller for power-efficient peripheral communication.
+   * - I3C
+     - Improved Inter-Integrated Circuit (I3C) interface supporting high-speed, low-power communication with dynamic addressing, in-band interrupts, and backward compatibility with I2C devices.
+   * - LP-UART
+     - Low-power Universal Asynchronous Receiver/Transmitter supporting extended sleep modes with wake-on-receive capability. Maintains serial communication during system low-power states with reduced power consumption compared to standard UART peripherals.
+   * - LP-SPI
+     - Low-power SPI controller capable of operating in deep sleep modes, enabling communication with external sensors and peripherals while minimizing power consumption, with wake-on-transfer support for event-driven applications in Zephyr.
 
-- **LPI2C (Low Power Inter-Integrated Circuit)**:
-  A power-efficient controller in the Ensemble series for communication with peripherals in low-power applications.
 
-- **I2C (Inter-Integrated Circuit)**:
-  DW_apb_i2c supports master or slave mode with two enabled instances (i2c0 and i2c1) on RTSS-HE and RTSS-HP.
+Display Interfaces
+~~~~~~~~~~~~~~~~~~~
 
-- **LPI2S (Low Power Inter-IC Sound)**:
-  DW_apb_lpi2s processes digital audio signals on M55 HE.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-- **I2S (Inter-IC Sound)**:
-  DW_apb_i2s supports four instances for digital audio processing; I2S3_b connects internally to a microphone.
+   * - **Peripheral**
+     - **Description**
+   * - MIPI-DSI
+     - MIPI Display Serial Interface controller supporting high-speed, low-power video data transmission to external LCD/OLED panels, integrated with Zephyr’s display subsystem for frame buffer rendering and panel initialization.
+   * - CDC-200
+     - CDC-200 (Clock and Data Controller) PHY for MIPI DSI, providing precise clock recovery and data serialization/deserialization to ensure reliable high-speed display link operation with Zephyr graphics stacks.
 
-- **RTC (Real-Time Counter)**:
-  The Low-Power Real-Time Counter (LPRTC) in PD-0 operates in low-power states, supporting a 32-bit counter and interrupt generation.
+Audio Interfaces
+~~~~~~~~~~~~~~~~
 
-- **DMA (Direct Memory Access)**:
-  Three controllers (DMA0: general-purpose, DMA1: RTSS-HP private, DMA2: RTSS-HE private) offload data transfers, with a MUX for peripheral mapping to DMA0.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-- **PWM (Pulse Width Modulation)**:
-  Alif UTIMER IP generates up to 24 simultaneous PWM signals across 12 channels.
+   * - **Peripheral**
+     - **Description**
+   * - I2S
+     - DW_apb_i2s with four instances for digital audio.
+   * - LPI2S
+     - Low-power DW_apb_lpi2s for digital audio signal processing.
+   * - PDM
+     - Supports eight PDM microphones, converting 1-bit PDM to 16-bit PCM.
+   * - LPPDM
+     - Low-power PDM supporting up to eight microphones with 1-bit PDM to 16-bit PCM conversion.
 
-- **QDEC (Quadrature Decoder)**:
-  Alif UTIMER IP on Ensemble Devkit supports QDEC mode for precise rotary encoder position tracking.
+System Resources
+~~~~~~~~~~~~~~~~
 
-- **UTimer Counter**:
-  Alif UTIMER IP on Ensemble Devkit supports counter mode for precise event or clock pulse counting, enabling frequency measurement, event counting, and timer-based scheduling.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-- **LPPDM (Low Power Pulse Density Modulation)**:
-  Supports up to eight PDM microphones, converting 1-bit PDM to 16-bit PCM audio.
+   * - **Peripheral**
+     - **Description**
+   * - GPIO
+     - General-purpose I/O pins controllable by software as inputs or outputs.
+   * - MHU
+     - Message Handling Units for interrupt-driven inter-subsystem communication.
+   * - HWSEM
+     - Hardware semaphores for shared resource synchronization across subsystems.
+   * - RTC
+     - Low-Power Real-Time Counter (LPRTC) with 32-bit counter and interrupt generation.
+   * - WDT
+     - Watchdog timer for fault detection.
+   * - Clk-Ctrl
+     - Clock control module manages peripheral clock generation and its gating.
+   * - PinMUX
+     - Pin multiplexer controlling GPIO pin function selection and routing of peripheral signals to physical pins, enabling flexible I/O configuration.
+   * - System Power Management (suspend to ram)
+     - Power management framework supporting deep sleep states including Suspend-to-RAM (S2RAM), where SRAM is retained, enabling fast resume and ultra-low power idle operation.
+   * -  LP-GPIO
+     - Low-power GPIO controller that maintains state and wake-up capability during system sleep modes, allowing external events to trigger resume from low-power states.
 
-- **PDM (Pulse Density Modulation)**:
-  Enhances audio with support for eight PDM microphones, converting 1-bit PDM to 16-bit PCM.
 
-- **CRC (Cyclic Redundancy Check)**:
-  Supports CRC-8-CCITT, CRC-16-CCITT, CRC-32, and CRC-32C with flexible data processing via AHB.
+Timers and PWM
+~~~~~~~~~~~~~~
 
-- **WDT (Watchdog Timer)**:
-  Integrates Zephyr’s WDT for fault detection.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-- **OSPI Flash (Octal SPI Flash)**:
-  The Alif DevKit-E7 includes a 32MB ISSI Flash (IS25WX256) with Zephyr flash APIs for erase, read, and write operations.
+   * - **Peripheral**
+     - **Description**
+   * - PWM
+     - Alif UTIMER IP generating up to 24 simultaneous PWM signals across 12 channels.
+   * - QDEC
+     - Quadrature decoder mode for precise rotary encoder position tracking.
+   * - UTimer Counter
+     - Counter mode for event/clock pulse counting, frequency measurement, and timer-based scheduling.
 
-- **AES (Advanced Encryption Standard)**:
-  Enables on-the-fly decryption of XIP data from external memory.
+Memory and Storage
+~~~~~~~~~~~~~~~~~~
 
-- **DAC 12 (Digital to Analog Converter)**:
-  Features a DAC12 module that converts 12-bit digital values to analog voltages, with a 0 V to 1.8 V output range in Low-Power mode.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-- **MRAM**:
-  Supports MRAM Read and Write.
+   * - **Peripheral**
+     - **Description**
+   * - MRAM
+     - Magnetoresistive RAM with Read and Write operations.
+   * - OSPI Flash
+     - 64MB ISSI Flash (IS25WX512) with Zephyr flash APIs for erase, read, and write operations.
+   * - SD
+     - Secure Digital host controller supporting SD/SDIO/MMC protocols for external memory card interfacing, including command queuing and data transfer at high-speed rates.
+
+
+Security and Data Integrity
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - CRC
+     - Supports CRC-8-CCITT, CRC-16-CCITT, CRC-32, and CRC-32C with flexible data processing via AHB.
+   * - Entropy
+     - Hardware true random number generator (TRNG) providing high-quality entropy for cryptographic operations, compliant with NIST SP 800-90B, and integrated with Zephyr’s entropy subsystem for secure key generation and randomization.
+
+Analog and Conversion
+~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - DAC 12
+     - 12-bit Digital to Analog Converter with 0 V to 1.8 V output range in Low-Power mode.
+   * - ADC 12
+     - 12-bit Analog-to-Digital Converter with configurable sampling rate and input channels, supporting general-purpose sensor measurements and fast conversion in both active and low-power operating modes.
+
+AI Acceleration
+~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - Ethos
+     - The Ethos U-55/U-85 NPU is a hardware acceleration solution
+       integrated into Alif’s microcontroller platforms that leverages Arm
+       Ethos microNPUs to boost machine learning inference performance
+       for CNN and transformer models.
+
+
+Wireless Connectivity
+~~~~~~~~~~~~~~~~~~~~~
+
+**Bluetooth LE 5.3** (*Balletto B1 only*)
+
+Two host stack options:
+
+* **Alif BLE (ROM-based)**: Power-optimized with BLE ROM v1.2, reduced flash/RAM footprint
+* **Zephyr BLE**: Standard Zephyr Bluetooth implementation for portability
+
+Comprehensive BLE samples included:
+
+* **LE Audio**: Auracast broadcast/sink, unicast audio source/sink
+* **Profiles**: BAS, BLPS, CPPS, CSCPS, GLPS, HR, HTPT, PRXP, RSCPS, WS
+* **Advanced**: Throughput testing, mesh light switch/bulb, SMP server
+* **Power Management**: Low-power peripheral optimization
 
 Breaking Changes
 ----------------
@@ -147,20 +267,24 @@ Breaking Changes
 Known Issues
 ------------
 
+- **BLE** le_periph_pm application has a RTC related issue which causes M55 RTC alarms to stop working randomly
+- **BLE** audio Unicast initiator fails to open 2nd channel when using Ceva host stack
+- **BLE** Auracast sink does not receive an encryption key sent by Auracast assistant when using Ceva host stack
+- **BLE** Connection param update does not work with Ceva host stack, works fine with Zephyr host stack.
+- SPI1 DMA operations exhibit inconsistent behavior.
+- Touchscreen events are intermittently dropped.
+
 
 External References
 -------------------
 
-- ZAS User Guide `ZAS User Guide`_
+- `ZAS User Guide`_
 
 Copyright/Trademark
 -------------------
 
-The Alif logo is a trademark of Alif Semiconductor. please refer to `Alif Trademarks`_.
+The Alif logo is a trademark of Alif Semiconductor. Please refer to `Alif Trademarks`_.
 Arm, Cortex, CoreSight, and Ethos are trademarks of Arm Limited (or its subsidiaries).
-Zephyr is an open-source RTOS under the Apache License 2.0, maintained by the `Zephyr Project`_.
+Zephyr is an open-source RTOS under the Apache License 2.0, maintained by the `Zephyr Project website`_.
 The Zephyr logo is a trademark of The Linux Foundation, subject to The Linux Foundation's `Trademark Usage Guidelines`_.
 All other names are property of their respective owners.
-
-.. _Zephyr Project: https://www.zephyrproject.org/
-.. _Trademark Usage Guidelines: https://www.linuxfoundation.org/trademark-usage/

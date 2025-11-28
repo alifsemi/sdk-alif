@@ -62,12 +62,9 @@ All pins can be configured as GPIO unless assigned to a specific peripheral.
 
 
 CAN Pin Setup
--------------
+--------------
 
-CAN interfaces support RXD, TXD, and STBY signals.
-
-Pin Configuration
-~~~~~~~~~~~~~~~~~
+**Pin Configuration (CAN)**
 
 .. list-table:: CAN Pins
    :widths: 25 25 25 25
@@ -83,8 +80,7 @@ Pin Configuration
      - P7_1 (A), P0_5 (B), P12_5 (C)
      - P7_3 (A), P0_6 (B), P12_6 (C)
 
-Connector Mappings
-~~~~~~~~~~~~~~~~~~
+**Connector Mappings (CAN)**
 
 .. list-table:: CAN Connector Mappings
    :widths: 25 25 25 25
@@ -104,8 +100,7 @@ Connector Mappings
    No pin connections or transceiver are required for the loopback test.
 
 
-Testing Connections
-~~~~~~~~~~~~~~~~~~~
+**Testing Connections (CAN)**
 
 .. list-table:: CMP Testing Connections
    :widths: 50 50
@@ -122,10 +117,7 @@ Testing Connections
 DAC and I2C Pin Setup
 -----------------------
 
-DAC interfaces (DAC0 and DAC1) provide 12-bit analog output.
-
-Pin Configuration
-~~~~~~~~~~~~~~~~~
+**Pin Configuration (DAC)**
 
 .. list-table:: DAC Output Configuration
    :widths: 33 33 34
@@ -142,8 +134,7 @@ Pin Configuration
      - P2_3
      - -
 
-Hardware Setup
-~~~~~~~~~~~~~~~~~
+**Hardware Setup (DAC)**
 
 .. list-table:: DAC Hardware Setup
    :widths: 50 50
@@ -162,13 +153,7 @@ Hardware Setup
    - **Resolution**: 12-bit, accepting values up to 4095.
    - **Operation**: Input of 0 gives 0 output; increments by 1000 are observable; inputs exceeding 4095 reset to 0.
 
-I2C Pin Setup
--------------
-
-I2C interfaces include I2C0 to I2C3, LPI2C, and I3C.
-
-Pin Configuration
-~~~~~~~~~~~~~~~~~
+**Pin Configuration (I2C)**
 
 .. list-table:: I2C Pins
    :widths: 25 25 25 25
@@ -204,8 +189,7 @@ Pin Configuration
      - P0_1 (A), P1_3 (B), P3_3 (C), P7_7 (D)
      - Standard
 
-Hardware Connections
-~~~~~~~~~~~~~~~~~~~~
+**Hardware Connections (I2C)**
 
 .. list-table:: I2C Hardware Connections
    :widths: 25 25 25 25
@@ -225,8 +209,7 @@ Hardware Connections
      - P3_4 (J11-27)
      - J15-5 to J11-27
 
-LPI2C Connections
-~~~~~~~~~~~~~~~~~
+**LPI2C Connections**
 
 .. list-table:: LPI2C Connections
    :widths: 25 25 25 25
@@ -246,8 +229,7 @@ LPI2C Connections
      - P5_2 (J12_17)
      - J11-27 to J12_17
 
-I3C Connector Mappings
-~~~~~~~~~~~~~~~~~~~~~~
+**I3C Connector Mappings**
 
 .. list-table:: I3C Pin Connections
    :widths: 33 33 34
