@@ -39,22 +39,23 @@
 /**
  * As per the application requirements, it can remove the memory blocks which are not in use.
  */
-#if defined(CONFIG_SOC_SERIES_E1C) || defined(CONFIG_SOC_SERIES_B1)
+#if defined(CONFIG_SOC_SERIES_B1)
 	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | \
 					SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |\
 					SRAM5_5_MASK
 	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
 #else
-	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK
-	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
+	#error "Application works only with B1 devices"
 #endif
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
 	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
+	#define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
 	#define SE_OFFP_EWIC_CFG EWIC_RTC_A
 	#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
 	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
+	#define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
 	#define SE_OFFP_EWIC_CFG EWIC_VBAT_TIMER
 	#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
 #else
@@ -69,8 +70,9 @@ int n __attribute__((noinit));
 #define ADV_INT_MAX_SLOTS                150
 #define CONN_INT_MIN_SLOTS               20
 #define CONN_INT_MAX_SLOTS               100
-#define RTC_WAKEUP_INTERVAL_MS           (20 + (n++ % 50))
-#define RTC_CONNECTED_WAKEUP_INTERVAL_MS 400
+#define RTC_WAKEUP_INTERVAL_MS           (55 + (n++ % 50))
+#define RTC_CONNECTED_WAKEUP_INTERVAL_MS (55 + (n++ % 50))
+#define SERVICE_INTERVAL                 1000
 #else
 #define ADV_INT_MIN_SLOTS                1000
 #define ADV_INT_MAX_SLOTS                1000
@@ -78,10 +80,12 @@ int n __attribute__((noinit));
 #define CONN_INT_MAX_SLOTS               800
 #define RTC_WAKEUP_INTERVAL_MS           5000
 #define RTC_CONNECTED_WAKEUP_INTERVAL_MS 2150
+#define SERVICE_INTERVAL                 RTC_CONNECTED_WAKEUP_INTERVAL_MS
 #endif
 
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index __attribute__((noinit));
+static bool wakeup_with_rtc;
 
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
@@ -124,6 +128,7 @@ static uint8_t conn_status __attribute__((noinit));
 static uint8_t conn_idx __attribute__((noinit));
 static uint8_t adv_actv_idx __attribute__((noinit));
 static struct service_env env __attribute__((noinit));
+static uint16_t service_interval_count;
 
 /* Load name from configuration file */
 #define DEVICE_NAME "ALIF_PM"
@@ -364,6 +369,11 @@ void on_packet_size_updated(uint8_t conidx, uint32_t metainfo, uint16_t max_tx_o
 	printk("%s conn:%d max_tx_octets:%d max_tx_time:%d  max_rx_octets:%d "
 	       "max_rx_time:%d\n",
 	       __func__, conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
+
+	uint16_t ret = gapc_le_update_params(conn_idx, 0,
+								     &preferred_connection_param,
+								     on_gapc_proc_cmp_cb);
+	LOG_INF("Update connection ret:%d\n", ret);
 }
 void on_phy_updated(uint8_t conidx, uint32_t metainfo, uint8_t tx_phy, uint8_t rx_phy)
 {
@@ -778,31 +788,58 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 	return status;
 }
 
-
-/*
- * MRAM base address - used to determine boot location
- * TCM boot: VTOR = 0x0
- * MRAM boot: VTOR >= 0x80000000
- */
-#define MRAM_BASE_ADDRESS 0x80000000
-
-/*
- * Helper macro to check if booting from MRAM
- */
-#define IS_BOOTING_FROM_MRAM() (SCB->VTOR >= MRAM_BASE_ADDRESS)
-
-/*
- * PM_STATE_SUSPEND_TO_RAM (S2RAM) support:
- * - HE core + TCM boot: SUPPORTED (TCM retention keeps code and context)
- *
- * PM_STATE_SOFT_OFF support:
- * - HE core + MRAM boot: Supported (MRAM preserved, wakeup possible)
- */
-#define S2RAM_SUPPORTED (!IS_BOOTING_FROM_MRAM())
-#define SOFT_OFF_SUPPORTED IS_BOOTING_FROM_MRAM()
-
 #define OFF_STATE_NODE_ID DT_PHANDLE_BY_IDX(DT_NODELABEL(cpu0), cpu_power_states, 0)
 
+off_profile_t current_offp;
+int set_off_profile(pm_state_mode_type_e pm_mode)
+{
+	int ret;
+	off_profile_t offp;
+
+	/* Set default for stop mode with RTC wakeup support */
+	offp.power_domains = PD_VBAT_AON_MASK;
+	/* If CONFIG_FLASH_BASE_ADDRESS is zero application run from itcm and no MRAM needed */
+	#if (CONFIG_FLASH_BASE_ADDRESS == 0)
+		offp.memory_blocks = 0;
+	#else
+		offp.memory_blocks = MRAM_MASK;
+	#endif
+	offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
+	offp.memory_blocks |= APP_RET_MEM_BLOCKS;
+	offp.dcdc_voltage = 775;
+
+	switch (pm_mode) {
+	case PM_STATE_MODE_IDLE:
+	case PM_STATE_MODE_STANDBY:
+		offp.power_domains |= PD_SSE700_AON_MASK;
+		offp.ip_clock_gating = 0;
+		offp.phy_pwr_gating = 0;
+		offp.dcdc_mode = DCDC_MODE_PFM_AUTO;
+		break;
+	case PM_STATE_MODE_STOP:
+		offp.ip_clock_gating = 0;
+		offp.phy_pwr_gating = 0;
+		offp.dcdc_mode = DCDC_MODE_OFF;
+		break;
+	}
+
+	offp.aon_clk_src = CLK_SRC_LFXO;
+	offp.stby_clk_src = CLK_SRC_HFRC;
+	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_0_075_MHZ;
+	offp.ewic_cfg = SE_OFFP_EWIC_CFG;
+	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
+	offp.vtor_address = SCB->VTOR;
+	offp.vtor_address_ns = SCB->VTOR;
+
+	ret = se_service_set_off_cfg(&offp);
+	if (ret) {
+		LOG_ERR("SE: set_off_cfg failed = %d", ret);
+	} else {
+		current_offp = offp;
+	}
+
+	return ret;
+}
 
 /**
  * Set the RUN profile parameters for this application.
@@ -813,24 +850,20 @@ static int app_set_run_params(void)
 	int ret;
 
 	runp.power_domains =
-		PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK | PD_SESS_MASK;
+		PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK | PD_SESS_MASK;
 	runp.dcdc_voltage  = 775;
 	runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
 	runp.aon_clk_src   = CLK_SRC_LFXO;
-	runp.run_clk_src   = CLK_SRC_PLL;
-	runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+	runp.run_clk_src   = CLK_SRC_HFRC;
+	runp.cpu_clk_freq = CLOCK_FREQUENCY_76_8_RC_MHZ;
 	runp.phy_pwr_gating = 0;
-	runp.ip_clock_gating = LP_PERIPH_MASK;
+	runp.ip_clock_gating = 0;
 	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-	runp.scaled_clk_freq = SCALED_FREQ_XO_HIGH_DIV_38_4_MHZ;
+	runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
 
 	runp.memory_blocks = MRAM_MASK;
-	runp.memory_blocks |= SRAM2_MASK | SRAM3_MASK;
-	runp.memory_blocks |= SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK;
-	runp.memory_blocks |=
-		SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK; /* M55-HE ITCM */
-	runp.memory_blocks |= SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |
-			      SRAM5_5_MASK; /* M55-HE DTCM */
+	runp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
+	runp.memory_blocks |= APP_RET_MEM_BLOCKS;
 
 	if (IS_ENABLED(CONFIG_MIPI_DSI)) {
 		runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK | MIPI_PLL_DPHY_MASK;
@@ -851,6 +884,11 @@ static int app_set_run_params(void)
  */
 SYS_INIT(app_set_run_params, PRE_KERNEL_1, 3);
 
+static inline uint32_t get_wakeup_irq_status(void)
+{
+	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
+}
+
 /**
  * PM Notifier callback for power state entry
  */
@@ -858,14 +896,10 @@ static void pm_notify_state_entry(enum pm_state state)
 {
 	const struct pm_state_info *next_state = pm_state_next_get(0);
 	uint8_t substate_id = next_state ? next_state->substate_id : 0;
-	int ret;
 
 	switch (state) {
 	case PM_STATE_SUSPEND_TO_RAM:
 	case PM_STATE_SOFT_OFF:
-		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
-		__ASSERT(ret == 0, "app_set_off_params failed = %d", ret);
-		LOG_ERR("app_set_off_params failed = %d", ret);
 		break;
 	default:
 		__ASSERT(false, "Entering unknown power state %d", state);
@@ -884,7 +918,7 @@ static void pm_notify_state_entry(enum pm_state state)
 static void pm_notify_pre_device_resume(enum pm_state state)
 {
 	int ret;
-
+	wakeup_with_rtc = get_wakeup_irq_status();
 	switch (state) {
 	case PM_STATE_SUSPEND_TO_RAM:
 		ret = app_set_run_params();
@@ -910,36 +944,110 @@ static struct pm_notifier app_pm_notifier = {
 };
 
 
+void app_ready_for_sleep(void)
+{
+	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+}
+
 /*
- * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
+ * This function will be invoked in the PRE_KERNEL_1 phase of the init
+ * routine to prevent sleep during startup.
  */
 static int app_pre_kernel_init(void)
 {
 	/* Register PM notifier callbacks */
 	pm_notifier_register(&app_pm_notifier);
 
+
 	return 0;
 }
-SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
+SYS_INIT(app_pre_kernel_init, PRE_KERNEL_1, 39);
 
 
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_HOOKS)
+
+static uint32_t idle_timer_pre_idle;
+
+/* Idle timer used for timer while entering the idle state */
+static const struct device *idle_timer = DEVICE_DT_GET(DT_CHOSEN(zephyr_cortex_m_idle_timer));
+/**
+ * To simplify the driver, implement the callout to Counter API
+ * as hooks that would be provided by platform drivers if
+ * CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_HOOKS was selected instead.
+ */
+void z_cms_lptim_hook_on_lpm_entry(uint64_t max_lpm_time_us)
+{
+
+	/* Store current value of the selected timer to calculate a
+	 * difference in measurements after exiting the idle state.
+	 */
+	counter_get_value(idle_timer, &idle_timer_pre_idle);
+	/**
+	 * Disable the counter alarm in case it was already running.
+	 */
+	// counter_cancel_channel_alarm(idle_timer, 0);
+
+	/* Set the alarm using timer that runs the idle.
+	 * Needed rump-up/setting time, lower accurency etc. should be
+	 * included in the exit-latency in the power state definition.
+	 */
+
+	struct counter_alarm_cfg cfg = {
+		.callback = NULL,
+		.ticks = counter_us_to_ticks(idle_timer, max_lpm_time_us)+idle_timer_pre_idle,
+		.user_data = NULL,
+		.flags = COUNTER_ALARM_CFG_ABSOLUTE,
+	};
+	counter_set_channel_alarm(idle_timer, 0, &cfg);
+
+}
+
+uint64_t z_cms_lptim_hook_on_lpm_exit(void)
+{
+	/**
+	 * Calculate how much time elapsed according to counter.
+	 */
+	uint32_t idle_timer_post, idle_timer_diff;
+
+	counter_get_value(idle_timer, &idle_timer_post);
+
+	/**
+	 * Check for counter timer overflow
+	 * (TODO: this doesn't work for downcounting timers!)
+	 */
+	if (idle_timer_pre_idle > idle_timer_post) {
+		idle_timer_diff =
+			(counter_get_top_value(idle_timer) - idle_timer_pre_idle) +
+			idle_timer_post + 1;
+	} else {
+		idle_timer_diff = idle_timer_post - idle_timer_pre_idle;
+	}
+
+	return (uint64_t)counter_ticks_to_us(idle_timer, idle_timer_diff);
+}
+#endif /* CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER */
 int main(void)
 {
+	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	uint16_t ble_status;
 	int ret;
-
-	uint32_t wakeup_reason = power_mgr_get_wakeup_reason();
-
-	if (power_mgr_cold_boot()) {
-		printk("BLE Sleep demo\n");
-
-		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
-
-		if (ret) {
-			printk("off profile set ERROR: %d\n", ret);
-			return ret;
-		}
+	if (!device_is_ready(wakeup_dev)) {
+		printk("%s: device not ready", wakeup_dev->name);
+		return -1;
 	}
+
+	ret = counter_start(wakeup_dev);
+
+	printk("BLE Sleep demo\n");
+
+	ret = set_off_profile(PM_STATE_MODE_STOP);
+
+	if (ret) {
+		printk("off profile set ERROR: %d\n", ret);
+		return ret;
+	}
+
 
 	/* Start up bluetooth host stack. */
 	ble_status = alif_ble_enable(NULL);
@@ -966,50 +1074,21 @@ int main(void)
 		printk("Init complete!\n");
 	}
 
-	LOG_DBG("RTC wc=%u", wakeup_reason);
-
-	if (wakeup_reason && conn_status == BT_CONN_STATE_CONNECTED) {
-		/* RTC wakeups when connection is active */
-		bool sleep_in_subscription = true;
-
-		conn_count++;
-		if (conn_count == 2) {
-			uint16_t ret = gapc_le_update_params(
-				conn_idx, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
-			printk("Update connection ret:%d\n", ret);
-		}
-		while ((env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
-			/* Subscription is active */
-			printk("Data subscribed\n");
-			service_notification_send(UINT32_MAX);
-			if (conn_status != BT_CONN_STATE_CONNECTED || sleep_in_subscription) {
-				break;
-			}
-			k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
-			conn_count++;
-			if (conn_count == 2) {
-				uint16_t ret = gapc_le_update_params(conn_idx, 0,
-								     &preferred_connection_param,
-								     on_gapc_proc_cmp_cb);
-				printk("Update connection ret:%d\n", ret);
-			}
-		}
-	}
-
-	power_mgr_ready_for_sleep();
+	app_ready_for_sleep();
 	while (1) {
-
 		if (conn_status == BT_CONN_STATE_CONNECTED) {
 			k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
-			conn_count++;
-			if (conn_count == 2) {
-				uint16_t ret = gapc_le_update_params(conn_idx, 0,
-								     &preferred_connection_param,
-								     on_gapc_proc_cmp_cb);
-				printk("Update connection ret:%d\n", ret);
+			if (wakeup_with_rtc) {
+				service_interval_count += RTC_CONNECTED_WAKEUP_INTERVAL_MS;
+				if (service_interval_count >= SERVICE_INTERVAL) {
+					if ((env.ntf_cfg == PRF_CLI_START_NTF) &&
+					 (!env.ntf_ongoing)) {
+						/* Update text at RTC periods */
+						service_notification_send(UINT32_MAX);
+					}
+					service_interval_count = 0;
+				}
 			}
-			/* Update text at 2.15 second periods */
-			service_notification_send(UINT32_MAX);
 		} else {
 			k_sleep(K_MSEC(RTC_WAKEUP_INTERVAL_MS));
 		}
