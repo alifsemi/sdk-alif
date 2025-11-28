@@ -1,0 +1,8 @@
+# Config for counter alarm Tests
+
+config TEST_RTC_WRAP_MODE
+	bool "To Test RTC in wrap mode"
+	default n
+	help
+	  Enable Timer driver
+source "Kconfig.zephyr"
