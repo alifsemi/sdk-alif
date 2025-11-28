@@ -21,6 +21,15 @@ Building and Running
 This sample can be found under :zephyr_file:`samples/bluetooth/le_periph_pm` in the
 sdk-alif tree.
 
+Building ITCM
+********************
+
+if you want optimize standby power using itcm build without MRAM use following command
+
+.. code-block:: console
+  west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/ -- -DEXTRA_DTC_OVERLAY_FILE=itcm_build.overlay
+
+
 When flashing the application Ensure that there is no tracing happening in Secure Enclave by modifying the device configuration.
 
 from file: add-device-config.json set the SE_BOOT_INFO equals 2
