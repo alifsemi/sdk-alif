@@ -35,11 +35,13 @@ The image below illustrates the various components of the SDK for Alif Semicondu
 
    *SDK Components*
 
-The SDK offers a comprehensive suite of components to enhance software development:
+**The SDK offers a comprehensive suite of components to enhance software development:**
 
 .. list-table::
-   :widths: 25 75
+   :widths: 30 75
    :header-rows: 1
+   :class: tabulary
+
 
    * - **Component**
      - **Description**
@@ -60,19 +62,18 @@ The SDK offers a comprehensive suite of components to enhance software developme
    * - **MCU Boot**
      - Secure bootloader for 32-bit MCUs, provides secure booting and firmware updates, enhancing security and reliability.
 
+
 **HAL_ALIF (Hardware Abstraction Layer)**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The HAL provides hardware-specific APIs for Alif's devices, enabling consistent software interaction:
 
 1. **SE Services (Security Services)**: Alif's security services, including encryption, authentication, and secure communication.
-2. **Alif Crypto Libraries**: Alif’s Crypto libraries provide support for MbedTLS.
-3. **Power Management API**: APIs related to power management, optimizing energy usage in Alif devices.
-4. **BLE API**:
+2. **BLE API**:
    - APIs for Bluetooth Low Energy functionality, facilitating interactions for BLE stack operations.
-5. **LC3 API**:
+3. **LC3 API**:
    - Application Programming Interface for the LC3 (Low Complexity Communication Codec) audio codec, enhancing audio processing capabilities.
-6. **15.4 API**:
+4. **15.4 API**:
    - IEEE 802.15.4 support for protocols like OpenThread and Matter, leveraging the same radio used by BLE but with distinct modulation and protocol implementations.
 
 These APIs within the HAL_ALIF framework ensure that developers can access the underlying hardware features in a standardized manner, simplifying development across Alif's product range.
@@ -80,10 +81,13 @@ These APIs within the HAL_ALIF framework ensure that developers can access the u
 **Documentation**
 ~~~~~~~~~~~~~~~~~
 
+The Documentation section provides essential resources to help developers quickly understand, set up, and effectively use the Zephyr Alif SDK. It includes step-by-step guides, release history, licensing details, and high-level project context - ensuring both new and experienced users have the information they need at every stage of development.
+
 - **Getting Started Guide**: Step-by-step instructions for initial setup.
 - **Release Notes**: Changelog and update information.
 - **Licenses**: Licensing terms for SDK components.
 - **README**: Comprehensive project overview.
+- **AppNotes**: Application notes offering practical implementation examples, design guidelines, and best practices for specific use cases with the Zephyr Alif SDK.
 
 Toolchains
 ----------
@@ -92,8 +96,8 @@ SDK supports the following development toolchains:
 
 - **GCC (GNU Compiler Collection v12.2.0)** - Used through the Zephyr Project.
 
-**Zephyr RTOS**
----------------
+Zephyr RTOS
+-------------
 
 Zephyr is designed for resource-constrained and embedded systems, offering:
 
