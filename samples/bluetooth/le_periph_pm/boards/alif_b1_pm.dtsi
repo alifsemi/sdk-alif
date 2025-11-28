@@ -25,7 +25,7 @@
 };
 
 &lpuart {
-	status = "okay";
+	status = "disabled";
 };
 
 &pd_syst {
@@ -35,9 +35,17 @@
 	status = "disabled";
 };
 
+&uart_ahi {
+	status = "disabled";
+};
+
+&uart_hci {
+	clock-frequency = <76800000>;
+	dlf = <0xa>;
+	status = "okay";
+};
+
 &subsys_off {
-	min-residency-us = <4000>;
-	exit-latency-us = <3000>;
 	status = "disabled";
 };
 
