@@ -32,13 +32,9 @@ static const struct device *const devices[] = {
 
 static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
-#if defined(CONFIG_SOC_E7_AK_APSS) || defined(CONFIG_SOC_E7_DK_APSS)
-#define MASTER_ID 0xCAFECAFE
-#elif defined(CONFIG_SOC_E3_AK_RTSS_HP) || defined(CONFIG_SOC_E7_AK_RTSS_HP) || \
-	defined(CONFIG_SOC_E3_DK_RTSS_HP) || defined(CONFIG_SOC_E7_DK_RTSS_HP)
+#if defined(CONFIG_RTSS_HP)
 #define MASTER_ID 0xF00DF00D
-#elif defined(CONFIG_SOC_E3_AK_RTSS_HE) || defined(CONFIG_SOC_E7_AK_RTSS_HE) || \
-	defined(CONFIG_SOC_E3_DK_RTSS_HE) || defined(CONFIG_SOC_E7_DK_RTSS_HE)
+#elif defined(CONFIG_RTSS_HE)
 #define MASTER_ID 0xC0DEC0DE
 #endif
 
