@@ -40,12 +40,6 @@ pipeline {
         }
 
         stage('Pr_Build for echo-client and echo-server') {
-            when {
-                anyOf {
-                    branch 'PR-*'
-                    branch 'main'
-                }
-            }
             agent { label 'pr_check_sdk_alif' }
             options { skipDefaultCheckout() }
             steps {
@@ -187,13 +181,7 @@ pipeline {
         stage('Pr_Build For Parallel') {
             parallel {
                 stage('Pr_Build Auracast Samples') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -201,6 +189,7 @@ pipeline {
                                 try{
                                     sh '''#!/bin/bash -xe
                                     pwd
+                                    env
                                     cd /root/alif
                                     west forall -c "git clean -fdx"
                                     cd /root/alif/alif/
@@ -211,8 +200,8 @@ pipeline {
                                         git checkout pr-${CHANGE_ID}
                                     else
                                         git fetch origin -pu
-                                        git checkout main
-                                        git reset --hard origin/main
+                                        git checkout {$CHANGE_TARGET}
+                                        git reset --hard origin/{$CHANGE_TARGET}
                                     fi
                                     cd ..
                                     west update
@@ -241,13 +230,7 @@ pipeline {
                     }
                 }
                 stage('Pr_unicast sink') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -295,13 +278,7 @@ pipeline {
                     }
                 }
                 stage('Pr_unicast source') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -349,13 +326,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble beacon sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -403,13 +374,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble battery sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -457,13 +422,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble blinky sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -511,13 +470,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble blood pressure sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -565,13 +518,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble continuous glucose monitor sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -619,13 +566,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble Cygling Power Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -673,13 +614,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble Cygling_Speed_and_Cadence_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -727,13 +662,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble Glucose_Profile_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -781,13 +710,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Hello_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -835,13 +758,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Heart_Rate_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -890,13 +807,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Health_Thermometer_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -945,13 +856,7 @@ pipeline {
                     }
                 }
                 stage('Pr_le_periph_past') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1000,13 +905,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Pulse_Oximeter_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1054,13 +953,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Power_Management_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1114,7 +1007,7 @@ pipeline {
                             branch 'main'
                         }
                     }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1162,13 +1055,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Running_Speed_And_Cadence_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1216,13 +1103,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Weight_Scale_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1270,13 +1151,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Throughput') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1324,13 +1199,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Mesh_Light_Bulb_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1378,13 +1247,7 @@ pipeline {
                     }
                 }
                 stage('Pr_SMP_Service') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas20' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1435,13 +1298,7 @@ pipeline {
         }
 
         stage('Pr_Build for test-app') {
-            when {
-                anyOf {
-                    branch 'PR-*'
-                    branch 'main'
-                }
-            }
-            agent { label 'zephyr_alif_sdk_ble' }
+            agent { label 'zas20' }
             options { skipDefaultCheckout() }
             steps {
                 script {
