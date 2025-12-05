@@ -33,13 +33,13 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
 #define WAKEUP_SOURCE DT_NODELABEL(rtc0)
 #define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
-#define WAKEUP_EVENT WE_LPRTC
-#define WAKEUP_EWIC_CFG EWIC_RTC_A
+#define WAKEUP_EVENT WE_LPRTC | WE_LPGPIO0 | WE_LPGPIO1
+#define WAKEUP_EWIC_CFG EWIC_RTC_A | EWIC_VBAT_GPIO
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timer, okay)
 #define WAKEUP_SOURCE DT_NODELABEL(timer0)
 #define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
-#define WAKEUP_EVENT WE_LPRTC
-#define WAKEUP_EWIC_CFG EWIC_RTC_A
+#define WAKEUP_EVENT WE_LPRTC | WE_LPGPIO0 | WE_LPGPIO1
+#define WAKEUP_EWIC_CFG EWIC_RTC_A | EWIC_VBAT_GPIO
 #else
 #error "RTC0 or Timer 0 not available"
 #endif
@@ -53,6 +53,9 @@ static bool cold_boot;
 #if DT_SAME_NODE(DT_NODELABEL(uart4), DT_CHOSEN(zephyr_console))
 #define CONSOLE_UART_NUM 4
 #define EARLY_BOOT_CONSOLE_INIT 1
+#elif DT_SAME_NODE(DT_NODELABEL(uart3), DT_CHOSEN(zephyr_console))
+#define CONSOLE_UART_NUM 3
+#define EARLY_BOOT_CONSOLE_INIT 1
 #elif DT_SAME_NODE(DT_NODELABEL(uart2), DT_CHOSEN(zephyr_console))
 #define CONSOLE_UART_NUM 2
 #define EARLY_BOOT_CONSOLE_INIT 1
@@ -61,7 +64,6 @@ static bool cold_boot;
 #define EARLY_BOOT_CONSOLE_INIT 1
 #else
 #error "Specify the uart console number"
-#define EARLY_BOOT_CONSOLE_INIT 0
 #endif
 
 #if EARLY_BOOT_CONSOLE_INIT
@@ -80,7 +82,7 @@ SYS_INIT(app_pre_console_init, PRE_KERNEL_1, 50);
 
 static inline uint32_t get_wakeup_irq_status(void)
 {
-	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
+	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ) + (NVIC_GetPendingIRQ(LPGPIO_IRQ) << 8);
 }
 
 /*

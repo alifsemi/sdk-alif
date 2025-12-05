@@ -21,6 +21,70 @@ config SLEEP_ENABLED
 	help
 	  M55 core can sleep during the operation setting yes allows full STOP mode operation.
 
+config SLEEP_TIME_CONNECTED
+	int "Sleep time when connected (milliseconds)"
+	default 2150
+	help
+	  Wait before entering sleep mode in milliseconds when BLE is connected.
+
+config SLEEP_TIME_DISCONNECTED
+	int "Sleep time when disconnected (milliseconds)"
+	default 20000
+	help
+	  Wait before entering sleep mode in milliseconds when BLE is disconnected.
+	  Set to 0 to sleep forever.
+
+config WAIT_BEFORE_SLEEP_SECONDS
+	depends on SLEEP_ENABLED
+	int "Wait before sleep seconds"
+	range 0 3600
+	default 0
+	help
+	  Wait before entering sleep mode in seconds.
+
+config DISABLE_BLE_BEFORE_SLEEP
+	bool "Disable BLE before sleep. This depends WAIT_BEFORE_SLEEP_SECONDS"
+	default n
+	help
+	  BLE will be disabled before entering sleep mode and re-enabled after wakeup.
+
+config LPGPIO_WAKEUP_ENABLED
+	bool "LPGPIO wakeup enabled"
+	default n
+	help
+	  LPGPIO can be used to wake up the M55 core from sleep.
+
+config LPGPIO_WAKEUP_SOURCE
+	depends on LPGPIO_WAKEUP_ENABLED
+	int "LPGPIO Wakeup source will be used to wakeup from sleep"
+	range 0 1
+	default 0
+	help
+	  Defines which LPGPIO pin will be used as wakeup source from sleep.
+	  0 - LPGPIO0, 1 - LPGPIO1
+
+config LPGPIO_M55_IRQ_ENABLED
+	depends on LPGPIO_WAKEUP_ENABLED
+	bool "LPGPIO M55 core IRQ enabled"
+	default y
+	help
+	  Configures LPGPIO to generate interrupt on M55 core when M55 is
+	  running.
+
+choice
+	depends on LPGPIO_M55_IRQ_ENABLED
+	prompt "LPGPIO IRQ edge trigger select"
+	default LPGPIO_M55_IRQ_EDGE_FALLING
+	help
+	  Select which signal edge will trigger the interrupt.
+	config LPGPIO_M55_IRQ_EDGE_RISING
+	bool "Rising edge"
+	config LPGPIO_M55_IRQ_EDGE_FALLING
+	bool "Falling edge"
+	config LPGPIO_M55_IRQ_EDGE_BOTH
+	bool "Rising and falling edges"
+endchoice
+
 menu "Logging"
 
 module = MAIN
