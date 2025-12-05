@@ -45,10 +45,6 @@
 static const struct gpio_dt_spec debug_pin = GPIO_DT_SPEC_GET_OR(DEBUG_PIN_NODE, gpios, {0});
 #endif
 
-#if !defined(CONFIG_SOC_SERIES_B1)
-#error "Application works only with B1 devices"
-#endif
-
 /**
  * As per the application requirements, it can remove the memory blocks which are not in use.
  */
@@ -56,6 +52,26 @@ static const struct gpio_dt_spec debug_pin = GPIO_DT_SPEC_GET_OR(DEBUG_PIN_NODE,
 	SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | SRAM5_1_MASK | SRAM5_2_MASK |  \
 		SRAM5_3_MASK | SRAM5_4_MASK | SRAM5_5_MASK
 #define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
+
+#define LPGPIO_NODE           DT_NODELABEL(lpgpio)
+#define LPGPIO_WAKEUP_ENABLED DT_NODE_HAS_STATUS_OKAY(LPGPIO_NODE)
+
+#if LPGPIO_WAKEUP_ENABLED
+/* LPGPIO wake up source is used */
+#define LPGPIO_EWIC_CFG EWIC_VBAT_GPIO
+#if CONFIG_LPGPIO_WAKEUP_SOURCE == 1
+#define LPGPIO_WAKEUP_EVENT WE_LPGPIO1
+#else
+#define LPGPIO_WAKEUP_EVENT WE_LPGPIO0
+#endif
+#else
+#define LPGPIO_EWIC_CFG 0
+#define LPGPIO_WAKEUP_EVENT 0
+#endif
+
+/* Is this ok?
+ * #define WAKEUP_SOURCE DT_CHOSEN(zephyr_cortex_m_idle_timer)
+ */
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
 #define WAKEUP_SOURCE         DT_NODELABEL(rtc0)
@@ -69,22 +85,22 @@ static const struct gpio_dt_spec debug_pin = GPIO_DT_SPEC_GET_OR(DEBUG_PIN_NODE,
 #error "Wakeup Device not enabled in the dts"
 #endif
 
-#define WAKEUP_SOURCE_IRQ     DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
+#define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
 
 /**
  * Use the HFOSC clock for the UART console
  */
 #if DT_SAME_NODE(DT_NODELABEL(uart4), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 4
+#define CONSOLE_UART_NUM        4
 #define EARLY_BOOT_CONSOLE_INIT 1
 #elif DT_SAME_NODE(DT_NODELABEL(uart3), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 3
+#define CONSOLE_UART_NUM        3
 #define EARLY_BOOT_CONSOLE_INIT 1
 #elif DT_SAME_NODE(DT_NODELABEL(uart2), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 2
+#define CONSOLE_UART_NUM        2
 #define EARLY_BOOT_CONSOLE_INIT 1
 #elif DT_SAME_NODE(DT_NODELABEL(uart1), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM 1
+#define CONSOLE_UART_NUM        1
 #define EARLY_BOOT_CONSOLE_INIT 1
 #else
 #define EARLY_BOOT_CONSOLE_INIT 0
@@ -126,9 +142,14 @@ int n __attribute__((noinit));
 #define ADV_INT_MAX_SLOTS                1000
 #define CONN_INT_MIN_SLOTS               800
 #define CONN_INT_MAX_SLOTS               800
-#define RTC_WAKEUP_INTERVAL_MS           5000
-#define RTC_CONNECTED_WAKEUP_INTERVAL_MS 2150
+#define RTC_WAKEUP_INTERVAL_MS           CONFIG_SLEEP_TIME_DISCONNECTED
+#define RTC_CONNECTED_WAKEUP_INTERVAL_MS CONFIG_SLEEP_TIME_CONNECTED
 #define SERVICE_INTERVAL_MS              RTC_CONNECTED_WAKEUP_INTERVAL_MS
+#endif
+
+#if LPGPIO_WAKEUP_ENABLED
+static const struct gpio_dt_spec lpgpio_config = GPIO_DT_SPEC_GET_BY_IDX_OR(
+	DT_NODELABEL(wakeup_pins), lpgpios, CONFIG_LPGPIO_WAKEUP_SOURCE, {0});
 #endif
 
 static uint8_t hello_arr[] = "HelloHello";
@@ -181,7 +202,13 @@ static volatile uint8_t conn_idx __attribute__((noinit));
 static uint8_t adv_actv_idx __attribute__((noinit));
 static struct service_env env __attribute__((noinit));
 
-static volatile bool wakeup_status;
+enum wakeup_status {
+	WAKEUP_COLD = 0,
+	WAKEUP_TIMER = 1 << 0,
+	WAKEUP_LPGPIO = 1 << 1,
+};
+
+static volatile uint32_t wakeup_status = WAKEUP_COLD; /**< \ref enum wakeup_status */
 static volatile int run_profile_error;
 static uint32_t served_intervals_ms;
 
@@ -207,6 +234,7 @@ static const gatt_att_desc_t hello_att_db[HELLO_IDX_NB] = {
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
+K_SEM_DEFINE(button_wait_sem, 0, 1);
 
 /**
  * Bluetooth stack configuration
@@ -277,6 +305,10 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
 		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
 
+#if !RTC_WAKEUP_INTERVAL_MS
+	counter_start(DEVICE_DT_GET(WAKEUP_SOURCE));
+#endif
+
 	conn_status = BT_CONN_STATE_CONNECTED;
 	conn_idx = conidx;
 	LOG_DBG("BLE Connected conn:%d", conidx);
@@ -303,6 +335,10 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	} else {
 		LOG_DBG("Restarting advertising");
 	}
+
+#if !RTC_WAKEUP_INTERVAL_MS
+	counter_stop(DEVICE_DT_GET(WAKEUP_SOURCE));
+#endif
 
 	conn_status = BT_CONN_STATE_DISCONNECTED;
 	conn_idx = GAP_INVALID_CONIDX;
@@ -404,8 +440,8 @@ void on_packet_size_updated(uint8_t conidx, uint32_t metainfo, uint16_t max_tx_o
 		__func__, conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
 
 	/* PeHo: Seppo why this is done here? */
-	const uint16_t ret = gapc_le_update_params(conidx, 0, &preferred_connection_param,
-					     on_gapc_proc_cmp_cb);
+	const uint16_t ret =
+		gapc_le_update_params(conidx, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
 
 	LOG_INF("Update connection %u ret:%d\n", conidx, ret);
 }
@@ -746,8 +782,8 @@ static int set_off_profile(enum pm_state_mode_type const pm_mode)
 	offp.aon_clk_src = CLK_SRC_LFXO;
 	offp.stby_clk_src = CLK_SRC_HFRC;
 	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_0_075_MHZ;
-	offp.ewic_cfg = SE_OFFP_EWIC_CFG;
-	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
+	offp.ewic_cfg = (SE_OFFP_EWIC_CFG | LPGPIO_EWIC_CFG);
+	offp.wakeup_events = (SE_OFFP_WAKEUP_EVENTS | LPGPIO_WAKEUP_EVENT);
 	offp.vtor_address = SCB->VTOR;
 	offp.vtor_address_ns = SCB->VTOR;
 
@@ -801,7 +837,14 @@ SYS_INIT(app_set_run_params, PRE_KERNEL_1, 3);
 
 static inline uint32_t get_wakeup_irq_status(void)
 {
-	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
+	uint32_t status = WAKEUP_COLD;
+
+	status |= NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ) ? WAKEUP_TIMER : 0;
+#if LPGPIO_WAKEUP_ENABLED
+	status |= NVIC_GetPendingIRQ(DT_IRQ_BY_IDX(
+		LPGPIO_NODE, CONFIG_LPGPIO_WAKEUP_SOURCE, irq)) ? WAKEUP_LPGPIO : 0;
+#endif
+	return status;
 }
 
 /**
@@ -862,7 +905,13 @@ static struct pm_notifier app_pm_notifier = {
 	.pre_device_resume = pm_notify_pre_device_resume,
 };
 
-void app_ready_for_sleep(void)
+static void app_disable_sleep(void)
+{
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+}
+
+static void app_allow_sleep(void)
 {
 	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
@@ -877,8 +926,7 @@ static int app_pre_kernel_init(void)
 	/* Register PM notifier callbacks */
 	pm_notifier_register(&app_pm_notifier);
 
-	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	app_disable_sleep();
 
 	return 0;
 }
@@ -945,10 +993,152 @@ uint64_t z_cms_lptim_hook_on_lpm_exit(void)
 }
 #endif /* CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER */
 
+#if LPGPIO_WAKEUP_ENABLED
+
+#if CONFIG_LPGPIO_M55_IRQ_ENABLED
+static struct gpio_callback button_cb_data;
+
+static void button_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(cb);
+	ARG_UNUSED(pins);
+
+	if (!k_sem_count_get(&button_wait_sem)) {
+		printk("btn!\r\n");
+		k_sem_give(&button_wait_sem);
+	}
+}
+#endif
+
+/**
+ * Configure LPGPIO0 and LPGPIO1 as inputs with interrupts
+ */
+static int configure_lpgpio(void)
+{
+	int ret;
+	const struct gpio_dt_spec *spec = &lpgpio_config;
+
+	if (!spec || !spec->port) {
+		/* Just ignore */
+		printk("lpgpio invalid\r\n");
+		return 0;
+	}
+
+	/* Configure LPGPIO0 for wakeup */
+	if (!gpio_is_ready_dt(spec)) {
+		LOG_ERR("LPGPIO0 device is not ready");
+		return -ENODEV;
+	}
+
+	ret = gpio_pin_configure_dt(spec, GPIO_INPUT | spec->dt_flags);
+	if (ret != 0) {
+		LOG_ERR("Failed to configure LPGPIO as input: %d", ret);
+		return ret;
+	}
+
+	ret = gpio_pin_interrupt_configure_dt(spec,
+#if CONFIG_LPGPIO_M55_IRQ_EDGE_RISING
+					      GPIO_INT_EDGE_RISING
+#elif CONFIG_LPGPIO_M55_IRQ_EDGE_FALLING
+					      GPIO_INT_EDGE_FALLING
+#elif CONFIG_LPGPIO_M55_IRQ_EDGE_BOTH
+					      GPIO_INT_EDGE_BOTH
+#else
+#error "Invalid GPIO IRQ edge configuration"
+#endif
+	);
+	if (ret != 0) {
+		LOG_ERR("Failed to configure LPGPIO interrupt: %d", ret);
+		return ret;
+	}
+
+#if CONFIG_LPGPIO_M55_IRQ_ENABLED
+	gpio_init_callback(&button_cb_data, button_callback, BIT(spec->pin));
+	ret = gpio_add_callback(spec->port, &button_cb_data);
+	if (ret != 0) {
+		LOG_ERR("Failed to add button callback: %d", ret);
+		return ret;
+	}
+#endif
+
+	LOG_DBG("LPGPIO%d configured", spec->pin);
+
+	return 0;
+}
+#endif
+
+int ble_configure(void)
+{
+	uint16_t ble_status;
+	/* Start up bluetooth host stack. */
+	int ret = alif_ble_enable(NULL);
+
+	if (ret == -EALREADY) {
+#if CONFIG_DISABLE_BLE_BEFORE_SLEEP
+		/* BLE was already initialized - just re-register callbacks */
+		LOG_WRN("alif_ble_enable already done");
+#endif
+		return 0;
+	}
+
+	if (ret) {
+		LOG_ERR("alif_ble_enable error %d", ret);
+		return ret;
+	}
+
+	/* BLE initialized first time */
+	hello_arr_index = 0;
+	conn_idx = GAP_INVALID_CONIDX;
+	memset(&env, 0, sizeof(struct service_env));
+	conn_status = BT_CONN_STATE_DISCONNECTED;
+
+	/* Generate random address */
+	se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
+
+	/* Configure Bluetooth Stack */
+	LOG_INF("Init gapm service");
+	ble_status = bt_gapm_init(&gapm_cfg, &gapm_cbs, device_name, strlen(device_name));
+	if (ble_status) {
+		LOG_ERR("gapm_configure error %u", ble_status);
+		return -1;
+	}
+
+	server_configure();
+
+	/* Create an advertising activity */
+	ble_status = create_advertising();
+	if (ble_status) {
+		LOG_ERR("Advertisement create fail %u", ble_status);
+		return -1;
+	}
+
+	ble_status = set_advertising_data(adv_actv_idx);
+	if (ble_status) {
+		LOG_ERR("Advertisement data set fail %u", ble_status);
+		return -1;
+	}
+
+	ble_status = set_scan_data(adv_actv_idx);
+	if (ble_status) {
+		LOG_ERR("Scan response data set fail %u", ble_status);
+		return -1;
+	}
+
+	ble_status = bt_gapm_advertisement_start(adv_actv_idx);
+	if (ble_status) {
+		LOG_ERR("Advertisement start fail %u", ble_status);
+		return -1;
+	}
+
+	LOG_INF("Init complete!");
+
+	return 0;
+}
+
 int main(void)
 {
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
-	uint16_t ble_status;
 	int ret;
 
 #if DT_NODE_EXISTS(DEBUG_PIN_NODE)
@@ -965,105 +1155,124 @@ int main(void)
 #endif
 
 	if (!device_is_ready(wakeup_dev)) {
-		printk("%s: device not ready", wakeup_dev->name);
+		LOG_ERR("%s: device not ready", wakeup_dev->name);
 		return -1;
 	}
 
+#if RTC_WAKEUP_INTERVAL_MS
 	ret = counter_start(wakeup_dev);
+	if (ret) {
+		LOG_ERR("Counter start failed. error: %d", ret);
+		return ret;
+	}
+#endif
 
 	printk("BLE Sleep demo\n");
 
 	ret = set_off_profile(PM_STATE_MODE_STOP);
-
 	if (ret) {
 		LOG_ERR("off profile set failed. error: %d", ret);
 		return ret;
 	}
 
-	/* Start up bluetooth host stack. */
-	ble_status = alif_ble_enable(NULL);
-
-	if (ble_status == 0) {
-		/* BLE initialized first time */
-		uint16_t rc;
-		hello_arr_index = 0;
-		conn_idx = GAP_INVALID_CONIDX;
-		memset(&env, 0, sizeof(struct service_env));
-		conn_status = BT_CONN_STATE_DISCONNECTED;
-
-		/* Generate random address */
-		se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
-
-		/* Configure Bluetooth Stack */
-		LOG_INF("Init gapm service");
-		rc = bt_gapm_init(&gapm_cfg, &gapm_cbs, device_name, strlen(device_name));
-		if (rc) {
-			LOG_ERR("gapm_configure error %u", rc);
-			return -1;
-		}
-
-		server_configure();
-
-		/* Create an advertising activity */
-		rc = create_advertising();
-		if (rc) {
-			LOG_ERR("Advertisement create fail %u", rc);
-			return -1;
-		}
-
-		rc = set_advertising_data(adv_actv_idx);
-		if (rc) {
-			LOG_ERR("Advertisement data set fail %u", rc);
-			return -1;
-		}
-
-		rc = set_scan_data(adv_actv_idx);
-		if (rc) {
-			LOG_ERR("Scan response data set fail %u", rc);
-			return -1;
-		}
-
-		rc = bt_gapm_advertisement_start(adv_actv_idx);
-		if (rc) {
-			LOG_ERR("Advertisement start fail %u", rc);
-			return -1;
-		}
-
-		LOG_INF("Init complete!");
+#if LPGPIO_WAKEUP_ENABLED
+	/* Configure LPGPIO pins */
+	ret = configure_lpgpio();
+	if (ret) {
+		LOG_ERR("Failed to configure LPGPIO: %d", ret);
+		return ret;
 	}
-
-	app_ready_for_sleep();
-
-	while (1) {
-#if DT_NODE_EXISTS(DEBUG_PIN_NODE)
-		gpio_pin_configure_dt(&debug_pin, GPIO_OUTPUT_ACTIVE);
-		gpio_pin_toggle_dt(&debug_pin);
 #endif
 
-		if (conn_status != BT_CONN_STATE_CONNECTED) {
-			k_sleep(K_MSEC(RTC_WAKEUP_INTERVAL_MS));
-			continue;
-		}
+#if !CONFIG_DISABLE_BLE_BEFORE_SLEEP
+	ret = ble_configure();
+	if (ret) {
+		return ret;
+	}
+#endif
 
-		k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
+	app_allow_sleep();
 
+	while (1) {
 		/* TODO: better error handling will be needed here! */
 		if (run_profile_error) {
 			LOG_ERR("app_set_run_params failed. error: %d", run_profile_error);
 			return run_profile_error;
 		}
 
-		if (wakeup_status) {
+#if DT_NODE_EXISTS(DEBUG_PIN_NODE)
+		gpio_pin_configure_dt(&debug_pin, GPIO_OUTPUT_ACTIVE);
+		gpio_pin_toggle_dt(&debug_pin);
+#endif
+
+		if (conn_status != BT_CONN_STATE_CONNECTED) {
+#if CONFIG_WAIT_BEFORE_SLEEP_SECONDS
+			app_disable_sleep();
+
+#if CONFIG_DISABLE_BLE_BEFORE_SLEEP
+			if (ble_configure()) {
+				return -1;
+			}
+#endif
+
+			if (wakeup_status != WAKEUP_COLD) {
+				printk("waiting ");
+#if !RTC_WAKEUP_INTERVAL_MS
+				counter_start(wakeup_dev);
+#endif
+				for (int i = 0; i < CONFIG_WAIT_BEFORE_SLEEP_SECONDS; i++) {
+					k_sleep(K_MSEC(1000));
+					if (conn_status == BT_CONN_STATE_CONNECTED) {
+						/* Go back to top of while(1) to trigger proper
+						 * sleep action
+						 */
+						continue;
+					}
+					printk(".");
+				}
+#if !RTC_WAKEUP_INTERVAL_MS
+				counter_stop(wakeup_dev);
+#endif
+			}
+
+			printk(" goto sleep");
+#if CONFIG_DISABLE_BLE_BEFORE_SLEEP
+			ret = alif_ble_disable();
+			if (ret) {
+				LOG_ERR("alif_ble_disable error %d", ret);
+				return ret;
+			}
+			printk(" [ble dis]");
+#endif
+			printk("\r\n");
+			k_sleep(K_MSEC(100));
+
+			app_allow_sleep();
+#endif
+
+#if !RTC_WAKEUP_INTERVAL_MS
+			k_sem_reset(&button_wait_sem);
+			k_sem_take(&button_wait_sem, K_FOREVER);
+#else
+			k_sleep(K_MSEC(RTC_WAKEUP_INTERVAL_MS));
+#endif
+			printk("w");
+			continue;
+		}
+
+		k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
+
+		if (wakeup_status & WAKEUP_TIMER) {
 			served_intervals_ms += RTC_CONNECTED_WAKEUP_INTERVAL_MS;
 
-			if (served_intervals_ms >= SERVICE_INTERVAL_MS) {
-				if ((env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
-					/* Update text at RTC periods */
-					service_notification_send(UINT32_MAX);
-				}
-				served_intervals_ms = 0;
+			if (served_intervals_ms < SERVICE_INTERVAL_MS) {
+				continue;
 			}
+			served_intervals_ms = 0;
 		}
+
+		service_notification_send(UINT32_MAX);
 	}
+
 	return 0;
 }
