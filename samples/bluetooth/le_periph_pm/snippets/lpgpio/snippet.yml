@@ -1,0 +1,4 @@
+name: lpgpio-wakeup
+append:
+  EXTRA_DTC_OVERLAY_FILE: lpgpio.overlay
+  EXTRA_CONF_FILE: lpgpio.conf
