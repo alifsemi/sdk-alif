@@ -1,0 +1,177 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+&i2c1 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio13 {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+/{
+	i2c_mux: i2c-mux {
+		compatible = "alif,i2c-mux-controller";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@0 {
+			compatible = "alif,i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			arx3a0_selfie: arx3a0_selfie@36 {
+				compatible = "onnn,arx3a0";
+				reg = <0x36>;
+
+				reset-gpios = <&gpio14 4 GPIO_ACTIVE_HIGH>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+				status = "okay";
+
+				port {
+					arx3a0_csi2_ep_out0: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = < 400000000 >;
+						data-lanes = <1 2>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in0";
+					};
+				};
+			};
+		};
+		mux_i2c@1 {
+			compatible = "alif,i2c-mux-channel";
+			reg = <1>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			arx3a0_standard: arx3a0_standard@36 {
+				compatible = "onnn,arx3a0";
+				reg = <0x36>;
+
+				reset-gpios = <&gpio13 0 GPIO_ACTIVE_HIGH>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+				status = "okay";
+
+				port {
+					arx3a0_csi2_ep_out1: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = < 400000000 >;
+						data-lanes = <1 2>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in1";
+					};
+				};
+			};
+		};
+	};
+};
+
+&cam {
+	status = "okay";
+
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* MIPI CSI-2 bus endpoint. */
+		port@0 {
+			reg = <0>;
+			cam_csi2_ep_in: endpoint {
+				remote-endpoint-label = "csi2_ep_out";
+			};
+		};
+
+		/* Video buffer output endpoint. */
+		port@1 {
+			reg = <1>;
+			cam_mem_ep_out: endpoint {
+				remote-endpoint-label = "application";
+			};
+		};
+
+		/* ISP Interface. */
+		port@2 {
+			reg = <2>;
+			cam_isp_ep_out: endpoint {
+				remote-endpoint-label = "isp_ep_in";
+			};
+		};
+	};
+};
+
+&csi {
+	status = "okay";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csi2_ep_in0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "arx3a0_csi2_ep_out0";
+			};
+		};
+		port@1 {
+			reg = <1>;
+			csi2_ep_in1: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "arx3a0_csi2_ep_out1";
+			};
+		};
+		port@2 {
+			reg = <2>;
+			csi2_ep_out: endpoint {
+				remote-endpoint-label = "cam_csi2_ep_in";
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+			};
+		};
+	};
+};
+
+&mipi_dsi {
+	status = "okay";
+};
+&mw405 {
+	status = "disabled";
+};
