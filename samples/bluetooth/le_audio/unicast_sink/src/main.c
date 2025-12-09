@@ -11,12 +11,17 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/__assert.h>
+
+#include <se_service.h>
+#include <soc_common.h>
+
 #include "alif_ble.h"
 #include "gapm.h"
 #include "gapm_le.h"
 #include "gapc.h"
 #include "gapc_le.h"
 #include "gapc_sec.h"
+
 #include "unicast_sink.h"
 #include "storage.h"
 
@@ -657,3 +662,45 @@ int main(void)
 
 	return 0;
 }
+
+
+static int soc_run_profile(void)
+{
+#define HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON 0x20
+
+	const uint32_t host_bsys_pwr_req = sys_read32(HOST_BSYS_PWR_REQ);
+
+	sys_write32(host_bsys_pwr_req | HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON, HOST_BSYS_PWR_REQ);
+
+	run_profile_t runp = {
+		.power_domains = PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK |
+				 PD_DBSS_MASK | PD_SESS_MASK,
+		.dcdc_voltage = 825,
+		.dcdc_mode = DCDC_MODE_PFM_FORCED,
+		.aon_clk_src = CLK_SRC_LFXO,
+		.run_clk_src = CLK_SRC_PLL,
+		.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ,
+		.phy_pwr_gating = LDO_PHY_MASK,
+		.ip_clock_gating = LP_PERIPH_MASK,
+		.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8,
+		.scaled_clk_freq = SCALED_FREQ_XO_HIGH_DIV_38_4_MHZ,
+		.memory_blocks = (MRAM_MASK | (SRAM2_MASK | SRAM3_MASK) |
+				  (SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK) |
+				  /* M55-HE ITCM */
+				  (SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK) |
+				  /* M55-HE DTCM */
+				  (SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |
+				   SRAM5_5_MASK)),
+	};
+
+	if (se_service_set_run_cfg(&runp)) {
+		LOG_ERR("run profile set failed!");
+		return -ENOEXEC;
+	}
+
+	sys_write32(host_bsys_pwr_req, HOST_BSYS_PWR_REQ);
+	sys_write32(0xFFFFFFFF, 0x1A60900C);
+
+	return 0;
+}
+SYS_INIT(soc_run_profile, PRE_KERNEL_1, 3);
