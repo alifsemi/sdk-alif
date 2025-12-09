@@ -8,9 +8,6 @@
  *
  */
 
-/* setting LPSPI0 as master and SPI0 instance as slave.
- *
- */
 
 /* For SPI master SS(slave select) as:
  * - H/W controlled (default):
@@ -30,15 +27,11 @@
   */
 #define SPI_MASTER_SS_SW_CONTROLLED_GPIO   0
 
+/* setting LPSPI0 as master and SPI1 instance as slave. */
 / {
-
-	chosen {
-		zephyr,console = &lpuart;
-		zephyr,shell-uart = &lpuart;
-	};
 	aliases {
 		master-spi = &lpspi0;
-		slave-spi = &spi0;
+		slave-spi = &spi1;
 	};
 };
 
@@ -46,7 +39,7 @@
 	status = "okay";
 };
 
-&lpspi0 {
+&lpspi0 { /* lpspi0 */
 	status = "okay";
 
 	dmas = <&dma2 0 13>, <&dma2 1 12>;
@@ -79,22 +72,14 @@
 };
 #endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
 
-&spi0 {
+&spi1 { /* spi1 */
 	status = "okay";
 	serial-target;
 
-	dmas = <&dma2 2 20>, <&dma2 3 16>;
+	dmas = <&dma2 2 21>, <&dma2 3 17>;
 	dma-names = "txdma", "rxdma";
 
 #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
-	interrupts = <137 1>;
+	interrupts = <138 1>;
 #endif
-};
-
-&uart2 {
-	status = "disabled";
-};
-
-&lpuart {
-	status = "okay";
 };
