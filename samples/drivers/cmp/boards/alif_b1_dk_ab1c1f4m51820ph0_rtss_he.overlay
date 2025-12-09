@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -11,10 +11,14 @@
 	gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;
 };
 
-&lpcmp {
-	status = "disabled";
+&gpio4 {
+	status = "okay";
 };
 
 &cmp0 {
 	status = "okay";
+};
+
+&lpcmp {
+	status = "disabled";
 };
