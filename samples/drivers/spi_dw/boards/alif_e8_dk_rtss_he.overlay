@@ -8,10 +8,6 @@
  *
  */
 
-/* setting SPI4 as master and SPI0 instance as slave.
- * NOTE: use console as UART4, as SPI0_A is clashing with UART2_A.
- */
-
 /* For SPI master SS(slave select) as:
  * - H/W controlled (default):
  *   - use SS pinmux as H/W
@@ -30,19 +26,12 @@
  */
 #define SPI_MASTER_SS_SW_CONTROLLED_GPIO   0
 
+/* setting SPI4(LPSPI) as master and SPI1 instance as slave. */
 / {
 	aliases {
 		master-spi = &spi4;
-		slave-spi = &spi0;
+		slave-spi = &spi1;
 	};
-
-	chosen {
-		zephyr,console = &uart4;
-	};
-};
-
-&uart4 {
-	status = "okay";
 };
 
 &dma2 {
@@ -53,7 +42,7 @@
 	status = "okay";
 };
 
-&spi4 {
+&spi4 { /* LPSPI */
 	status = "okay";
 	dmas = <&dma2 0 13>, <&dma2 1 12>;
 /* If user want to use dma0 for master spi(spi4),
@@ -89,13 +78,13 @@
 };
 #endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
 
-&spi0 {
+&spi1 { /* SPI1 */
 	status = "okay";
 	serial-target;
-	dmas = <&dma0 2 20>, <&dma0 3 16>;
+	dmas = <&dma0 2 21>, <&dma0 3 17>;
 	dma-names = "txdma", "rxdma";
 
 #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
-	interrupts = <137 1>;
+	interrupts = <138 1>;
 #endif
 };
