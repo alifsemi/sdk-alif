@@ -78,6 +78,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define BOOT_PARAM_LEN_ACTCLK_DRIFT              1
 #define BOOT_PARAM_LEN_CONFIGURATION             4
 
+#define CONFIGURATION_RF_TYPE_HPA		 1
+#define CONFIGURATION_SOC_TYPE_CSP		 2
+
 #define ES0_PM_ERROR_NO_ERROR             0
 #define ES0_PM_ERROR_TOO_MANY_USERS       -1
 #define ES0_PM_ERROR_TOO_MANY_BOOT_PARAMS -2
@@ -297,6 +300,12 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 	*ptr++ = 'D';
 	*ptr++ = 'S';
 
+	uint32_t config = hpa_setup ? CONFIGURATION_RF_TYPE_HPA : 0;
+
+	if (IS_ENABLED(CONFIG_SOC_AB1C1F1M41820HH0) || IS_ENABLED(CONFIG_SOC_AB1C1F4M51820HH0)) {
+		config |= CONFIGURATION_SOC_TYPE_CSP;
+	}
+
 	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_LE_CODED_PHY_500, CONFIG_ALIF_PM_LE_CODED_PHY_500,
 			    BOOT_PARAM_LEN_LE_CODED_PHY_500);
 	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_DFT_SLAVE_MD, CONFIG_ALIF_PM_DFT_SLAVE_MD,
@@ -338,7 +347,7 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 			    BOOT_PARAM_LEN_LPCLK_DRIFT);
 	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_ACTCLK_DRIFT, CONFIG_ALIF_MAX_ACTIVE_CLOCK_DRIFT,
 			    BOOT_PARAM_LEN_ACTCLK_DRIFT);
-	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_CONFIGURATION, hpa_setup,
+	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_CONFIGURATION, config,
 			    BOOT_PARAM_LEN_CONFIGURATION);
 
 	/* UART input clock can be configured as 16/24/48Mhz */
