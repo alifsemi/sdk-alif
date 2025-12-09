@@ -2,9 +2,9 @@ def Build_SW_Echo_Client = 'Pending'
 def Build_SW_Echo_Server = 'Pending'
 def Flash_board_echo_server = 'Pending'
 def Flash_board_echo_client = 'Pending'
+def Build_SW = 'Pending'
 def smoke_tests = 'Pending'
 def Flash_board = 'Pending'
-def Build_SW = 'Pending'
 def Build_SW_Broadcast_sink = 'Pending'
 def Build_SW_Broadcast_source = 'Pending'
 def Build_SW_Unicast_sink = 'Pending'
@@ -19,15 +19,14 @@ def Build_SW_Cygling_Speed_and_Cadence_Sample = 'Pending'
 def Build_SW_Build_Glucose_Profile_Sample = 'Pending'
 def Build_SW_Hello_Sample = 'Pending'
 def Build_SW_Heart_Rate_Sample = 'Pending'
-def Build_SW_le_periph_past = 'Pengind'
-def Build_SW_Health_Thermometer_Sample = 'Pengind'
+def Build_SW_le_periph_past = 'Pending'
+def Build_SW_Health_Thermometer_Sample = 'Pending'
 def Build_SW_Pulse_Oximeter_Sample = 'Pending'
 def Build_SW_Power_management_sample ='Pending'
 def Build_SW_Proximity_Profile_Sample = 'Pending'
 def Build_SW_Running_Speed_And_Cadence_Sample = 'Pending'
 def Build_SW_Weight_Scale_Sample = 'Pending'
 def Build_SW_Ble_Throughtput = 'Pending'
-def Build_SW_Mesh_Light_Bulb_Sample = 'Pending'
 def Build_SW_SMP_Service = 'Pending'
 
 pipeline {
@@ -39,15 +38,8 @@ pipeline {
                 checkout scm
             }
         }
-
         stage('Pr_Build for echo-client and echo-server') {
-            when {
-                anyOf {
-                    branch 'PR-*'
-                    branch 'main'
-                }
-            }
-            agent { label 'pr_check_sdk_alif' }
+            agent { label 'zas15' }
             options { skipDefaultCheckout() }
             steps {
                 script {
@@ -56,7 +48,8 @@ pipeline {
                             sh '''#!/bin/bash -xe
                             pwd
                             env
-                            cd /root/alif/public/alif
+                            cd /root/alif/alif
+                            ls -la
                             git status
                             git clean -fd
                             git pull
@@ -68,16 +61,12 @@ pipeline {
                             fi
                             cd ..
                             west update
+                            cd /root/alif
+                            west build -p always -b alif_b1_dk_rtss_he_a5 zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
                             ls -la
-                            cd /root/alif/public/alif/scripts
-                            pip install -r requirements.txt
-                            cd /root/alif/public/zephyr/scripts
-                            pip install -r requirements.txt
-                            cd /root/alif/public
-                            west build -p always -b alif_b1_dk_rtss_he zephyr/samples/net/sockets/echo_client -- -DEXTRA_CONF_FILE=overlay-ot.conf
-                            cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
-                            cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
-                            mv /root/alif/public/build $WORKSPACE
+                            cp /root/alif/build/zephyr/zephyr.bin $WORKSPACE
+                            cp /root/alif/alif/automation/B1-test-app.json $WORKSPACE
+                            mv /root/alif/build $WORKSPACE
                             cd $WORKSPACE
                             tar -cvf build_client.tar build/
                             rm -fr build/
@@ -96,11 +85,11 @@ pipeline {
                         catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                             try {
                                 sh '''#!/bin/bash -xe
-                                cd /root/alif/public
-                                west build -p always -b alif_b1_dk_rtss_he zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
-                                cp /root/alif/public/build/zephyr/zephyr.bin $WORKSPACE
-                                cp /root/alif/public/alif/automation/B1-test-app.json $WORKSPACE
-                                mv /root/alif/public/build $WORKSPACE
+                                cd /root/alif
+                                west build -p always -b alif_b1_dk_rtss_he_a5 zephyr/samples/net/sockets/echo_server -- -DEXTRA_CONF_FILE=overlay-ot.conf
+                                cp /root/alif/build/zephyr/zephyr.bin $WORKSPACE
+                                cp /root/alif/alif/automation/B1-test-app.json $WORKSPACE
+                                mv /root/alif/build $WORKSPACE
                                 cd $WORKSPACE
                                 tar -cvf build_server.tar build/
                                 pwd
@@ -123,7 +112,6 @@ pipeline {
                 }
             }
         }
-
         stage('Flash the board for echo_client') {
             agent { label 'lasse' }
             steps {
@@ -139,9 +127,11 @@ pipeline {
                             cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                             pushd $ALIF_SETOOLS_LOCATION
                             sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                            ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                            ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
-                            ./app-write-mram -p
+                            ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT1
+                            sleep 2
+                            ./app-write-mram -p -nr
                             popd
                             """
                             Flash_board_echo_client = 'Pass'
@@ -153,7 +143,6 @@ pipeline {
                 }
             }
         }
-
         stage('Flash the board for echo_server') {
             agent { label 'lasse' }
             steps {
@@ -169,12 +158,14 @@ pipeline {
                             cp B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                             pushd $ALIF_SETOOLS_LOCATION
                             sed -e 's/ttyUSB0/ttyAlifSEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                            ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                            ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
-                            ./app-write-mram -p
+                            ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT2
+                            sleep 2
+                            ./app-write-mram -p -nr
                             popd
                             """
-                            reset_board()
+
                             Flash_board_echo_server = 'Pass'
                         } catch (Exception e) {
                             Flash_board_echo_server = 'Fail'
@@ -187,13 +178,7 @@ pipeline {
         stage('Pr_Build For Parallel') {
             parallel {
                 stage('Pr_Build Broadcast sink') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -218,7 +203,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_audio/broadcast_sink
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_audio/broadcast_sink
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -240,15 +225,8 @@ pipeline {
                         }
                     }
                 }
-
                 stage('Pr_Build Broadcast source') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -273,7 +251,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_audio/broadcast_source
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_audio/broadcast_source
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -296,13 +274,7 @@ pipeline {
                     }
                 }
                 stage('Pr_unicast sink') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -327,7 +299,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_audio/unicast_sink
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_audio/unicast_sink
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -350,13 +322,7 @@ pipeline {
                     }
                 }
                 stage('Pr_unicast source') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -381,7 +347,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_audio/unicast_source
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_audio/unicast_source
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -404,13 +370,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble beacon sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -435,7 +395,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -458,13 +418,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble battery sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -489,7 +443,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_batt
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_batt
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -512,13 +466,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble blinky sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -543,7 +491,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_blinky
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_blinky
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -566,13 +514,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble blood pressure sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -597,7 +539,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_blps
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_blps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -620,13 +562,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble continuous glucose monitor sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -651,7 +587,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_cgms
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_cgms
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -674,13 +610,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble Cygling Power Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -705,7 +635,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_cpps
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_cpps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -728,13 +658,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble Cygling_Speed_and_Cadence_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -759,7 +683,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_cscps
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_cscps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -782,13 +706,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Ble Glucose_Profile_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -813,7 +731,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_glps
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_glps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -836,13 +754,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Hello_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -867,7 +779,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_hello
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_hello
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -890,13 +802,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Heart_Rate_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -922,7 +828,7 @@ pipeline {
                                     cd /root/alif/alif/
                                     ls -la
                                     rm -rf build
-                                    west build --pristine=always -d build -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_hr
+                                    west build --pristine=always -d build -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_hr
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -945,13 +851,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Health_Thermometer_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -977,7 +877,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_htpt
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_htpt
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1000,13 +900,7 @@ pipeline {
                     }
                 }
                 stage('Pr_le_periph_past') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1032,7 +926,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_past
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_past
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1055,13 +949,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Pulse_Oximeter_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1086,7 +974,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_plxp
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_plxp
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1109,13 +997,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Power_Management_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1140,7 +1022,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_pm
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_pm
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1163,13 +1045,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Proximity_Profile_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1194,7 +1070,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_prxp
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_prxp
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1217,13 +1093,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Running_Speed_And_Cadence_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1248,7 +1118,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_rscps
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_rscps
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1271,13 +1141,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Weight_Scale_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1302,7 +1166,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_periph_ws
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_periph_ws
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1325,13 +1189,7 @@ pipeline {
                     }
                 }
                 stage('Pr_Throughput') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1356,7 +1214,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/le_throughput
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/le_throughput
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1378,68 +1236,8 @@ pipeline {
                         }
                     }
                 }
-                stage('Pr_Mesh_Light_Bulb_Sample') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                                try{
-                                    sh '''#!/bin/bash -xe
-                                    pwd
-                                    cd /root/alif
-                                    west forall -c "git clean -fdx"
-                                    cd /root/alif/alif/
-                                    git status
-                                    if [[ -v CHANGE_ID ]]; then
-                                        git branch -D pr-${CHANGE_ID} || true
-                                        git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
-                                        git checkout pr-${CHANGE_ID}
-                                    else
-                                        git fetch origin -pu
-                                        git checkout main
-                                        git reset --hard origin/main
-                                    fi
-                                    cd ..
-                                    west update
-                                    cd /root/alif/alif/
-                                    ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/mesh_light_bulb
-                                    cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
-                                    mv /root/alif/alif/build $WORKSPACE
-                                    cd $WORKSPACE
-                                    tar -cvf Build_SW_Mesh_Light_Bulb_Sample.tar build/
-                                    pwd
-                                    '''
-                                    stash name: 'Build_SW_Mesh_Light_Bulb_Sample.bin', includes: 'zephyr.bin'
-                                    Build_SW_Mesh_Light_Bulb_Sample = 'Pass'
-                                } catch (Exception e) {
-                                    Build_SW_Mesh_Light_Bulb_Sample = 'Fail'
-                                    error('Build failed')
-                                }
-                            }
-                        }
-                    }
-                    post {
-                        always {
-                            archiveArtifacts artifacts: 'Build_SW_Mesh_Light_Bulb_Sample.tar', fingerprint: true
-                        }
-                    }
-                }
                 stage('Pr_SMP_Service') {
-                    when {
-                        anyOf {
-                            branch 'PR-*'
-                            branch 'main'
-                        }
-                    }
-                    agent { label 'zephyr_alif_sdk_ble' }
+                    agent { label 'zas15' }
                     options { skipDefaultCheckout() }
                     steps {
                         script {
@@ -1464,7 +1262,7 @@ pipeline {
                                     west update
                                     cd /root/alif/alif/
                                     ls -la
-                                    west build -p always -b alif_b1_dk_rtss_he samples/bluetooth/smp_svr
+                                    west build -p always -b alif_b1_dk_rtss_he_a5 samples/bluetooth/smp_svr
                                     cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
                                     mv /root/alif/alif/build $WORKSPACE
                                     cd $WORKSPACE
@@ -1488,15 +1286,8 @@ pipeline {
                 }
             }
         }
-
         stage('Pr_Build for test-app') {
-            when {
-                anyOf {
-                    branch 'PR-*'
-                    branch 'main'
-                }
-            }
-            agent { label 'zephyr_alif_sdk_ble' }
+            agent { label 'zas15' }
             options { skipDefaultCheckout() }
             steps {
                 script {
@@ -1504,9 +1295,9 @@ pipeline {
                         try{
                             sh '''#!/bin/bash -xe
                             pwd
-                            cd /root/alif
+                            cd /root/alif/alif
                             west forall -c "git clean -fdx"
-                            cd /root/alif/sdk-alif/
+                            cd /root/alif/alif/
                             git status
                             if [[ -v CHANGE_ID ]]; then
                                 git branch -D pr-${CHANGE_ID} || true
@@ -1519,11 +1310,11 @@ pipeline {
                             fi
                             cd ..
                             west update
-                            cd /root/alif/sdk-alif/
+                            cd /root/alif/alif/
                             ls -la
-                            west build -p always -b alif_b1_dk_rtss_he applications/testapp
-                            cp /root/alif/sdk-alif/build/zephyr/zephyr.bin $WORKSPACE
-                            mv /root/alif/sdk-alif/build $WORKSPACE
+                            west build -p always -b alif_b1_dk_rtss_he_a5 applications/testapp
+                            cp /root/alif/alif/build/zephyr/zephyr.bin $WORKSPACE
+                            mv /root/alif/alif/build $WORKSPACE
                             cd $WORKSPACE
                             tar -cvf test_app_build.tar build/
                             pwd
@@ -1543,72 +1334,70 @@ pipeline {
                 }
             }
         }
-
         stage('Flash and run Smoke test') {
-            agent { label 'lasse' }
-            steps {
-                script {
-                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                        try {
-                            unstash 'zephyr.bin'
-                            checkout changelog: false, poll: false, scm: scmGit(branches: [[name: '*/main']],
-                                extensions: [submodule(parentCredentials: true, reference: '')],
-                                userRemoteConfigs: [[credentialsId: '533fc6b7-f0f5-4514-9629-1c55a011e1d3',
-                                    url: 'git@github.com:AlifSemiDev/jenkins_automation.git']])
-                            sh """#!/bin/bash -xe
-                                ls -lart
+                agent { label 'lasse' }
+                steps {
+                    script {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                            try{
+                                unstash name: 'zephyr.bin'
+                                sh """#!/bin/bash -xe
                                 rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
                                 cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
-                                cp ble_automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
+                                cp automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
                                 pushd $ALIF_SETOOLS_LOCATION
-                                sed -e 's/ttyUSB0/ttyAlifSEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                                ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
+                                sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                                 ./app-gen-toc --filename build/config/B1-test-app.json
-                                ./app-write-mram -p
-                                sed -e 's/ttyUSB0/ttyAlifSEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
-                                ./tools-config -p "B1 (AB1C1F4M51820PH) - 1.8 MRAM / 2.0 SRAM" -r "A0"
-                                ./app-gen-toc --filename build/config/B1-test-app.json
-                                ./app-write-mram -p
+                                ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT1
+                                sleep 2
+                                ./app-write-mram -p -nr
+                                sed -e 's/ttyUSB0/$SEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                #./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
+                                ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT2
+                                sleep 2
+                                ./app-write-mram -p -nr
+                                pwd
                                 popd
                                 """
-                            reset_boards()
-                            Flash_board = 'Pass'
-                        } catch (Exception e) {
-                            Flash_board = 'Fail'
-                            error('Flash_board failed')
-                        }
-                    }
-                    if (Flash_board == 'Pass') {
-                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                            try {
-                                sh """
-                                #!/bin/bash -xe
-                                pwd
-                                cd pytest
-                                python3 -m venv venv
-                                . venv/bin/activate
-                                pip install -r requirements.txt
-                                sed -e 's/ttyACM0/ttyAlifHEDUT1/g' -e 's/ttyACM1/ttyAlifHEDUT2/g' pytest_ini.template > pytest.ini
-                                pytest tests --tb=no -s --root-logdir=pytest-logs
-                                """
-                                smoke_tests = 'Pass'
+                                Flash_board = 'Pass'
                             } catch (Exception e) {
-                                smoke_tests = 'Fail'
-                                error('Smoke_tests failed')
+                                Flash_board = 'Fail'
+                                error('Flash_board failed')
                             }
                         }
+                        if ( Flash_board == 'Pass')
+                            {
+                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                try{
+                                    unstash name: 'zephyr.bin'
+
+                                    sh """#!/bin/bash -xe
+                                    pwd
+                                    cd automation/pytest
+                                    python3 -m venv venv
+                                    . venv/bin/activate
+                                    pip install -r requirements.txt
+                                    sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
+                                    pytest tests --tb=no -s --root-logdir=pytest-logs
+                                    """
+                                  smoke_tests = 'Pass'
+                                } catch (Exception e) {
+                                smoke_tests = 'Fail'
+                                error('Smoke_tests failed')
+                                }
+                            }
+
+                        }
+
+                    }
+                }
+                post {
+                    always {
+                        archiveArtifacts artifacts: 'automation/pytest/pytest-logs/**', fingerprint: true
                     }
                 }
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'pytest/pytest-logs/**', fingerprint: true
-                    cleanWs(cleanWhenNotBuilt: false, deleteDirs:true,
-                            disableDeferredWipeout: true, notFailBuild: true)
-                }
-            }
-        }
-
         stage('Summary') {
             steps {
                 script {
@@ -1640,7 +1429,6 @@ pipeline {
                     Build_SW_Pulse_Oximeter_Sample = ${Build_SW_Pulse_Oximeter_Sample}
                     Build_SW_Proximity_Profile_Sample = ${Build_SW_Proximity_Profile_Sample}
                     Build_SW_Weight_Scale_Sample = ${Build_SW_Weight_Scale_Sample}
-                    Build_SW_Mesh_Light_Bulb_Sample = ${Build_SW_Mesh_Light_Bulb_Sample}
                     Build_SW_SMP_Service       = ${Build_SW_SMP_Service}
                     Build_SW_Power_management_sample = ${Build_SW_Power_management_sample}
                     Build_SW_Running_Speed_And_Cadence_Sample = ${Build_SW_Running_Speed_And_Cadence_Sample}
@@ -1651,7 +1439,7 @@ pipeline {
                     if ([Build_SW_Echo_Client, Build_SW_Echo_Server, Flash_board_echo_client, Flash_board_echo_server, Build_SW, Flash_board, smoke_tests, Build_SW_Broadcast_sink, Build_SW_Broadcast_source, Build_SW_Unicast_sink,
                     Build_SW_unicast_source, Build_SW_Ble_beacon_sample, Build_SW_Ble_battery_sample, Build_SW_Ble_blinky_sample, Build_SW_Ble_blood_pressure_sample, Build_SW_Ble_continuos_glucose_monitor_sample, Build_SW_Ble_Cygling_Power_Sample, Build_SW_Cygling_Speed_and_Cadence_Sample,
                     Build_SW_Build_Glucose_Profile_Sample, Build_SW_Hello_Sample, Build_SW_Heart_Rate_Sample, Build_SW_Health_Thermometer_Sample, Build_SW_le_periph_past, Build_SW_Pulse_Oximeter_Sample, Build_SW_Proximity_Profile_Sample,
-                    Build_SW_Weight_Scale_Sample, Build_SW_Mesh_Light_Bulb_Sample, Build_SW_SMP_Service, Build_SW_Power_management_sample, Build_SW_Running_Speed_And_Cadence_Sample, Build_SW_Ble_Throughtput].contains('Fail')) {
+                    Build_SW_Weight_Scale_Sample, Build_SW_SMP_Service, Build_SW_Power_management_sample, Build_SW_Running_Speed_And_Cadence_Sample, Build_SW_Ble_Throughtput].contains('Fail')) {
                         currentBuild.result = 'FAILURE'
                         error("One or more stages failed.")
                     }
@@ -1669,58 +1457,3 @@ pipeline {
         }
     }
 }
-def reset_board() {
-    def maxRetries = 10
-    def success = false
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        println " Attempt #${attempt} to reset board"
-
-        sh """#!/bin/bash -x
-            ykushcmd ykushxs -s $YKUSHDUT1 -d
-            ykushcmd ykushxs -s $YKUSHDUT2 -d
-            sleep 10
-            ykushcmd ykushxs -s $YKUSHDUT1 -u
-            ykushcmd ykushxs -s $YKUSHDUT2 -u
-            sleep 5
-        """
-        def checkStatus = sh(script: 'python3 $WORKSPACE/automation/check_uart_output.py', returnStatus: true)
-        if (checkStatus == 0) {
-            success = true
-            break
-        } else {
-            println ' Retrying...'
-        }
-    }
-    if (!success) {
-        error " board did not respond after ${maxRetries} attempts!"
-    }
-}
-def reset_boards() {
-    def maxRetries = 10
-    def success = false
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-        println " Attempt #${attempt} to reset board"
-
-        sh """#!/bin/bash -x
-            ykushcmd ykushxs -s $YKUSHDUT1 -d
-            ykushcmd ykushxs -s $YKUSHDUT2 -d
-            sleep 10
-            ykushcmd ykushxs -s $YKUSHDUT1 -u
-            ykushcmd ykushxs -s $YKUSHDUT2 -u
-            sleep 5
-        """
-        def checkStatus = sh(script: 'python3 ble_automation/check_uart_output.py', returnStatus: true)
-        if (checkStatus == 0) {
-            success = true
-            break
-        } else {
-            println ' Retrying...'
-        }
-    }
-    if (!success) {
-        error " board did not respond after ${maxRetries} attempts!"
-    }
-}
-
