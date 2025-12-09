@@ -15,6 +15,7 @@
 #include <zephyr/logging/log.h>
 
 #include <zephyr/device.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/init.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
@@ -56,8 +57,24 @@ int n __attribute__((noinit));
 #define ADV_INT_MAX_SLOTS                1000
 #define CONN_INT_MIN_SLOTS               800
 #define CONN_INT_MAX_SLOTS               800
-#define RTC_WAKEUP_INTERVAL_MS           20000
-#define RTC_CONNECTED_WAKEUP_INTERVAL_MS 2150
+#define RTC_WAKEUP_INTERVAL_MS           CONFIG_SLEEP_TIME_DISCONNECTED
+#define RTC_CONNECTED_WAKEUP_INTERVAL_MS CONFIG_SLEEP_TIME_CONNECTED
+#endif
+
+#if CONFIG_LPGPIO_WAKEUP_ENABLED
+
+/* LPGPIO definitions */
+#define LPGPIO_NODE DT_NODELABEL(lpgpio)
+
+#if !DT_NODE_HAS_STATUS(LPGPIO_NODE, okay)
+#error "LPGPIO wakeup source enabled but LPGPIO node is not available"
+#endif
+
+static const struct gpio_dt_spec lpgpio_config = {
+	.port = DEVICE_DT_GET(LPGPIO_NODE),
+	.pin = CONFIG_LPGPIO_WAKEUP_SOURCE,
+	.dt_flags = GPIO_ACTIVE_HIGH,
+};
 #endif
 
 static uint8_t hello_arr[] = "HelloHello";
@@ -785,15 +802,89 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 	return status;
 }
 
+#if CONFIG_LPGPIO_WAKEUP_ENABLED
+
+#if CONFIG_LPGPIO_M55_IRQ_ENABLED
+static struct gpio_callback button_cb_data;
+
+static void button_callback(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	printk("btn!\r\n");
+}
+#endif
+
+/**
+ * Configure LPGPIO0 and LPGPIO1 as inputs with interrupts
+ */
+static int configure_lpgpio(void)
+{
+	int ret;
+	const struct gpio_dt_spec *spec = &lpgpio_config;
+
+	if (!spec || !spec->port) {
+		return 0;
+	}
+
+	/* Configure LPGPIO0 for wakeup */
+	if (!gpio_is_ready_dt(spec)) {
+		LOG_ERR("LPGPIO0 device is not ready");
+		return -ENODEV;
+	}
+
+	ret = gpio_pin_configure_dt(spec, GPIO_INPUT);
+	if (ret != 0) {
+		LOG_ERR("Failed to configure LPGPIO as input: %d", ret);
+		return ret;
+	}
+
+	ret = gpio_pin_interrupt_configure_dt(spec,
+#if CONFIG_LPGPIO_M55_IRQ_EDGE_RISING
+					      GPIO_INT_EDGE_RISING
+#elif CONFIG_LPGPIO_M55_IRQ_EDGE_FALLING
+					      GPIO_INT_EDGE_FALLING
+#elif CONFIG_LPGPIO_M55_IRQ_EDGE_BOTH
+					      GPIO_INT_EDGE_BOTH
+#else
+#error "Invalid GPIO IRQ edge configuration"
+#endif
+	);
+	if (ret != 0) {
+		LOG_ERR("Failed to configure LPGPIO interrupt: %d", ret);
+		return ret;
+	}
+
+#if CONFIG_LPGPIO_M55_IRQ_ENABLED
+	gpio_init_callback(&button_cb_data, button_callback, BIT(spec->pin));
+	ret = gpio_add_callback(spec->port, &button_cb_data);
+	if (ret != 0) {
+		LOG_ERR("Failed to add button callback: %d", ret);
+		return ret;
+	}
+#endif
+
+	LOG_DBG("LPGPIO%d configured", spec->pin);
+
+	return 0;
+}
+#else
+static inline int configure_lpgpio(void)
+{
+	return 0;
+}
+#endif
+
 int main(void)
 {
+	/* Block sleep */
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
+	const uint32_t wakeup_reason = power_mgr_get_wakeup_reason();
 	uint16_t ble_status;
 	int ret;
 
-	uint32_t wakeup_reason = power_mgr_get_wakeup_reason();
-
 	if (power_mgr_cold_boot()) {
-		printk("BLE Sleep demo\r\n");
+		printk("=== BLE Sleep Demo ===\r\n");
+		LOG_INF("Cold boot - initializing...");
 
 		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
 
@@ -801,12 +892,21 @@ int main(void)
 			LOG_ERR("off profile set ERROR: %d", ret);
 			return ret;
 		}
+	} else {
+		printk("\r\nwakeup! reason 0x%08X\r\n", wakeup_reason);
+	}
+
+	/* Configure LPGPIO pins */
+	ret = configure_lpgpio();
+	if (ret) {
+		LOG_ERR("Failed to configure LPGPIO: %d", ret);
+		return ret;
 	}
 
 	/* Start up bluetooth host stack. */
-	ble_status = alif_ble_enable(NULL);
+	ret = alif_ble_enable(NULL);
 
-	if (ble_status == 0) {
+	if (ret == 0) {
 		/* BLE initialized first time */
 		hello_arr_index = 0;
 		conn_count = 0;
@@ -825,9 +925,15 @@ int main(void)
 		LOG_DBG("Waiting for initial BLE init...");
 		k_sem_take(&init_sem, K_FOREVER);
 		LOG_INF("Init complete!");
+	} else if (ret == -EALREADY) {
+#if CONFIG_DISABLE_BLE_BEFORE_SLEEP
+		/* BLE was already initialized - just re-register callbacks */
+		LOG_WRN("alif_ble_enable already done");
+#endif
+	} else {
+		LOG_ERR("alif_ble_enable error %d", ret);
+		return ret;
 	}
-
-	LOG_DBG("RTC wc=%u", wakeup_reason);
 
 	if (wakeup_reason && conn_status == BT_CONN_STATE_CONNECTED) {
 		/* RTC wakeups when connection is active */
@@ -835,9 +941,9 @@ int main(void)
 
 		conn_count++;
 		if (conn_count == 2) {
-			uint16_t ret = gapc_le_update_params(
-				conn_idx, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
-			LOG_INF("Update connection ret:%d", ret);
+			ble_status = gapc_le_update_params(conn_idx, 0, &preferred_connection_param,
+							   on_gapc_proc_cmp_cb);
+			LOG_INF("Update connection ret:%d", ble_status);
 		}
 		while ((env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
 			/* Subscription is active */
@@ -849,10 +955,10 @@ int main(void)
 			k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
 			conn_count++;
 			if (conn_count == 2) {
-				uint16_t ret = gapc_le_update_params(conn_idx, 0,
-								     &preferred_connection_param,
-								     on_gapc_proc_cmp_cb);
-				LOG_INF("Update connection ret:%d", ret);
+				ble_status = gapc_le_update_params(conn_idx, 0,
+								   &preferred_connection_param,
+								   on_gapc_proc_cmp_cb);
+				LOG_INF("Update connection ret:%d", ble_status);
 			}
 		}
 	}
@@ -860,22 +966,61 @@ int main(void)
 	if (IS_ENABLED(CONFIG_SLEEP_ENABLED)) {
 		power_mgr_ready_for_sleep();
 	}
-	while (1) {
 
+	while (1) {
 		if (conn_status == BT_CONN_STATE_CONNECTED) {
+			/* Allow sleep */
+			pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
 			k_sleep(K_MSEC(RTC_CONNECTED_WAKEUP_INTERVAL_MS));
 			conn_count++;
 			if (conn_count == 2) {
-				uint16_t ret = gapc_le_update_params(conn_idx, 0,
-								     &preferred_connection_param,
-								     on_gapc_proc_cmp_cb);
-				LOG_INF("Update connection ret:%d", ret);
+				ble_status = gapc_le_update_params(conn_idx, 0,
+								   &preferred_connection_param,
+								   on_gapc_proc_cmp_cb);
+				LOG_INF("Update connection ret:%d", ble_status);
 			}
 			/* Update text at 2.15 second periods */
 			service_notification_send(UINT32_MAX);
 		} else {
+#if CONFIG_WAIT_BEFORE_SLEEP_SECONDS
+			if (wakeup_reason) {
+				printk("waiting ");
+				for (int i = 0; i < CONFIG_WAIT_BEFORE_SLEEP_SECONDS; i++) {
+					k_sleep(K_MSEC(1000));
+					if (conn_status == BT_CONN_STATE_CONNECTED) {
+						/* Go back to top of while(1) to trigger proper
+						 * sleep action
+						 */
+						continue;
+					}
+					printk(".");
+				}
+			}
+
+			printk(" goto sleep");
+#if CONFIG_DISABLE_BLE_BEFORE_SLEEP
+			ret = alif_ble_disable();
+			if (ret) {
+				LOG_ERR("alif_ble_disable error %d", ret);
+				return ret;
+			}
+			printk(" [ble dis]");
+#endif
+			printk("\r\n");
+			k_sleep(K_MSEC(100));
+#endif
+
+			/* Allow sleep */
+			pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+#if !RTC_WAKEUP_INTERVAL_MS
+			counter_stop(DEVICE_DT_GET(DT_CHOSEN(zephyr_cortex_m_idle_timer)));
+			k_sleep(K_FOREVER);
+#else
 			k_sleep(K_MSEC(RTC_WAKEUP_INTERVAL_MS));
+#endif
 		}
 	}
+
 	return 0;
 }

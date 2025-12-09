@@ -21,6 +21,7 @@
 &uart2 {
 	clock-frequency = < 38400000 >;
 };
+
 / {
 	chosen {
 		zephyr,cortex-m-idle-timer = &rtc0;
