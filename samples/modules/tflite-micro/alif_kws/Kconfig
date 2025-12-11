@@ -47,28 +47,28 @@ config RESULTS_MEMORY
 	int "Number of inference results to keep in memory"
 	default 8
 
-config I2S_CHANNELS
-	int "Number of I2S channels"
+config AUDIO_CHANNELS
+	int "Number of input audio channels"
 	default 2
 
-config I2S_SAMPLES
+config SAMPLE_CNT
 	int "Number of samples per slab buffer"
 	default 400
 
-config I2S_NUM_BUFFERS
-	int "Number of I2S slab buffers to allocate"
+config NUM_BUFFERS
+	int "Number of slab buffers to allocate"
 	default 4
 
 config I2S_GAIN
 	int "Fixed linear again applied to I2S samples (e.g 10 = 20dB gain)"
 	default 10
 
-config I2S_THREAD_STACK_SIZE
-	int "Stack size of I2S audio thread"
+config THREAD_STACK_SIZE
+	int "Stack size of audio thread"
 	default 1024
 
-config I2S_THREAD_PRIORITY
-	int "Priority of I2S audio thread"
+config THREAD_PRIORITY
+	int "Priority of audio thread"
 	default 0
 
 source "Kconfig.zephyr"
