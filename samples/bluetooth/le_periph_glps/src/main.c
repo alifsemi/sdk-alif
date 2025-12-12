@@ -535,7 +535,7 @@ static uint16_t create_advertising(void)
 	return err;
 }
 
-/* Add heart rate profile to the stack */
+/* Add glucose profile to the stack */
 static void server_configure(void)
 {
 	uint16_t err;
