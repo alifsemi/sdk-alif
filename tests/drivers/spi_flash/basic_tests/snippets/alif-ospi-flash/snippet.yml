@@ -1,0 +1,28 @@
+#Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+#
+#Use, distribution and modification of this code is permitted under the
+#
+#terms stated in the Alif Semiconductor Software License Agreement
+#
+#You should have received a copy of the Alif Semiconductor Software
+#
+#License Agreement with this file. If not, please write to:
+#
+#contact@alifsemi.com, or visit: https://alifsemi.com/license
+#
+
+name: alif-ospi-flash
+
+boards:
+   /alif_b1.*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_balletto_dk_rtss_he.overlay
+
+   /alif_e1c.*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_ensemble_e1c_dk_rtss_he.overlay
+
+   /(alif_e3|alif_e4|alif_e7|alif_e8).*/.*/*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_ensemble_dk_rtss.overlay
+
