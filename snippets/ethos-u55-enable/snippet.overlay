@@ -1,0 +1,45 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Ethos-U55 NPU Enable Overlay
+ *
+ * This overlay enables the Ethos-U55 NPU (ethosu0) for all boards.
+ *
+ * Applicable to ALL Boards:
+ *   - B1 (alif_b1_dk)      - U55 only
+ *   - E1C (alif_e1c_dk)    - U55 only
+ *   - E3 (alif_e3_dk)      - U55 only
+ *   - E4 (alif_e4_dk)      - U55 + U85
+ *   - E7 (alif_e7_dk)      - U55 only
+ *   - E8 (alif_e8_dk)      - U55 + U85
+ *
+ * Note: All boards have ethosu0 (U55). E4, E8 additionally have ethosu1 (U85).
+ *
+ * Usage:
+ *   west build -b alif_e8_dk/<variant>/<core> <app_path> -S ethos-u55-enable
+ *
+ * Build-time Safety Check:
+ *   If this overlay is applied to a board without U55 support,
+ *   the build will fail with an error message indicating that ethosu0 node
+ *   does not exist on this board.
+ */
+
+/ {
+	/* Compile-time assertion: ethosu0 must exist */
+	ethosu_u55_check {
+		compatible = "vnd,ethosu-u55-check";
+		ethosu-node = <&ethosu0>;
+	};
+};
+
+&ethosu0 {
+	status = "okay";
+};
