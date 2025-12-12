@@ -1,0 +1,8 @@
+
+&timer0 {
+	status = "disabled";
+};
+&rtc0 {
+	status = "okay";
+	wrap-enable;
+};
