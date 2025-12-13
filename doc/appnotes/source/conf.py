@@ -1,148 +1,89 @@
-# -*- coding: utf-8 -*-
-#
-# Configuration file for the Sphinx documentation builder.
-#
-
 import os
 import sys
 from pathlib import Path
-import re
 import shutil
 
-# Path setup
-ZEPHYR_BASE = Path(__file__).resolve().parents[2]
-ZEPHYR_BUILD = Path(os.environ.get("OUTPUT_DIR", "_build")).resolve()
+# -- Path setup --------------------------------------------------------------
+# If extensions (or modules to document with autodoc) are in another directory,
+# add these directories to sys.path here. If the directory is relative to the
+# documentation root, use Path(__file__).resolve().parent.joinpath('relative_path').
 
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_extensions"))
-sys.path.insert(0, str(ZEPHYR_BASE / "doc" / "_scripts"))
-sys.path.insert(0, str(ZEPHYR_BASE / "scripts" / "west_commands"))
+# -- Project information -----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-# Version info
-version = "2.0"
-release = "2.0"
-if (ZEPHYR_BASE / "VERSION").exists():
-    with open(ZEPHYR_BASE / "VERSION", "r") as file:
-        content = file.read()
-        major_match = re.search(r"VERSION_MAJOR\s*=\s*(\d+)", content)
-        minor_match = re.search(r"VERSION_MINOR\s*=\s*(\d+)", content)
-        patch_match = re.search(r"PATCHLEVEL\s*=\s*(\d+)", content)
-        if major_match and minor_match:
-            major, minor = major_match.group(1), minor_match.group(1)
-            version = f"{major}.{minor}"
-            release = f"{major}.{minor}.{patch_match.group(1)}" if patch_match else version
+project = 'Application Notes for Zephyr Alif SDK'
+copyright = '2024-2025, Alif Semiconductor'
+author = 'Alif Semiconductor'
+release = '2.1.0'
 
-# Project info
-project = "Zephyr Alif SDK Application Notes"
-copyright = "2024-2025, Alif Semiconductor"
-author = " "
+# -- General configuration ---------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-# Extensions
 extensions = [
     'sphinx_copybutton',
     'sphinx.ext.todo',
-    'sphinx.ext.extlinks',
     'sphinx.ext.autodoc',
-    'sphinx.ext.graphviz',
+    'sphinx.ext.viewcode',
     'sphinx_rtd_theme',
-    'sphinx.ext.imgconverter',
-    'sphinx_tabs.tabs',
-    'sphinx.ext.autosectionlabel',
 ]
 
 templates_path = ['_templates']
 exclude_patterns = []
 
-# HTML theme settings
+rst_epilog = """
+.. include:: /links.txt
+.. |release| replace:: {release}
+""".format(release=release)
+
+# -- Options for HTML output -------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 html_logo = "_static/logo.png"
 html_favicon = "_static/favicon.png"
-
 html_theme_options = {
     "logo_only": True,
-    "collapse_navigation": True,       # ✅ Collapse other sections when one is opened
-    "navigation_depth": 4,             # ✅ Keep deep nesting
-    "titles_only": False,
-    "prev_next_buttons_location": None,
-    "style_nav_header_background": "#2980b9",
+    "navigation_depth": 4,
+    "collapse_navigation": False,
+    "sticky_navigation": True,
 }
-
-html_title = f"Zephyr Alif SDK Appnotes - v{release}"
+html_title = f"Application Notes for Zephyr Alif SDK - v{release}"
 html_last_updated_fmt = "%b %d, %Y"
 html_show_sphinx = False
-html_additional_pages = {"search": "search.html"}
 
-html_context = {
-    "current_version": release,
-    "versions": [("latest", "/"), (release, f"/{release}/")],
-}
+# -- Options for LaTeX output ------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-latex-output
 
-# Autosectionlabel settings
-autosectionlabel_prefix_document = True
-autosectionlabel_maxdepth = 2
-
-# Substitution for version in RST files
-rst_epilog = f"""
-.. include:: /links.txt
-.. |version| replace:: {version}
-.. |release| replace:: {release}
-"""
-
-# LaTeX settings (unchanged)
 latex_elements = {
     'papersize': 'a4paper',
     'extraclassoptions': 'openany,oneside',
+    'pointsize': '11pt',
     'preamble': r'''
-        \usepackage{graphicx}
-        \usepackage{charter}
-        \usepackage[defaultsans]{lato}
-        \usepackage[T1]{fontenc}
-        \usepackage{inconsolata}
-        \usepackage{hyperref}
         \usepackage{float}
-        \usepackage{titlesec}
-        \titlespacing*{\section}{0pt}{*0}{*0}
-        \titlespacing*{\subsection}{0pt}{*0}{*0}
-        \setlength{\parskip}{0pt}
-        \setlength{\parindent}{0pt}
-        \usepackage{multicol}
-        \usepackage{eso-pic}
-        \usepackage{tikz}
-        \usepackage{geometry}
-        \geometry{a4paper,left=20mm,top=20mm,right=20mm,bottom=20mm}
-        \usepackage{etoolbox}
-        \pretocmd{\tableofcontents}{\clearpage}{}{}
-        \AddToShipoutPictureFG*{\AtPageUpperLeft{\hspace*{0.1\textwidth}\vspace*{0.1\textheight}\includegraphics[width=2cm]{_static/logo.png}}}
-        \addto\captionsenglish{\renewcommand{\contentsname}{Table of Contents}}
-        \usepackage{textcomp}
-        \DeclareUnicodeCharacter{03BC}{\textmu}
-        \DeclareUnicodeCharacter{2212}{-}
-        \usepackage{url}
-        \usepackage{seqsplit}
-        \floatplacement{figure}{H}
-        \hyphenation{Unencrypted Encrypted}
-        \makeatletter
-        \def\FV@ObeyVerbFont{\ifx\FancyVerbFont\FV@Inconsolata\fontshape{n}\selectfont\else\FancyVerbFont\fi}
-        \makeatother
-        \usepackage{longtable}
-        \usepackage{needspace}
+        \usepackage{graphicx}
+        \input{_static/latex/alif_semiconductor.sty}
     ''',
+    'figure_align': 'H',  # Force figures to appear exactly where placed
 }
 
-latex_documents = [('index', 'Alif_SDK_Appnotes.tex', project, author, 'manual')]
-latex_logo = "_static/logo.png"
-latex_show_pagerefs = True
-latex_show_urls = 'footnote'
-latex_appendices = []
-latex_domain_indices = False
-latex_theme = 'manual'
+latex_table_style = ['booktabs', 'colorrows']
 
-numfig = True
-numfig_format = {'figure': 'Figure %s', 'table': 'Table %s', 'code-block': 'Listing %s'}
+latex_use_latex_multicolumn = False
+
+latex_documents = [
+    ('index', 'Appnotes.tex', 'Application Notes for Zephyr Alif SDK',
+     'Alif Semiconductor', 'manual', False),
+]
+
+latex_logo = "_static/logo.png"
+latex_show_urls = 'footnote'
+latex_domain_indices = False
+
+# -- Custom setup ------------------------------------------------------------
 
 def setup(app):
     app.add_css_file("css/custom.css")
-    app.add_js_file("js/custom.js")
     def copy_static_files(app, exception):
         if not exception:
             static_dir = Path(app.builder.srcdir) / '_static'

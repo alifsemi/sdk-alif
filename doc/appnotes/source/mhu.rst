@@ -18,6 +18,7 @@ It enables interrupt-based communication between these processing entities.
 
 .. include:: prerequisites.rst
 
+.. include:: note.rst
 
 Building MHU Application in Zephyr
 ========================================
@@ -118,5 +119,4 @@ The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU 
 .. note::
    The logs above show successful message exchange between RTSS-HP and RTSS-HE cores through the MHU interface on the Alif E7 DevKit.
 
-.. include:: west_debug.rst
 

@@ -11,6 +11,8 @@ This application note describes how to build and execute a "HelloWorld" applicat
 
 .. include:: prerequisites.rst
 
+.. include:: note.rst
+
 Execution Path
 ==============
 
@@ -136,8 +138,8 @@ Use the appropriate configuration file to program the Application Table of Conte
 - **RTSS-HP (Encrypted)**: ``/home/$USER/app-release-exec-linux/build/config/zephyr_e7_rtsshp_ospi1_en_helloworld.json``
 - **RTSS-HE (Encrypted)**: ``/home/$USER/app-release-exec-linux/build/config/zephyr_e7_rtsshe_ospi1_en_helloworld.json``
 
-Sample Output
-=============
+Console Output
+================
 
 Below is the expected console output for RTSS-HP and RTSS-HE:
 
@@ -145,7 +147,6 @@ Below is the expected console output for RTSS-HP and RTSS-HE:
 
 .. code-block:: text
 
-   *** Booting Zephyr OS build zas-v1.2-30-g25c1cf9151af ***
    Hello! I'm your echo bot.
    Tell me something and press enter:
 
@@ -153,7 +154,6 @@ Below is the expected console output for RTSS-HP and RTSS-HE:
 
 .. code-block:: text
 
-   *** Booting Zephyr OS build zas-v1.2-30-g25c1cf9151af ***
    Hello World! alif_e7_dk/ae722f80f55d5xx/rtss_he
 
 Observation
