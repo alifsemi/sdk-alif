@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -10,7 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
-#include <zephyr/drivers/comparator/alif_cmp.h>
+#include <zephyr/drivers/comparator.h>
 #include <zephyr/drivers/gpio.h>
 #include <stdint.h>
 #include <zephyr/logging/log.h>
@@ -21,11 +21,12 @@ LOG_MODULE_REGISTER(ALIF_CMP);
 /* Marcos for call back */
 volatile uint8_t call_back_event;
 volatile uint8_t cmp_status;
+uint8_t value;
 
-void cmp_callback(const struct device *dev, uint8_t status)
+void cmp_callback(const struct device *dev, void *status)
 {
 	call_back_event = 1;
-	cmp_status = status;
+	cmp_status = *(uint8_t *)status;
 }
 
 int main(void)
@@ -58,18 +59,9 @@ int main(void)
 		return -1;
 	}
 
-	struct cmp_params cmp_para = {
-		.filter_taps = 5,
-		.prescalar = 8,
-		.polarity = 0,
-		.callback = cmp_callback,
-	};
+	comparator_set_trigger_callback(cmp_dev, cmp_callback, &value);
 
-	cmp_configure(cmp_dev, &cmp_para);
-
-	LOG_INF("start comparing");
-
-	cmp_start_compare(cmp_dev);
+	comparator_set_trigger(cmp_dev, COMPARATOR_TRIGGER_BOTH_EDGES);
 
 	while (loop--) {
 
@@ -86,6 +78,8 @@ int main(void)
 		call_back_event = 0;
 
 		if (cmp) {
+
+			cmp_status = comparator_get_output(cmp_dev);
 
 			/* Introducing a delay to stabilize input
 			 * voltage for comparator measurement

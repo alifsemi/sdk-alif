@@ -13,6 +13,13 @@ Building and Running
 
 The application will build only for a target that has a devicetree entry with
 :dt:`alif,cmp` as a compatible.
+In this example below the :ref:`alif_e7_dk/ae722f80f55d5xx/rtss_he` board is used.
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/cmp
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :gen-args: -S alif-cmp
 
 .. note::
 
@@ -25,8 +32,12 @@ Supported Tagets for cmp and lpcmp
 **********************************
 * alif_e3_dk_rtss_hp
 * alif_e3_dk_rtss_he
-* alif_e7_dk_rtss_hp
+* alif_e4_dk_rtss_hp
+* alif_e4_dk_rtss_he
 * alif_e7_dk_rtss_he
+* alif_e7_dk_rtss_he
+* alif_e8_dk_rtss_hp
+* alif_e8_dk_rtss_hp
 * alif_e1c_dk_rtss_he
 * alif_b1_dk_rtss_he
 
