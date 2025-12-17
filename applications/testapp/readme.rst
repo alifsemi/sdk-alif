@@ -15,14 +15,14 @@ Requirements
 
 Optinally can also be used with Alif Ensemble Development Kit without BLE/15.4 connectivity
 
-Automatically starting the Openthread
+Automatically starting the OpenThread
 *************************************
 
-Enable automatic start of the openthread stack
+Enable automatic start of the OpenThread stack
 
 .. code-block:: console
 
-   west build -p always -b alif_b1_dk_rtss_he alif/applications/testapp -- -DCONFIG_OPENTHREAD_MANUAL_START=n
+   west build alif/applications/testapp -- -DCONFIG_OPENTHREAD_MANUAL_START=n
 
 Including the EthosU shell commands
 ***********************************
@@ -38,12 +38,12 @@ Build the application use the following commands:
 
 .. code-block:: console
 
-   west build -p always -b alif_b1_dk_rtss_he alif/applications/testapp -- -DEXTRA_CONF_FILE=overlay-ethosu.conf
+   west build alif/applications/testapp -- -DEXTRA_CONF_FILE=overlay-ethosu.conf
 
-Starting Openthread manually
+Starting OpenThread manually
 ****************************
 
-To start openthread manually using commands issue the following commands.
+To start openThread manually using commands issue the following commands.
 
 .. code-block:: console
 
@@ -64,3 +64,12 @@ This needs to be done only once if storage is not cleared.
    ot dataset activetimestamp 221212
    ot dataset networkname OpenThreadDemo
    ot dataset commit active
+
+OpenThread Sleepy end device evaluate
+*************************************
+
+To build the sample with OpenThread Sleepy end device support with automatic start:
+
+.. code-block:: console
+
+   west build -- -DCONFIG_OPENTHREAD_MANUAL_START=n -DEXTRA_CONF_FILE=overlay-sed.conf
