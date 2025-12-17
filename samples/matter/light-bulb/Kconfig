@@ -12,7 +12,7 @@ mainmenu "Matter Alif SDK Connect Lighting Example Application with shell test c
 if NET_L2_OPENTHREAD
 
 choice OPENTHREAD_DEVICE_TYPE
-	default OPENTHREAD_MTD
+	default OPENTHREAD_FTD
 endchoice
 
 endif # NET_L2_OPENTHREAD

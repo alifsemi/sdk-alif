@@ -23,18 +23,11 @@
 	aliases {
 		led0 = &aled1;
 		led2 = &aled2;
-		pwm-led0 = &pwm_ut2;
 		sw0 = &button0;
 		sw1 = &button1;
 		sw2 = &button2;
 	};
-	pwmleds {
-		compatible = "pwm-leds";
-		pwm_ut2: pwm_ut2 {
-			pwms = <&pwm2 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
-			label = "UT2 PWM";
-		};
-	};
+
 	buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {

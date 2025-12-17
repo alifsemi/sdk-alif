@@ -92,25 +92,12 @@ Deactivate Matter build environment with the following command:
 Light switch sample
 *******************
 
-This sample demonstrates a device acting as a light switch which controls a light bulb
-Build sample with following commands:
-
-.. code-block:: console
-
-    cd samples/matter/light-switch \
-    west build -b alif_b1_dk_rtss_he
-
+This sample demonstrates a device acting as a light switch which controls a light bulb.
 
 Light bulb sample
 *****************
 
 This sample demonstrates a device acting as a light bulb and how to bind it to a light switch or used direct by Matter controller.
-Build sample with following commands:
-
-.. code-block:: console
-
-    cd samples/matter/light-bulb \
-    west build -b alif_b1_dk_rtss_he
 
 Matter light control demo with Apple Home
 *****************************************
