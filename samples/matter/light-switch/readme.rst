@@ -23,16 +23,6 @@ Requirements
 - Matter Thread Border router and Matter Controller
 - Pre-provisioned Matter Light Bulb device by ``Apple Home`` or ``chip-tool``.
 
-Build Sample
-************
-
-.. tip::
-   Make sure your development environment is properly set up before building.
-
-.. code-block:: console
-
-   west build -p always -b alif_b1_dk_rtss_he samples/matter/light-switch
-
 Light Switch Endpoint
 *********************
 
