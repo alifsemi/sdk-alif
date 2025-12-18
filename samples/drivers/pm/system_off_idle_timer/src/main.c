@@ -277,7 +277,7 @@ int main(void)
 	 */
 
 	ret = counter_start(wakeup_dev);
-	if (ret) {
+	if (ret && ret != -EALREADY) {
 		printk("Failed to start counter (err %d)", ret);
 		printk("ERROR: app exiting..\n");
 		return 0;
