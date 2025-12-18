@@ -372,7 +372,7 @@ int main(void)
 	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 
 	ret = counter_start(wakeup_dev);
-	if (ret) {
+	if (ret && ret != -EALREADY) {
 		printk("Failed to start counter (err %d)", ret);
 		printk("ERROR: app exiting..\n");
 		return 0;
