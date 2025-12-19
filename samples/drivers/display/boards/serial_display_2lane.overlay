@@ -51,3 +51,7 @@
 &mipi_dsi {
 	status = "okay";
 };
+
+&gpio14 {
+	status = "okay";
+};

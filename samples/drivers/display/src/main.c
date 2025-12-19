@@ -23,6 +23,10 @@ LOG_MODULE_REGISTER(disp, LOG_LEVEL_INF);
 #include <soc_common.h>
 #include <se_service.h>
 
+#if defined(CONFIG_ENSEMBLE_GEN2)
+#include <zephyr/drivers/gpio.h>
+#endif
+
 #define RED_ARGB8888	0x00ff0000
 #define GREEN_ARGB8888	0x0000ff00
 #define BLUE_ARGB8888	0x000000ff
@@ -349,6 +353,12 @@ static int app_set_run_params(void)
 {
 	run_profile_t runp;
 	int ret;
+
+#if defined(CONFIG_ENSEMBLE_GEN2)
+	const struct gpio_dt_spec cam_disp_mux_gpio =
+		GPIO_DT_SPEC_GET(DT_NODELABEL(mipi_dsi), cam_disp_mux_gpios);
+	gpio_pin_configure_dt(&cam_disp_mux_gpio, GPIO_OUTPUT_ACTIVE);
+#endif
 
 	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
 	sys_set_bits(CGU_CLK_ENA, BIT(21) | BIT(23));
