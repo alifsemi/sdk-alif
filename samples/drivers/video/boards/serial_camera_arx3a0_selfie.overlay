@@ -12,36 +12,66 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/video/video-interfaces.h>
 
+&i2c1 {
+	status = "okay";
+};
+
 &gpio7 {
 	status = "okay";
 };
 
-&gpio9 {
+&gpio14 {
 	status = "okay";
 };
 
-&i2c1 {
+/{
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@0 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			arx3a0_selfie: arx3a0_selfie@36 {
+				compatible = "onnn,arx3a0";
+				reg = <0x36>;
+
+				reset-gpios = <&gpio14 4 GPIO_ACTIVE_HIGH>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+				status = "okay";
+
+				port {
+					arx3a0_csi2_ep_out0: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = < 400000000 >;
+						data-lanes = <1 2>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in0";
+					};
+				};
+			};
+		};
+	};
+};
+
+&isp {
 	status = "okay";
 
-	arx3a0: arx3a0@36 {
-		compatible = "onnn,arx3a0";
-		reg = <0x36>;
-		pinctrl-0 = < &pinctrl_cam_xvclk >;
-		pinctrl-names = "default";
-		reset-gpios = <&gpio9 1 GPIO_ACTIVE_HIGH>;
-		power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
-
-		status = "okay";
-
-		port {
-			arx3a0_csi2_ep_out: endpoint {
-				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
-				link-frequencies = < 400000000 >;
-				data-lanes = <1 2>;
-				clock-lane = <0>;
-
-				remote-endpoint-label = "csi2_ep_in";
-			};
+	port {
+		isp_ep_in: endpoint {
+			remote-endpoint-label = "cam_isp_ep_out";
 		};
 	};
 };
@@ -64,11 +94,11 @@
 			};
 		};
 
-		/* Video buffer output endpoint. */
-		port@1 {
-			reg = <1>;
-			cam_mem_ep_out: endpoint {
-				remote-endpoint-label = "application";
+		/* ISP Interface. */
+		port@2 {
+			reg = <2>;
+			cam_isp_ep_out: endpoint {
+				remote-endpoint-label = "isp_ep_in";
 			};
 		};
 	};
@@ -76,17 +106,20 @@
 
 &csi {
 	status = "okay";
+
+	/* Selfie camera D-PHY*/
+	phy-if = <&dphy 0>;
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		port@1 {
-			reg = <1>;
-			csi2_ep_in: endpoint {
+		port@0 {
+			reg = <0>;
+			csi2_ep_in0: endpoint {
 				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
 				data-lanes = <1 2>;
 				clock-lane = <0>;
 
-				remote-endpoint-label = "arx3a0_csi2_ep_out";
+				remote-endpoint-label = "arx3a0_csi2_ep_out0";
 			};
 		};
 		port@2 {

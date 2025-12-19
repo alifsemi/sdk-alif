@@ -7,28 +7,106 @@
 #include <zephyr/device.h>
 
 #include <zephyr/drivers/video.h>
-#include <zephyr/logging/log.h>
-LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
+#include <soc_common.h>
+#include <se_service.h>
+#include <zephyr/drivers/gpio.h>
+
+#include <zephyr/drivers/video/video_alif.h>
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #include <zephyr/drivers/video/hm0360-video-controls.h>
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
+
 #define N_FRAMES		10
 #define N_VID_BUFF              MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
 
+#define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
+
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
-#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_BGGR8
+#define PIPELINE_FORMAT	VIDEO_PIX_FMT_BGGR8
 #else
-#define FORMAT_TO_CAPTURE	VIDEO_PIX_FMT_GREY
+#define PIPELINE_FORMAT	VIDEO_PIX_FMT_Y10P
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
+
+#if ISP_ENABLED
+#define OUTPUT_FORMAT	VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE
+#endif
+
+#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+#define NUM_CAMS DT_PROP_LEN(DT_NODELABEL(csi), phy_if)
+#else
+#define NUM_CAMS 1
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
+static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
+{
+	int pitch;
+
+	switch (fourcc) {
+	case VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE:
+	case VIDEO_PIX_FMT_NV24:
+	case VIDEO_PIX_FMT_NV42:
+		pitch = width * 3;
+		break;
+	case VIDEO_PIX_FMT_RGB565:
+	case VIDEO_PIX_FMT_Y10P:
+	case VIDEO_PIX_FMT_BGGR10:
+	case VIDEO_PIX_FMT_GBRG10:
+	case VIDEO_PIX_FMT_GRBG10:
+	case VIDEO_PIX_FMT_RGGB10:
+	case VIDEO_PIX_FMT_BGGR12:
+	case VIDEO_PIX_FMT_GBRG12:
+	case VIDEO_PIX_FMT_GRBG12:
+	case VIDEO_PIX_FMT_RGGB12:
+	case VIDEO_PIX_FMT_BGGR14:
+	case VIDEO_PIX_FMT_GBRG14:
+	case VIDEO_PIX_FMT_GRBG14:
+	case VIDEO_PIX_FMT_RGGB14:
+	case VIDEO_PIX_FMT_BGGR16:
+	case VIDEO_PIX_FMT_GBRG16:
+	case VIDEO_PIX_FMT_GRBG16:
+	case VIDEO_PIX_FMT_RGGB16:
+	case VIDEO_PIX_FMT_Y10:
+	case VIDEO_PIX_FMT_Y12:
+	case VIDEO_PIX_FMT_Y14:
+	case VIDEO_PIX_FMT_YUYV:
+	case VIDEO_PIX_FMT_YVYU:
+	case VIDEO_PIX_FMT_VYUY:
+	case VIDEO_PIX_FMT_UYVY:
+	case VIDEO_PIX_FMT_NV16:
+	case VIDEO_PIX_FMT_NV61:
+	case VIDEO_PIX_FMT_YUV422P:
+		pitch = width << 1;
+		break;
+	case VIDEO_PIX_FMT_NV12:
+	case VIDEO_PIX_FMT_NV21:
+	case VIDEO_PIX_FMT_YUV420:
+	case VIDEO_PIX_FMT_YVU420:
+		pitch = (width * 3) >> 1;
+		break;
+	case VIDEO_PIX_FMT_BGGR8:
+	case VIDEO_PIX_FMT_GBRG8:
+	case VIDEO_PIX_FMT_GRBG8:
+	case VIDEO_PIX_FMT_RGGB8:
+	case VIDEO_PIX_FMT_GREY:
+	default:
+		pitch = width;
+		break;
+	}
+
+	return pitch;
+}
 
 int main(void)
 {
 	struct video_buffer *buffers[N_VID_BUFF], *vbuf;
 	struct video_format fmt = { 0 };
-	struct video_caps caps;
+	struct video_caps caps[NUM_CAMS];
 	const struct device *video;
+	enum video_endpoint_id ep;
 	unsigned int frame = 0;
 	size_t bsize;
 	int i = 0;
@@ -38,77 +116,117 @@ int main(void)
 	uint32_t num_frames;
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
+#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+	uint8_t current_sensor;
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+	int loop_ctr;
+
 	uint32_t last_timestamp = 0;
 	uint32_t frame_time = 0;
 
+#if ISP_ENABLED
+	video = DEVICE_DT_GET_ONE(vsi_isp_pico);
+#else
 	video = DEVICE_DT_GET_ONE(alif_cam);
+#endif /* DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp), okay)*/
+
 	if (!device_is_ready(video)) {
 		LOG_ERR("%s: device not ready.", video->name);
 		return -1;
 	}
-	printk("- Device name: %s\n", video->name);
+	LOG_INF("- Device name: %s", video->name);
 
-	/* Get capabilities */
-	if (video_get_caps(video, VIDEO_EP_OUT, &caps)) {
-		LOG_ERR("Unable to retrieve video capabilities");
-		return -1;
-	}
+	for (loop_ctr = NUM_CAMS - 1; loop_ctr >= 0; loop_ctr--) {
+#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+		ret = video_get_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM, &current_sensor);
+		if (ret) {
+			LOG_ERR("Failed to get current camera!");
+			return ret;
+		}
+		LOG_INF("Selected camera: %s", (current_sensor) ? "Standard" : "Selfie");
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
-	printk("- Capabilities:\n");
-	while (caps.format_caps[i].pixelformat) {
-		const struct video_format_cap *fcap = &caps.format_caps[i];
-		/* fourcc to string */
-		printk("  %c%c%c%c width (min, max, step)[%u; %u; %u] "
-			"height (min, max, step)[%u; %u; %u]\n",
-		       (char)fcap->pixelformat,
-		       (char)(fcap->pixelformat >> 8),
-		       (char)(fcap->pixelformat >> 16),
-		       (char)(fcap->pixelformat >> 24),
-		       fcap->width_min, fcap->width_max, fcap->width_step,
-		       fcap->height_min, fcap->height_max, fcap->height_step);
+		if (IS_ENABLED(ISP_ENABLED)) {
+			ep = VIDEO_EP_IN;
+		} else {
+			ep = VIDEO_EP_OUT;
+		}
 
-		if (fcap->pixelformat == FORMAT_TO_CAPTURE) {
-			fmt.pixelformat = FORMAT_TO_CAPTURE;
-			if (IS_ENABLED(CONFIG_DT_HAS_HIMAX_HM0360_ENABLED)) {
-				fmt.width = 320;
-				fmt.height = 240;
-			} else {
-				fmt.width = fcap->width_min;
-				fmt.height = fcap->height_min;
+		/* Get capabilities */
+		if (video_get_caps(video, ep, &caps[loop_ctr])) {
+			LOG_ERR("Unable to retrieve video capabilities");
+			return -1;
+		}
+
+		LOG_INF("- Capabilities:\n");
+		while (caps[loop_ctr].format_caps[i].pixelformat) {
+			const struct video_format_cap *fcap = &caps[loop_ctr].format_caps[i];
+			/* fourcc to string */
+			LOG_INF("  %c%c%c%c width (min, max, step)[%u; %u; %u] "
+				"height (min, max, step)[%u; %u; %u]",
+			       (char)fcap->pixelformat,
+			       (char)(fcap->pixelformat >> 8),
+			       (char)(fcap->pixelformat >> 16),
+			       (char)(fcap->pixelformat >> 24),
+			       fcap->width_min, fcap->width_max, fcap->width_step,
+			       fcap->height_min, fcap->height_max, fcap->height_step);
+			if (fcap->pixelformat == PIPELINE_FORMAT) {
+				fmt.pixelformat = PIPELINE_FORMAT;
+				if (IS_ENABLED(CONFIG_DT_HAS_HIMAX_HM0360_ENABLED)) {
+					fmt.width = 320;
+					fmt.height = 240;
+				} else {
+					fmt.width = fcap->width_min;
+					fmt.height = fcap->height_min;
+				}
+			}
+			i++;
+		}
+
+		if (fmt.pixelformat == 0) {
+			LOG_ERR("Desired Pixel format is not supported.");
+			return -1;
+		}
+
+		fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
+
+		ret = video_set_format(video, ep, &fmt);
+		if (ret) {
+			LOG_ERR("Failed to set video format. ret - %d", ret);
+			return -1;
+		}
+
+#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+		if (NUM_CAMS > 1) {
+			current_sensor ^= 1;
+			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
+					&current_sensor);
+			if (ret) {
+				LOG_ERR("Unable to switch camera!");
 			}
 		}
-		i++;
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	}
 
-	if (fmt.pixelformat == 0) {
-		LOG_ERR("Desired Pixel format is not supported.");
-		return -1;
-	}
+#if (ISP_ENABLED)
+		/*
+		 * Set Output Endpoint format. Ensure that ISP EP-out
+		 * format is set while allocating the buffers used to
+		 * capture images.
+		 */
+		fmt.pixelformat = OUTPUT_FORMAT;
+		fmt.width = 480;
+		fmt.height = 480;
+		fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
 
-	switch (fmt.pixelformat) {
-	case VIDEO_PIX_FMT_RGB565:
-		fmt.pitch = fmt.width << 1;
-		break;
-	case VIDEO_PIX_FMT_Y10P:
-		fmt.pitch = fmt.width;
-		break;
-	case VIDEO_PIX_FMT_BGGR8:
-	case VIDEO_PIX_FMT_GBRG8:
-	case VIDEO_PIX_FMT_GRBG8:
-	case VIDEO_PIX_FMT_RGGB8:
-	case VIDEO_PIX_FMT_GREY:
-	default:
-		fmt.pitch = fmt.width;
-		break;
-	}
+		ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
+		if (ret) {
+			LOG_ERR("Failed to set video format. ret - %d", ret);
+			return -1;
+		}
+#endif /*ISP_ENABLED */
 
-	ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
-	if (ret) {
-		LOG_ERR("Failed to set video format. ret - %d", ret);
-		return -1;
-	}
-
-	printk("- format: %c%c%c%c %ux%u\n", (char)fmt.pixelformat,
+	LOG_INF("- format: %c%c%c%c %ux%u", (char)fmt.pixelformat,
 	       (char)(fmt.pixelformat >> 8),
 	       (char)(fmt.pixelformat >> 16),
 	       (char)(fmt.pixelformat >> 24),
@@ -117,8 +235,19 @@ int main(void)
 	/* Size to allocate for each buffer */
 	bsize = fmt.pitch * fmt.height;
 
-	printk("Width - %d, Pitch - %d, Height - %d, Buff size - %d\n",
+	LOG_INF("Width - %d, Pitch - %d, Height - %d, Buff size - %d",
 			fmt.width, fmt.pitch, fmt.height, bsize);
+
+#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+		if (NUM_CAMS > 1) {
+			current_sensor = 0;
+			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
+					&current_sensor);
+			if (ret) {
+				LOG_ERR("Unable to switch camera!");
+			}
+		}
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
 	/* Alloc video buffers and enqueue for capture */
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
@@ -129,7 +258,7 @@ int main(void)
 		}
 
 		/* Allocated Buffer Information */
-		printk("- addr - 0x%x, size - %d, bytesused - %d\n",
+		LOG_INF("- addr - 0x%x, size - %d, bytesused - %d",
 			(uint32_t)buffers[i]->buffer,
 			bsize,
 			buffers[i]->bytesused);
@@ -137,8 +266,8 @@ int main(void)
 		memset(buffers[i]->buffer, 0, sizeof(char) * bsize);
 		video_enqueue(video, VIDEO_EP_OUT, buffers[i]);
 
-		printk("capture buffer[%d]: dump binary memory "
-			"\"/home/$USER/capture_%d.bin\" 0x%08x 0x%08x -r\n\n",
+		LOG_INF("capture buffer[%d]: dump binary memory "
+			"\"/home/$USER/capture_%d.bin\" 0x%08x 0x%08x -r\n",
 			i, i, (uint32_t)buffers[i]->buffer,
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
@@ -167,7 +296,7 @@ int main(void)
 		return -1;
 	}
 
-	printk("Capture started\n");
+	LOG_INF("Capture started");
 
 	for (int i = 0; i < N_FRAMES; i++) {
 		ret = video_dequeue(video, VIDEO_EP_OUT, &vbuf, K_FOREVER);
@@ -180,12 +309,12 @@ int main(void)
 		       frame++, vbuf->bytesused, vbuf->timestamp);
 
 		if (last_timestamp == 0) {
-			LOG_INF("FPS: 0.0\n");
+			LOG_INF("FPS: 0.0");
 			last_timestamp = vbuf->timestamp;
 		} else {
 			frame_time = vbuf->timestamp - last_timestamp;
 			last_timestamp = vbuf->timestamp;
-			LOG_INF("FPS: %f\n", 1000.0/frame_time);
+			LOG_INF("FPS: %f", 1000.0/frame_time);
 		}
 
 		if (i < N_FRAMES - N_VID_BUFF) {
@@ -196,8 +325,8 @@ int main(void)
 			}
 
 			ret = video_stream_start(video);
-			if (ret) {
-				LOG_ERR("Unable to start capture (interface). ret - %d\n",
+			if (!ret && ret != -EBUSY) {
+				LOG_ERR("Unable to restart capture (interface). ret - %d",
 						ret);
 				return -1;
 			}
@@ -223,11 +352,54 @@ int main(void)
 static int app_set_parameters(void)
 {
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay))
-	/* CPI Pixel clock - Generate XVCLK. Used by ARX3A0 */
-	sys_write32(0x140001, EXPMST_CAMERA_PIXCLK_CTRL);
+	run_profile_t runp;
+	int ret;
+
+#if (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_select), okay))
+	const struct gpio_dt_spec sel =
+		GPIO_DT_SPEC_GET(DT_NODELABEL(camera_select), select_gpios);
+
+	gpio_pin_configure_dt(&sel, GPIO_OUTPUT);
+	gpio_pin_set_dt(&sel, 1);
+#endif /* (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_sensor), okay)) */
+
+	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
+#if defined(CONFIG_SOC_SERIES_E8)
+	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(21));
+#else
+	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(7));
+#endif /* defined (CONFIG_SOC_SERIES_E7) */
+
+	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
+	runp.dcdc_voltage  = 825;
+	runp.dcdc_mode     = DCDC_MODE_PWM;
+	runp.aon_clk_src   = CLK_SRC_LFXO;
+	runp.run_clk_src   = CLK_SRC_PLL;
+	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+#if defined(CONFIG_RTSS_HP)
+	runp.cpu_clk_freq  = CLOCK_FREQUENCY_400MHZ;
+#else
+	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
+#endif
+
+	runp.memory_blocks = MRAM_MASK;
+#if DT_NODE_EXISTS(DT_NODELABEL(sram0))
+	runp.memory_blocks |= SRAM0_MASK;
+#endif
+
+	runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK |
+		MIPI_PLL_DPHY_MASK | LDO_PHY_MASK;
+	runp.ip_clock_gating = CAMERA_MASK | MIPI_CSI_MASK | MIPI_DSI_MASK;
+
+	ret = se_service_set_run_cfg(&runp);
+	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
+
 	/*
-	 * TODO: Add runp config for DPHY power and Isolation.
+	 * CPI Pixel clock - Generate XVCLK. Used by ARX3A0
+	 * TODO: parse this clock from DTS and set on board from camera
+	 * controller driver.
 	 */
+	sys_write32(0x140001, EXPMST_CAMERA_PIXCLK_CTRL);
 #endif
 
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(lpcam), okay))

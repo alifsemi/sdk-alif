@@ -12,35 +12,59 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/video/video-interfaces.h>
 
+&i2c1 {
+	status = "okay";
+};
+
 &gpio7 {
 	status = "okay";
 };
 
-&gpio9 {
+&gpio13 {
 	status = "okay";
 };
 
-&i2c1 {
+&gpio14 {
 	status = "okay";
+};
 
-	arx3a0: arx3a0@36 {
-		compatible = "onnn,arx3a0";
-		reg = <0x36>;
-		pinctrl-0 = < &pinctrl_cam_xvclk >;
-		pinctrl-names = "default";
-		reset-gpios = <&gpio9 1 GPIO_ACTIVE_HIGH>;
-		power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
-
+/{
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
 		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		port {
-			arx3a0_csi2_ep_out: endpoint {
-				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
-				link-frequencies = < 400000000 >;
-				data-lanes = <1 2>;
-				clock-lane = <0>;
+		i2c-inst = <&i2c1>;
 
-				remote-endpoint-label = "csi2_ep_in";
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@1 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <1>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			arx3a0_standard: arx3a0_standard@36 {
+				compatible = "onnn,arx3a0";
+				reg = <0x36>;
+
+				reset-gpios = <&gpio13 0 GPIO_ACTIVE_HIGH>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+				status = "okay";
+
+				port {
+					arx3a0_csi2_ep_out1: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = < 400000000 >;
+						data-lanes = <1 2>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in1";
+					};
+				};
 			};
 		};
 	};
@@ -76,17 +100,20 @@
 
 &csi {
 	status = "okay";
+
+	/* Standard camera D-PHY*/
+	phy-if = <&dphy 1>;
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		port@1 {
 			reg = <1>;
-			csi2_ep_in: endpoint {
+			csi2_ep_in1: endpoint {
 				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
 				data-lanes = <1 2>;
 				clock-lane = <0>;
 
-				remote-endpoint-label = "arx3a0_csi2_ep_out";
+				remote-endpoint-label = "arx3a0_csi2_ep_out1";
 			};
 		};
 		port@2 {
@@ -97,4 +124,11 @@
 			};
 		};
 	};
+};
+
+&mipi_dsi {
+	status = "okay";
+};
+&mw405 {
+	status = "disabled";
 };

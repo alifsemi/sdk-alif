@@ -21,8 +21,8 @@
 
 		port {
 			mt9m114_ep_out: endpoint {
-				remote-endpoint = < &lpcam_ep_in >;
-				//remote-endpoint = < &cam_ep_in >;
+				//remote-endpoint-label = "lpcam_ep_in";
+				remote-endpoint-label = "cam_ep_in";
 			};
 		};
 	};
@@ -31,10 +31,25 @@
 &cam {
 	status = "disabled";
 	sensor = <&mt9m114>;
-	port {
-		/* Parallel Bus endpoint. */
-		cam_ep_in: endpoint {
-			//remote-endpoint = <&mt9m114_ep_out>;
+	cpi-interface = "parallel";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* Camera Input Endpoint. */
+		port@0 {
+			reg = <0>;
+			cam_ep_in: endpoint {
+				remote-endpoint-label = "mt9m114_ep_out";
+			};
+		};
+
+		/* Video buffer output endpoint (Memory). */
+		port@1 {
+			reg = <1>;
+			cam_mem_ep_out: endpoint {
+				remote-endpoint-label = "application";
+			};
 		};
 	};
 };
@@ -42,10 +57,24 @@
 &lpcam {
 	status = "okay";
 	sensor = <&mt9m114>;
-	lp-cam;
-	port {
-		lpcam_ep_in: endpoint {
-			remote-endpoint = <&mt9m114_ep_out>;
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* Camera Input Endpoint. For LP-CAM it is only camera */
+		port@0 {
+			reg = <0>;
+			lpcam_ep_in: endpoint {
+				remote-endpoint-label = "mt9m114_ep_out";
+			};
+		};
+
+		/* Video buffer output endpoint (Memory). */
+		port@1 {
+			reg = <1>;
+			lpcam_mem_ep_out: endpoint {
+				remote-endpoint-label = "application";
+			};
 		};
 	};
 };
