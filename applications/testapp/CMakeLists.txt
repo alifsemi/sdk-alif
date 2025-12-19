@@ -7,8 +7,13 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
+
+if(NOT zephyr-bluetooth-shell IN_LIST SNIPPET)
+  # Include Zephyr BT shell snippet by default
+  set(SNIPPET zephyr-bluetooth-shell ${SNIPPET} CACHE STRING "" FORCE)
+endif()
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(test_application)
-
 
 target_sources(app PRIVATE src/main.c)
