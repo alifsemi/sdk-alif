@@ -63,6 +63,8 @@ int main(void)
 
 	comparator_set_trigger(cmp_dev, COMPARATOR_TRIGGER_BOTH_EDGES);
 
+	LOG_INF("start comparing");
+
 	while (loop--) {
 
 		if (cmp) {
