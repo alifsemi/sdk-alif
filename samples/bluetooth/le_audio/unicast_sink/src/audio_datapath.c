@@ -11,6 +11,7 @@
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/audio/codec.h>
+#include <zephyr/pm/policy.h>
 
 #include "bluetooth/le_audio/audio_decoder.h"
 #include "bluetooth/le_audio/audio_encoder.h"
@@ -130,6 +131,9 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 	}
 #endif
 
+	/* Disable sleep */
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
 	LOG_DBG("Source audio datapath created");
 
 	return 0;
@@ -170,6 +174,12 @@ int audio_datapath_channel_stop_source(uint8_t const stream_lid)
 
 int audio_datapath_cleanup_source(void)
 {
+	/* Check is needed to avoid Zephyr unbalanced crash */
+	if (env.encoder) {
+		/* Enable sleep */
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	}
+
 	/* Stop encoder first as it references other modules */
 	audio_encoder_delete(env.encoder);
 	env.encoder = NULL;
@@ -240,6 +250,9 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 	}
 #endif
 
+	/* Disable sleep */
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
 	LOG_DBG("Sink audio datapath created");
 
 	return 0;
@@ -308,6 +321,12 @@ int audio_datapath_channel_volume_sink(uint8_t const volume, bool const mute)
 
 int audio_datapath_cleanup_sink(void)
 {
+	/* Check is needed to avoid Zephyr unbalanced crash */
+	if (env.decoder) {
+		/* Enable sleep */
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+	}
+
 	audio_decoder_delete(env.decoder);
 	env.decoder = NULL;
 
