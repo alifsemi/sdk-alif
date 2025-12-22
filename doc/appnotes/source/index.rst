@@ -18,6 +18,7 @@ Application Notes for the Zephyr Alif SDK
    dma.rst
    entropy.rst
    ethos.rst
+   ethernet.rst
    touchscreen.rst
    hwsem.rst
    i2c.rst
@@ -67,4 +68,6 @@ Document History
      - Added support for DAC12, UTimer Counter, QDEC, and SDMMC
    * - 2.0
      - Release with Zephyr v4.1.0. Added driver support for UART, SPI, I2C, LPI2C, I3C, LP-UART, LP-SPI, MIPI-DSI, CDC-200, I2S, LPI2S, PDM, LPPDM, GPIO, MHU, HWSEM, LPRTC, WDT, Clk-Ctrl, PinMUX, Touch Screen, System Power Management (suspend to ram), LP-GPIO, PWM, QDEC, UTimer Counter, MRAM, OSPI Flash, SD, CRC, Entropy, DAC 12, ADC 12, Ethos, DMA, BLE, PSRAM, LP-Timer.
+   * - 2.1
+     - Added support for Ethernet, CMP.
 

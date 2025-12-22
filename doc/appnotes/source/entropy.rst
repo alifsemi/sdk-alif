@@ -1,7 +1,7 @@
 .. _appnote-entropy:
 
 =========
-ENTROPY
+Entropy
 =========
 
 Introduction
