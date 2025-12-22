@@ -25,9 +25,12 @@ Follow these steps to install dependencies and configure the environment for the
 
    .. code-block:: console
 
-      sudo apt install -y --no-install-recommends python3-dev python3-pip python3-venv \
-         git wget xz-utils file make python3-setuptools python3-wheel ninja-build \
-         build-essential cmake libmagic1
+     sudo apt install -y --no-install-recommends \
+     python3-dev python3-pip python3-venv \
+     git wget xz-utils file make \
+     python3-setuptools python3-wheel \
+     ninja-build build-essential cmake libmagic1
+
 
 3. Create and activate a Python virtual environment:
 
@@ -84,7 +87,7 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 
 .. code-block:: bash
 
-   west init -m https://github.com/alifsemi/sdk-alif --mr v2.0-zas-branch
+   west init -m https://github.com/alifsemi/sdk-alif --mr v2.1.0-zas-branch
 
 Building an Application
 -----------------------
@@ -130,8 +133,12 @@ b. Build the Hello World application:
 
   .. code-block:: console
 
-     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world -DCONFIG_
-     FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+     west build -p always \
+       -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+       samples/hello_world \
+       -DCONFIG_FLASH_BASE_ADDRESS=0 \
+       -DCONFIG_FLASH_LOAD_OFFSET=0 \
+       -DCONFIG_FLASH_SIZE=256
 
 
 **RTSS-HP**
@@ -146,8 +153,13 @@ b. Build the Hello World application:
 
   .. code-block:: console
 
-     west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world -DCONFIG_
-     FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+     west build -p always \
+       -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+       samples/hello_world \
+       -DCONFIG_FLASH_BASE_ADDRESS=0 \
+       -DCONFIG_FLASH_LOAD_OFFSET=0 \
+       -DCONFIG_FLASH_SIZE=256
+
 
 .. note::
    By default, Ninja is used. To switch to Unix Makefiles, add the following option:
