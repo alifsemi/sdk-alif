@@ -72,6 +72,18 @@ The following are the software components used in the latest release.
 Supported Peripheral Drivers and Features
 ------------------------------------------
 
+Networking Interfaces
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Peripheral**
+     - **Description**
+   * - Ethernet
+     - Ethernet Controller (ETH) compliant with IEEE 802.3-2008, featuring Reduced Media Independent Interface (RMII) for external PHY connectivity. Supports full-duplex and half-duplex operation, hardware flow control, and TCP/UDP checksum offloading to reduce CPU overhead. Integrated with Zephyr’s networking stack for DHCP-based IP assignment, socket APIs, and ICMP (ping) functionality.
+
 Communication Interfaces
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -95,6 +107,8 @@ Communication Interfaces
      - Low-power Universal Asynchronous Receiver/Transmitter supporting extended sleep modes with wake-on-receive capability. Maintains serial communication during system low-power states with reduced power consumption compared to standard UART peripherals.
    * - LP-SPI
      - Low-power SPI controller capable of operating in deep sleep modes, enabling communication with external sensors and peripherals while minimizing power consumption, with wake-on-transfer support for event-driven applications in Zephyr.
+   * - USB-Device
+     - USB device mode support using the Synopsys DWC3 controller with Alif’s UDC driver. Includes CDC-ACM class implementation to enable the board to function as a virtual COM port, allowing serial communication with a host PC. Supports standard USB device enumeration and data transfer in Zephyr RTOS.
 
 
 Display Interfaces
@@ -222,6 +236,8 @@ Analog and Conversion
      - 12-bit Digital to Analog Converter with 0 V to 1.8 V output range in Low-Power mode.
    * - ADC 12
      - 12-bit Analog-to-Digital Converter with configurable sampling rate and input channels, supporting general-purpose sensor measurements and fast conversion in both active and low-power operating modes.
+   * - CMP
+     - High-Speed Analog Comparator (CMP) module featuring rail-to-rail input, multi-channel support, and programmable reference voltage sourced from DAC6, internal Vref, or external pins. Includes programmable hysteresis (0 mV to 45 mV), output polarity control, configurable input filtering with interrupt generation, and shared analog control via the comp_reg1 register (accessible only through the CMP0 register map).
 
 AI Acceleration
 ~~~~~~~~~~~~~~~~
@@ -251,6 +267,10 @@ Imaging Interfaces
      - Camera Parallel Interface supporting high-speed parallel data capture from CMOS/CCD image sensors. Provides pixel clock, horizontal/vertical sync, and data lanes for raw image streaming. Integrated with Zephyr’s video input subsystem for frame buffering and real-time processing.
    * - LPCPI
      - Low-Power Camera Parallel Interface optimized for energy-efficient imaging applications. Supports reduced clocking, sleep modes, and wake-on-frame while maintaining compatibility with standard parallel image sensors.
+   * - MIPI-CSI
+     - MIPI Camera Serial Interface (CSI-2) supporting high-speed serial transmission of pixel data from image sensors (e.g., ARX3A0). Data is received via D-PHY, processed through the PHY Protocol Interface (PPI), unpacked by the MIPI CSI-2 host controller, and delivered via the Image Pixel Interface (IPI) to the Camera Pixel Interface (CPI) for storage in memory over AXI. Integrated with Zephyr’s video input subsystem for streaming and frame capture.
+   * - ISP
+     - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, and color correction. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
 
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
