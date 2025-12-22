@@ -11,6 +11,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/__assert.h>
+#include <zephyr/pm/policy.h>
+#if CONFIG_PM
+#include <power_mgr.h>
+#include <zephyr/drivers/counter.h>
+#endif
 #include "alif_ble.h"
 #include "gapm.h"
 #include "gapm_le.h"
@@ -50,12 +55,7 @@ struct connection_status {
 	uint8_t conidx; /*!< connection index */
 };
 
-static struct connection_status app_con_info = {
-	.conidx = GAP_INVALID_CONIDX,
-#if CONFIG_USE_DIRECT_ADVERTISING_WHEN_RESTART
-	.addr.addr_type = 0xff,
-#endif
-};
+static struct connection_status app_con_info __attribute__((noinit));
 
 #if CONFIG_USE_DIRECT_ADVERTISING_WHEN_RESTART
 #define APP_CON_ADDR &app_con_info.addr
@@ -68,7 +68,7 @@ struct app_con_bond_data {
 	gapc_bond_data_t bond_data;
 };
 
-static struct app_con_bond_data app_con_bond_data;
+static struct app_con_bond_data app_con_bond_data __attribute__((noinit));
 
 /* Load names from configuration file */
 const char device_name[] = CONFIG_BLE_DEVICE_NAME;
@@ -81,15 +81,18 @@ static const gap_sec_key_t gapm_irk = {.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF
 
 static int storage_load_bond_data(void)
 {
-	if (storage_init() < 0) {
-		return -1;
-	}
+	memset(&app_con_bond_data, 0, sizeof(app_con_bond_data));
 
 	storage_load(SETTINGS_NAME_KEYS, &app_con_bond_data.keys, sizeof(app_con_bond_data.keys));
 	storage_load(SETTINGS_NAME_BOND_DATA, &app_con_bond_data.bond_data,
 		     sizeof(app_con_bond_data.bond_data));
 #if CONFIG_USE_DIRECT_ADVERTISING_WHEN_RESTART
 	storage_load(SETTINGS_NAME_PEER, &app_con_info.addr, sizeof(app_con_info.addr));
+#endif
+
+	app_con_info.conidx = GAP_INVALID_CONIDX;
+#if CONFIG_USE_DIRECT_ADVERTISING_WHEN_RESTART
+	app_con_info.addr.addr_type = 0xff;
 #endif
 
 	LOG_DBG("Settings loaded successfully");
@@ -640,36 +643,71 @@ static int ble_stack_configure(uint8_t const role)
 
 int main(void)
 {
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
+	int ret;
+
 	LOG_INF("Alif Unicast Acceptor app started");
 
-	if (storage_load_bond_data() < 0) {
+	if (storage_init() < 0) {
 		return -1;
 	}
 
-	int ret = alif_ble_enable(NULL);
+#if CONFIG_PM && CONFIG_ALIF_POWER_MGR_LIB
+	if (power_mgr_cold_boot()) {
+		LOG_DBG("Cold boot - initializing...");
 
-	if (ret) {
+		ret = power_mgr_set_offprofile(PM_STATE_MODE_STOP);
+		if (ret) {
+			LOG_ERR("off profile set ERROR: %d", ret);
+			return ret;
+		}
+
+		if (storage_load_bond_data() < 0) {
+			LOG_ERR("Storage load bond data failed");
+			return -1;
+		}
+
+	} else {
+		LOG_DBG("Warm boot - resuming...\r\n");
+	}
+#else
+	if (storage_load_bond_data() < 0) {
+		return -1;
+	}
+#endif
+
+	ret = alif_ble_enable(NULL);
+	if (!ret) {
+		LOG_DBG("BLE enabled");
+
+		if (ble_stack_configure(GAP_ROLE_LE_PERIPHERAL)) {
+			return -1;
+		}
+
+		if (unicast_sink_init()) {
+			return -1;
+		}
+
+		if (unicast_sink_adv_start(APP_CON_ADDR)) {
+			return -1;
+		}
+	} else if (ret == -EALREADY) {
+		LOG_DBG("BLE already enabled");
+	} else {
 		LOG_ERR("Failed to enable bluetooth, err %d", ret);
 		return ret;
 	}
 
-	LOG_DBG("BLE enabled");
-
-	if (0 != ble_stack_configure(GAP_ROLE_LE_PERIPHERAL)) {
-		return -1;
-	}
-
-	if (0 != unicast_sink_init()) {
-		return -1;
-	}
-
-	if (0 != unicast_sink_adv_start(APP_CON_ADDR)) {
-		return -1;
-	}
+	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 
 	while (1) {
-		/* Nothing to do here... just sleep to keep app running */
-		k_sleep(K_SECONDS(5));
+		/* Nothing to do here... */
+#if CONFIG_PM
+		counter_stop(DEVICE_DT_GET(DT_CHOSEN(zephyr_cortex_m_idle_timer)));
+#endif
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+		k_sleep(K_FOREVER);
 	}
 
 	return 0;
