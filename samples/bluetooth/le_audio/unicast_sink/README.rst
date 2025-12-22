@@ -64,6 +64,15 @@ This sample can be found under :zephyr_file:`samples/bluetooth/le_audio/unicast_
 See :ref:`Alif bluetooth samples section <alif-bluetooth-samples>` for details.
 
 
+Enable Sleep
+********************
+To enable the system to enter sleep mode when there is no audio streaming ongoing,
+the following configuration options are set in the sample:
+
+.. code-block:: console
+  west build -b alif_b1_dk_rtss_he_a5 alif/samples/bluetooth/le_audio/unicast_sink/ -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay -DOVERLAY_CONFIG=sleep.conf
+
+
 Limitations
 ********************
 
