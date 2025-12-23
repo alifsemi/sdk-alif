@@ -1,8 +1,8 @@
-.. _appnote-zephyr-adc12:
+.. _appnote-zephyr-adc12/24:
 
-========
-ADC12
-========
+=========
+ADC12/24
+=========
 
 Introduction
 ============
@@ -24,6 +24,17 @@ The ADC12 supports 8 channels (6 external and 2 internal inputs). One temperatur
   - Single-channel scan
   - Continuous conversion
 
+.. figure:: _static/adc12_diagram.png
+   :alt: 12-Bit ADC Block Diagram
+   :align: center
+
+   12-Bit ADC Block Diagram
+
+.. figure:: _static/adc24_diagram.png
+   :alt: 24-Bit ADC Block Diagram
+   :align: center
+
+   24-Bit ADC Block Diagram
 
 .. include:: prerequisites.rst
 
@@ -58,14 +69,7 @@ Follow these steps to build the ADC application using the Alif Zephyr SDK:
 ADC Interface
 =============
 
-The ADC12 modules interface with the external environment through designated pins on the DevKit devices.
-
-.. figure:: _static/adc12_diagram.png
-   :alt: 12-Bit ADC Block Diagram
-   :align: center
-
-   12-Bit ADC Block Diagram
-
+The ADC12 and ADC24 modules interface with the external environment through designated pins on the DevKit devices.
 
 Hardware Connections
 ====================
@@ -104,6 +108,13 @@ Enable differential mode from the ADC sample application for operating ADC in di
    :alt: Differential Conversion Setup
    :align: center
 
+   Setup for Differential Conversion for ADC 12
+
+.. figure:: _static/differential_connections_for_ADC_24.png
+   :alt: Differential Conversion Setup for ADC 24
+   :align: center
+
+   Setup for Differential Conversion for ADC 24
 
 Executing Binary on the DevKit
 ===============================

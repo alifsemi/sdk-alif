@@ -203,10 +203,10 @@ The DevKit has internal PDM microphones. To test LPPDM channels 0 and 1, connect
 
 .. include:: note.rst
 
-Building an PDM Application with Zephyr
-========================================
+Building an PDM and LPPDM Application with Zephyr
+===================================================
 
-Follow these steps to build the PDM application using the Alif Zephyr SDK:
+Follow these steps to build the PDM and LPPDM application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
@@ -226,45 +226,6 @@ Follow these steps to build the PDM application using the Alif Zephyr SDK:
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
-Building an LPPDM Application with Zephyr
-===========================================
-
-Both PDM and LPPDM use similar applications. To build the LPPDM application, modify the PDM sample application code from `DT_NODELABEL(pdm)` to `DT_NODELABEL(lppdm)`.
-
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
-
-.. code-block:: bash
-
-   const struct device *pcmj_device = DEVICE_DT_NODELABEL(lppdm)
-
-Follow these steps to build your Zephyr-based LPPDM application using the GCC compiler and the Alif Zephyr SDK:
-
-1. Fetch the Alif Zephyr SDK source at the desired revision:
-
-.. code-block:: bash
-
-   mkdir sdk-alif
-   cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif.git --mr ${revision}
-   west update
-
-.. note::
-   Replace ``${revision}`` with any SDK revision (branch/tag/commit SHA) you wish to achieve.
-   This can be ``main`` if you want the latest state, or any commit SHA or tag (e.g., ``west init -m https://github.com/alifsemi/sdk-alif.git --mr v1.2.0``).
-
-2. Navigate to the Zephyr directory:
-
-.. code-block:: bash
-
-   cd zephyr
-
-3. Remove the existing build directory and build the application:
-
-.. code-block:: bash
-
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
 
 Executing Binary on the DevKit
 ===============================

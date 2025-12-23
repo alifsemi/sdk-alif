@@ -124,28 +124,28 @@ DTS configuration for Ethernet
 .. code-block:: dts
 
    ethernet: ethernet@48100000 {
-   	compatible = "alif,ethernet", "snps,designware-ethernet";
-   	reg = <0x48100000 0x1000>;
-   	pinctrl-0 = <&pinctrl_eth>;
-   	pinctrl-names = "default";
-   	interrupts = <148 3>;
-   	clocks = <&clockctrl ALIF_ETHERNET_CLK>;
-   	local-mac-address = [02 01 56 78 43 21];
-   	status = "disabled";
+       compatible = "alif,ethernet", "snps,designware-ethernet";
+       reg = <0x48100000 0x1000>;
+       pinctrl-0 = <&pinctrl_eth>;
+       pinctrl-names = "default";
+       interrupts = <148 3>;
+       clocks = <&clockctrl ALIF_ETHERNET_CLK>;
+       local-mac-address = [02 01 56 78 43 21];
+       status = "disabled";
 
-   	mdio: mdio {
-   		compatible = "alif,mdio";
-   		#address-cells = <1>;
-   		#size-cells = <0>;
-   		status = "disabled";
-   	};
+       mdio: mdio {
+           compatible = "snps,designware-mdio";
+           #address-cells = <1>;
+           #size-cells = <0>;
+           status = "disabled";
 
-   	ethernet_phy@1 {
-   		compatible = "realtek,rtl8201fr";
-   		reg = <1>;
-   		phy_mode = "PHY_AUTO_NEGOTIATE";
-   		status = "disabled";
-   	};
+           ethernet_phy@1 {
+               compatible = "realtek,rtl8201fr";
+               reg = <1>;
+               phy_mode = "PHY_AUTO_NEGOTIATE";
+               status = "disabled";
+           };
+       };
    };
 
 The DTS configuration for Ethernet is as follows:

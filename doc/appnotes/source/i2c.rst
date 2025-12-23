@@ -84,25 +84,25 @@ Follow these steps to build the I2C application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/i2c_dw
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S alif-dk ../alif/samples/drivers/i2c_dw
 
 > If using an external **Environment 3 Click Board**, use the build commands for applications on the  M55 HP core:
 
 .. code-block:: bash
 
-        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/sensor/bme680/
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S alif-dk ../alif/samples/sensor/bme680/
 
 3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/i2c_dw
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he -S alif-dk ../alif/samples/drivers/i2c_dw
 
 > If using an external **Environment 3 Click Board**, use the build commands for applications on the  M55 HE core:
 
 .. code-block:: bash
 
-        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/sensor/bme680/
+        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he -S alif-dk ../alif/samples/sensor/bme680/
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
