@@ -49,25 +49,25 @@ Follow these steps to build the Ethos application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" -G"Unix Makefiles"\'
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" -G"Unix Makefiles"
 
 3. Build commands for applications on the Ethos-U85-256 HP core:
 
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" -G"Unix Makefiles"\'
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" -G"Unix Makefiles"
 
 4. Build commands for applications on the Ethos-U55-256 HE core:
 
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" -G"Unix Makefiles"\'
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" -G"Unix Makefiles"
 
 5. Build commands for applications on the Ethos-U55-256 HP core:
 
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" -G"Unix Makefiles"\'
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp ../alif/samples/modules/tflite-micro/tflm_ethosu/ -p always -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay" -G"Unix Makefiles"
 
 Alternatively, use the Ninja tool:
 
