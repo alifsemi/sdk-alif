@@ -24,31 +24,27 @@ The SE Tool is a Python-based utility from Alif Semiconductor for programming ap
 
 .. include:: note.rst
 
-Building an SE Tool Flashing Application with Zephyr
+Flashing the binary using the SE tool
 =====================================================
 
-Follow these steps to build the SE Tool Flashing using the Alif Zephyr SDK:
-
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
-
 .. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   - This is an alternative process for flashing a binary onto the Alif Devkit
+   - The build commands shown here are specifically for the Alif E7 DevKit.
 
-2. Build commands for applications on the M55 HE core:
+Follow these steps to build the application:
 
-   .. code-block:: bash
-
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/bluetooth/le_periph_hr
-
-3. Build commands for applications on the M55 HP core:
+1. Build commands for applications on the M55 HE core:
 
    .. code-block:: bash
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/bluetooth/le_periph_hr
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world
 
+2. Build commands for applications on the M55 HP core:
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+   .. code-block:: bash
+
+      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world
+
 
 SE Tool Flashing Process
 ========================
