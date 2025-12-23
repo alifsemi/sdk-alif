@@ -113,7 +113,6 @@ Required Configuration Features
 - ``CONFIG_I2C=y``
 - ``CONFIG_I2C_DW_CLOCK_SPEED=100``
 - ``CONFIG_MT9M114_PARALLEL_INIT=n``
-- ``CONFIG_FB_USES_DTCM_REGION=n`` (needed for E7)
 
 Software Requirements
 =====================
@@ -167,7 +166,7 @@ Follow these steps to build the MIPI camera application using the Alif Zephyr SD
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/video/ -DDTC_OVERLAY_FILE=../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay -p always
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/video/ -DDTC_OVERLAY_FILE=${PWD}/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay -p always
 
 Executing Binary on the DevKit
 ==============================================
