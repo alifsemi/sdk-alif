@@ -9,3 +9,4 @@
 #add_subdirectory(clock)
 add_subdirectory(codec)
 add_subdirectory(i2s)
+add_subdirectory_ifdef(CONFIG_SENSOR sensor/ch201)
