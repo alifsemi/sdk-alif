@@ -83,18 +83,18 @@ fixed_t FP_log(fixed_t x) {
  */
 int32_t sqrt_int32(int32_t v) {
 	uint32_t t, q, b, r;
-	r = v;           // r = v - x²
-	b = 0x40000000;  // a²
+	r = v;           // r = v - x square
+	b = 0x40000000;  // a square
 	q = 0;           // 2ax
 	while (b > 0) {
-		t   = q + b;  // t = 2ax + a²
-		q >>= 1;      // if a' = a/2, then q' = q/2
-		if (r >= t)   // if (v - x²) >= 2ax + a²
+		t   = q + b;  // t = 2ax + a square
+		q >>= 1;      // if a dash = a/2, then q dash = q/2
+		if (r >= t)   // if (v - x square) >= 2ax + a square
 		{
-			r -= t;  // r' = (v - x²) - (2ax + a²)
-			q += b;  // if x' = (x + a) then ax' = ax + a², thus q' = q' + b
+			r -= t;  // r dash = (v - x square) - (2ax + a square)
+			q += b;  // if x dash = (x + a) then ax dash = ax + a square, thus q dash = q dash + b
 		}
-		b >>= 2;  // if a' = a/2, then b' = b / 4
+		b >>= 2;  // if a dash = a/2, then b dash = b / 4
 	}
 	return q;
 }
