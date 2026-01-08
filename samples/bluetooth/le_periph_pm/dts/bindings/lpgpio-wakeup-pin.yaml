@@ -1,0 +1,13 @@
+# Copyright (c) 2023 Libre Solar Technologies GmbH
+# SPDX-License-Identifier: Apache-2.0
+
+description: LPGPIO wakeup pin definition
+
+compatible: "lpgpio-wakeup-pin"
+
+properties:
+  lpgpios:
+    type: phandle-array
+    required: true
+    description: |
+      The LPGPIO pin used to wakeup system.

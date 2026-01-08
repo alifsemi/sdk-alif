@@ -27,7 +27,7 @@ Building ITCM
 if you want optimize standby power using itcm build without MRAM use following command
 
 .. code-block:: console
-  west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/ -- -DEXTRA_DTC_OVERLAY_FILE=itcm_build.overlay
+  west build -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/ -- -DEXTRA_DTC_OVERLAY_FILE=itcm_build.overlay
 
 
 When flashing the application Ensure that there is no tracing happening in Secure Enclave by modifying the device configuration.
@@ -40,6 +40,33 @@ from file: add-device-config.json set the SE_BOOT_INFO equals 2
       "id": "SE_BOOT_INFO",
       "value": 2
     }
+
+Building Other Features
+********************
+
+Application can be configured to wake up by the LPGPIO button.
+LPGPIO wake up supports pins P15_0 and P15_1, this can be selected by setting
+CONFIG_LPGPIO_WAKEUP_SOURCE to 0 or 1 respectively.
+
+LPGPIO wake up can be enabled by using a build configuration snippet:
+
+.. code-block:: console
+  west build -Slpgpio-wakeup -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
+
+.. code-block:: console
+  west build -Slpgpio-wakeup -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/ -- -DCONFIG_LPGPIO_WAKEUP_SOURCE=0
+
+BLE can be shutdown while the HE core is sleeping.
+This is useful especially when the LPGPIO is used to trigger wakeups.
+
+.. code-block:: console
+  west build -Sble-disable -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
+
+Both of these features can be used together.
+BLE is advertising and is connectable while the system is awake.
+
+.. code-block:: console
+  west build -Slpgpio-wakeup -Sble-disable -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
 
 Setting up the measurement device
 *********************************
