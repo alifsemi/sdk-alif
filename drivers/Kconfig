@@ -11,5 +11,6 @@ menu "Alif SDK drivers"
 rsource "clock/Kconfig"
 rsource "codec/Kconfig"
 rsource "i2s/Kconfig"
+rsource "sensor/ch201/Kconfig"
 
 endmenu
