@@ -365,9 +365,9 @@ static int app_set_parameters(void)
 
 	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
 #if defined(CONFIG_SOC_SERIES_E8)
-	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(21));
-#else
 	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(7));
+#else
+	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(21));
 #endif /* defined (CONFIG_SOC_SERIES_E7) */
 
 	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
