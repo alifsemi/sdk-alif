@@ -290,7 +290,8 @@ static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t act
 	case GAPM_ACTV_CREATE_LE_ADV:
 		LOG_INF("Created advertising activity");
 		stored_adv.actv_idx = actv_idx;
-		bt_adv_data_set_default(actv_idx, bt_device_name, strlen(bt_device_name));
+		bt_adv_data_set_default(bt_device_name, strlen(bt_device_name));
+		bt_adv_data_set_update(actv_idx);
 		break;
 	case GAPM_ACTV_SET_ADV_DATA:
 		LOG_INF("Set advertising data");
@@ -724,12 +725,6 @@ static int cmd_adv_start(const struct shell *sh, size_t argc, char *argv[])
 		}
 	}
 
-	gapm_le_adv_param_t adv_params = {
-		/* Advertise indefinitely by default */
-		.duration = timeout,
-		.max_adv_evt = num_events,
-	};
-
 	k_sem_reset(&bt_process_sem);
 
 	int lock_ret = alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS));
@@ -739,6 +734,7 @@ static int cmd_adv_start(const struct shell *sh, size_t argc, char *argv[])
 		shell_error(sh, "BLE mutex lock timeout");
 		return lock_ret;
 	}
+	err = bt_adv_start_le_adv(stored_adv.actv_idx, timeout, num_events, 0);
 	err = gapm_le_start_adv(stored_adv.actv_idx, &adv_params);
 	alif_ble_mutex_unlock();
 	if (err) {
@@ -918,9 +914,15 @@ static int cmd_adv_data(const struct shell *sh, size_t argc, char *argv[])
 		const char *name = argv[2];
 		size_t name_len = strlen(name);
 
-		err = bt_adv_data_set_name_auto(stored_adv.actv_idx, name, name_len);
+		err = bt_adv_data_set_name_auto(name, name_len);
 		if (err) {
 			shell_error(sh, "Failed to set advertising name: %d", err);
+			return err;
+		}
+
+		err = bt_adv_data_set_update(stored_adv.actv_idx);
+		if (err) {
+			shell_error(sh, "Failed to update device name: %d", err);
 			return err;
 		}
 
@@ -966,9 +968,15 @@ static int cmd_adv_data(const struct shell *sh, size_t argc, char *argv[])
 			data[data_len++] = (uint8_t)val;
 		}
 
-		err = bt_adv_data_set_manufacturer(stored_adv.actv_idx, company_id, data, data_len);
+		err = bt_adv_data_set_manufacturer(company_id, data, data_len);
 		if (err) {
 			shell_error(sh, "Failed to set manufacturer data: %d", err);
+			return err;
+		}
+
+		err = bt_adv_data_set_update(stored_adv.actv_idx);
+		if (err) {
+			shell_error(sh, "Failed to update manufacturer data: %d", err);
 			return err;
 		}
 
