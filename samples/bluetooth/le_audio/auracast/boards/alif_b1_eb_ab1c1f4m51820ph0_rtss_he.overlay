@@ -8,20 +8,15 @@
  *
  */
 
-#include "alif_b1_dk_rtss_he.overlay"
 
-&pinctrl_i2c0 {
-	group0 {
-		pinmux = <PIN_P7_0__I2C0_SDA_C>,
-			 <PIN_P7_1__I2C0_SCL_C>;
+#define I2S0_IRQ_NUM  141
+#define I2S0_IRQ_PRIO 3
+
+/ {
+	aliases {
+		audio-codec = &wm8904;
+		i2s-bus = &i2s0;
+		/*i2s-mic = &i2s2;*/
 	};
 };
 
-&pinctrl_i2s0 {
-	group0 {
-		pinmux = <PIN_P8_0__I2S0_SDI_C>,
-			 <PIN_P8_1__I2S0_SDO_C>,
-			 <PIN_P8_3__I2S0_WS_C>,
-			 <PIN_P8_2__I2S0_SCLK_C>;
-	};
-};
