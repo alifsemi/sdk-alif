@@ -6,6 +6,7 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
+zephyr_library_sources(bt_ad_data.c)
 zephyr_library_sources(bt_adv_data.c)
 zephyr_library_sources(bt_scan_rsp.c)
 zephyr_library_sources(bt_srv_hello.c)

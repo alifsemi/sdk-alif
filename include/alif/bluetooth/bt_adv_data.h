@@ -30,14 +30,23 @@ int bt_adv_data_init(void);
 /**
  * @brief Set service data in advertising data
  *
- * @param actv_idx Activity index for the advertising set
  * @param service_uuid Service UUID
  * @param data Service data
  * @param data_len Length of the service data
  * @return 0 on success, negative error code otherwise
  */
-int bt_adv_data_set_service_data(uint8_t actv_idx, uint16_t service_uuid,
-				const uint8_t *data, size_t data_len);
+int bt_adv_data_set_service_data(uint16_t service_uuid, const uint8_t *data, size_t data_len);
+
+/**
+ * @brief Set generic AD tlv data in advertising data
+ *
+ * @param actv_idx Activity index for the advertising set
+ * @param tlv_type Tlv
+ * @param data tlv data
+ * @param data_len Length of the data
+ * @return 0 on success, negative error code otherwise
+ */
+int bt_adv_data_set_tlv(uint8_t tlv_type, const void *data, size_t data_len);
 
 /**
  * @brief Clear all advertising data
@@ -86,35 +95,53 @@ int bt_adv_data_get_name_auto(char *name, size_t max_len);
  * based on the available space in the advertising data. If the complete name doesn't fit,
  * it will be truncated and set as a shortened name.
  *
- * @param actv_idx Activity index for the advertising set
  * @param name Device name to set
  * @param name_len Length of the device name
  * @return 0 on success, negative error code otherwise
  */
-int bt_adv_data_set_name_auto(uint8_t actv_idx, const char *name, size_t name_len);
+int bt_adv_data_set_name_auto(const char *name, size_t name_len);
 
 /**
  * @brief Set manufacturer data in advertising data
  *
- * @param actv_idx Activity index for the advertising set
  * @param company_id Company identifier
  * @param data Manufacturer specific data
  * @param data_len Length of the manufacturer data
  * @return 0 on success, negative error code otherwise
  */
-int bt_adv_data_set_manufacturer(uint8_t actv_idx, uint16_t company_id,
-				const uint8_t *data, size_t data_len);
-
+int bt_adv_data_set_manufacturer(uint16_t company_id, const uint8_t *data, size_t data_len);
 
 /**
  * @brief Set default advertising data for an activity
  *
- * @param actv_idx Activity index
  * @param device_name Pointer to device name string
  * @param name_len Length of the device name
  * @return 0 on success, negative errno otherwise
  */
-int bt_adv_data_set_default(uint8_t actv_idx, const char *device_name, size_t name_len);
+int bt_adv_data_set_default(const char *device_name, size_t name_len);
+
+/**
+ * @brief Update configured advertisement data
+ *
+ * @param actv_idx Activity index
+ * @return 0 on success, negative errno otherwise
+ */
+int bt_adv_data_set_update(uint8_t actv_idx);
+
+/**
+ * @brief Activate BT advertisement
+ *
+ * @param actv_idx Activity index
+ * @param duration Advertising duration (in unit of 10ms). 0 means that advertising continues until
+ * the host disable it.
+ * @param max_adv_evt Maximum number of extended advertising events the controller shall attempt to
+ * send prior to terminating the extending advertising Valid only if extended advertising
+ * @param per_adv_info_bf  Periodic advertising information bit field (see
+ * #gapm_le_adv_periodic_info_bf enumeration) Meaningful only if periodic advertising.
+ * @return 0 on success, negative errno otherwise
+ */
+int bt_adv_start_le_adv(uint8_t actv_idx, uint16_t duration, uint8_t max_adv_evt,
+			uint8_t per_adv_info_bf);
 
 #ifdef __cplusplus
 }
