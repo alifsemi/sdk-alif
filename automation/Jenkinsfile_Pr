@@ -3,6 +3,8 @@ def Build_SW_Echo_Server = 'Pending'
 def Flash_board_echo_server = 'Pending'
 def Flash_board_echo_client = 'Pending'
 def Build_SW = 'Pending'
+def Flash_board = 'Pending'
+def Smoke_tests = 'Pending'
 def Build_SW_Auracast_Sample = 'Pending'
 def Build_SW_Unicast_sink = 'Pending'
 def Build_SW_unicast_source = 'Pending'
@@ -38,7 +40,67 @@ pipeline {
                 checkout scm
             }
         }
+        stage('verify_checkpatch') {
+            agent { label 'zas20' }
+                options { skipDefaultCheckout() }
+                steps {
+                    script {
+                            sh '''#!/bin/bash -xe
+                            env
+                            cd /root/alif
+                            west forall -c "git clean -fdx"
+                            cd /root/alif/alif/
+                            git status
+                            git fetch origin -pu
+                            if [[ -v CHANGE_ID ]]; then
+                                git branch -D pr-${CHANGE_ID} || true
+                                git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+                                git checkout pr-${CHANGE_ID}
+                            else
+                                git checkout main
+                                git reset --hard origin/main
+                            fi
+                            ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
+                                STATUS=\$?
+                            if [ \$STATUS -ne 0 ]; then
+                                    exit \$STATUS
+                            else
+                            echo "Checkpatch passed successfully"
+                            fi
+                            '''
+                        }
+                }
 
+        }
+        stage('verify_gitlint') {
+            agent { label 'zas20' }
+                options { skipDefaultCheckout() }
+                steps {
+                    script {
+                            sh '''#!/bin/bash -xe
+                            env
+                            cd /root/alif
+                            west forall -c "git clean -fdx"
+                            cd /root/alif/alif/
+                            git status
+                            git fetch origin -pu
+                            if [[ -v CHANGE_ID ]]; then
+                                git branch -D pr-${CHANGE_ID} || true
+                                git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+                                git checkout pr-${CHANGE_ID}
+                            else
+
+                                git checkout main
+                                git reset --hard origin/main
+                            fi
+                            pip install gitlint
+                            git log -$(git rev-list --count origin/main..HEAD) --pretty=%B | gitlint
+                            exit $?
+                           '''
+                        }
+                }
+
+        }
         stage('Pr_Build for echo-client and echo-server') {
             agent { label 'pr_check_sdk_alif' }
             options { skipDefaultCheckout() }
@@ -118,7 +180,7 @@ pipeline {
         }
 
         stage('Flash the board for echo_client') {
-            agent { label 'lasseNUC2' }
+            agent { label 'lasse' }
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
@@ -133,9 +195,11 @@ pipeline {
                             pushd $ALIF_SETOOLS_LOCATION
                             sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
                             cat isp_config_data.cfg
-                            ./tools-config -p "B1 (ab1c1f4m51820hh0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
+                            ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
-                            ./app-write-mram -p
+                            ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT1
+                            sleep 2
+                            ./app-write-mram -p -nr
                             popd
                             """
                             Flash_board_echo_client = 'Pass'
@@ -149,7 +213,7 @@ pipeline {
         }
 
         stage('Flash the board for echo_server') {
-            agent { label 'lasseNUC2' }
+            agent { label 'lasse' }
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
@@ -164,9 +228,11 @@ pipeline {
                             pushd $ALIF_SETOOLS_LOCATION
                             sed -e 's/ttyUSB0/$SEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
                             cat isp_config_data.cfg
-                            ./tools-config -p "B1 (AB1C1F4M51820HH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
+                            ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
                             ./app-gen-toc --filename build/config/B1-test-app.json
-                            ./app-write-mram -p
+                            ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT2
+                            sleep 2
+                            ./app-write-mram -p -nr
                             popd
                             """
                             Flash_board_echo_server = 'Pass'
@@ -1345,6 +1411,69 @@ pipeline {
                 }
             }
         }
+        stage('Flash and run Smoke test') {
+                agent { label 'lasse' }
+                steps {
+                    script {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                            try{
+                                unstash name: 'zephyr.bin'
+                                sh """#!/bin/bash -xe
+                                rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
+                                cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/test-app.bin
+                                cp automation/B1-test-app.json $ALIF_SETOOLS_LOCATION/build/config/
+                                pushd $ALIF_SETOOLS_LOCATION
+                                sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A5"
+                                ./app-gen-toc --filename build/config/B1-test-app.json
+                                ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT1
+                                sleep 2
+                                ./app-write-mram -p -nr
+                                sed -e 's/ttyUSB0/$SEDUT2/g' isp_config_data_temp.cfg > isp_config_data.cfg
+                                ./alif_hard_maintenance_mode_enable $RESET_TOOL -s /dev/$SEDUT2
+                                sleep 2
+                                ./app-write-mram -p -nr
+                                pwd
+                                popd
+                                """
+                                Flash_board = 'Pass'
+                            } catch (Exception e) {
+                                Flash_board = 'Fail'
+                                error('Flash_board failed')
+                            }
+                        }
+                        if ( Flash_board == 'Pass')
+                            {
+                                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                                try{
+                                    unstash name: 'zephyr.bin'
+
+                                    sh """#!/bin/bash -xe
+                                    pwd
+                                    cd automation/pytest
+                                    python3 -m venv venv
+                                    . venv/bin/activate
+                                    pip install -r requirements.txt
+                                    sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
+                                    pytest tests --tb=no -s --root-logdir=pytest-logs
+                                    """
+                                  Smoke_tests = 'Pass'
+                                } catch (Exception e) {
+                                Smoke_tests = 'Fail'
+                                error('Smoke_tests failed')
+                                }
+                            }
+
+                        }
+
+                    }
+                }
+                post {
+                    always {
+                        archiveArtifacts artifacts: 'automation/pytest/pytest-logs/**', fingerprint: true
+                    }
+                }
+        } //end of stage flash and test fo testapp
         stage('Summary') {
             steps {
                 script {
@@ -1355,6 +1484,8 @@ pipeline {
                     Flash_board_echo_client   = ${Flash_board_echo_client}
                     Flash_board_echo_server   = ${Flash_board_echo_server}
                     Build_SW                  = ${Build_SW}
+                    Flash_board                = ${Flash_board}
+                    Smoke_tests                = ${Smoke_tests}
                     Build_SW_Auracast_Sample   = ${Build_SW_Auracast_Sample}
                     Build_SW_Unicast_sink     = ${Build_SW_Unicast_sink}
                     Build_SW_unicast_source   = ${Build_SW_unicast_source}
@@ -1381,7 +1512,7 @@ pipeline {
                     =================================
                     """
 
-                    if ([Build_SW_Echo_Client, Build_SW_Echo_Server, Flash_board_echo_client, Flash_board_echo_server, Build_SW, Build_SW_Auracast_Sample, Build_SW_Unicast_sink,
+                    if ([Build_SW_Echo_Client, Build_SW_Echo_Server, Flash_board_echo_client, Flash_board_echo_server, Build_SW, Flash_board, Smoke_tests,  Build_SW_Auracast_Sample, Build_SW_Unicast_sink,
                     Build_SW_unicast_source, Build_SW_Ble_beacon_sample, Build_SW_Ble_battery_sample, Build_SW_Ble_blinky_sample, Build_SW_Ble_blood_pressure_sample, Build_SW_Ble_continuos_glucose_monitor_sample, Build_SW_Ble_Cygling_Power_Sample, Build_SW_Cygling_Speed_and_Cadence_Sample,
                     Build_SW_Build_Glucose_Profile_Sample, Build_SW_Hello_Sample, Build_SW_Heart_Rate_Sample, Build_SW_Health_Thermometer_Sample, Build_SW_le_periph_past, Build_SW_Pulse_Oximeter_Sample, Build_SW_Proximity_Profile_Sample,
                     Build_SW_Weight_Scale_Sample, Build_SW_Mesh_Light_Bulb_Sample, Build_SW_SMP_Service, Build_SW_Power_management_sample, Build_SW_Running_Speed_And_Cadence_Sample, Build_SW_Ble_Throughtput].contains('Fail')) {
@@ -1402,4 +1533,3 @@ pipeline {
         }
     }
 }
-
