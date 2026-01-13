@@ -9,6 +9,7 @@
 set(COMMON_SRCS
  	${CMAKE_CURRENT_LIST_DIR}/batt_svc.c
  	${CMAKE_CURRENT_LIST_DIR}/address_verification.c
+	${CMAKE_CURRENT_LIST_DIR}/gapm_api.c
 )
 
 set(COMMON_INC

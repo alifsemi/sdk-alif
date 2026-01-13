@@ -17,7 +17,7 @@
 #include "gapc_sec.h"
 #include "gapm_le_scan.h"
 #include "gapm_le_init.h"
-#include "client_profile_manager.h"
+#include "central_itf.h"
 
 /* Scan parameters */
 #define SCAN_INTERVAL_UNITS	60 /* Scan interval in 0.625ms units (37.5ms) */
@@ -30,6 +30,7 @@ LOG_MODULE_REGISTER(central_itf, LOG_LEVEL_DBG);
 K_SEM_DEFINE(init_sem, 0, 1);
 
 typedef struct central_env_struct {
+	profile_process_cb profile_process;
 	gap_bdaddr_t periph_addr;
 	bool periph_found;
 	uint8_t conidx;
@@ -184,14 +185,17 @@ static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 
 static const char *g_device_name;
 
-void central_itf_reg_peer_name(const char *name)
+uint16_t central_itf_reg_peer_name(const char *name)
 {
 	g_device_name = name;
+	return 0;
 }
 
-uint16_t central_itf_gapm_cfg(void)
+uint16_t central_itf_gapm_cfg(profile_process_cb profile_process)
 {
 	uint16_t err;
+
+	central_env.profile_process = profile_process;
 
 	err = gapm_configure(DEVICE_CONFIGURED, &gapm_cfg, &gapm_cbs,
 					on_gapm_process_complete);
@@ -361,8 +365,8 @@ void le_central_process(uint8_t event, uint16_t status, const void *p_param)
 			LOG_ERR("failed stop");
 			break;
 		}
-		if (central_env.connected) {
-			profile_client_process(PRF_ID_BASC, central_env.conidx, 0);
+		if (central_env.connected && central_env.profile_process) {
+			central_env.profile_process(central_env.conidx, 0);
 		}
 		break;
 
