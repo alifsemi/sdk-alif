@@ -53,8 +53,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 static uint16_t current_value;
 static cscp_csc_meas_t p_meas = {
-	.flags = CSCP_MEAS_WHEEL_REV_DATA_PRESENT_BIT |
-		CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
+	.flags = CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
 };
 
 /* Dummy fixed incremental values */
@@ -395,7 +394,7 @@ static void server_configure(void)
 	uint16_t err;
 	uint16_t start_hdl = 0;
 	struct cscps_db_cfg cscps_cfg = {
-		.csc_feature = CSCP_FEAT_WHEEL_REV_DATA_SUPP_BIT,
+		.csc_feature = CSCP_FEAT_CRANK_REV_DATA_SUPP_BIT,
 		.sensor_loc = CSCP_LOC_FRONT_WHEEL,
 		.sensor_loc_supp = CSCP_SENSOR_LOCATION_SUPPORT,
 	};
