@@ -354,7 +354,7 @@ static int app_set_run_params(void)
 	run_profile_t runp;
 	int ret;
 
-#if defined(CONFIG_ENSEMBLE_GEN2)
+#if (defined(CONFIG_ENSEMBLE_GEN2) && defined(CONFIG_MIPI_DSI))
 	const struct gpio_dt_spec cam_disp_mux_gpio =
 		GPIO_DT_SPEC_GET(DT_NODELABEL(mipi_dsi), cam_disp_mux_gpios);
 	gpio_pin_configure_dt(&cam_disp_mux_gpio, GPIO_OUTPUT_ACTIVE);
