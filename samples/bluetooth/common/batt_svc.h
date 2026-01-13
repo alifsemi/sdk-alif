@@ -10,9 +10,8 @@
 #ifndef BATT_SVC_H
 #define BATT_SVC_H
 
-void config_battery_service(void);
+uint16_t config_battery_service(void);
 void battery_process(void);
-void update_bass_env(uint16_t ccc_bf_u, bool ready_to_send_u);
 uint16_t get_batt_id(void);
 
 #endif /* BATT_SVC_H */

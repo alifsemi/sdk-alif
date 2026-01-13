@@ -10,6 +10,8 @@
 #ifndef CENTRAL_ITF_H_
 #define CENTRAL_ITF_H_
 
+typedef void (*profile_process_cb)(uint8_t conidx, uint8_t event);
+
 /**
  * @file central_itf.h
  * @brief BLE Central Interface
@@ -21,9 +23,10 @@
 
  /**
   * @brief Configure GAPM for central role
+  * @param profile_process registered profile process callback
   * @return 0 on success, error code otherwise
   */
-uint16_t central_itf_gapm_cfg(void);
+uint16_t central_itf_gapm_cfg(profile_process_cb profile_process);
 
 /**
  * @brief Register peer device name for scan and directed connection.

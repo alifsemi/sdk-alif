@@ -116,7 +116,7 @@ uint16_t get_batt_id(void)
 	return GATT_SVC_BATTERY;
 }
 
-void config_battery_service(void)
+uint16_t config_battery_service(void)
 {
 	uint16_t err;
 	uint16_t start_hdl = 0;
@@ -127,8 +127,9 @@ void config_battery_service(void)
 	if (err) {
 		LOG_ERR("Error adding service: 0x%02x", err);
 	}
-}
 
+	return err;
+}
 
 void battery_process(void)
 {
