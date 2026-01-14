@@ -176,13 +176,13 @@
 	pinctrl_lpuart: pinctrl_lpuart {
 		group0 {
 			pinmux = <PIN_P2_0__LPUART_RX_A>,
-				 <PIN_P9_1__LPUART_TX_C>;
+				 <PIN_P7_1__LPUART_TX_B>;
 		};
 	};
 
 	pinctrl_lpuart_sleep: lpuart_sleep {
 		group0 {
-			pinmux = <PIN_P2_0__GPIO>, <PIN_P9_1__GPIO>;
+			pinmux = <PIN_P2_0__GPIO>, <PIN_P7_1__GPIO>;
 			read-enable = <0x1>;
 			driver-state-control = <2>; /* pull-down */
 		};
@@ -366,10 +366,10 @@
 	};
 	pinctrl_lpi2s:pinctrl_lpi2s {
 		group0 {
-			pinmux = <PIN_P9_0__LPI2S_SDI_C>,
-				 <PIN_P9_1__LPI2S_SDO_C>,
-				 <PIN_P9_2__LPI2S_SCLK_C>,
-				 <PIN_P4_6__LPI2S_WS_B>;
+			pinmux = <PIN_P0_0__LPI2S_SDI_A>,
+				 <PIN_P0_1__LPI2S_SDO_A>,
+				 <PIN_P0_2__LPI2S_SCLK_A>,
+				 <PIN_P0_3__LPI2S_WS_A>;
 		};
 	};
 
@@ -399,8 +399,8 @@
 				 <PIN_P8_5__LPCAM_HSYNC_C>,
 				 <PIN_P8_6__LPCAM_PCLK_C>,
 				 <PIN_P8_7__LPCAM_XVCLK_C>,
-				 <PIN_P9_0__LPCAM_D0_C>,
-				 <PIN_P9_1__LPCAM_D1_C>,
+				 <PIN_P1_0__LPCAM_D0_A>,
+				 <PIN_P1_1__LPCAM_D1_A>,
 				 <PIN_P7_2__LPCAM_D2_B>,
 				 <PIN_P7_3__LPCAM_D3_B>,
 				 <PIN_P7_4__LPCAM_D4_B>,
@@ -532,15 +532,6 @@
 				 <PIN_P8_5__GPIO>,
 				 <PIN_P8_6__GPIO>,
 				 <PIN_P8_7__GPIO>;
-			read-enable = <0x1>;
-		};
-	};
-
-	pinctrl_gpio9:pinctrl_gpio9 {
-		group0 {
-			pinmux = <PIN_P9_0__GPIO>,
-				 <PIN_P9_1__GPIO>,
-				 <PIN_P9_2__GPIO>;
 			read-enable = <0x1>;
 		};
 	};
