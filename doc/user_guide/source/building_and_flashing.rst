@@ -84,7 +84,7 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 
 .. code-block:: bash
 
-   west init -m https://github.com/alifsemi/sdk-alif --mr v2.0-zas-branch
+   west init -m https://github.com/alifsemi/sdk-alif --mr v2.1.0-zas-branch
 
 Building an Application
 -----------------------
