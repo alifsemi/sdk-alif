@@ -57,7 +57,7 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
 #define S2RAM_STOP_SLEEP_USEC (22 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SOFT_OFF */
-#define SOFT_OFF_SLEEP_USEC (24 * 1000 * 1000)
+#define SOFT_OFF_SLEEP_USEC (26 * 1000 * 1000)
 /* Wakeup duration for sys_poweroff (permanent power off) */
 #define POWEROFF_WAKEUP_USEC (30 * 1000 * 1000)
 
@@ -296,7 +296,7 @@ static void app_pm_lock_deeper_states(bool lock)
 	/*
 	 * HE core: States depend on boot location
 	 * - TCM boot: S2RAM only (SOFT_OFF not needed with retention)
-	 * - MRAM boot: SOFT_OFF only
+	 * - MRAM boot: SOFT_OFF only (Keep S2RAM locked)
 	 */
 	enum pm_state deep_states[2];
 	int num_states = 0;
@@ -305,6 +305,12 @@ static void app_pm_lock_deeper_states(bool lock)
 		/* TCM boot: S2RAM works with retention */
 		deep_states[num_states++] = PM_STATE_SUSPEND_TO_RAM;
 		state_desc = "S2RAM";
+	} else {
+		/* MRAM boot: Keep S2RAM locked so SOFT_OFF is selected */
+		if (!lock) {
+			/* Ensure S2RAM stays locked when unlocking SOFT_OFF */
+			pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+		}
 	}
 
 	if (SOFT_OFF_SUPPORTED) {
@@ -463,8 +469,8 @@ int main(void)
 		LOG_INF("  3. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)");
 		LOG_INF("  4. (SOFT_OFF skipped - TCM boot, using retention)");
 	} else {
-		/* MRAM boot: Only SOFT_OFF (S2RAM disabled - TODO: investigate) */
-		LOG_INF("  2. (S2RAM skipped - MRAM boot, not supported yet)");
+		/* MRAM boot: Enable Only SOFT_OFF */
+		LOG_INF("  2. (S2RAM skipped - MRAM boot)");
 		LOG_INF("  3. PM_STATE_SOFT_OFF");
 	}
 #else
@@ -541,7 +547,7 @@ int main(void)
 			k_sleep(K_SECONDS(2));
 		}
 	} else {
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot - not supported yet)");
+		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
 	}
 #endif /* CONFIG_RTSS_HE */
 
