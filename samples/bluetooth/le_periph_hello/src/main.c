@@ -26,6 +26,9 @@
 #include "gatt_srv.h"
 #include "ke_mem.h"
 #include "address_verification.h"
+#include <alif/bluetooth/bt_adv_data.h>
+#include <alif/bluetooth/bt_scan_rsp.h>
+#include "gapm_api.h"
 
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index;
@@ -91,7 +94,6 @@ static struct service_env env;
 
 /* Load name from configuration file */
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
-static const char device_name[] = DEVICE_NAME;
 
 /* Service UUID to pass into gatt_db_svc_add */
 static const uint8_t hello_service_uuid[] = HELLO_UUID_128_SVC;
@@ -143,26 +145,9 @@ struct service_env {
 
 /* Macros */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
-K_SEM_DEFINE(init_sem, 0, 1);
 
 /* function headers */
 static uint16_t service_init(void);
-
-/* Functions */
-static uint16_t start_le_adv(uint8_t actv_idx)
-{
-	uint16_t err;
-	gapm_le_adv_param_t adv_params = {
-		/* Advertise indefinitely */
-		.duration = 0,
-	};
-
-	err = gapm_le_start_adv(actv_idx, &adv_params);
-	if (err) {
-		LOG_ERR("Failed to start LE advertising with error %u", err);
-	}
-	return err;
-}
 
 /**
  * Bluetooth GAPM callbacks
@@ -195,7 +180,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 
 	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
 
-	err = start_le_adv(adv_actv_idx);
+	err = bt_gapm_advertisement_continue(conidx);
 	if (err) {
 		LOG_ERR("Error restarting advertising: %u", err);
 	} else {
@@ -208,11 +193,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
 			uint16_t max_len)
 {
-	const size_t device_name_len = sizeof(device_name) - 1;
-	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
-
-	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
-			     (const uint8_t *)device_name);
+	LOG_WRN("Received unexpected name get from conidx: %u", conidx);
 }
 
 static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
@@ -259,146 +240,42 @@ static const gapm_callbacks_t gapm_cbs = {
 
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
-	uint16_t err;
+	int ret;
 
-	/* Name advertising length */
-	const size_t device_name_len = sizeof(device_name) - 1;
-	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-
-	/* Service advertising length */
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + GATT_UUID_128_LEN;
-
-	/* Create advertising data with necessary services */
-	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
-
-	co_buf_t *p_buf;
-	uint8_t *p_data;
-
-	err = co_buf_alloc(&p_buf, 0, adv_len, 0);
-	if (err != 0) {
-		LOG_ERR("Buffer allocation failed");
-		return err;
+	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID, gatt_svc_id,
+				  sizeof(gatt_svc_id));
+	if (ret) {
+		LOG_ERR("AD profile set fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	p_data = co_buf_data(p_buf);
+	ret = bt_adv_data_set_name_auto(DEVICE_NAME, strlen(DEVICE_NAME));
 
-	/* Device name data */
-	p_data[0] = device_name_len + 1;
-	p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
-	memcpy(p_data + 2, device_name, device_name_len);
-
-	/* Update data pointer */
-	p_data = p_data + adv_device_name;
-
-	/* Service UUID data */
-	p_data[0] = GATT_UUID_128_LEN + 1;
-	p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
-	memcpy(p_data + 2, &gatt_svc_id, sizeof(gatt_svc_id));
-
-	err = gapm_le_set_adv_data(actv_idx, p_buf);
-	co_buf_release(p_buf);
-
-	if (err) {
-		LOG_ERR("Failed to set advertising data with error %u", err);
+	if (ret) {
+		LOG_ERR("AD device name data fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	return err;
+	return bt_gapm_advertiment_data_set(actv_idx);
 }
-
-static uint16_t set_scan_data(uint8_t actv_idx)
-{
-	co_buf_t *p_buf;
-	uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
-
-	__ASSERT(err == 0, "Buffer allocation failed");
-
-	err = gapm_le_set_scan_response_data(actv_idx, p_buf);
-	if (err) {
-		LOG_ERR("Failed to set scan data with error %u", err);
-	}
-
-	return err;
-}
-
-/**
- * Advertising callbacks
- */
-static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t reason)
-{
-	LOG_DBG("Advertising activity index %u stopped for reason %u", actv_idx, reason);
-}
-
-static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
-				 uint16_t status)
-{
-	if (status) {
-		LOG_ERR("Advertising activity process completed with error %u", status);
-		return;
-	}
-
-	switch (proc_id) {
-	case GAPM_ACTV_CREATE_LE_ADV:
-		LOG_DBG("Advertising activity is created");
-		adv_actv_idx = actv_idx;
-		set_advertising_data(actv_idx);
-		break;
-
-	case GAPM_ACTV_SET_ADV_DATA:
-		LOG_DBG("Advertising data is set");
-		set_scan_data(actv_idx);
-		break;
-
-	case GAPM_ACTV_SET_SCAN_RSP_DATA:
-		LOG_DBG("Scan data is set");
-		start_le_adv(actv_idx);
-		break;
-
-	case GAPM_ACTV_START:
-		print_device_identity();
-		address_verification_log_advertising_address(actv_idx);
-		k_sem_give(&init_sem);
-		break;
-
-	default:
-		LOG_WRN("Unexpected GAPM activity complete, proc_id %u", proc_id);
-		break;
-	}
-}
-
-static void on_adv_created(uint32_t metainfo, uint8_t actv_idx, int8_t tx_pwr)
-{
-	LOG_DBG("Advertising activity created, index %u, selected tx power %d", actv_idx, tx_pwr);
-}
-
-static const gapm_le_adv_cb_actv_t le_adv_cbs = {
-	.hdr.actv.stopped = on_adv_actv_stopped,
-	.hdr.actv.proc_cmp = on_adv_actv_proc_cmp,
-	.created = on_adv_created,
-};
 
 static uint16_t create_advertising(void)
 {
-	uint16_t err;
-
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
 		.tx_pwr = 0,
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-			.adv_intv_min = 160,
-			.adv_intv_max = 800,
-			.ch_map = ADV_ALL_CHNLS_EN,
-			.phy = GAPM_PHY_TYPE_LE_1M,
-		},
+				.adv_intv_min = 160,
+				.adv_intv_max = 800,
+				.ch_map = ADV_ALL_CHNLS_EN,
+				.phy = GAPM_PHY_TYPE_LE_1M,
+			},
 	};
 
-	err = gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
-	if (err) {
-		LOG_ERR("Error %u creating advertising activity", err);
-	}
-
-	return err;
+	return bt_gapm_le_create_advertisement_service(adv_type, &adv_create_params, NULL,
+						      &adv_actv_idx);
 }
 
 /* Add service to the stack */
@@ -411,20 +288,6 @@ static void server_configure(void)
 	if (err) {
 		LOG_ERR("Error %u adding profile", err);
 	}
-}
-
-void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
-{
-	if (status) {
-		LOG_ERR("gapm process completed with error %u", status);
-		return;
-	}
-
-	server_configure();
-
-	LOG_DBG("gapm process completed successfully");
-
-	create_advertising();
 }
 
 /* Service callbacks */
@@ -652,23 +515,47 @@ int main(void)
 		return -EADV;
 	}
 
-	err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
+	/* Configure Bluetooth Stack */
+	LOG_INF("Init gapm service");
+	err = bt_gapm_init(&gapm_cfg, &gapm_cbs, DEVICE_NAME, strlen(DEVICE_NAME));
 	if (err) {
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;
 	}
 
-	LOG_DBG("Waiting for init...\n");
-	k_sem_take(&init_sem, K_FOREVER);
+	server_configure();
 
-	LOG_DBG("Init complete!\n");
+	err = create_advertising();
+	if (err) {
+		LOG_ERR("Advertisement create fail %u", err);
+		return -1;
+	}
+
+	err = set_advertising_data(adv_actv_idx);
+	if (err) {
+		LOG_ERR("Advertisement data set fail %u", err);
+		return -1;
+	}
+
+	err = bt_gapm_scan_response_set(adv_actv_idx);
+	if (err) {
+		LOG_ERR("Scan response set fail %u", err);
+		return -1;
+	}
+
+	err = bt_gapm_advertisement_start(adv_actv_idx);
+	if (err) {
+		LOG_ERR("Advertisement start fail %u", err);
+		return -1;
+	}
+
+	print_device_identity();
 
 	while (1) {
 		k_sleep(K_SECONDS(1));
 
-		if ((conn_status == BT_CONN_STATE_CONNECTED)
-		&& (env.ntf_cfg == PRF_CLI_START_NTF)
-		&& (!env.ntf_ongoing)) {
+		if ((conn_status == BT_CONN_STATE_CONNECTED) &&
+		    (env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
 			err = service_notification_send(UINT32_MAX);
 			if (err) {
 				LOG_ERR("Error %u sending Hello", err);

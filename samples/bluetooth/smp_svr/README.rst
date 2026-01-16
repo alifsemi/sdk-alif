@@ -72,7 +72,7 @@ With the following contents:
    {
       "DEVICE": {
          "disabled" : false,
-         "binary": "app-device-config.json",
+         "binary": "app-device-config-1c.json",
          "version" : "0.5.00",
          "signed": true
       },

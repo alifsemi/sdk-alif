@@ -27,6 +27,9 @@
 #include "config.h"
 #include "peripheral.h"
 #include "service_uuid.h"
+#include <alif/bluetooth/bt_adv_data.h>
+#include <alif/bluetooth/bt_scan_rsp.h>
+#include "gapm_api.h"
 
 LOG_MODULE_REGISTER(peripheral, LOG_LEVEL_INF);
 
@@ -83,7 +86,6 @@ static struct service_env {
 
 static uint8_t service_uuid[] = SERVICE_UUID;
 
-K_SEM_DEFINE(adv_started_sem, 0, 1);
 K_SEM_DEFINE(app_sem, 0, 1);
 
 /* ---------------------------------------------------------------------------------------- */
@@ -303,107 +305,56 @@ static void on_event_sent(uint8_t const conidx, uint8_t const user_lid, uint16_t
 static uint16_t set_advertising_data(uint8_t const actv_idx)
 {
 	uint16_t err;
+	uint8_t uuid_type;
+	int ret;
 
 	/* Name advertising length */
 	const char device_name[] = CONFIG_BLE_TP_DEVICE_NAME;
 
-	const size_t device_name_len = sizeof(device_name) - 1;
-	const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-
-	/* gatt service identifier */
-	const size_t uuid_len = sizeof(service_uuid);
-	/* Service advertising length */
-	const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + uuid_len;
-
-	/* Create advertising data with necessary services */
-	const uint16_t adv_len = adv_device_name + adv_uuid_svc;
-
-	co_buf_t *p_buf = NULL;
-	uint8_t *p_data;
-
-	err = co_buf_alloc(&p_buf, 0, adv_len, 0);
-	if (err != GAP_ERR_NO_ERROR || !p_buf) {
-		LOG_ERR("Buffer allocation failed");
-		app_transition_to(APP_STATE_ERROR);
-		return err;
-	}
-
-	p_data = co_buf_data(p_buf);
-
-	/* Device name data */
-	*p_data++ = device_name_len + 1;
-	*p_data++ = GAP_AD_TYPE_COMPLETE_NAME;
-	memcpy(p_data, device_name, device_name_len);
-
-	/* Update data pointer */
-	p_data += device_name_len;
-
-	/* Service UUID data */
-	*p_data++ = uuid_len + 1;
-	switch (uuid_len) {
+	switch (sizeof(service_uuid)) {
 	case GATT_UUID_128_LEN:
-		*p_data++ = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
+		uuid_type = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
 		break;
 	case GATT_UUID_32_LEN:
-		*p_data++ = GAP_AD_TYPE_COMPLETE_LIST_32_BIT_UUID;
+		uuid_type = GAP_AD_TYPE_COMPLETE_LIST_32_BIT_UUID;
 		break;
 	case GATT_UUID_16_LEN:
-		*p_data++ = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
+		uuid_type = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 		break;
 	default:
 		LOG_ERR("Failed to set advertising data with error %u", err);
 		app_transition_to(APP_STATE_ERROR);
-		co_buf_release(p_buf);
 		return GAP_ERR_INVALID_PARAM;
 	}
-	memcpy(p_data, service_uuid, sizeof(service_uuid));
 
-	err = gapm_le_set_adv_data(actv_idx, p_buf);
-	co_buf_release(p_buf);
+	ret = bt_adv_data_set_tlv(uuid_type, service_uuid, sizeof(service_uuid));
+	if (ret) {
+		LOG_ERR("AD profile set fail %d", ret);
+		app_transition_to(APP_STATE_ERROR);
+		return ATT_ERR_INSUFF_RESOURCE;
+	}
+
+
+	ret = bt_adv_data_set_name_auto(device_name, strlen(device_name));
+
+	if (ret) {
+		LOG_ERR("AD device name data fail %d", ret);
+		app_transition_to(APP_STATE_ERROR);
+		return ATT_ERR_INSUFF_RESOURCE;
+	}
+
+	err =  bt_gapm_advertiment_data_set(actv_idx);
 
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Failed to set advertising data with error %u", err);
 		app_transition_to(APP_STATE_ERROR);
 	}
-
-	return err;
-}
-
-static uint16_t set_scan_resp_data(uint8_t const actv_idx)
-{
-	co_buf_t *p_buf;
-	uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
-
-	__ASSERT(err == 0, "Buffer allocation failed");
-
-	err = gapm_le_set_scan_response_data(actv_idx, p_buf);
-	if (err != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to set scan data with error %u", err);
-		app_transition_to(APP_STATE_ERROR);
-	}
-
-	co_buf_release(p_buf);
 
 	return err;
 }
 
 /* ---------------------------------------------------------------------------------------- */
 /* Advertising callbacks */
-
-static void start_le_adv(uint8_t const actv_idx)
-{
-	gapm_le_adv_param_t adv_params = {
-		/* Advertise indefinitely */
-		.duration = 0,
-	};
-	LOG_DBG("Starting advertising...");
-	uint16_t const err = gapm_le_start_adv(actv_idx, &adv_params);
-
-	if (err != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to start LE advertising with error %u", err);
-		app_transition_to(APP_STATE_ERROR);
-	}
-}
 
 static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t reason)
 {
@@ -413,42 +364,6 @@ static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t re
 		return;
 	}
 	printk("Client connected!\r\n");
-}
-
-static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
-				 uint16_t status)
-{
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Advertising activity process completed with error %u", status);
-		return;
-	}
-
-	switch (proc_id) {
-	case GAPM_ACTV_CREATE_LE_ADV:
-		LOG_DBG("Advertising activity is created");
-		env.adv_actv_idx = actv_idx;
-		set_advertising_data(actv_idx);
-		break;
-
-	case GAPM_ACTV_SET_ADV_DATA:
-		LOG_DBG("Advertising data is set");
-		set_scan_resp_data(actv_idx);
-		break;
-
-	case GAPM_ACTV_SET_SCAN_RSP_DATA:
-		LOG_DBG("Scan data is set");
-		start_le_adv(actv_idx);
-		break;
-
-	case GAPM_ACTV_START:
-		LOG_DBG("Advertising was started");
-		k_sem_give(&adv_started_sem);
-		break;
-
-	default:
-		LOG_WRN("Unexpected GAPM activity complete, proc_id %u", proc_id);
-		break;
-	}
 }
 
 static void on_adv_created(uint32_t const metainfo, uint8_t const actv_idx, int8_t const tx_pwr)
@@ -464,9 +379,11 @@ static void on_ext_adv_stopped(uint32_t const metainfo, uint8_t const actv_idx,
 
 static uint16_t create_advertising(void)
 {
-	static const gapm_le_adv_cb_actv_t le_adv_cbs = {
-		.hdr.actv.stopped = on_adv_actv_stopped,
-		.hdr.actv.proc_cmp = on_adv_actv_proc_cmp,
+	uint16_t rc;
+
+	/* set a user callbacks */
+	gapm_le_adv_user_cb_t user_cb = {
+		.stopped = on_adv_actv_stopped,
 		.created = on_adv_created,
 		.ext_adv_stopped = on_ext_adv_stopped,
 	};
@@ -483,15 +400,34 @@ static uint16_t create_advertising(void)
 			.phy = GAPM_PHY_TYPE_LE_1M,
 		},
 	};
-	uint16_t const err = gapm_le_create_adv_legacy(0, GAPM_STATIC_ADDR, &adv_cfg, &le_adv_cbs);
 
-	if (err != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Error %u creating advertising activity", err);
-		return -1;
+	rc = bt_gapm_le_create_advertisement_service(GAPM_STATIC_ADDR, &adv_cfg, &user_cb,
+						     &env.adv_actv_idx);
+	if (rc) {
+		app_transition_to(APP_STATE_ERROR);
+		return rc;
 	}
 
-	k_sem_take(&adv_started_sem, K_FOREVER);
-	return 0;
+	rc = set_advertising_data(env.adv_actv_idx);
+	if (rc) {
+		app_transition_to(APP_STATE_ERROR);
+		return rc;
+	}
+
+	rc = bt_gapm_scan_response_set(env.adv_actv_idx);
+	if (rc) {
+		app_transition_to(APP_STATE_ERROR);
+		return rc;
+	}
+
+	rc = bt_gapm_advertisement_start(env.adv_actv_idx);
+	if (rc) {
+		app_transition_to(APP_STATE_ERROR);
+		return rc;
+	}
+
+	app_transition_to(APP_STATE_STANDBY);
+	return rc;
 }
 
 /* ---------------------------------------------------------------------------------------- */
@@ -529,16 +465,21 @@ void peripheral_app_init(void)
 
 int peripheral_app_exec(uint32_t const app_state)
 {
+	uint16_t rc;
+
 	switch (app_state) {
 	case APP_STATE_PERIPHERAL_START_ADVERTISING: {
 		create_advertising();
-		app_transition_to(APP_STATE_STANDBY);
 		break;
 	}
 	case APP_STATE_DISCONNECTED: {
 		printk("Disconnected! Restart advertising\r\n");
-		start_le_adv(env.adv_actv_idx);
-		app_transition_to(APP_STATE_STANDBY);
+		rc = bt_gapm_advertisement_start(env.adv_actv_idx);
+		if (rc) {
+			app_transition_to(APP_STATE_ERROR);
+		} else {
+			app_transition_to(APP_STATE_STANDBY);
+		}
 		break;
 	}
 	case APP_STATE_PERIPHERAL_RECEIVING: {

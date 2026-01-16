@@ -24,6 +24,9 @@
 #include "batt_svc.h"
 #include "shared_control.h"
 #include "address_verification.h"
+#include <alif/bluetooth/bt_adv_data.h>
+#include <alif/bluetooth/bt_scan_rsp.h>
+#include "gapm_api.h"
 
 extern void service_conn(struct shared_control *ctrl);
 struct shared_control ctrl = { false, 0, 0 };
@@ -123,138 +126,26 @@ struct smp_environment {
 
 static struct smp_environment env;
 
-static uint16_t utils_add_ltv_field(uint8_t *p_buf, uint16_t *p_len, uint8_t type,
-				    const void *p_val, uint8_t val_len)
-{
-	if ((*p_len + GAP_AD_HEADER_SIZE + val_len) > GAP_ADV_DATA_LEN) {
-		return GAP_ERR_INSUFF_RESOURCES;
-	}
-
-	p_buf[(*p_len)++] = val_len + GAP_AD_TYPE_SIZE;
-	p_buf[(*p_len)++] = type;
-	memcpy(&(p_buf[*p_len]), p_val, val_len);
-	*p_len += val_len;
-
-	return GAP_ERR_NO_ERROR;
-}
-
-static uint16_t utils_set_adv_data(const uint8_t *p_buf, uint16_t len)
-{
-	co_buf_t *p_co_buf;
-	uint16_t rc;
-
-	if (co_buf_alloc(&p_co_buf, 0, len, 0) != CO_BUF_ERR_NO_ERROR) {
-		return GAP_ERR_INSUFF_RESOURCES;
-	}
-
-	co_buf_copy_data_from_mem(p_co_buf, p_buf, len);
-	rc = gapm_le_set_adv_data(env.adv_actv_idx, p_co_buf);
-	co_buf_release(p_co_buf);
-
-	return rc;
-}
-
-static uint16_t utils_set_scan_resp_data(const uint8_t *p_buf, uint16_t len)
-{
-	co_buf_t *p_co_buf;
-	uint16_t rc;
-
-	if (co_buf_alloc(&p_co_buf, 0, len, 0) != CO_BUF_ERR_NO_ERROR) {
-		return GAP_ERR_INSUFF_RESOURCES;
-	}
-
-	co_buf_copy_data_from_mem(p_co_buf, p_buf, len);
-	rc = gapm_le_set_scan_response_data(env.adv_actv_idx, p_co_buf);
-	co_buf_release(p_co_buf);
-
-	return rc;
-}
-
-static uint16_t utils_create_adv_data(void)
+static uint16_t create_adv_data(uint8_t actv_idx)
 {
 	const uint8_t svc_uuid[GATT_UUID_128_LEN] = SMP_SERVICE_UUID128;
-	uint16_t adv_len = 0;
-	uint8_t adv_buf[GAP_ADV_DATA_LEN] = {0};
-	uint16_t rc;
+	int ret;
 
-	rc = utils_add_ltv_field(adv_buf, &adv_len, GAP_AD_TYPE_COMPLETE_NAME, DEVICE_NAME,
-				 strlen(DEVICE_NAME));
-	if (rc != GAP_ERR_NO_ERROR) {
-		return rc;
+	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID, svc_uuid,
+				  GATT_UUID_128_LEN);
+	if (ret) {
+		LOG_ERR("AD profile set fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	rc = utils_add_ltv_field(adv_buf, &adv_len, GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID,
-				 &svc_uuid, GATT_UUID_128_LEN);
-	if (rc != GAP_ERR_NO_ERROR) {
-		return rc;
+	ret = bt_adv_data_set_name_auto(DEVICE_NAME, strlen(DEVICE_NAME));
+
+	if (ret) {
+		LOG_ERR("AD device name data fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	return utils_set_adv_data(adv_buf, adv_len);
-}
-
-static uint16_t utils_start_adv(void)
-{
-	static const gapm_le_adv_param_t params = {
-		.duration = 0,
-	};
-
-	return gapm_le_start_adv(env.adv_actv_idx, &params);
-}
-
-static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
-				 uint16_t status)
-{
-	uint16_t rc;
-
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Advertising completion callback failed, error: %u", status);
-		return;
-	}
-
-	switch (proc_id) {
-	case GAPM_ACTV_CREATE_LE_ADV: {
-		rc = utils_create_adv_data();
-		if (rc != GAP_ERR_NO_ERROR) {
-			LOG_ERR("Failed to create advertisement data, error: %u", rc);
-			return;
-		}
-	} break;
-
-	case GAPM_ACTV_SET_ADV_DATA: {
-		rc = utils_set_scan_resp_data(NULL, 0);
-		if (rc != GAP_ERR_NO_ERROR) {
-			LOG_ERR("Failed to set scan data, error: %u", rc);
-			return;
-		}
-	} break;
-
-	case GAPM_ACTV_SET_SCAN_RSP_DATA: {
-		rc = utils_start_adv();
-		if (rc != GAP_ERR_NO_ERROR) {
-			LOG_ERR("Failed to start advertising, error: %u", rc);
-			return;
-		}
-	} break;
-
-	case GAPM_ACTV_START: {
-		print_device_identity();
-		address_verification_log_advertising_address(actv_idx);
-	} break;
-
-	default: {
-		LOG_WRN("Unhandled advertising state: %u", proc_id);
-	} break;
-	}
-}
-
-static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t reason)
-{
-	LOG_INF("Advertising has been stopped");
-}
-
-static void on_adv_created(uint32_t metainfo, uint8_t actv_idx, int8_t tx_pwr)
-{
-	env.adv_actv_idx = actv_idx;
+	return bt_gapm_advertiment_data_set(actv_idx);
 }
 
 static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
@@ -296,7 +187,7 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 
 	ctrl.connected = false;
 
-	rc = utils_start_adv();
+	rc = bt_gapm_advertisement_continue(conidx);
 	if (rc != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Failed to restart advertising, error: %u", rc);
 		return;
@@ -501,9 +392,9 @@ static uint16_t utils_add_service(void)
 	return GAP_ERR_NO_ERROR;
 }
 
-static uint16_t utils_create_adv(void)
+static uint16_t create_advertising(void)
 {
-	static const gapm_le_adv_create_param_t adv_create_params = {
+	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
 		.tx_pwr = 0,
@@ -516,56 +407,8 @@ static uint16_t utils_create_adv(void)
 			},
 	};
 
-	static const gapm_le_adv_cb_actv_t le_adv_cbs = {
-		.hdr.actv.proc_cmp = on_adv_actv_proc_cmp,
-		.hdr.actv.stopped = on_adv_actv_stopped,
-		.created = on_adv_created,
-	};
-
-	return gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
-}
-
-static void on_gapm_name_proc_cmp_cb(uint32_t metainfo, uint16_t status)
-{
-	uint16_t rc;
-
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("GAPM name set callback failed, error: %u", status);
-		return;
-	}
-
-	LOG_INF("Creating service");
-	rc = utils_add_service();
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to add service, error: %u", rc);
-		return;
-	}
-
-	LOG_INF("Creating advertisement");
-	rc = utils_create_adv();
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to create advertising activity, error: %u", rc);
-		return;
-	}
-}
-
-static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
-{
-	uint16_t rc;
-
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("GAPM completion callback failed, error: %u", status);
-		return;
-	}
-
-	LOG_INF("Setting device name: %s", DEVICE_NAME);
-	rc = gapm_set_name(0, strlen(DEVICE_NAME), DEVICE_NAME, on_gapm_name_proc_cmp_cb);
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to set device name, error: %u", rc);
-		return;
-	}
-
-	config_battery_service();
+	return bt_gapm_le_create_advertisement_service(adv_type, &adv_create_params, NULL,
+						      &env.adv_actv_idx);
 }
 
 static void on_ctrl_hw_error(uint32_t metainfo, uint8_t code)
@@ -629,19 +472,7 @@ static uint16_t utils_config_gapm(void)
 		.p_gapm_cbs = &gapm_err_cbs,
 	};
 
-	return gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
-}
-
-static void on_ble_enabled(void)
-{
-	uint16_t rc;
-
-	LOG_INF("Configuring GAP manager");
-	rc = utils_config_gapm();
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to configure GAP, error: %u", rc);
-		return;
-	}
+	return bt_gapm_init(&gapm_cfg, &gapm_cbs, DEVICE_NAME, strlen(DEVICE_NAME));
 }
 
 static uint16_t utils_get_mtu(void)
@@ -739,6 +570,7 @@ static bool transport_query_valid_check(struct net_buf *nb, void *arg)
 int main(void)
 {
 	int rc;
+	uint16_t err;
 
 	LOG_INF("Alif smp_svr build time: " __DATE__ " " __TIME__);
 
@@ -760,14 +592,56 @@ int main(void)
 	}
 
 	LOG_INF("Enabling Alif BLE stack");
-	rc = alif_ble_enable(on_ble_enabled);
+	rc = alif_ble_enable(NULL);
 	if (rc) {
 		LOG_ERR("Failed to enable Alif BLE stack, error: %i", rc);
 		return -1;
 	}
 
+	err = utils_config_gapm();
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Failed to configure GAP, error: %u", err);
+		return -1;
+	}
+
 	/* Share connection info */
 	service_conn(&ctrl);
+	/* Config Battery service */
+	config_battery_service();
+
+	LOG_INF("Creating service");
+	rc = utils_add_service();
+	if (rc != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Failed to add service, error: %u", rc);
+		return -1;
+	}
+
+	LOG_INF("Creating advertisement");
+	rc = create_advertising();
+	if (rc != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Failed to create advertising activity, error: %u", rc);
+		return -1;
+	}
+
+	err = create_adv_data(env.adv_actv_idx);
+	if (err) {
+		LOG_ERR("Advertisement data set fail %u", err);
+		return -1;
+	}
+
+	err = bt_gapm_scan_response_set(env.adv_actv_idx);
+	if (err) {
+		LOG_ERR("Scan response set fail %u", err);
+		return -1;
+	}
+
+	err = bt_gapm_advertisement_start(env.adv_actv_idx);
+	if (err) {
+		LOG_ERR("Advertisement start fail %u", err);
+		return -1;
+	}
+
+	print_device_identity();
 
 	LOG_INF("Waiting for SMP requests...");
 	while (1) {
