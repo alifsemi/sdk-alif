@@ -27,7 +27,7 @@ int main(void)
 	central_itf_reg_peer_name(le_periph_device_name);
 
 	/* Configure device */
-	err = central_itf_gapm_cfg();
+	err = central_itf_gapm_cfg(battery_client_process);
 	if (err) {
 		return -1;
 	}

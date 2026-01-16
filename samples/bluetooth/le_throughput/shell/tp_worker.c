@@ -33,6 +33,10 @@
 #include "peripheral.h"
 #include "gatt_client.h"
 
+#include <alif/bluetooth/bt_adv_data.h>
+#include <alif/bluetooth/bt_scan_rsp.h>
+#include "gapm_api.h"
+
 #define BT_CONN_STATE_CONNECTED    0x00
 #define BT_CONN_STATE_DISCONNECTED 0x01
 
@@ -440,21 +444,11 @@ static const gapm_callbacks_t gapm_cbs = {
 /* ---------------------------------------------------------------------------------------- */
 /* BLE config (GAPM) */
 
-void on_gapm_process_complete(uint32_t const metainfo, uint16_t const status)
-{
-	if (status) {
-		LOG_ERR("gapm process completed with error %u", status);
-		app_transition_to(APP_STATE_ERROR);
-		return;
-	}
-
-	LOG_DBG("gapm process completed successfully");
-
-	k_sem_give(&gapm_init_sem);
-}
-
 static int ble_configure(uint8_t const role)
 {
+	uint16_t rc;
+	const char device_name[] = CONFIG_BLE_TP_DEVICE_NAME;
+
 	LOG_DBG("Configuring BLE to role %s", role == GAP_ROLE_LE_CENTRAL ? "CENTRAL" : "PERIPH");
 
 	gap_addr_t private_address = {
@@ -506,31 +500,20 @@ static int ble_configure(uint8_t const role)
 		.dflt_link_policy = 0,
 	};
 
-	int err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
-
-	if (err != GAP_ERR_NO_ERROR) {
-		LOG_ERR("gapm_configure error %u", err);
+	rc = bt_gapm_init(&gapm_cfg, &gapm_cbs, device_name, strlen(device_name));
+	if (rc != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapm_configure error %u", rc);
 		return -1;
 	}
 
-	if (k_sem_take(&gapm_init_sem, K_MSEC(200) /*K_FOREVER*/) != 0) {
-		LOG_ERR("gapm_configure not ready in 200ms");
-		return -1;
-	}
+	gap_bdaddr_t identity;
 
-	err = gapm_set_name(0, strlen(device_name), (const uint8_t *)device_name, NULL);
-	if (err != GAP_ERR_NO_ERROR) {
-		gap_bdaddr_t identity;
+	gapm_get_identity(&identity);
 
-		gapm_get_identity(&identity);
-
-		LOG_DBG("Device address: %02X:%02X:%02X:%02X:%02X:%02X", identity.addr[5],
-			identity.addr[4], identity.addr[3], identity.addr[2], identity.addr[1],
-			identity.addr[0]);
-	}
+	LOG_DBG("Device address: %02X:%02X:%02X:%02X:%02X:%02X", identity.addr[5], identity.addr[4],
+		identity.addr[3], identity.addr[2], identity.addr[1], identity.addr[0]);
 
 	LOG_DBG("GAPM init complete!");
-
 	return 0;
 }
 

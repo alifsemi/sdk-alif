@@ -10,8 +10,16 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(le_throughput)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../common/CMakeLists.txt)
+
+# Include directories
+target_include_directories(app PRIVATE
+	${COMMON_INC}
+)
+
 set(sources
     src/main.c
+     ${COMMON_SRCS}
 )
 
 add_subdirectory_ifdef(CONFIG_ALIF_THROUHGPUT_SHELL shell/)

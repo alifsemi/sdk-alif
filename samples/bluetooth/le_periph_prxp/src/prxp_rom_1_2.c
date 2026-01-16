@@ -161,15 +161,6 @@ gapm_callbacks_t append_cbs(gapm_callbacks_t *gapm_append_cbs)
 	return cbs;
 }
 
-gapm_le_adv_create_param_t append_adv_param(gapm_le_adv_create_param_t *adv_append_params)
-{
-	int8_t tx_pwr_param = 0;
-	gapm_le_adv_create_param_t adv_params = *adv_append_params;
-
-	adv_params.tx_pwr = tx_pwr_param;
-	return adv_params;
-}
-
 void ias_process(void)
 {
 	/* IAS alert shall continue until disconnection or set to None*/
