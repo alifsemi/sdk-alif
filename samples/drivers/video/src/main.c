@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Alif Semiconductor.
+ * Copyright (C) 2026 Alif Semiconductor.
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -35,7 +35,7 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #define OUTPUT_FORMAT	VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE
 #endif
 
-#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 #define NUM_CAMS DT_PROP_LEN(DT_NODELABEL(csi), phy_if)
 #else
 #define NUM_CAMS 1
@@ -116,7 +116,7 @@ int main(void)
 	uint32_t num_frames;
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
-#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 	uint8_t current_sensor;
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	int loop_ctr;
@@ -137,7 +137,7 @@ int main(void)
 	LOG_INF("- Device name: %s", video->name);
 
 	for (loop_ctr = NUM_CAMS - 1; loop_ctr >= 0; loop_ctr--) {
-#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 		ret = video_get_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM, &current_sensor);
 		if (ret) {
 			LOG_ERR("Failed to get current camera!");
@@ -196,7 +196,7 @@ int main(void)
 			return -1;
 		}
 
-#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 		if (NUM_CAMS > 1) {
 			current_sensor ^= 1;
 			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
@@ -238,7 +238,7 @@ int main(void)
 	LOG_INF("Width - %d, Pitch - %d, Height - %d, Buff size - %d",
 			fmt.width, fmt.pitch, fmt.height, bsize);
 
-#if CONFIG_VIDEO_ALIF_CAM_EXTENDED
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 		if (NUM_CAMS > 1) {
 			current_sensor = 0;
 			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
@@ -325,7 +325,7 @@ int main(void)
 			}
 
 			ret = video_stream_start(video);
-			if (!ret && ret != -EBUSY) {
+			if (ret && ret != -EBUSY) {
 				LOG_ERR("Unable to restart capture (interface). ret - %d",
 						ret);
 				return -1;
@@ -351,7 +351,7 @@ int main(void)
  */
 static int app_set_parameters(void)
 {
-#if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay))
+#if (CONFIG_VIDEO_MIPI_CSI2_DW)
 	run_profile_t runp;
 	int ret;
 
