@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -15,6 +15,7 @@
 
 &ns {
 	status = "okay";
+	reg = <0x2002a000 DT_SIZE_K(768)>;
 };
 
 &i2c0 {
@@ -36,7 +37,7 @@
 
 &lpcam {
 	status = "okay";
-	sensor = <&mt9m114>;
+	cpi-interface = "parallel";
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
