@@ -66,3 +66,7 @@
 ns: &ns {
 	status = "okay";
 };
+
+&gpio8 {
+	status = "okay";
+};
