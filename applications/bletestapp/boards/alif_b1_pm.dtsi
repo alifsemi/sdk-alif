@@ -1,0 +1,60 @@
+/*
+ * Copyright (c) 2024 Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&rtc0 {
+	/* Set the counter to increment every 1sec */
+	prescaler = <1>;
+	status = "okay";
+};
+
+&uart_hci {
+	status = "okay";
+};
+
+&uart2 {
+	/*clocks = <&clockctrl ALIF_UART2_38M4_CLK>;*/
+	status = "okay";
+};
+
+&stop_s2ram {
+	min-residency-us = <4000>;
+	exit-latency-us = <3000>;
+	status = "okay";
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+	};
+
+	test-pins {
+		/* Use DK's green LED (P4.5) as a debug pin */
+		compatible = "gpio-leds";
+		gpio_tst: gpio_pin_45 {
+			gpios = < &gpio4 0x5 0x0 >;
+			label = "DBG_PIN";
+		};
+	};
+
+	aliases {
+		/* Enable this for the debugging output */
+		/* debug-pin = &gpio_tst; */
+	};
+};
+
+/* Disable unused default components */
+
+&uart_ahi {
+	status = "disabled";
+};
+
+/* TODO: these do nothing... to be resolved */
+&pd_syst {
+	status = "disabled";
+};
+
+&pd_sse700_aon {
+	status = "disabled";
+};
