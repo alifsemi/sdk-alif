@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -6,5 +6,6 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-add_subdirectory(ethosu)
-add_subdirectory(testcommands)
+zephyr_include_directories(.)
+
+add_subdirectory_ifdef(CONFIG_ALIF_TESTCOMMANDS_SHELL shell/)
