@@ -309,7 +309,8 @@ Known Issues
 - **Touch Screen** events are intermittently dropped.
 - **OSPI** boot has not been verified.
 - When run from HE-MRAM, the **PM** demo application throws an error message.
-
+- **LPCMP** sample is broken on E8.
+- **LP Camera** node in overlay file needs to be updated to I2C1 for B1-DK.
 
 External References
 -------------------
