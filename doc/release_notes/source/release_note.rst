@@ -311,7 +311,6 @@ Known Issues
 - When run from HE-MRAM, the **PM** demo application throws an error message.
 
 
-
 External References
 -------------------
 
