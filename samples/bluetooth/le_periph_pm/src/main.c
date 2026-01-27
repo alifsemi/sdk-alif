@@ -87,45 +87,6 @@ static const struct gpio_dt_spec debug_pin = GPIO_DT_SPEC_GET_OR(DEBUG_PIN_NODE,
 
 #define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
 
-/**
- * Use the HFOSC clock for the UART console
- */
-#if DT_SAME_NODE(DT_NODELABEL(uart4), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM        4
-#define EARLY_BOOT_CONSOLE_INIT 1
-#elif DT_SAME_NODE(DT_NODELABEL(uart3), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM        3
-#define EARLY_BOOT_CONSOLE_INIT 1
-#elif DT_SAME_NODE(DT_NODELABEL(uart2), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM        2
-#define EARLY_BOOT_CONSOLE_INIT 1
-#elif DT_SAME_NODE(DT_NODELABEL(uart1), DT_CHOSEN(zephyr_console))
-#define CONSOLE_UART_NUM        1
-#define EARLY_BOOT_CONSOLE_INIT 1
-#else
-#define EARLY_BOOT_CONSOLE_INIT 0
-#endif
-
-#if EARLY_BOOT_CONSOLE_INIT
-#define UART_CTRL_CLK_SEL_POS 8
-static int app_pre_console_init(void)
-{
-	/* Enable HFOSC in CGU */
-	sys_set_bits(CGU_CLK_ENA, BIT(23));
-
-	/* Enable HFOSC for the UART console */
-	sys_clear_bits(EXPSLV_UART_CTRL, BIT((CONSOLE_UART_NUM + UART_CTRL_CLK_SEL_POS)));
-	return 0;
-}
-
-/**
- * Console UART init is needed to adjust clocks properly.
- * This must be fixed into UART dirver and this code can be
- * removed when ready.
- */
-SYS_INIT(app_pre_console_init, PRE_KERNEL_1, 50);
-#endif
-
 /* Configuration for different BLE and application timing parameters
  */
 #ifdef WAKEUP_STRESS_TEST

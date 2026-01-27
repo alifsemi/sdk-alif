@@ -10,13 +10,10 @@
 };
 
 &uart_hci {
-	clock-frequency = <76800000>;
-	dlf = <0xa>;
 	status = "okay";
 };
 
 &uart2 {
-	/*clocks = <&clockctrl ALIF_UART2_38M4_CLK>;*/
 	status = "okay";
 };
 
