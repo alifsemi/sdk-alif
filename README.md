@@ -4,6 +4,11 @@ Welcome to the **Alif Semiconductor Zephyr SDK**, a comprehensive environment fo
 
 The SDK is designed to help developers configure, build, and deploy real-time applications on Alif’s low-power, high-performance devices.
 
+> [!NOTE]
+> **Please note that the "main" branch on all relevant repositories is work in progress development branch and should be used only
+> if you need the latest and greatest code. For stable fully tested codebase, please use one of the release branches/tags.**
+
+
 ## User Guide
 
 The **User Guide** offers detailed instructions on setting up, building, and deploying applications on Alif devices using the Zephyr RTOS.
