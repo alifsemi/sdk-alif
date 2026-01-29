@@ -38,7 +38,72 @@ pipeline {
                 checkout scm
             }
         }
+        stage('verify_checkpatch') {
+            agent { label 'zas20' }
+                options { skipDefaultCheckout() }
+                steps {
+                    script {
+                            sh '''#!/bin/bash -xe
+                            env
+                            cd /root/alif
+                            west forall -c "git clean -fdx"
+                            cd /root/alif/alif/
+                            git status
+                            if [[ -v CHANGE_ID ]]; then
+                                git branch -D pr-${CHANGE_ID} || true
+                                git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+                                git checkout pr-${CHANGE_ID}
+                            else
+                                git fetch origin -pu
+                                git checkout main
+                                git reset --hard origin/main
+                            fi
+                            ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
+                                STATUS=\$?
+                            if [ \$STATUS -ne 0 ]; then
+                                    exit \$STATUS
+                            else
+                            echo "Checkpatch skipped"
+                            fi
+                            '''
+                        }
+                }
 
+        }
+        stage('verify_gitlint') {
+            agent { label 'zas20' }
+                options { skipDefaultCheckout() }
+                steps {
+                    script {
+                            sh '''#!/bin/bash -xe
+                            env
+                            cd /root/alif
+                            west forall -c "git clean -fdx"
+                            cd /root/alif/alif/
+                            git status
+                            if [[ -v CHANGE_ID ]]; then
+                                git branch -D pr-${CHANGE_ID} || true
+                                git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+                                git checkout pr-${CHANGE_ID}
+                            else
+                                git fetch origin -pu
+                                git checkout main
+                                git reset --hard origin/main
+                            fi
+                            west update
+                            pip install gitlint
+                            gitlint_log=$(git log -1 --pretty=%B | gitlint 2>&1)
+                            if [ -n "$gitlint_log" ] ; then
+                                gitlint_err=1
+                                echo -e "GITLINT log=>\n$gitlint_log"
+                            else
+                                gitlint_err=0
+                            fi
+                            '''
+                        }
+                }
+
+        }
         stage('Pr_Build for echo-client and echo-server') {
             agent { label 'pr_check_sdk_alif' }
             options { skipDefaultCheckout() }
@@ -1406,4 +1471,3 @@ pipeline {
         }
     }
 }
-
