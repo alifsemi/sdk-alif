@@ -17,6 +17,7 @@
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "address_verification.h"
 #include "gapm_api.h"
+#include "power_mgr.h"
 
 K_SEM_DEFINE(gapm_sem, 0, 1);
 
@@ -139,7 +140,18 @@ uint16_t bt_gapm_init(const gapm_config_t *p_cfg, const gapm_callbacks_t *p_cbs,
 		return gapm_status;
 	}
 
-	return bt_gapm_device_name_set(name, name_len);
+	rc = bt_gapm_device_name_set(name, name_len);
+
+#if CONFIG_PM && SNIPPET_PM_BLE_USED
+#if PREKERNEL_DISABLE_SLEEP
+	/* Update PM policy to allow sleeps */
+	power_mgr_allow_sleep();
+#endif
+	/* Give some time for the system to log before entering sleep */
+	k_sleep(K_MSEC(50));
+#endif
+
+	return rc;
 }
 
 uint16_t bt_gapm_le_create_advertisement_service(enum gapm_le_own_addr addrstype,
