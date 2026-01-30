@@ -1,0 +1,44 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/* RTC is needed for Zephyr kernel to be able track timing after
+ * sleep periods.
+ */
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+	};
+};
+
+&stop_s2ram {
+	min-residency-us = <100000>; /* 100ms */
+	exit-latency-us = <3000>;
+	status = "okay";
+};
+
+/* Disable Zephyr handler for these modules. These
+ * will be controlled from application directly
+ */
+&pd_syst {
+	status = "disabled";
+};
+
+&pd_sse700_aon {
+	status = "disabled";
+};
+
+&uart_ahi {
+	status = "disabled";
+};
