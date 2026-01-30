@@ -1,4 +1,4 @@
-# Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -6,7 +6,9 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-#add_subdirectory(clock)
-add_subdirectory(codec)
-add_subdirectory(i2s)
-add_subdirectory_ifdef(CONFIG_SENSOR sensor/ch201)
+sample:
+  name: CH201 Sensor Sample
+tests:
+  sample.sensor.ch201:
+    tags: i2c time of flight sensors
+    depends_on: i2c, gpio
