@@ -1,0 +1,9 @@
+/*
+ * Enabling rtc & disabling lptimer for this sample application
+ */
+&timer0 {
+	status = "disabled";
+};
+&rtc0 {
+	status = "okay";
+};
