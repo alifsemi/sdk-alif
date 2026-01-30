@@ -1,0 +1,18 @@
+config ACTIVATION_BUF_SECTION
+	string "Linker section where activation buffer (tensor arena) is placed"
+	default "SRAM1.activation_buf"
+
+config ACTIVATION_BUF_SZ
+	hex "Tensor arena size"
+	default 0x200000
+
+config MODEL_SECTION
+	string "Linker section where ML model is placed"
+	default ".rodata.tflm_model"
+
+config ETHOS_U_AXI0_ONLY
+	bool "Only use AXI0 port on the Ethos"
+	default false
+
+source "Kconfig.zephyr"
+	
