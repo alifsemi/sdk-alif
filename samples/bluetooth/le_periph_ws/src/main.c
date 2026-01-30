@@ -85,7 +85,7 @@ static uint16_t utils_create_adv_data(void)
 		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_MANU_SPECIFIC_DATA, &appearance, GAP_APPEARANCE_LEN);
+	ret = bt_adv_data_set_manufacturer(appearance, NULL, 0);
 
 	if (ret) {
 		LOG_ERR("AD appereance data fail %d", ret);

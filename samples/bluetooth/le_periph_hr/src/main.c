@@ -241,7 +241,7 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_MANU_SPECIFIC_DATA, &comp_id, sizeof(comp_id));
+	ret = bt_adv_data_set_manufacturer(comp_id, NULL, 0);
 
 	if (ret) {
 		LOG_ERR("AD manufacturer data fail %d", ret);
