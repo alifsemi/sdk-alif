@@ -1,0 +1,6 @@
+name: pm-ble
+boards:
+  /alif_b1_.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: sleep.overlay
+      EXTRA_CONF_FILE: sleep.conf
