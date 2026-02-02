@@ -370,7 +370,7 @@ static int app_set_parameters(void)
 	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(21));
 #endif /* defined (CONFIG_SOC_SERIES_E7) */
 
-	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
+	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK;
 	runp.dcdc_voltage  = 825;
 	runp.dcdc_mode     = DCDC_MODE_PWM;
 	runp.aon_clk_src   = CLK_SRC_LFXO;
