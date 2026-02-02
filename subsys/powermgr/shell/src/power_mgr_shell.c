@@ -373,7 +373,7 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 	}
 
 	int8_t ret = take_es0_into_use_with_params(ll_boot_params_buffer, total_length,
-						   es0_clock_select);
+						   es0_clock_select, hpa_setup);
 
 	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start ES0 ret:%d\n", ret);
 	return 0;
