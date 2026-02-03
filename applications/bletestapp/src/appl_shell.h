@@ -15,6 +15,8 @@ extern uint32_t ble_rtc_wakeup;
 extern uint32_t ble_rtc_connected_wakeup;
 extern char app_shell_device_name[];
 
+int64_t param_get_int(size_t argc, char **argv, char *p_param, int def_value);
+char *param_get_char(size_t argc, char **argv, char *p_param, char *def_value);
 void appl_wait_to_continue(void);
 bool appl_allow_sleep(void);
 void cmd_appl_shell_init(void);

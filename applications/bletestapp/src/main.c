@@ -80,11 +80,12 @@ LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 
 /*
  * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
+ * NOTE! pm_application_init + 1 so we can check for cold boot
  *
  * On cold boot: SYSTOP is already ON by default, safe to call.
  * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
  */
-SYS_INIT(app_set_run_params, PRE_KERNEL_1, 3);
+SYS_INIT(app_set_run_params, PRE_KERNEL_1, 4);
 
 /**
  * PM Notifier callback for power state entry
@@ -223,15 +224,17 @@ uint64_t z_cms_lptim_hook_on_lpm_exit(void)
 
 int main(void)
 {
+	int ret = 0;
+
 	if (is_cold_boot()) {
-		int ret = pwm_init();
+		ret = pwm_init();
 
 		if (ret) {
 			LOG_ERR("pwm_init failed: %d", ret);
 			return ret;
 		}
 
-		ret = set_off_profile(PM_STATE_MODE_STOP);
+		ret = set_off_profile(PM_STATE_MODE_STOP_1);
 
 		if (ret) {
 			LOG_ERR("off profile set failed. error: %d", ret);
@@ -242,7 +245,7 @@ int main(void)
 
 	appl_wait_to_continue();
 
-	int ret = ble_init();
+	ret = ble_init();
 
 	if (ret) {
 		return ret;
