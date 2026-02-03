@@ -52,12 +52,24 @@ static int app_shell_init(void)
 
 SYS_INIT(app_shell_init, POST_KERNEL, 91); /* CONFIG_SHELL_BACKEND_SERIAL_INIT_PRIORITY + 1 */
 
-static int64_t param_get_int(size_t argc, char **argv, char *p_param, int def_value)
+int64_t param_get_int(size_t argc, char **argv, char *p_param, int def_value)
 {
 	if (p_param && argc > 1) {
 		for (int n = 0; n < (argc - 1); n++) {
 			if (strcmp(argv[n], p_param) == 0) {
 				return strtoll(argv[n + 1], NULL, 0);
+			}
+		}
+	}
+	return def_value;
+}
+
+char *param_get_char(size_t argc, char **argv, char *p_param, char *def_value)
+{
+	if (p_param && argc > 1) {
+		for (int n = 0; n < (argc - 1); n++) {
+			if (strcmp(argv[n], p_param) == 0) {
+				return argv[n + 1];
 			}
 		}
 	}
@@ -213,7 +225,7 @@ static int cmd_set_name(const struct shell *shell, size_t argc, char **argv)
 static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **argv)
 {
 	if (!strcmp(argv[1], "STOP")) {
-		int ret = set_off_profile(PM_STATE_MODE_STOP);
+		int ret = set_off_profile(PM_STATE_MODE_STOP_1);
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);
@@ -221,7 +233,7 @@ static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **arg
 		}
 		shell_print(shell, "Off profile set to STOP");
 	} else if (!strcmp(argv[1], "IDLE")) {
-		int ret = set_off_profile(PM_STATE_MODE_IDLE);
+		int ret = set_off_profile(PM_STATE_MODE_IDLE_1);
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);
@@ -229,7 +241,7 @@ static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **arg
 		}
 		shell_print(shell, "Off profile set to IDLE");
 	} else if (!strcmp(argv[1], "STANDBY")) {
-		int ret = set_off_profile(PM_STATE_MODE_STANDBY);
+		int ret = set_off_profile(PM_STATE_MODE_STANDBY_1);
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);

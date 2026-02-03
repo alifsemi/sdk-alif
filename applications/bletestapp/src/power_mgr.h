@@ -7,15 +7,29 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+ /* Power modes. Based on E8 power modes so same tests can be run with E8 and B1. */
 enum pm_state_mode_type {
-	PM_STATE_MODE_IDLE,
-	PM_STATE_MODE_STANDBY,
-	PM_STATE_MODE_STOP
+	PM_STATE_MODE_GO_1,
+	PM_STATE_MODE_GO_2,
+	PM_STATE_MODE_GO_3,
+	PM_STATE_MODE_GO_4,
+	PM_STATE_MODE_GO_5,
+	PM_STATE_MODE_READY_1,
+	PM_STATE_MODE_READY_2,
+	PM_STATE_MODE_IDLE_1,
+	PM_STATE_MODE_IDLE_2,
+	PM_STATE_MODE_STANDBY_1,
+	PM_STATE_MODE_STOP_1,
+	PM_STATE_MODE_STOP_2,
+	PM_STATE_MODE_STOP_3,
+	PM_STATE_MODE_STOP_4,
+	PM_STATE_MODE_STOP_5
 };
 
 int pwm_init(void);
 
 void app_ready_for_sleep(void);
+int set_current_off_profile(void);
 int set_off_profile(const enum pm_state_mode_type pm_mode);
 int app_set_run_params(void);
 uint32_t get_wakeup_irq_status(void);

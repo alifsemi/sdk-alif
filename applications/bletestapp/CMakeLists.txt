@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -8,7 +8,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(le_periph_hello)
+project(ble_testapp)
 
 # Include BLE Power Management snippet by default
 if(NOT pm-ble IN_LIST SNIPPET)
@@ -27,5 +27,6 @@ target_sources(app PRIVATE
     src/appl_shell.c
     src/power_mgr.c
     src/ble_handler.c
+    src/power_shell.c
     ${COMMON_SRCS}
 )
