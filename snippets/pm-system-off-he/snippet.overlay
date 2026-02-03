@@ -40,6 +40,10 @@
 	status = "okay";
 };
 
+&suspend_idle {
+	status = "okay";
+};
+
 / {
 	chosen {
 		zephyr,cortex-m-idle-timer = &rtc0;
