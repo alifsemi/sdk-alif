@@ -52,6 +52,8 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 
 /* Sleep duration for PM_STATE_RUNTIME_IDLE */
 #define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
+#define SUSPEND_IDLE_SLEEP_USEC (4 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
 #define S2RAM_STANDBY_SLEEP_USEC (20 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
@@ -97,11 +99,6 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 #else
 #define SOFT_OFF_SUPPORTED 0
 #endif
-
-#define OFF_STATE_NODE_ID DT_PHANDLE_BY_IDX(DT_NODELABEL(cpu0), cpu_power_states, 0)
-
-BUILD_ASSERT((RUNTIME_IDLE_SLEEP_USEC < DT_PROP_OR(OFF_STATE_NODE_ID, min_residency_us, 0)),
-	"RUNTIME_IDLE sleep should be less than min-residency-us");
 
 #if defined(CONFIG_RTSS_HE)
 /* Additional validation for power state sleep durations */
@@ -225,6 +222,9 @@ static void pm_notify_state_entry(enum pm_state state)
 	int ret;
 
 	switch (state) {
+	case PM_STATE_SUSPEND_TO_IDLE:
+		/* No action needed */
+		break;
 	case PM_STATE_SUSPEND_TO_RAM:
 	case PM_STATE_SOFT_OFF:
 		ret = app_set_off_params(state, substate_id);
@@ -251,6 +251,9 @@ static void pm_notify_pre_device_resume(enum pm_state state)
 	case PM_STATE_SUSPEND_TO_RAM:
 		ret = app_set_run_params();
 		__ASSERT(ret == 0, "app_set_run_params failed = %d", ret);
+		break;
+	case PM_STATE_SUSPEND_TO_IDLE:
+		/* No action needed - IWIC keeps power, no restoration required */
 		break;
 	case PM_STATE_SOFT_OFF:
 		/* No action needed - SOFT_OFF causes reset, not resume */
@@ -479,11 +482,20 @@ int main(void)
 	LOG_INF("  2. PM_STATE_SOFT_OFF");
 #endif
 
+	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
 	ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
 	__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
 
 	LOG_INF("Exited from RUNTIME_IDLE sleep");
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(suspend_idle), okay)
+	LOG_INF("Enter PM_STATE_SUSPEND_TO_IDLE for (%d microseconds)", SUSPEND_IDLE_SLEEP_USEC);
+	k_sleep(K_USEC(SUSPEND_IDLE_SLEEP_USEC));
+	LOG_INF("Exited from PM_STATE_SUSPEND_TO_IDLE");
+#endif
 
 #if defined(CONFIG_POWEROFF)
 	/* Configure wakeup source for permanent power off */
