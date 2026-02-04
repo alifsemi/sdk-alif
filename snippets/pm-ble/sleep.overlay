@@ -28,6 +28,10 @@
 	status = "okay";
 };
 
+&uart_hci {
+	zephyr,pm-device-runtime-auto;
+};
+
 /* Disable Zephyr handler for these modules. These
  * will be controlled from application directly
  */

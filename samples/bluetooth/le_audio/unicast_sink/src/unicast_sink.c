@@ -93,6 +93,13 @@ LOG_MODULE_REGISTER(unicast_sink, CONFIG_UNICAST_SINK_LOG_LEVEL);
 #define I2S_SOURCE_SAMPLE_RATE I2S_SINK_SAMPLE_RATE
 #endif
 
+struct volume {
+	uint8_t volume;
+	bool mute;
+};
+
+static struct volume env_volume;
+
 enum {
 	ASE_DIR_UNKNOWN = 0,
 	ASE_DIR_SOURCE,
@@ -382,6 +389,8 @@ static void on_unicast_server_cb_ase_state(uint8_t const ase_lid, uint8_t const 
 
 		if (p_ase->dir == ASE_DIR_SINK) {
 			audio_datapath_create_sink(&unicast_env.ase_config_sink.datapath_config);
+			audio_datapath_channel_volume_sink((env_volume.volume >> 1),
+							   env_volume.mute);
 		} else if (p_ase->dir == ASE_DIR_SOURCE) {
 			audio_datapath_create_source(&unicast_env.ase_config_src.datapath_config);
 		}
@@ -728,8 +737,7 @@ static void on_capabilities_server_cb_bond_data(uint8_t const conidx, uint8_t co
 		cli_cfg_bf, pac_cli_cfg_bf);
 }
 
-static void on_capabilities_server_cb_location_req(uint8_t const conidx,
-						   uint16_t const token,
+static void on_capabilities_server_cb_location_req(uint8_t const conidx, uint16_t const token,
 						   uint8_t const direction,
 						   uint32_t const location_bf)
 {
@@ -1099,16 +1107,6 @@ static int init_tmap(void)
 /* ---------------------------------------------------------------------------------------- */
 /* Volume Control Service */
 
-struct volume {
-	uint8_t volume;
-	bool mute;
-};
-
-static struct volume env_volume = {
-	.volume = 60,
-	.mute = false,
-};
-
 static void volume_renderer_cb_bond_data(uint8_t const conidx, uint8_t const cli_cfg_bf)
 {
 	LOG_DBG("Volume Control Server Bond Data updated (conidx = %d, cli_cfg_bf = 0x%02X)",
@@ -1139,9 +1137,12 @@ int init_volume_control_service(void)
 {
 	uint32_t err;
 
-	storage_load(SETTINGS_NAME_VOLUME, &env_volume, sizeof(env_volume));
+	env_volume = (struct volume){
+		.volume = CONFIG_VOLUME_DEFAULT_LEVEL,
+		.mute = false,
+	};
 
-	audio_datapath_channel_volume_sink((env_volume.volume >> 1), env_volume.mute);
+	storage_load(SETTINGS_NAME_VOLUME, &env_volume, sizeof(env_volume));
 
 	static const arc_vcs_cb_t cbs_arc_vcs = {
 		.cb_bond_data = volume_renderer_cb_bond_data,
@@ -1164,12 +1165,18 @@ int init_volume_control_service(void)
 
 /* ---------------------------------------------------------------------------------------- */
 
-int unicast_sink_init(void)
+static int preinit_unicast_sink(void)
 {
 	k_work_queue_start(&worker_queue, worker_task_stack,
 			   K_KERNEL_STACK_SIZEOF(worker_task_stack), WORKER_PRIORITY, NULL);
 	k_thread_name_set(&worker_queue.thread, "unicast_srv_workq");
 
+	return 0;
+}
+SYS_INIT(preinit_unicast_sink, APPLICATION, 0);
+
+int unicast_sink_init(void)
+{
 	size_t iter;
 	uint16_t err;
 	struct gaf_adv_cfg config = {

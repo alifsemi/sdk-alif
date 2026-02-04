@@ -14,6 +14,8 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/dma.h>
+#include <zephyr/pm/device.h>
+#include <zephyr/pm/policy.h>
 #include <drivers/i2s_sync.h>
 #include <soc_common.h>
 
@@ -176,8 +178,8 @@ INT_RAMFUNC static int i2s_transmitter_start_dma(const struct device *const dev,
 		.channel_direction = MEMORY_TO_PERIPHERAL,
 		.source_data_size = data_size,
 		.dest_data_size = data_size,
-		.source_burst_length = I2S_FIFO_TRG_LEVEL - 1,
-		.dest_burst_length = I2S_FIFO_TRG_LEVEL - 1,
+		.source_burst_length = I2S_FIFO_TRG_LEVEL_TX - 1,
+		.dest_burst_length = I2S_FIFO_TRG_LEVEL_TX - 1,
 		.head_block = &dma_block_cfg,
 		.user_data = (void *)dev,
 		.dma_callback = dma_tx_callback,
@@ -311,8 +313,8 @@ INT_RAMFUNC static int i2s_receiver_start_dma(const struct device *const dev,
 		.channel_direction = PERIPHERAL_TO_MEMORY,
 		.source_data_size = data_size,
 		.dest_data_size = data_size,
-		.source_burst_length = I2S_FIFO_TRG_LEVEL - 1,
-		.dest_burst_length = I2S_FIFO_TRG_LEVEL - 1,
+		.source_burst_length = I2S_FIFO_TRG_LEVEL_RX - 1,
+		.dest_burst_length = I2S_FIFO_TRG_LEVEL_RX - 1,
 		.head_block = &dma_block_cfg,
 		.user_data = (void *)dev,
 		.dma_callback = dma_rx_callback,
@@ -676,7 +678,7 @@ INT_RAMFUNC static void i2s_sync_tx_isr_handler(const struct device *dev)
 	struct i2s_sync_data *dev_data = dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	int16_t *buf = (int16_t *)dev_data->tx.buf;
-	uint32_t tx_free = I2S_FIFO_TRG_LEVEL;
+	uint32_t tx_free = I2S_FIFO_TRG_LEVEL_TX;
 
 	while (buf && tx_free && (dev_data->tx.count < dev_data->tx.samples)) {
 		/* Left channel is always output from first buffer position */
@@ -739,7 +741,7 @@ INT_RAMFUNC static void i2s_sync_rx_isr_handler(const struct device *dev)
 	struct i2s_sync_data *dev_data = dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	int16_t *buf = (int16_t *)dev_data->rx.buf;
-	uint32_t rx_avail = I2S_FIFO_TRG_LEVEL;
+	uint32_t rx_avail = I2S_FIFO_TRG_LEVEL_RX;
 
 	while (buf && rx_avail && (dev_data->rx.count < dev_data->rx.samples)) {
 		/* Left channel is always placed in first buffer position */
@@ -829,6 +831,52 @@ static const struct i2s_sync_driver_api i2s_sync_api = {.register_cb = i2s_regis
 							.get_config = i2s_sync_get_config_impl,
 							.configure = i2s_sync_configure_impl};
 
+#if defined(CONFIG_PM_DEVICE)
+
+static int i2s_sync_suspend(const struct device *dev)
+{
+	return 0;
+}
+
+static int i2s_sync_resume(const struct device *dev)
+{
+	return i2s_sync_init(dev);
+}
+
+/**
+ * @brief I2S PM device action handler
+ *
+ * Handles power management state transitions for the I2S device.
+ * Coordinates with power domain via PM framework.
+ *
+ * @param dev I2S device struct
+ * @param action PM device action
+ *
+ * @return 0 if successful, negative errno otherwise
+ */
+static int i2s_sync_pm_action(const struct device *dev, enum pm_device_action action)
+{
+	switch (action) {
+	case PM_DEVICE_ACTION_RESUME:
+		/* Device is powered - restore I2S state */
+		return i2s_sync_resume(dev);
+
+	case PM_DEVICE_ACTION_SUSPEND:
+		/* Save I2S state and prepare for power down */
+		return i2s_sync_suspend(dev);
+	case PM_DEVICE_ACTION_TURN_OFF:
+	case PM_DEVICE_ACTION_TURN_ON:
+		/* Power domain handling is automatic via PM framework */
+		return 0;
+
+	default:
+		break;
+	}
+
+	return -ENOTSUP;
+}
+#endif /* CONFIG_PM_DEVICE */
+
 /* clang-format off */
 
 #define I2S_SYNC_INST_DMA_IS_ENABLED(inst)                                                         \
@@ -865,9 +913,10 @@ static const struct i2s_sync_driver_api i2s_sync_api = {.register_cb = i2s_regis
 		.bit_depth = DT_INST_PROP(inst, bit_depth),                                        \
 		.channel_count = DT_INST_PROP(inst, mono_mode) ? 1 : 2,                            \
 		COND_CODE_1(I2S_SYNC_INST_DMA_IS_ENABLED(inst), (I2S_SYNC_DMA_INIT(inst)), ())};   \
-	DEVICE_DT_INST_DEFINE(inst, i2s_sync_init, NULL, &i2s_sync_data_##inst,                    \
-			      &i2s_sync_config_##inst, POST_KERNEL, CONFIG_I2S_INIT_PRIORITY,      \
-			      &i2s_sync_api);
+	PM_DEVICE_DT_INST_DEFINE(inst, i2s_sync_pm_action);                                        \
+	DEVICE_DT_INST_DEFINE(inst, i2s_sync_init, PM_DEVICE_DT_INST_GET(inst),                    \
+			      &i2s_sync_data_##inst, &i2s_sync_config_##inst, POST_KERNEL,         \
+			      CONFIG_I2S_INIT_PRIORITY, &i2s_sync_api);
 
 DT_INST_FOREACH_STATUS_OKAY(I2S_SYNC_DEFINE)
 

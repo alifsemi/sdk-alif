@@ -9,13 +9,17 @@
 
 #include <zephyr/types.h>
 #include <zephyr/device.h>
+#include <zephyr/drivers/i2c.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/audio/codec.h>
+#include <zephyr/pm/device_runtime.h>
+#include <sync_timer.h>
 
 #include "bluetooth/le_audio/audio_decoder.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 
 #include "audio_datapath.h"
+#include "power_mgr.h"
 
 #if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
 #define INT_RAMFUNC __ramfunc
@@ -98,6 +102,8 @@ INT_RAMFUNC static void print_sdus(void *context, uint32_t timestamp, uint16_t s
 
 int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 {
+	int ret;
+
 	if (cfg == NULL) {
 		return -EINVAL;
 	}
@@ -107,6 +113,20 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 
 		return -EALREADY;
 	}
+
+#if !CONFIG_PM_DEVICE_SYSTEM_MANAGED
+	/* Wakeup I2C and I2S devices */
+	ret = pm_device_runtime_get(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)));
+	if (ret) {
+		LOG_ERR("Failed to get runtime PM for codec I2C device, err %d", ret);
+		return ret;
+	}
+	ret = pm_device_runtime_get(I2S_SOURCE_DEV);
+	if (ret) {
+		LOG_ERR("Failed to get runtime PM for I2S device, err %d", ret);
+		return ret;
+	}
+#endif
 
 	struct audio_encoder_params const enc_params = {
 		.i2s_dev = I2S_SOURCE_DEV,
@@ -118,6 +138,11 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 	/* Remove old one and create a new */
 	env.encoder = audio_encoder_create(&enc_params);
 	if (env.encoder == NULL) {
+#if !CONFIG_PM_DEVICE_SYSTEM_MANAGED
+		pm_device_runtime_put_async(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)), K_NO_WAIT);
+		pm_device_runtime_put_async(I2S_SOURCE_DEV, K_NO_WAIT);
+#endif
+
 		LOG_ERR("Failed to create audio encoder");
 		return -ENOMEM;
 	}
@@ -131,6 +156,8 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 #endif
 
 	LOG_DBG("Source audio datapath created");
+
+	ARG_UNUSED(ret);
 
 	return 0;
 }
@@ -170,6 +197,13 @@ int audio_datapath_channel_stop_source(uint8_t const stream_lid)
 
 int audio_datapath_cleanup_source(void)
 {
+#if !CONFIG_PM_DEVICE_SYSTEM_MANAGED
+	if (env.encoder) {
+		pm_device_runtime_put_async(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)), K_NO_WAIT);
+		pm_device_runtime_put_async(I2S_SOURCE_DEV, K_NO_WAIT);
+	}
+#endif
+
 	/* Stop encoder first as it references other modules */
 	audio_encoder_delete(env.encoder);
 	env.encoder = NULL;
@@ -218,6 +252,37 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 
 	/* clang-format on */
 
+#if CONFIG_PM
+	/* Workaround to get sync timer running again after sleep period.
+	 * No sync timer PM support yet.
+	 * TODO/FIXME: Replace this workaround when sync timer power management support is
+	 * implemented.
+	 */
+	sync_timer_init();
+	sync_timer_start(NULL, NULL);
+
+#if !CONFIG_PM_DEVICE_SYSTEM_MANAGED
+	/* Wakeup I2C and I2S devices */
+	ret = pm_device_runtime_get(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)));
+	if (ret) {
+		LOG_ERR("Failed to get runtime PM for codec parent device, err %d", ret);
+		return ret;
+	}
+	ret = pm_device_runtime_get(I2S_SINK_DEV);
+	if (ret) {
+		LOG_ERR("Failed to get runtime PM for I2S device, err %d", ret);
+		return ret;
+	}
+#endif
+
+	ret = i2c_configure(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)),
+			    I2C_MODE_CONTROLLER | I2C_SPEED_SET(I2C_SPEED_STANDARD));
+	if (ret) {
+		LOG_ERR("Failed to configure I2C for codec, err %d", ret);
+		return ret;
+	}
+#endif
+
 	ret = audio_codec_configure(DEVICE_DT_GET(CODEC_CFG_NODE), &codec_cfg);
 	if (ret) {
 		LOG_ERR("Failed to configure sink codec. err %d", ret);
@@ -228,6 +293,10 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 	env.decoder = audio_decoder_create(&dec_params);
 
 	if (!env.decoder) {
+#if !CONFIG_PM_DEVICE_SYSTEM_MANAGED
+		pm_device_runtime_put_async(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)), K_NO_WAIT);
+		pm_device_runtime_put_async(I2S_SINK_DEV, K_NO_WAIT);
+#endif
 		LOG_ERR("Failed to create audio decoder");
 		return -ENOMEM;
 	}
@@ -288,8 +357,8 @@ int audio_datapath_channel_volume_sink(uint8_t const volume, bool const mute)
 	const struct device *dev = DEVICE_DT_GET(CODEC_CFG_NODE);
 
 	property_value.vol = volume;
-	ret = audio_codec_set_property(dev, AUDIO_PROPERTY_OUTPUT_VOLUME,
-				       AUDIO_CHANNEL_ALL, property_value);
+	ret = audio_codec_set_property(dev, AUDIO_PROPERTY_OUTPUT_VOLUME, AUDIO_CHANNEL_ALL,
+				       property_value);
 	if (ret) {
 		LOG_ERR("Failed to set volume, err %d", ret);
 		return ret;
@@ -308,6 +377,13 @@ int audio_datapath_channel_volume_sink(uint8_t const volume, bool const mute)
 
 int audio_datapath_cleanup_sink(void)
 {
+#if !CONFIG_PM_DEVICE_SYSTEM_MANAGED
+	if (env.decoder) {
+		pm_device_runtime_put_async(DEVICE_DT_GET(DT_PARENT(CODEC_CFG_NODE)), K_NO_WAIT);
+		pm_device_runtime_put_async(I2S_SINK_DEV, K_NO_WAIT);
+	}
+#endif
+
 	audio_decoder_delete(env.decoder);
 	env.decoder = NULL;
 
