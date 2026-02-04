@@ -12,9 +12,6 @@ config ALIF_THROUHGPUT_SHELL
 	bool "Bluetooth throughput commands"
 	default y
 
-config BLE_BONDING
-	bool "Bond to peripheral"
-
 config BLE_THROUGHPUT_DURATION
 	int "Throughput test duration in milliseconds"
 	default 20000
