@@ -29,6 +29,7 @@ uint16_t ble_conn_int_min __attribute__((noinit));
 uint16_t ble_conn_int_max __attribute__((noinit));
 uint32_t ble_rtc_wakeup __attribute__((noinit));
 uint32_t ble_rtc_connected_wakeup __attribute__((noinit));
+uint16_t reset_after_sleep __attribute__((noinit));
 
 static int app_shell_init(void)
 {
@@ -74,22 +75,28 @@ char *param_get_char(size_t argc, char **argv, char *p_param, char *def_value)
 	return def_value;
 }
 
+void appl_shell_reset(void)
+{
+	skip_wait = false;
+	sleep_allowed = false;
+	force_ble_restart = false;
+	wakeup_time = 0;
+	ble_adv_int_min = 1000;
+	ble_adv_int_max = 1000;
+	ble_conn_int_min = 800;
+	ble_conn_int_max = 800;
+	ble_rtc_wakeup = 20000;
+	ble_rtc_connected_wakeup = 2151;
+	strncpy(app_shell_device_name, "APPL_SHL", DEVICE_NAME_LEN - 1);
+	app_shell_device_name[8] = 0;
+	reset_after_sleep = 0;
+}
+
 void appl_shell_init(void)
 {
 	if (is_cold_boot()) {
 		/* Mark a cold boot */
-		skip_wait = false;
-		sleep_allowed = false;
-		force_ble_restart = false;
-		wakeup_time = 0;
-		ble_adv_int_min = 1000;
-		ble_adv_int_max = 1000;
-		ble_conn_int_min = 800;
-		ble_conn_int_max = 800;
-		ble_rtc_wakeup = 20000;
-		ble_rtc_connected_wakeup = 2151;
-		strncpy(app_shell_device_name, "APPL_SHL", DEVICE_NAME_LEN - 1);
-		app_shell_device_name[8] = 0;
+		appl_shell_reset();
 	}
 	k_sem_init(&waiting_semaphore, 0, 1);
 }
@@ -116,6 +123,7 @@ bool appl_allow_sleep(void)
 void appl_wait_to_continue(void)
 {
 	appl_shell_init();
+	printk("BLE testapp started!\n");
 	if (!skip_wait) {
 		k_sem_take(&waiting_semaphore, K_FOREVER);
 		LOG_INF("continuing.");
@@ -171,6 +179,7 @@ static int cmd_int(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_continue(const struct shell *shell, size_t argc, char **argv)
 {
+	reset_after_sleep = param_get_int(argc, argv, "--reset_after", reset_after_sleep);
 	skip_wait = true;
 	k_sem_give(&waiting_semaphore);
 	shell_print(shell, "BLEtestapp continue");
@@ -264,7 +273,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(interval, NULL,
 		      "configure M55 wakeup interval <time in ms> --connected <time in ms>",
 		      cmd_int, 1, 10),
-	SHELL_CMD_ARG(continue, NULL, "Start ble application", cmd_continue, 1, 10),
+	SHELL_CMD_ARG(continue, NULL, "Start ble application --reset_after <0/1>",
+		cmd_continue, 1, 10),
 	SHELL_CMD_ARG(sleep, NULL, "allow sleep in <seconds>", cmd_sleep, 2, 10),
 	SHELL_CMD_ARG(re-start, NULL, "restart BLE stack on next startup", cmd_restart_ble, 1,
 		      10),
