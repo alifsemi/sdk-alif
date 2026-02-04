@@ -465,7 +465,6 @@ void peripheral_app_init(void)
 
 int peripheral_app_exec(uint32_t const app_state)
 {
-	uint16_t rc;
 
 	switch (app_state) {
 	case APP_STATE_PERIPHERAL_START_ADVERTISING: {
@@ -474,12 +473,8 @@ int peripheral_app_exec(uint32_t const app_state)
 	}
 	case APP_STATE_DISCONNECTED: {
 		printk("Disconnected! Restart advertising\r\n");
-		rc = bt_gapm_advertisement_start(env.adv_actv_idx);
-		if (rc) {
-			app_transition_to(APP_STATE_ERROR);
-		} else {
-			app_transition_to(APP_STATE_STANDBY);
-		}
+		/* Go to back stand by Advertisement is already started */
+		app_transition_to(APP_STATE_STANDBY);
 		break;
 	}
 	case APP_STATE_PERIPHERAL_RECEIVING: {

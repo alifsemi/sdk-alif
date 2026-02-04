@@ -47,23 +47,6 @@ uint16_t time_offset_minutes = 0x00BB;
 
 struct shared_control *s_shared_ptr;
 
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-gapm_callbacks_t append_cbs(gapm_callbacks_t *gapm_append_cbs)
-{
-	gapm_callbacks_t cbs = *gapm_append_cbs;
-
-	cbs.p_gapm_cbs = &gapm_err_cbs;
-
-	return cbs;
-}
-
 const char cgms_char_name[CGMS_CHAR_TYPE_MAX][31] = {
 	"CGM Measurement",
 	"CGM Feature",

@@ -21,14 +21,19 @@
 #include <alif/bluetooth/bt_adv_data.h>
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
+#include "ble_gpio.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* Define advertising address type */
 #define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+#define LED0_NODE DT_ALIAS(led0)
+
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 /* Store and share advertising address type */
 static uint8_t adv_type;
+static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 /**
  * Bluetooth stack configuration
@@ -57,86 +62,29 @@ static const char *device_name = "ALIF_ZEPHYR";
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
 
-/**
- * Bluetooth GAPM callbacks
- */
-static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
+void LedWorkerHandler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
+
+void LedWorkerHandler(struct k_work *work)
 {
-	LOG_INF("Connection request on index %u", conidx);
-	gapc_le_connection_cfm(conidx, 0, NULL);
+	int res_schedule_time = 0;
 
-	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
-
-	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
-}
-
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Unexpected key received key on conidx %u", conidx);
-}
-
-static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
-	uint16_t err = bt_gapm_advertisement_continue(conidx);
-
-	if (err) {
-		LOG_ERR("Error restarting advertising: %u", err);
+	if (conn_status == BT_CONN_STATE_CONNECTED) {
+		ble_gpio_led_set(&led2, false);
 	} else {
-		LOG_DBG("Restarting advertising");
+		ble_gpio_led_toggle(&led2);
+		res_schedule_time = 500;
+	}
+
+	if (res_schedule_time) {
+		k_work_reschedule(&ledWork, K_MSEC(res_schedule_time));
 	}
 }
 
-static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
-			uint16_t max_len)
+static void UpdateMuteLedstate(void)
 {
-	LOG_WRN("Received unexpected name get from conidx: %u", conidx);
+	k_work_reschedule(&ledWork, K_MSEC(1));
 }
-
-static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-	/* Send 'unknown' appearance */
-	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
-
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
-};
-
-static const gapc_security_cb_t gapc_sec_cbs = {
-	.key_received = on_key_received,
-	/* All other callbacks in this struct are optional */
-};
-
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-	/* Other callbacks in this struct are optional */
-};
-
-/* All callbacks in this struct are optional */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs = {0};
-
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = &gapc_con_cbs,
-	.p_sec_cbs = &gapc_sec_cbs,
-	.p_info_cbs = &gapc_con_inf_cbs,
-	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL, /* BT classic so not required */
-	.p_gapm_cbs = &gapm_err_cbs,
-};
 
 static int set_advertising_data(uint8_t actv_idx)
 {
@@ -171,9 +119,44 @@ static uint16_t create_advertising(void)
 						      &adv_actv_idx);
 }
 
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
+{
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		conn_status = BT_CONN_STATE_CONNECTED;
+		LOG_INF("Connection index %u connected to known device", con_idx);
+		break;
+	case GAPM_API_DEV_CONNECTED:
+		conn_status = BT_CONN_STATE_CONNECTED;
+		LOG_INF("Connection index %u connected to new device", con_idx);
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
+		conn_status = BT_CONN_STATE_DISCONNECTED;
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		break;
+	}
+
+	UpdateMuteLedstate();
+}
+
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
+};
+
 int main(void)
 {
 	uint16_t err;
+
+	err = ble_gpio_led_init();
+
+	if (err) {
+		LOG_ERR("Led Init fail %u", err);
+		return -1;
+	}
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -184,7 +167,7 @@ int main(void)
 	}
 
 	LOG_INF("Init gapm service");
-	err = bt_gapm_init(&gapm_cfg, &gapm_cbs, device_name, strlen(device_name));
+	err = bt_gapm_init(&gapm_cfg, &gapm_user_cb, device_name, strlen(device_name));
 	if (err) {
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;
@@ -215,6 +198,8 @@ int main(void)
 	}
 
 	print_device_identity();
+	/* Set a Led init state */
+	k_work_reschedule(&ledWork, K_MSEC(1));
 
 	uint32_t ctr = 0;
 
