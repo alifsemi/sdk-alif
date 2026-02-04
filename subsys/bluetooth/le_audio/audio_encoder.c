@@ -12,6 +12,8 @@
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 #include <stdlib.h>
 
 #include "alif_lc3.h"
@@ -380,6 +382,10 @@ struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *pa
 
 	k_thread_name_set(enc->tid, "lc3_encoder");
 
+	/* Don't let the system enter OFF state while encoder is active */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
 	return enc;
 }
 
@@ -546,6 +552,10 @@ int audio_encoder_delete(struct audio_encoder *encoder)
 	}
 
 	free(encoder);
+
+	/* allow OFF state when encoder is deleted */
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 
 	return 0;
 }

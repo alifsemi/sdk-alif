@@ -62,7 +62,7 @@ struct i2s_t {
 	__IOM uint32_t DMACR; /*!< Offset:0x200, I2S DMA Control */
 };
 
-struct clkctl_per_slv_t { /*!< (@ 0x4902F000) CLKCTL_PER_SLV Structure        */
+struct clkctl_per_slv_t {            /*!< (@ 0x4902F000) CLKCTL_PER_SLV Structure        */
 	__IOM uint32_t EXPMST0_CTRL; /*!< (@ 0x00000000) Clock Control Register */
 	__IM uint32_t RESERVED;
 	__IOM uint32_t UART_CTRL;  /*!< (@ 0x00000008) UART Control Register  */
@@ -99,7 +99,7 @@ struct clkctl_per_slv_t { /*!< (@ 0x4902F000) CLKCTL_PER_SLV Structure        */
 	__IOM uint32_t GPIO_CTRL12; /*!< (@ 0x000000B0) GPIOn Control Register */
 	__IOM uint32_t GPIO_CTRL13; /*!< (@ 0x000000B4) GPIOn Control Register */
 	__IOM uint32_t GPIO_CTRL14; /*!< (@ 0x000000B8) GPIOn Control Register */
-};                                  /*!< Size = 188 (0xbc)             */
+}; /*!< Size = 188 (0xbc)             */
 
 struct m55he_cfg_t { /*!< (@ 0x43007000) M55HE_CFG Structure                         */
 	__IOM uint32_t HE_DMA_CTRL; /*!< (@ 0x00000000) DMA2 Boot Control Register   */
@@ -140,8 +140,14 @@ struct m55he_cfg_t { /*!< (@ 0x43007000) M55HE_CFG Structure                    
 #define I2S_TX_WORDSIZE 32
 
 /*!< FIFO Depth for Tx & Rx  */
-#define I2S_FIFO_DEPTH     16
-#define I2S_FIFO_TRG_LEVEL (I2S_FIFO_DEPTH / 2)
+#define I2S_FIFO_DEPTH            16
+/* Adjust FIFO levels so that there is a bit longer burst per
+ * IRQ callback. This allows HE core to sleep a bit longer
+ * between interrupts.
+ */
+#define I2S_FIFO_TRG_LEVEL_OFFSET 4
+#define I2S_FIFO_TRG_LEVEL_RX     (I2S_FIFO_DEPTH - I2S_FIFO_TRG_LEVEL_OFFSET)
+#define I2S_FIFO_TRG_LEVEL_TX     (I2S_FIFO_TRG_LEVEL_OFFSET)
 
 /* Register fields and masks */
 
@@ -374,7 +380,7 @@ static inline void i2s_set_tx_trigger_level_value(struct i2s_t *i2s, uint32_t co
 
 static inline void i2s_set_tx_trigger_level(struct i2s_t *i2s)
 {
-	i2s_set_tx_trigger_level_value(i2s, I2S_FIFO_TRG_LEVEL);
+	i2s_set_tx_trigger_level_value(i2s, I2S_FIFO_TRG_LEVEL_TX);
 }
 
 static inline void i2s_set_rx_trigger_level_value(struct i2s_t *i2s, uint32_t const level)
@@ -384,7 +390,7 @@ static inline void i2s_set_rx_trigger_level_value(struct i2s_t *i2s, uint32_t co
 
 static inline void i2s_set_rx_trigger_level(struct i2s_t *i2s)
 {
-	i2s_set_rx_trigger_level_value(i2s, I2S_FIFO_TRG_LEVEL);
+	i2s_set_rx_trigger_level_value(i2s, I2S_FIFO_TRG_LEVEL_RX);
 }
 
 static inline enum i2s_wlen_t wlen_to_reg_val(uint32_t wlen)
@@ -485,7 +491,7 @@ static inline void i2s_rx_interrupt_disable(struct i2s_t *i2s)
 	i2s_rx_fifo_interrupt_disable(i2s);
 }
 
-static inline void i2s_interrupt_disable_all(struct  i2s_t *i2s)
+static inline void i2s_interrupt_disable_all(struct i2s_t *i2s)
 {
 	i2s->IMR = UINT32_MAX;
 }
@@ -563,7 +569,6 @@ static inline void i2s_write_right_tx(struct i2s_t *i2s, uint32_t data)
 {
 	i2s->RTHR = data;
 }
-
 
 static inline void i2s_tx_dma_enable(struct i2s_t *i2s)
 {

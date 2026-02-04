@@ -76,6 +76,13 @@ choice
 	bool "Both"
 endchoice
 
+config VOLUME_DEFAULT_LEVEL
+	int "Default volume level"
+	range 0 255
+	default 60
+	help
+	  Default volume level after first boot or reset.
+
 config VOLUME_CTRL_STEP_SIZE
 	int "Volume control step size"
 	range 1 255
