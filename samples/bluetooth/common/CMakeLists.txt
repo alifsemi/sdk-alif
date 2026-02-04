@@ -10,6 +10,7 @@ set(COMMON_SRCS
  	${CMAKE_CURRENT_LIST_DIR}/batt_svc.c
  	${CMAKE_CURRENT_LIST_DIR}/address_verification.c
 	${CMAKE_CURRENT_LIST_DIR}/gapm_api.c
+	${CMAKE_CURRENT_LIST_DIR}/gapm_sec.c
 )
 
 if(pm-ble IN_LIST SNIPPET)

@@ -10,7 +10,18 @@
 #ifndef GAPM_API_H
 #define GAPM_API_H
 #include "gapm.h"
+#include "gapc.h"
 #include "gapm_le.h"
+
+enum gapm_connection_event {
+	GAPM_API_DEV_CONNECTED,
+	GAPM_API_SEC_CONNECTED_KNOWN_DEVICE,
+	GAPM_API_DEV_DISCONNECTED,
+	GAPM_API_PAIRING_FAIL,
+};
+
+#define BT_CONN_STATE_CONNECTED    0x00
+#define BT_CONN_STATE_DISCONNECTED 0x01
 
 typedef struct {
 	/**
@@ -43,6 +54,30 @@ typedef struct {
 
 } gapm_le_adv_user_cb_t;
 
+typedef struct {
+	/**
+	 * Callback for indicate user when BLE connection state is updated
+	 *
+	 * @param[in] event	Connection update type
+	 * @param[in] con_idx	Connection local index
+	 * @param[in] status	Event status report for GAPM_API_PAIRING_FAIL or
+	 * GAPM_API_DEV_DISCONNECTED
+	 */
+	void (*connection_status_update)(enum gapm_connection_event event, uint8_t con_idx,
+					 uint16_t status);
+} gapm_user_cb_t;
+
+/**
+ * @brief Set GAPM preferred connections params
+ *
+ * Function initialize GAPM service with given name and configuration.
+ *
+ * @param preferred_params GAPM configure
+ *
+ */
+void bt_gapm_preferred_connection_paras_set(
+	const gapc_le_con_param_nego_with_ce_len_t *preferred_params);
+
 /**
  * @brief Initialize GAPM service
  *
@@ -50,13 +85,13 @@ typedef struct {
  * Function allocate advertisement and scan response buffer
  *
  * @param p_cfg GAPM configure
- * @param p_cbs GAPM callbacks
+ * @param p_cbs GAPM user callbacks
  * @param name String pointer to name
- * @param name_len Nanme leght by strlen(name)
+ * @param name_len Name length by strlen(name)
  *
  * @return 0 on success, positive error code otherwise
  */
-uint16_t bt_gapm_init(const gapm_config_t *p_cfg, const gapm_callbacks_t *p_cbs, const char *name,
+uint16_t bt_gapm_init(const gapm_config_t *p_cfg, gapm_user_cb_t *p_cbs, const char *name,
 		      size_t name_len);
 
 /**
