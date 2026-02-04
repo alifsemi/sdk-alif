@@ -42,53 +42,121 @@ LOG_MODULE_REGISTER(power_shell, CONFIG_MAIN_LOG_LEVEL);
 
 static int16_t get_power_profile(const char *power_profile)
 {
-	if (!strcmp(power_profile, "GO_4")) {
-		/* GO_4: Only M55-HE running WHILE(1) at 76.8 MHz from HFRC. No NPU is enabled. */
-		/* NOTE! No MRAM, must use TCM build */
-		/* NOTE! No SYSTOP, must use LPUART */
+	if (!strcmp(power_profile, "GO_1")) {
+		/* GO_1: M55-HE running CoreMark at 160 MHz.
+		 * NPU running convolution MAC workload.
+		 */
+		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK | PD_SYST_MASK;
+		current_runp.power_domains |= PD_SESS_MASK;
+		current_runp.dcdc_voltage = DCDC_VOUT_0825;
+		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+		current_runp.memory_blocks = MRAM_MASK | SERAM_MASK | BACKUP4K_MASK;
+		current_runp.memory_blocks |= APP_RET_MEM_BLOCKS;
+		current_runp.aon_clk_src = CLK_SRC_LFXO;
+		current_runp.run_clk_src = CLK_SRC_PLL;
+		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
+		current_runp.phy_pwr_gating = 0;
+		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+		return PM_STATE_MODE_GO_1;
+	} else if (!strcmp(power_profile, "GO_2")) {
+		/* GO_2: M55-HE running CoreMark at 160 MHz. No NPU is enabled. */
+		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK | PD_SYST_MASK;
+		current_runp.power_domains |= PD_SESS_MASK;
+		current_runp.dcdc_voltage = DCDC_VOUT_0825;
+		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+		current_runp.memory_blocks = MRAM_MASK | SERAM_MASK | BACKUP4K_MASK;
+		current_runp.memory_blocks |= APP_RET_MEM_BLOCKS;
+		current_runp.aon_clk_src = CLK_SRC_LFXO;
+		current_runp.run_clk_src = CLK_SRC_PLL;
+		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
+		current_runp.phy_pwr_gating = 0;
+		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+		return PM_STATE_MODE_GO_2;
+	} else if (!strcmp(power_profile, "GO_3")) {
+		/** GO_3: M55-HE running CoreMark at 160 MHz. No NPU is enabled.
+		 * TCM not retained, MRAM off, SYSTOP OFF, SE OFF, SE in retention.
+		 * NOTE! No MRAM, must use TCM build
+		 * NOTE! No SYSTOP, must use LPUART
+		 */
 		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
+		current_runp.dcdc_voltage = DCDC_VOUT_0825;
+		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+		current_runp.memory_blocks = SERAM_MASK | BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
+		current_runp.aon_clk_src = CLK_SRC_LFXO;
+		current_runp.run_clk_src = CLK_SRC_PLL;
+		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
+		current_runp.phy_pwr_gating = 0;
+		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+		return PM_STATE_MODE_GO_3;
+	} else if (!strcmp(power_profile, "GO_4")) {
+		/* GO_4: M55-HE running CoreMark at 76.8 MHz. No NPU is enabled.
+		 * TCM not retained, MRAM off, SYSTOP OFF, SE OFF, SE is NOT in retention.
+		 * NOTE! No MRAM, must use TCM build
+		 * NOTE! No SYSTOP, must use LPUART
+		 */
+		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
+		current_runp.dcdc_voltage = 825;
+		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+		current_runp.memory_blocks = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
 		current_runp.aon_clk_src = CLK_SRC_LFXO;
 		current_runp.run_clk_src = CLK_SRC_HFRC;
 		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_76_8_RC_MHZ;
 		/* Set RC divider to max 76.8Mhz so CPU is run at requested 76.8Mhz */
 		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
-		current_runp.memory_blocks = SERAM_MASK | BACKUP4K_MASK;
 		current_runp.phy_pwr_gating = 0;
 		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-		current_runp.dcdc_voltage = 825;
-		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
 		return PM_STATE_MODE_GO_4;
 	} else if (!strcmp(power_profile, "GO_5")) {
-		/* GO_5: Only M55-HE running WHILE(1) at 19.2 MHz from HFRC. No NPU is enabled. */
-		/* NOTE! No MRAM, must use TCM build */
-		/* NOTE! No SYSTOP, must use LPUART */
+		/* GO_5: M55-HE running CoreMark at 19.2 MHz. No NPU is enabled.
+		 * TCM not retained, MRAM off, SYSTOP OFF, SE OFF, SE is NOT in retention.
+		 * NOTE! No MRAM, must use TCM build
+		 * NOTE! No SYSTOP, must use LPUART
+		 */
 		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
+		current_runp.dcdc_voltage = 825;
+		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+		current_runp.memory_blocks = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
 		current_runp.aon_clk_src = CLK_SRC_LFXO;
 		current_runp.run_clk_src = CLK_SRC_HFRC;
 		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_76_8_RC_MHZ;
 		/* Set divider to divide max RC 76.8Mhz to 19.2 Mhz */
 		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_19_2_MHZ;
-		current_runp.memory_blocks = SERAM_MASK | BACKUP4K_MASK;
 		current_runp.phy_pwr_gating = 0;
 		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+		return PM_STATE_MODE_GO_5;
+	} else if (!strcmp(power_profile, "READY_1")) {
+		/* READY_1: M55-HE WFI at 160 MHz from PLL.
+		 * NOTE! No MRAM, must use TCM build
+		 */
+		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK | PD_SYST_MASK;
+		current_runp.dcdc_voltage = DCDC_VOUT_0825;
+		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
+		current_runp.memory_blocks = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
+		current_runp.aon_clk_src = CLK_SRC_LFXO;
+		current_runp.run_clk_src = CLK_SRC_PLL;
+		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
+		current_runp.phy_pwr_gating = 0;
+		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	} else if (!strcmp(power_profile, "READY_2")) {
+		/* READY_2: M55-HE WFI at 76.8 MHz from HFRC.
+		 * NOTE! No MRAM, must use TCM build
+		 * NOTE! No SYSTOP, must use LPUART
+		 */
+		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
 		current_runp.dcdc_voltage = 825;
 		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
-		return PM_STATE_MODE_GO_5;
-	} else if (!strcmp(power_profile, "READY_2")) {
-		/* READY_2: M55-HE WFI at 76.8 MHz from HFRC. */
-		/* NOTE! No MRAM, must use TCM build */
-		/* NOTE! No SYSTOP, must use LPUART */
-		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
+		current_runp.memory_blocks = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
 		current_runp.aon_clk_src = CLK_SRC_LFXO;
 		current_runp.run_clk_src = CLK_SRC_HFRC;
 		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_76_8_RC_MHZ;
 		/* Set RC divider to max 76.8Mhz so CPU is run at requested 76.8Mhz */
 		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
-		current_runp.memory_blocks = BACKUP4K_MASK;
 		current_runp.phy_pwr_gating = 0;
 		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-		current_runp.dcdc_voltage = 825;
-		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
 		return PM_STATE_MODE_READY_2;
 	/* Rest power states are for Off profile only */
 	} else if (!strcmp(power_profile, "IDLE_1")) {
@@ -96,40 +164,165 @@ static int16_t get_power_profile(const char *power_profile)
 		current_offp.power_domains   = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK | PD_SYST_MASK;
 		current_offp.dcdc_voltage    = 825;
 		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
 		current_offp.aon_clk_src     = CLK_SRC_LFXO;
 		current_offp.stby_clk_src    = CLK_SRC_HFXO;
 		current_offp.stby_clk_freq   = SCALED_FREQ_XO_HIGH_DIV_38_4_MHZ;
-		current_offp.memory_blocks   = APP_RET_MEM_BLOCKS | BACKUP4K_MASK;
-		current_offp.ewic_cfg        = SE_OFFP_EWIC_CFG;
-		/** If CONFIG_FLASH_BASE_ADDRESS is zero application run
-		 * from itcm and no MRAM needed
-		 */
-#if (CONFIG_FLASH_BASE_ADDRESS != 0)
-		current_offp.memory_blocks  |= MRAM_MASK;
-#endif
+		current_offp.ewic_cfg        = EWIC_RTC_A;
 		current_offp.phy_pwr_gating  = 0;
 		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
-		current_offp.wakeup_events   = SE_OFFP_WAKEUP_EVENTS;
+		current_offp.wakeup_events   = WE_LPRTC;
 		current_offp.vtor_address    = SCB->VTOR;
 		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_IDLE_1;
 	} else if (!strcmp(power_profile, "IDLE_2")) {
+		/* IDLE_2: All CPU cores powered off. 600kHz clock from HFRC. */
+		current_offp.power_domains   = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK | PD_SYST_MASK;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
+		current_offp.aon_clk_src     = CLK_SRC_LFXO;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_IDLE_2;
 	} else if (!strcmp(power_profile, "STANDBY_1")) {
+		/* STANDBY_1: All CPU cores powered off. 600kHz clock from HFRC.
+		 * No SYSTOP.
+		 */
+		current_offp.power_domains   = PD_VBAT_AON_MASK | PD_SSE700_AON_MASK;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = BACKUP4K_MASK | APP_RET_MEM_BLOCKS;
+		current_offp.aon_clk_src     = CLK_SRC_LFXO;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_STANDBY_1;
 	} else if (!strcmp(power_profile, "STOP_1")) {
+		/* STOP_2 plus 256KB of M55-HE TCM SRAM retained. */
+		current_offp.power_domains   = 0;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = BACKUP4K_MASK | SRAM4_1_MASK | SRAM4_2_MASK;
+		current_offp.memory_blocks   |= SRAM5_1_MASK | SRAM5_2_MASK;
+		current_offp.aon_clk_src     = CLK_SRC_LFXO;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_STOP_1;
 	} else if (!strcmp(power_profile, "STOP_2")) {
+		/* STOP_3 plus 4KB Utility SRAM retained. */
+		current_offp.power_domains   = 0;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = BACKUP4K_MASK;
+		current_offp.aon_clk_src     = CLK_SRC_LFXO;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_STOP_2;
 	} else if (!strcmp(power_profile, "STOP_3")) {
+		/* STOP_4 plus LPTIMER, BOD, LPCMP, and LPGPIO active. */
+		current_offp.power_domains   = 0;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = 0;
+		current_offp.aon_clk_src     = CLK_SRC_LFXO;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_STOP_3;
 	} else if (!strcmp(power_profile, "STOP_4")) {
+		/* STOP_5 plus LPRTC running from 32.768 kHz LFXO. */
+		current_offp.power_domains   = 0;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = 0;
+		current_offp.aon_clk_src     = CLK_SRC_LFXO;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_STOP_4;
 	} else if (!strcmp(power_profile, "STOP_5")) {
+		/* STOP_5: 32.7 kHz LFRC */
+		current_offp.power_domains   = 0;
+		current_offp.dcdc_voltage    = 825;
+		current_offp.dcdc_mode       = DCDC_MODE_PFM_FORCED;
+		current_offp.memory_blocks   = 0;
+		current_offp.aon_clk_src     = CLK_SRC_LFRC;
+		current_offp.stby_clk_src    = CLK_SRC_HFRC;
+		current_offp.stby_clk_freq   = SCALED_FREQ_RC_STDBY_0_6_MHZ;
+		current_offp.ewic_cfg        = EWIC_RTC_A;
+		current_offp.phy_pwr_gating  = 0;
+		current_offp.vdd_ioflex_3V3  = IOFLEX_LEVEL_1V8;
+		current_offp.wakeup_events   = WE_LPRTC;
+		current_offp.vtor_address    = SCB->VTOR;
+		current_offp.vtor_address_ns = SCB->VTOR;
 		return PM_STATE_MODE_STOP_5;
 	}
 
 	return -1;
+}
+
+static void print_run_cfg(const struct shell *shell, run_profile_t *runp, uint32_t err)
+{
+	shell_print(shell, "run_cfg: power_domains = 0x%08" PRIX32 ", dcdc_voltage = %" PRIu32
+		", aon_clk_src = %" PRIu32 ", run_clk_src = %" PRIu32 ", cpu_clk_freq = %" PRIu32
+		", scaled_clk_freq = %" PRIu32 "\n"
+		"         memory_blocks = 0x%08" PRIX32 ", dcdc_mode = %" PRIu32
+		", phy_pwr_gating = %" PRIu32 ", vdd_ioflex_3V3 = %" PRIu32 "\n"
+		"         error_code = %" PRIu32 ", ret = %" PRIu32 "\n",
+		runp->power_domains, runp->dcdc_voltage, runp->aon_clk_src,
+		runp->run_clk_src, runp->cpu_clk_freq, runp->scaled_clk_freq,
+		runp->memory_blocks, runp->dcdc_mode, runp->phy_pwr_gating,
+		runp->vdd_ioflex_3V3, err, err);
+}
+
+static void print_off_cfg(const struct shell *shell, off_profile_t *offp, uint32_t err)
+{
+	shell_print(shell, "off_cfg: power_domains = 0x%08" PRIX32 ", dcdc_voltage = %" PRIu32
+		", dcdc_mode = %" PRIu32 ", aon_clk_src = %" PRIu32 ", stby_clk_src = %" PRIu32
+		", stby_clk_freq = %" PRIu32 "\n         memory_blocks = 0x%08" PRIX32
+		", phy_pwr_gating = %" PRIu32 ", vdd_ioflex_3V3 = %" PRIu32
+		", wakeup_events = 0x%08" PRIX32 ", ewic_cfg = 0x%08" PRIX32
+		", vtor_address = 0x%08" PRIX32 "\n         vtor_address_ns = 0x%08" PRIX32
+		", error_code = %" PRIu32 ", ret = %" PRIu32 "\n",
+		offp->power_domains, offp->dcdc_voltage, offp->dcdc_mode,
+		offp->aon_clk_src, offp->stby_clk_src, offp->stby_clk_freq,
+		offp->memory_blocks, offp->phy_pwr_gating,
+		offp->vdd_ioflex_3V3, offp->wakeup_events, offp->ewic_cfg,
+		offp->vtor_address, offp->vtor_address_ns, err, err);
 }
 
 /**
@@ -175,17 +368,10 @@ static int cmd_set_run_cfg(const struct shell *shell, size_t argc, char **argv)
 		return -ENOEXEC;
 	}
 
-	shell_print(shell, "run_cfg: power_domains = 0x%08" PRIX32 ", dcdc_voltage = %" PRIu32
-		", aon_clk_src = %" PRIu32 ", run_clk_src = %" PRIu32 ", cpu_clk_freq = %" PRIu32
-		", scaled_clk_freq = %" PRIu32 "\n"
-		"         memory_blocks = 0x%08" PRIX32 ", dcdc_mode = %" PRIu32
-		", phy_pwr_gating = %" PRIu32 ", vdd_ioflex_3V3 = %" PRIu32 "\n"
-		"         error_code = %" PRIu32 ", ret = %" PRIu32 "\n",
-		current_runp.power_domains, current_runp.dcdc_voltage, current_runp.aon_clk_src,
-		current_runp.run_clk_src, current_runp.cpu_clk_freq, current_runp.scaled_clk_freq,
-		current_runp.memory_blocks, current_runp.dcdc_mode, current_runp.phy_pwr_gating,
-		current_runp.vdd_ioflex_3V3, ret, ret);
-	return 0;
+	print_run_cfg(shell, &current_runp, ret);
+
+	return ret;
+
 }
 
 static int cmd_set_off_cfg(const struct shell *shell, size_t argc, char **argv)
@@ -235,18 +421,75 @@ static int cmd_set_off_cfg(const struct shell *shell, size_t argc, char **argv)
 		return -ENOEXEC;
 	}
 
-	shell_print(shell, "off_cfg: power_domains = 0x%08" PRIX32 ", dcdc_voltage = %" PRIu32
-		", dcdc_mode = %" PRIu32 ", aon_clk_src = %" PRIu32 ", stby_clk_src = %" PRIu32
-		", stby_clk_freq = %" PRIu32 "\n         memory_blocks = 0x%08" PRIX32
-		", phy_pwr_gating = %" PRIu32 ", vdd_ioflex_3V3 = %" PRIu32
-		", wakeup_events = 0x%08" PRIX32 ", ewic_cfg = 0x%08" PRIX32
-		", vtor_address = 0x%08" PRIX32 "\n         vtor_address_ns = 0x%08" PRIX32
-		", error_code = %" PRIu32 ", ret = %" PRIu32 "\n",
-		current_offp.power_domains, current_offp.dcdc_voltage, current_offp.dcdc_mode,
-		current_offp.aon_clk_src, current_offp.stby_clk_src, current_offp.stby_clk_freq,
-		current_offp.memory_blocks, current_offp.phy_pwr_gating,
-		current_offp.vdd_ioflex_3V3, current_offp.wakeup_events, current_offp.ewic_cfg,
-		current_offp.vtor_address, current_offp.vtor_address_ns, ret, ret);
+	print_off_cfg(shell, &current_offp, ret);
+
+	return 0;
+}
+
+static int cmd_set_clk_divider(const struct shell *shell, size_t argc, char **argv)
+{
+	int32_t divider = 0;
+	uint32_t value = 0;
+
+	divider = param_get_int(argc, argv, "--divider", divider);
+	value = param_get_int(argc, argv, "--value", value);
+
+	int ret = se_service_clock_set_divider((clock_divider_t)divider, value);
+
+	if (ret) {
+		LOG_ERR("SE: set_clock_set_divider failed = %d", ret);
+	}
+
+	shell_print(shell, "SERVICES_clocks_set_divider: divider = %" PRId32
+		", value = %" PRId32 ", error_code = 0, ret = 0", divider, value);
+
+	return ret;
+}
+
+static int cmd_set_default_run_cfg(const struct shell *shell, size_t argc, char **argv)
+{
+	get_default_run_cfg(&current_runp);
+	int ret = se_service_set_run_cfg(&current_runp);
+
+	if (ret) {
+		LOG_ERR("SE: set_run_cfg failed = %d", ret);
+	}
+
+	print_run_cfg(shell, &current_runp, ret);
+
+	return ret;
+}
+
+static int cmd_set_default_off_cfg(const struct shell *shell, size_t argc, char **argv)
+{
+	get_default_off_cfg(&current_offp);
+	int ret = se_service_set_off_cfg(&current_offp);
+
+	if (ret) {
+		LOG_ERR("SE: set_off_cfg failed = %d", ret);
+	}
+
+	print_off_cfg(shell, &current_offp, ret);
+
+	return ret;
+}
+
+static int cmd_get_default_run_cfg(const struct shell *shell, size_t argc, char **argv)
+{
+	run_profile_t runp;
+
+	get_default_run_cfg(&runp);
+	print_run_cfg(shell, &runp, 0);
+
+	return 0;
+}
+
+static int cmd_get_default_off_cfg(const struct shell *shell, size_t argc, char **argv)
+{
+	off_profile_t offp;
+
+	get_default_off_cfg(&offp);
+	print_off_cfg(shell, &offp, 0);
 
 	return 0;
 }
@@ -268,9 +511,20 @@ static int cmd_set_off_cfg(const struct shell *shell, size_t argc, char **argv)
 "<vtor addr_ns in hex>\n" \
 "See more details from aipm.h"
 
+#define SET_CLK_HELP ""
+
 SHELL_STATIC_SUBCMD_SET_CREATE(
 	power_sub_cmds,
+	SHELL_CMD_ARG(set_default_run_cfg, NULL, "Set the default run aipm profile",
+		cmd_set_default_run_cfg, 0, 0),
+	SHELL_CMD_ARG(set_default_off_cfg, NULL, "Set the default off aipm profile",
+		cmd_set_default_off_cfg, 0, 0),
+	SHELL_CMD_ARG(get_default_run_cfg, NULL, "Get the default run aipm profile",
+		cmd_get_default_run_cfg, 0, 0),
+	SHELL_CMD_ARG(get_default_off_cfg, NULL, "Get the default off aipm profile",
+		cmd_get_default_off_cfg, 0, 0),
 	SHELL_CMD_ARG(set_run_cfg, NULL, SET_RUN_HELP, cmd_set_run_cfg, 0, 0),
 	SHELL_CMD_ARG(set_off_cfg, NULL, SET_OFF_HELP, cmd_set_off_cfg, 0, 0),
+	SHELL_CMD_ARG(clocks_set_divider, NULL, SET_CLK_HELP, cmd_set_clk_divider, 0, 0),
 	SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(senc, &power_sub_cmds, "Ble power configuration commands", NULL);

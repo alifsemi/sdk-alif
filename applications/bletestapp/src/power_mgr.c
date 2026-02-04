@@ -14,8 +14,8 @@
 #include <zephyr/drivers/counter.h>
 #include <cmsis_core.h>
 #include <se_service.h>
-#include <aipm.h>
 #include "power_mgr.h"
+#include "ble_handler.h"
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
 #define WAKEUP_SOURCE         DT_NODELABEL(rtc0)
@@ -129,6 +129,7 @@ int set_off_profile(const enum pm_state_mode_type pm_mode)
 	current_offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
 	current_offp.memory_blocks |= APP_RET_MEM_BLOCKS;
 	current_offp.dcdc_voltage = 775;
+	current_offp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
 
 	switch (pm_mode) {
 	case PM_STATE_MODE_IDLE_1:
@@ -169,6 +170,57 @@ int set_off_profile(const enum pm_state_mode_type pm_mode)
 	return set_current_off_profile();
 }
 
+void get_default_run_cfg(run_profile_t *runp)
+{
+	runp->power_domains = PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK;
+	runp->power_domains |= PD_SESS_MASK | PD_DBSS_MASK;
+	runp->dcdc_voltage = 775;
+	runp->dcdc_mode = DCDC_MODE_PFM_FORCED;
+	runp->aon_clk_src = CLK_SRC_LFXO;
+	runp->run_clk_src = CLK_SRC_PLL;
+	runp->cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
+	runp->phy_pwr_gating = 0;
+	runp->ip_clock_gating = 0;
+	runp->vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	runp->scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
+
+	runp->memory_blocks = MRAM_MASK;
+	runp->memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
+	runp->memory_blocks |= APP_RET_MEM_BLOCKS;
+
+	if (IS_ENABLED(CONFIG_MIPI_DSI)) {
+		runp->phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK;
+		runp->phy_pwr_gating |= MIPI_PLL_DPHY_MASK;
+		runp->ip_clock_gating |= CDC200_MASK | MIPI_DSI_MASK | GPU_MASK;
+	}
+}
+
+void get_default_off_cfg(off_profile_t *offp)
+{
+	/* Default is STOP mode */
+	offp->power_domains = PD_VBAT_AON_MASK;
+/* If CONFIG_FLASH_BASE_ADDRESS is zero application run from itcm and no MRAM needed */
+#if (CONFIG_FLASH_BASE_ADDRESS == 0)
+	offp->memory_blocks = 0;
+#else
+	offp->memory_blocks = MRAM_MASK;
+#endif
+	offp->memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
+	offp->memory_blocks |= APP_RET_MEM_BLOCKS;
+	offp->dcdc_voltage = 775;
+	offp->ip_clock_gating = 0;
+	offp->phy_pwr_gating = 0;
+	offp->vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	offp->dcdc_mode = DCDC_MODE_OFF;
+	offp->aon_clk_src = CLK_SRC_LFXO;
+	offp->stby_clk_src = CLK_SRC_HFRC;
+	offp->stby_clk_freq = SCALED_FREQ_RC_STDBY_0_075_MHZ;
+	offp->ewic_cfg = SE_OFFP_EWIC_CFG;
+	offp->wakeup_events = SE_OFFP_WAKEUP_EVENTS;
+	offp->vtor_address = SCB->VTOR;
+	offp->vtor_address_ns = SCB->VTOR;
+}
+
 /**
  * Set the RUN profile parameters for this application.
  */
@@ -179,27 +231,7 @@ int app_set_run_params(void)
 	 * Otherwise, current_runp should contain the correct values.
 	 */
 	if (is_cold_boot()) {
-		current_runp.power_domains = PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK;
-		current_runp.power_domains |= PD_SESS_MASK | PD_DBSS_MASK;
-		current_runp.dcdc_voltage = 775;
-		current_runp.dcdc_mode = DCDC_MODE_PFM_FORCED;
-		current_runp.aon_clk_src = CLK_SRC_LFXO;
-		current_runp.run_clk_src = CLK_SRC_PLL;
-		current_runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
-		current_runp.phy_pwr_gating = 0;
-		current_runp.ip_clock_gating = 0;
-		current_runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-		current_runp.scaled_clk_freq = SCALED_FREQ_RC_ACTIVE_76_8_MHZ;
-
-		current_runp.memory_blocks = MRAM_MASK;
-		current_runp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
-		current_runp.memory_blocks |= APP_RET_MEM_BLOCKS;
-
-		if (IS_ENABLED(CONFIG_MIPI_DSI)) {
-			current_runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK;
-			current_runp.phy_pwr_gating |= MIPI_PLL_DPHY_MASK;
-			current_runp.ip_clock_gating |= CDC200_MASK | MIPI_DSI_MASK | GPU_MASK;
-		}
+		get_default_run_cfg(&current_runp);
 	}
 
 	int ret = se_service_set_run_cfg(&current_runp);
