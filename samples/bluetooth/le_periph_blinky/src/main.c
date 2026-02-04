@@ -30,19 +30,15 @@
 #include <alif/bluetooth/bt_adv_data.h>
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
+#include "ble_gpio.h"
 
 #define LED0_NODE DT_ALIAS(led0)
 #define LED2_NODE DT_ALIAS(led2)
-#define SW0_NODE  DT_ALIAS(sw0)
 
 static uint8_t adv_type; /* Advertising type, set by address_verification() */
 
 static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
-static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0});
-
-#define BT_CONN_STATE_CONNECTED    0x00
-#define BT_CONN_STATE_DISCONNECTED 0x01
 
 /* Service Definitions */
 #define ATT_128_PRIMARY_SERVICE  ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
@@ -80,8 +76,6 @@ enum service_att_list {
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 static uint8_t adv_actv_idx;
 static struct service_env env;
-static bool led_state;
-static uint8_t led_cnt;
 
 /* Load name from configuration file */
 #define DEVICE_NAME      CONFIG_BLE_DEVICE_NAME
@@ -141,102 +135,18 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 /* function headers */
 static uint16_t service_init(void);
 
+K_SEM_DEFINE(ntf_sem, 0, 1);
+
+void LedWorkerHandler(struct k_work *work);
+
+static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
+
 /* Functions */
 
-/**
- * Bluetooth GAPM callbacks
- */
-static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
+static void UpdateMuteLedstate(void)
 {
-	LOG_INF("Connection request on index %u", conidx);
-	gapc_le_connection_cfm(conidx, 0, NULL);
-
-	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
-
-	LOG_INF("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
-		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
-		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
-
-	led_state = false;
-	led_cnt = 0;
-	gpio_pin_set_dt(&led2, led_state);
-	conn_status = BT_CONN_STATE_CONNECTED;
+	k_work_reschedule(&ledWork, K_MSEC(1));
 }
-
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Unexpected key received key on conidx %u", conidx);
-}
-
-static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	uint16_t err;
-
-	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
-
-	err = bt_gapm_advertisement_continue(conidx);
-	if (err) {
-		LOG_ERR("Error restarting advertising: %u", err);
-	} else {
-		LOG_DBG("Restarting advertising");
-	}
-
-	led_state = false;
-	led_cnt = 0;
-	gpio_pin_set_dt(&led0, 0);
-	conn_status = BT_CONN_STATE_DISCONNECTED;
-}
-
-static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
-			uint16_t max_len)
-{
-	LOG_WRN("Received unexpected name get from conidx: %u", conidx);
-}
-
-static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-	/* Send 'unknown' appearance */
-	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
-
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
-};
-
-static const gapc_security_cb_t gapc_sec_cbs = {
-	.key_received = on_key_received,
-	/* All other callbacks in this struct are optional */
-};
-
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-	/* Other callbacks in this struct are optional */
-};
-
-/* All callbacks in this struct are optional */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs;
-
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = &gapc_con_cbs,
-	.p_sec_cbs = &gapc_sec_cbs,
-	.p_info_cbs = &gapc_con_inf_cbs,
-	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL, /* BT classic so not required */
-	.p_gapm_cbs = &gapm_err_cbs,
-};
 
 static int set_advertising_data(uint8_t actv_idx)
 {
@@ -276,7 +186,7 @@ static uint16_t create_advertising(void)
 	};
 
 	return bt_gapm_le_create_advertisement_service(adv_type, &adv_create_params, NULL,
-						      &adv_actv_idx);
+						       &adv_actv_idx);
 }
 
 /* Add service to the stack */
@@ -370,9 +280,9 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 				memcpy(&env.char1_val, co_buf_data(p_data), sizeof(env.char1_val));
 				LOG_DBG("TOGGLE LED, state %d", env.char1_val);
 				if (env.char1_val) {
-					gpio_pin_set_dt(&led0, 1);
+					ble_gpio_led_set(&led0, true);
 				} else {
-					gpio_pin_set_dt(&led0, 0);
+					ble_gpio_led_set(&led0, false);
 				}
 			}
 			break;
@@ -410,6 +320,8 @@ static void on_event_sent(uint8_t conidx, uint8_t user_lid, uint16_t metainfo, u
 {
 	if (metainfo == LBS_METAINFO_CHAR0_NTF_SEND) {
 		env.ntf_ongoing = false;
+	} else {
+		LOG_ERR("Unknown %u meta %u", metainfo, status);
 	}
 }
 
@@ -445,13 +357,11 @@ static uint16_t service_init(void)
 	return GAP_ERR_NO_ERROR;
 }
 
-static uint16_t service_notification_send(uint32_t conidx_mask, uint8_t val)
+static uint16_t service_notification_send(uint32_t conidx_mask)
 {
 	co_buf_t *p_buf;
 	uint16_t status;
 	uint8_t conidx = 0;
-
-	env.char0_val = val;
 
 	/* Cannot send another notification unless previous one is completed */
 	if (env.ntf_ongoing) {
@@ -484,10 +394,84 @@ static uint16_t service_notification_send(uint32_t conidx_mask, uint8_t val)
 	return status;
 }
 
+void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
+{
+	if (has_changed & 1) {
+		if (!(button_state & 1)) {
+			if (env.char0_val) {
+				env.char0_val = 0;
+			} else {
+				env.char0_val = 1;
+			}
+			if ((conn_status == BT_CONN_STATE_CONNECTED) &&
+			    (env.ntf_cfg == PRF_CLI_START_NTF)) {
+				k_sem_give(&ntf_sem);
+			}
+		}
+	}
+}
+
+void LedWorkerHandler(struct k_work *work)
+{
+	int res_schedule_time = 0;
+
+	if (conn_status == BT_CONN_STATE_CONNECTED) {
+		ble_gpio_led_set(&led2, false);
+	} else {
+		ble_gpio_led_toggle(&led2);
+		res_schedule_time = 500;
+	}
+
+	if (res_schedule_time) {
+		k_work_reschedule(&ledWork, K_MSEC(res_schedule_time));
+	}
+}
+
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
+{
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		conn_status = BT_CONN_STATE_CONNECTED;
+		LOG_INF("Connection index %u connected to known device", con_idx);
+		break;
+	case GAPM_API_DEV_CONNECTED:
+		conn_status = BT_CONN_STATE_CONNECTED;
+		LOG_INF("Connection index %u connected to new device", con_idx);
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
+		conn_status = BT_CONN_STATE_DISCONNECTED;
+		ble_gpio_led_set(&led0, false);
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		break;
+	}
+
+	UpdateMuteLedstate();
+}
+
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
+};
+
 int main(void)
 {
 	uint16_t err;
-	int res;
+
+	err = ble_gpio_buttons_init(ButtonUpdateHandler);
+	if (err) {
+		LOG_ERR("Button Init fail %u", err);
+		return -1;
+	}
+
+	err = ble_gpio_led_init();
+
+	if (err) {
+		LOG_ERR("Led Init fail %u", err);
+		return -1;
+	}
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -499,7 +483,7 @@ int main(void)
 
 	/* Configure Bluetooth Stack */
 	LOG_INF("Init gapm service");
-	err = bt_gapm_init(&gapm_cfg, &gapm_cbs, DEVICE_NAME, strlen(DEVICE_NAME));
+	err = bt_gapm_init(&gapm_cfg, &gapm_user_cb, DEVICE_NAME, strlen(DEVICE_NAME));
 	if (err) {
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;
@@ -532,64 +516,20 @@ int main(void)
 	}
 
 	print_device_identity();
-
-	/* Configure LED 0 */
-	if (!gpio_is_ready_dt(&led0)) {
-		LOG_ERR("led0 is not ready!");
-		return 0;
-	}
-
-	res = gpio_pin_configure_dt(&led0, GPIO_OUTPUT_ACTIVE);
-	if (res < 0) {
-		LOG_ERR("led0 configure failed");
-		return 0;
-	}
-
-	/* LED initial state */
-	gpio_pin_set_dt(&led0, 0);
-
-	/* Configure LED 2 */
-	if (!gpio_is_ready_dt(&led2)) {
-		LOG_ERR("led2 is not ready!");
-		return 0;
-	}
-
-	res = gpio_pin_configure_dt(&led2, GPIO_OUTPUT_ACTIVE);
-	if (res < 0) {
-		LOG_ERR("led2 configure failed");
-		return 0;
-	}
-
-	/* LED initial state */
-	gpio_pin_set_dt(&led2, 0);
-	led_state = false;
-	led_cnt = 0;
-
-	/* Configure button */
-	if (!gpio_is_ready_dt(&button)) {
-		LOG_ERR("Button is not ready");
-		return 0;
-	}
-
-	res = gpio_pin_configure_dt(&button, GPIO_INPUT);
-	if (res != 0) {
-		LOG_ERR("Button configure failed");
-		return 0;
-	}
+	/* Set a Led init state */
+	k_work_reschedule(&ledWork, K_MSEC(1));
 
 	while (1) {
-		k_sleep(K_MSEC(100));
+		k_sem_take(&ntf_sem, K_FOREVER);
 
-		if (conn_status != BT_CONN_STATE_CONNECTED) {
-			led_cnt++;
-			if (led_cnt >= 10) {
-				led_cnt = 0;
-				led_state = !led_state;
-				gpio_pin_set_dt(&led2, led_state);
+		if ((conn_status == BT_CONN_STATE_CONNECTED) &&
+		    (env.ntf_cfg == PRF_CLI_START_NTF)) {
+
+			while (env.ntf_ongoing) {
+				/* Wait until last one is finished */
+				k_sleep(K_MSEC(50));
 			}
-		} else if ((conn_status == BT_CONN_STATE_CONNECTED) &&
-			   (env.ntf_cfg == PRF_CLI_START_NTF) && (!env.ntf_ongoing)) {
-			err = service_notification_send(UINT32_MAX, !gpio_pin_get_dt(&button));
+			err = service_notification_send(UINT32_MAX);
 			if (err) {
 				LOG_ERR("Error %u sending measurement", err);
 			}

@@ -14,7 +14,6 @@
 		led0 = &aled0;
 		led1 = &aled1;
 		led2 = &aled2;
-		pwm-led0 = &pwm_ut2;
 		sw0 = &button0;
 	};
 	leds {
@@ -33,24 +32,6 @@
 			gpios = <&gpio4 3 0>;
 			label = "LED0_B";
 		};
-	};
-
-	pwmleds {
-
-		compatible = "pwm-leds";
-		pwm_ut2: pwm_ut2 {
-			pwms = <&pwm2 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
-			label = "UT2 PWM";
-		};
-	};
-};
-
-&utimer2 {
-	status = "okay";
-	pwm2: pwm2 {
-		pinctrl-0 = < &pinctrl_ut2 >;
-		pinctrl-names = "default";
-		status = "okay";
 	};
 };
 

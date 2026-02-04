@@ -65,75 +65,6 @@ static uint16_t create_adv_data(uint8_t conidx)
 	return bt_gapm_advertiment_data_set(conidx);
 }
 
-static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
-{
-	uint16_t rc;
-
-	rc = gapc_le_connection_cfm(conidx, 0, NULL);
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to accept incoming connection, error: %u", rc);
-		return;
-	}
-
-	LOG_INF("New client connection from %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)",
-		p_peer_addr->addr[5], p_peer_addr->addr[4], p_peer_addr->addr[3],
-		p_peer_addr->addr[2], p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
-
-	rc = start_per_adv_sync(conidx);
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to start periodic advertising sync (conidx: %u), error: %u", conidx,
-			rc);
-		return;
-	}
-
-	LOG_INF("Started periodic advertising sync (conidx: %u)", conidx);
-}
-
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Received unexpected pairing key from conidx: %u", conidx);
-}
-
-static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	uint16_t rc;
-
-	LOG_INF("Client disconnected (conidx: %u), restarting advertising", conidx);
-
-	rc = bt_gapm_advertisement_continue(adv_actv_idx);
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to restart advertising, error: %u", rc);
-		return;
-	}
-}
-
-static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
-			uint16_t max_len)
-{
-	LOG_WRN("Received unexpected name get from conidx: %u", conidx);
-}
-
-static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-	uint16_t rc;
-
-	/* User must implement .appearance_get callback if appearance is not set using
-	 * gapm_le_set_appearance or if appearance set is unknown
-	 */
-	rc = gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-	if (rc != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Failed to send appearance error: %u", rc);
-		return;
-	}
-}
-
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-
 static uint16_t create_advertising(void)
 {
 	gapm_le_adv_create_param_t adv_create_params = {
@@ -226,6 +157,47 @@ static uint16_t create_per_sync(void)
 	return gapm_le_create_per_sync(0, &sync_cbs, &sync_actv_idx);
 }
 
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
+{
+	uint16_t rc;
+
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		rc = start_per_adv_sync(con_idx);
+		if (rc != GAP_ERR_NO_ERROR) {
+			LOG_ERR("Failed to start periodic advertising sync (conidx: %u), error: %u",
+				con_idx, rc);
+			return;
+		}
+
+		LOG_INF("Started periodic advertising sync (conidx: %u)", con_idx);
+		LOG_INF("Connection index %u connected to known device", con_idx);
+		break;
+	case GAPM_API_DEV_CONNECTED:
+		rc = start_per_adv_sync(con_idx);
+		if (rc != GAP_ERR_NO_ERROR) {
+			LOG_ERR("Failed to start periodic advertising sync (conidx: %u), error: %u",
+				con_idx, rc);
+			return;
+		}
+
+		LOG_INF("Started periodic advertising sync (conidx: %u)", con_idx);
+		LOG_INF("Connection index %u connected to new device", con_idx);
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		break;
+	}
+}
+
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
+};
+
 static uint16_t config_gapm(void)
 {
 	static gapm_config_t gapm_cfg = {
@@ -255,36 +227,7 @@ static uint16_t config_gapm(void)
 		return -EADV;
 	}
 
-	static const gapc_connection_req_cb_t gapc_con_cbs = {
-		.le_connection_req = on_le_connection_req,
-	};
-
-	static const gapc_security_cb_t gapc_sec_cbs = {
-		.key_received = on_key_received,
-	};
-
-	static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-		.disconnected = on_disconnection,
-		.name_get = on_name_get,
-		.appearance_get = on_appearance_get,
-	};
-
-	static const gapc_le_config_cb_t gapc_le_cfg_cbs = {};
-
-	static const gapm_cb_t gapm_err_cbs = {
-		.cb_hw_error = on_gapm_err,
-	};
-
-	static const gapm_callbacks_t gapm_cbs = {
-		.p_con_req_cbs = &gapc_con_cbs,
-		.p_sec_cbs = &gapc_sec_cbs,
-		.p_info_cbs = &gapc_con_inf_cbs,
-		.p_le_config_cbs = &gapc_le_cfg_cbs,
-		.p_bt_config_cbs = NULL, /* BT classic so not required */
-		.p_gapm_cbs = &gapm_err_cbs,
-	};
-
-	return bt_gapm_init(&gapm_cfg, &gapm_cbs, DEVICE_NAME, strlen(DEVICE_NAME));
+	return bt_gapm_init(&gapm_cfg, &gapm_user_cb, DEVICE_NAME, strlen(DEVICE_NAME));
 }
 
 int main(void)

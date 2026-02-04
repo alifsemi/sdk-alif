@@ -155,8 +155,6 @@ static const struct gpio_dt_spec lpgpio_config = GPIO_DT_SPEC_GET_BY_IDX_OR(
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index __attribute__((noinit));
 
-#define BT_CONN_STATE_CONNECTED    0x00
-#define BT_CONN_STATE_DISCONNECTED 0x01
 /* Service Definitions */
 #define ATT_128_PRIMARY_SERVICE    ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
 #define ATT_128_INCLUDED_SERVICE   ATT_16_TO_128_ARRAY(GATT_DECL_INCLUDE)
@@ -232,8 +230,6 @@ static const gatt_att_desc_t hello_att_db[HELLO_IDX_NB] = {
 				 OPT(NO_OFFSET) | sizeof(uint16_t)},
 };
 
-K_SEM_DEFINE(init_sem, 0, 1);
-K_SEM_DEFINE(conn_sem, 0, 1);
 K_SEM_DEFINE(button_wait_sem, 0, 1);
 
 /**
@@ -269,7 +265,7 @@ struct service_env {
 	volatile uint16_t ntf_cfg;
 };
 
-const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
+const gapc_le_con_param_nego_with_ce_len_t app_preferred_connection_param = {
 	.ce_len_min = 5,
 	.ce_len_max = 10,
 	.hdr.interval_min = CONN_INT_MIN_SLOTS,
@@ -282,204 +278,6 @@ LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 
 /* function headers */
 static uint16_t service_init(void);
-
-/**
- * Bluetooth GAPM callbacks
- */
-void on_gapc_proc_cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status)
-{
-	LOG_INF("%s conn:%d status:%d\n", __func__, conidx, status);
-}
-
-static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
-{
-	LOG_DBG("Connection request on index %u", conidx);
-	gapc_le_connection_cfm(conidx, 0, NULL);
-
-	LOG_INF("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
-
-	LOG_DBG("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
-		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
-		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
-
-#if !RTC_WAKEUP_INTERVAL_MS
-	counter_start(DEVICE_DT_GET(WAKEUP_SOURCE));
-#endif
-
-	conn_status = BT_CONN_STATE_CONNECTED;
-	conn_idx = conidx;
-	LOG_DBG("BLE Connected conn:%d", conidx);
-
-	k_sem_give(&conn_sem);
-
-	LOG_INF("Please enable notifications on peer device..");
-}
-
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Unexpected key received key on conidx %u", conidx);
-}
-
-static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	uint16_t err;
-
-	LOG_DBG("Connection index %u disconnected for reason %u", conidx, reason);
-
-	err = bt_gapm_advertisement_continue(conidx);
-	if (err) {
-		LOG_ERR("Error restarting advertising: %u", err);
-	} else {
-		LOG_DBG("Restarting advertising");
-	}
-
-#if !RTC_WAKEUP_INTERVAL_MS
-	counter_stop(DEVICE_DT_GET(WAKEUP_SOURCE));
-#endif
-
-	conn_status = BT_CONN_STATE_DISCONNECTED;
-	conn_idx = GAP_INVALID_CONIDX;
-	LOG_INF("BLE disconnected conn:%d. Waiting new connection", conidx);
-}
-
-static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
-			uint16_t max_len)
-{
-	LOG_WRN("Received unexpected name get from conidx: %u", conidx);
-}
-
-static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-	/* Send 'unknown' appearance */
-	LOG_DBG("%s", __func__);
-	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
-
-static void on_pref_param_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-
-	gapc_le_preferred_periph_param_t prefs = {
-		.con_intv_min = preferred_connection_param.hdr.interval_min,
-		.con_intv_max = preferred_connection_param.hdr.interval_max,
-		.latency = preferred_connection_param.hdr.latency,
-		.conn_timeout = 3200 * 2,
-	};
-	LOG_DBG("%s", __func__);
-
-	gapc_le_get_preferred_periph_params_cfm(conidx, token, GAP_ERR_NO_ERROR, prefs);
-}
-
-void on_bond_data_updated(uint8_t conidx, uint32_t metainfo, const gapc_bond_data_updated_t *p_data)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_auth_payload_timeout(uint8_t conidx, uint32_t metainfo)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_no_more_att_bearer(uint8_t conidx, uint32_t metainfo)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_cli_hash_info(uint8_t conidx, uint32_t metainfo, uint16_t handle, const uint8_t *p_hash)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_name_set(uint8_t conidx, uint32_t metainfo, uint16_t token, co_buf_t *p_buf)
-{
-	LOG_DBG("%s", __func__);
-	gapc_le_set_name_cfm(conidx, token, GAP_ERR_NO_ERROR);
-}
-void on_appearance_set(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t appearance)
-{
-	LOG_DBG("%s", __func__);
-	gapc_le_set_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR);
-}
-
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
-};
-
-static const gapc_security_cb_t gapc_sec_cbs = {
-	.key_received = on_key_received,
-	/* All other callbacks in this struct are optional */
-};
-
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-	.slave_pref_param_get = on_pref_param_get,
-	/* Other callbacks in this struct are optional */
-	.bond_data_updated = on_bond_data_updated,
-	.auth_payload_timeout = on_auth_payload_timeout,
-	.no_more_att_bearer = on_no_more_att_bearer,
-	.cli_hash_info = on_cli_hash_info,
-	.name_set = on_name_set,
-	.appearance_set = on_appearance_set,
-};
-
-void on_param_update_req(uint8_t conidx, uint32_t metainfo, const gapc_le_con_param_nego_t *p_param)
-{
-	LOG_DBG("%s:%d", __func__, conidx);
-	gapc_le_update_params_cfm(conidx, true, preferred_connection_param.ce_len_min,
-				  preferred_connection_param.ce_len_max);
-}
-void on_param_updated(uint8_t conidx, uint32_t metainfo, const gapc_le_con_param_t *p_param)
-{
-	LOG_DBG("%s conn:%d", __func__, conidx);
-}
-void on_packet_size_updated(uint8_t conidx, uint32_t metainfo, uint16_t max_tx_octets,
-			    uint16_t max_tx_time, uint16_t max_rx_octets, uint16_t max_rx_time)
-{
-	LOG_DBG("%s conn:%d max_tx_octets:%d max_tx_time:%d  max_rx_octets:%d "
-		"max_rx_time:%d",
-		__func__, conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
-
-	/* PeHo: Seppo why this is done here? */
-	const uint16_t ret =
-		gapc_le_update_params(conidx, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
-
-	LOG_INF("Update connection %u ret:%d\n", conidx, ret);
-}
-
-void on_phy_updated(uint8_t conidx, uint32_t metainfo, uint8_t tx_phy, uint8_t rx_phy)
-{
-	LOG_DBG("%s conn:%d tx_phy:%d rx_phy:%d", __func__, conidx, tx_phy, rx_phy);
-}
-void on_subrate_updated(uint8_t conidx, uint32_t metainfo,
-			const gapc_le_subrate_t *p_subrate_params)
-{
-	LOG_DBG("%s conn:%d", __func__, conidx);
-}
-/* All callbacks in this struct are optional */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs = {
-	.param_update_req = on_param_update_req,
-	.param_updated = on_param_updated,
-	.packet_size_updated = on_packet_size_updated,
-	.phy_updated = on_phy_updated,
-	.subrate_updated = on_subrate_updated,
-};
-
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = &gapc_con_cbs,
-	.p_sec_cbs = &gapc_sec_cbs,
-	.p_info_cbs = &gapc_con_inf_cbs,
-	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL, /* BT classic so not required */
-	.p_gapm_cbs = &gapm_err_cbs,
-};
 
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
@@ -1068,6 +866,55 @@ static int configure_lpgpio(void)
 }
 #endif
 
+static void on_gapc_proc_cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status)
+{
+	LOG_INF("%s conn:%d status:%d\n", __func__, conidx, status);
+}
+
+static void app_connected_handler(uint8_t con_idx)
+{
+	uint16_t ret;
+#if !RTC_WAKEUP_INTERVAL_MS
+	counter_start(DEVICE_DT_GET(WAKEUP_SOURCE));
+#endif
+
+	conn_status = BT_CONN_STATE_CONNECTED;
+	conn_idx = con_idx;
+	ret = gapc_le_update_params(con_idx, 0, &app_preferred_connection_param,
+				    on_gapc_proc_cmp_cb);
+
+	LOG_DBG("BLE Connected conn:%d", con_idx);
+}
+
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
+{
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		app_connected_handler(con_idx);
+		break;
+	case GAPM_API_DEV_CONNECTED:
+		app_connected_handler(con_idx);
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+#if !RTC_WAKEUP_INTERVAL_MS
+		counter_stop(DEVICE_DT_GET(WAKEUP_SOURCE));
+#endif
+
+		conn_status = BT_CONN_STATE_DISCONNECTED;
+		conn_idx = GAP_INVALID_CONIDX;
+		LOG_INF("BLE disconnected conn:%d. Waiting new connection", con_idx);
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		break;
+	}
+}
+
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
+};
+
 int ble_configure(void)
 {
 	uint16_t ble_status;
@@ -1096,9 +943,11 @@ int ble_configure(void)
 	/* Generate random address */
 	se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
 
+	/* Set a preferred connections params  */
+	bt_gapm_preferred_connection_paras_set(&app_preferred_connection_param);
 	/* Configure Bluetooth Stack */
 	LOG_INF("Init gapm service");
-	ble_status = bt_gapm_init(&gapm_cfg, &gapm_cbs, device_name, strlen(device_name));
+	ble_status = bt_gapm_init(&gapm_cfg, &gapm_user_cb, device_name, strlen(device_name));
 	if (ble_status) {
 		LOG_ERR("gapm_configure error %u", ble_status);
 		return -1;
