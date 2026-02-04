@@ -570,6 +570,12 @@ int ble_init(void)
 	return 0;
 }
 
+int ble_uninit(void)
+{
+	is_connected = false;
+	return alif_ble_disable();
+}
+
 bool ble_is_connected(void)
 {
 	return is_connected;
