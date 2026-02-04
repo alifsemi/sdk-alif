@@ -14,4 +14,5 @@ project(testcommands_shell)
 
 target_sources(app PRIVATE
 		src/testcommands_shell.c
+		src/memtestcommands_shell.c
 )

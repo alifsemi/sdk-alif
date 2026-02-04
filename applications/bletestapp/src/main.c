@@ -243,27 +243,45 @@ int main(void)
 		printk("BLE testapp cold start\n");
 	}
 
-	appl_wait_to_continue();
-
-	ret = ble_init();
-
-	if (ret) {
-		return ret;
-	}
-
-	if (appl_allow_sleep()) {
-		app_ready_for_sleep();
-	}
+	bool run_ble_init = true;
 
 	while (1) {
+		if (run_ble_init) {
+			appl_wait_to_continue();
+
+			ret = ble_init();
+
+			if (ret) {
+				return ret;
+			}
+
+			if (appl_allow_sleep()) {
+				app_ready_for_sleep();
+			}
+			run_ble_init = false;
+		}
+
 		/* checks for whether sleep period is done */
 		appl_allow_sleep();
 
-		if (!ble_is_connected()) {
+		if (ble_is_connected()) {
 			k_sleep(K_MSEC(ble_rtc_connected_wakeup));
 		} else {
 			k_sleep(K_MSEC(ble_rtc_wakeup));
+			printk("Woke up from CPU sleep\n");
 		}
+
+		if (reset_after_sleep) {
+			app_prevent_off();
+			appl_shell_reset();
+			ret = ble_uninit();
+			printk("BLE uninit done: %d\n", ret);
+			if (ret) {
+				return ret;
+			}
+			run_ble_init = true;
+		}
+
 	}
 	return 0;
 }
