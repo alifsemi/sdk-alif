@@ -54,8 +54,17 @@ pipeline {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         try {
                             sh '''#!/bin/bash -xe
-                            pwd
+                            echo "--------------------------"
+                            echo "my current PWD = $(pwd -P)"
+                            echo "--------------------------"
+                            ls -al
+                            echo "--------------------------"
                             env
+                            echo "--------------------------"
+                            echo "Greetings from jenkinsfile for testing"
+                            echo "--------------------------"
+                            mount
+                            echo "--------------------------"
                             cd /root/alif/public/alif
                             git status
                             git clean -fd
@@ -1723,4 +1732,3 @@ def reset_boards() {
         error " board did not respond after ${maxRetries} attempts!"
     }
 }
-
