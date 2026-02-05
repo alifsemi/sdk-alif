@@ -1,0 +1,7 @@
+[pytest]
+#  SE = dut[0] first port/baud
+#  M55HE = dut[2] third port/baud
+addopts = --count 2 --embedded-services serial|serial --port=/dev/ttyACM0|/dev/ttyACM1 --baud=115200|115200
+log_format = %(asctime)s %(levelname)s %(message)s
+log_date_format = %Y-%m-%d %H:%M:%S
+log_cli = True
