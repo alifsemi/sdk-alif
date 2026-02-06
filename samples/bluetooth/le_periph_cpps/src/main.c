@@ -255,7 +255,7 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 		conn_status = BT_CONN_STATE_CONNECTED;
 		cpps_enable(con_idx, cssp_cfg_val);
 		k_sem_give(&conn_sem);
-		LOG_INF("Connection index %u connected to know device", con_idx);
+		LOG_INF("Connection index %u connected to known device", con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
 		conn_status = BT_CONN_STATE_CONNECTED;

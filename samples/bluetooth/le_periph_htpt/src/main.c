@@ -238,7 +238,7 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
 		ctrl.connected = true;
 		k_sem_give(&conn_sem);
-		LOG_INF("Connection index %u connected to know device", con_idx);
+		LOG_INF("Connection index %u connected to known device", con_idx);
 		LOG_DBG("Please enable notifications on peer device..");
 		break;
 	case GAPM_API_DEV_CONNECTED:

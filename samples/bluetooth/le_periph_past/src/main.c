@@ -172,7 +172,7 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 		}
 
 		LOG_INF("Started periodic advertising sync (conidx: %u)", con_idx);
-		LOG_INF("Connection index %u connected to know device", con_idx);
+		LOG_INF("Connection index %u connected to known device", con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
 		rc = start_per_adv_sync(con_idx);
@@ -183,7 +183,7 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 		}
 
 		LOG_INF("Started periodic advertising sync (conidx: %u)", con_idx);
-		LOG_INF("Connection index %u connected to know device", con_idx);
+		LOG_INF("Connection index %u connected to new device", con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
 		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
