@@ -1,0 +1,21 @@
+services:
+  alif:
+    image: "ghcr.io/alifsemi/sdk-alif:zas-main"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${SSH_AUTH_SOCK}:${SSH_AUTH_SOCK}
+      - ${PWD}/:/root/alif/alif
+      - pip-cache:/root/.cache/pip
+    environment:
+      - SSH_AUTH_SOCK=${SSH_AUTH_SOCK}
+    working_dir: /root/alif/alif
+    command: bash -c "
+        pip install --upgrade pip &&
+        pip3 install --no-cache-dir -r ../zephyr/scripts/requirements.txt &&
+        pip3 install --no-cache-dir -r ../bootloader/mcuboot/scripts/requirements.txt &&
+        /bin/bash
+      "
+
+volumes:
+  pip-cache:
