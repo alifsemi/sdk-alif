@@ -10,6 +10,7 @@
 #include <zephyr/drivers/counter.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/sys/poweroff.h>
@@ -79,6 +80,22 @@ void power_mgr_allow_sleep(void)
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 }
 
+#if CONFIG_PM && CONFIG_LOG
+/**
+ * Flush log buffer
+ */
+void power_mgr_log_flush(void)
+{
+#if CONFIG_LOG_MODE_DEFERRED
+	log_flush();
+#else
+	while (log_process()) {
+		k_sleep(K_MSEC(1));
+	}
+#endif
+}
+#endif
+
 static int set_off_profile(enum off_state const mode)
 {
 	int ret;
@@ -97,6 +114,11 @@ static int set_off_profile(enum off_state const mode)
 		.vtor_address = SCB->VTOR,
 		.vtor_address_ns = SCB->VTOR,
 	};
+
+#if DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+	offp.ewic_cfg |= EWIC_ES1_LP_UART_IRQ;
+	offp.power_domains |= PD_SSE700_AON_MASK;
+#endif
 
 	switch (mode) {
 	case OFF_STATE_IDLE:
@@ -123,7 +145,11 @@ static int set_run_params(void)
 {
 	run_profile_t runp = {
 		.power_domains =
-			PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK | PD_SESS_MASK,
+			(PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK | PD_SESS_MASK
+#if CONFIG_DEBUG
+			 | PD_DBSS_MASK
+#endif
+			 ),
 		.dcdc_voltage = DEFAULT_DCDC_VOLTAGE,
 		.dcdc_mode = DCDC_MODE_PFM_FORCED,
 		.aon_clk_src = CLK_SRC_LFXO,
@@ -152,11 +178,6 @@ static int pre_configure_profiles(void)
 
 SYS_INIT(pre_configure_profiles, PRE_KERNEL_1, 3);
 
-static void notify_pm_state_entry(const enum pm_state state)
-{
-	ARG_UNUSED(state);
-}
-
 /**
  * PM Notifier callback called BEFORE devices are resumed
  *
@@ -167,6 +188,9 @@ static void notify_pm_state_entry(const enum pm_state state)
 static void pm_notify_pre_device_resume(const enum pm_state state)
 {
 	switch (state) {
+	case PM_STATE_SUSPEND_TO_IDLE:
+		/* No action needed */
+		break;
 	case PM_STATE_SOFT_OFF:
 	case PM_STATE_SUSPEND_TO_RAM: {
 		set_run_params();
@@ -181,7 +205,6 @@ static void pm_notify_pre_device_resume(const enum pm_state state)
 }
 
 static struct pm_notifier notifier = {
-	.state_entry = notify_pm_state_entry,
 	.pre_device_resume = pm_notify_pre_device_resume,
 };
 
@@ -195,6 +218,7 @@ static int app_pre_kernel_init(void)
 
 #if PREKERNEL_DISABLE_SLEEP
 	power_mgr_disable_sleep();
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 #endif
 
 	return 0;
@@ -218,11 +242,17 @@ static int prepare_application_config(void)
 		return -1;
 	}
 
-	if (counter_start(wakeup_dev)) {
+	int ret = counter_start(wakeup_dev);
+
+	if (ret && ret != -EALREADY) {
 		LOG_ERR("Counter '%s' start failed!", wakeup_dev->name);
 		return -1;
 	}
 
-	return set_off_profile(OFF_STATE_STOP);
+	ret = set_off_profile(OFF_STATE_STOP);
+
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+
+	return ret;
 }
 SYS_INIT(prepare_application_config, APPLICATION, 0);

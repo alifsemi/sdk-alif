@@ -43,6 +43,18 @@ Auracast sink's stream_name can be a prefix to filter the available broadcasts.
 Sink will connect immediately to the first fully matching broadcast stream name.
 Sink will list all available broadcasts if the stream_name is not provided.
 
+Power Management
+********************
+
+Application uses the power management API to allow the system to enter low power states when
+the device is idle. The power management is integrated with the application logic to ensure
+that the device can enter low power states when it is not actively transmitting or receiving
+audio data.
+
+Note: Sleeps are allowed with scan delegator only at the moment. This also makes shell
+unresponsive when scan delegator is active. This is a known issue and will be fixed in the future.
+Board can be reset to recover shell responsiveness and change the role.
+
 Building and Running
 ********************
 

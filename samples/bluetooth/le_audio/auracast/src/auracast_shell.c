@@ -200,6 +200,7 @@ static int cmd_start_source(const struct shell *shell, size_t const argc, char *
 		}
 	}
 
+	set_device_name(stream_name);
 	set_stream_name(stream_name);
 	set_auracast_encryption_passwd(passwd);
 

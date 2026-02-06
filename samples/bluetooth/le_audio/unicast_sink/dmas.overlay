@@ -41,6 +41,7 @@
 	dma-names = "rxdma", "txdma";
 };
 
+/*
 &i2s2 {
 	dmas = <&dma2 LPI2S_DMA_RX_CH LPI2S_DMA_RX_REQ>,
 	       <&dma2 LPI2S_DMA_TX_CH LPI2S_DMA_TX_REQ>;
@@ -52,3 +53,4 @@
 	       <&dma2 HCI_UART_DMA_TX_CH HCI_UART_DMA_TX_REQ>;
 	dma-names = "rx", "tx";
 };
+*/
