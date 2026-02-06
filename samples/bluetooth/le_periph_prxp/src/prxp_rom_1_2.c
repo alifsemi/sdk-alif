@@ -145,22 +145,6 @@ void server_configure(void)
 	}
 }
 
-void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-gapm_callbacks_t append_cbs(gapm_callbacks_t *gapm_append_cbs)
-{
-	gapm_callbacks_t cbs = *gapm_append_cbs;
-
-	cbs.p_gapm_cbs = &gapm_err_cbs;
-	return cbs;
-}
-
 void ias_process(void)
 {
 	/* IAS alert shall continue until disconnection or set to None*/

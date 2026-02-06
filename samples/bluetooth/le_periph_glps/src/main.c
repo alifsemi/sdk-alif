@@ -66,11 +66,12 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
  */
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_MODE_ALL,
+	.pairing_mode = GAPM_PAIRING_SEC_CON,
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	.private_identity.addr = {0xCD, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
-	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	.irk.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08, 0x11,
+			0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
 	.att_cfg = 0,
@@ -84,76 +85,11 @@ static gapm_config_t gapm_cfg = {
 	.dflt_link_policy = 0, /* BT Classic only */
 };
 
-static gapc_pairing_t p_pairing_info = {
-	.auth = GAP_AUTH_NONE,
-	.ikey_dist = GAP_KDIST_NONE,
-	.iocap = GAP_IO_CAP_NO_INPUT_NO_OUTPUT,
-	.key_size = 16,
-	.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
-	.rkey_dist = GAP_KDIST_NONE,
-};
-
 /* Load name from configuration file */
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
-
-/**
- * Bluetooth GAPM callbacks
- */
-static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
-{
-	LOG_INF("Connection request on index %u", conidx);
-	gapc_le_connection_cfm(conidx, 0, NULL);
-
-	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
-
-	LOG_INF("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
-		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
-		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
-
-	ctrl.connected = true;
-
-	LOG_DBG("Please enable notifications on peer device..");
-}
-
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Unexpected key received key on conidx %u", conidx);
-}
-
-static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	uint16_t err;
-
-	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
-	err = bt_gapm_advertisement_continue(conidx);
-	if (err) {
-		LOG_ERR("Error restarting advertising: %u", err);
-	} else {
-		LOG_DBG("Restarting advertising");
-	}
-
-	ctrl.connected = false;
-
-	READY_TO_SEND = false;
-}
-
-static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
-			uint16_t max_len)
-{
-	LOG_WRN("Received unexpected name get from conidx: %u", conidx);
-}
-
-static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-	/* Send 'unknown' appearance */
-	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
 
 /* Server callbacks */
 
@@ -262,112 +198,6 @@ static void racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
 {
 	transfer_in_process = false;
 }
-
-/*
- * Security callbacks
- */
-
-static void on_pairing_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
-{
-	uint16_t err;
-
-	err = gapc_le_pairing_accept(conidx, true, &p_pairing_info, 0);
-
-	if (err != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Pairing error %u", err);
-	}
-}
-
-static void on_pairing_failed(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	LOG_DBG("Pairing failed conidx: %u, metainfo: %u, reason: 0x%02x\n",
-		conidx, metainfo, reason);
-}
-
-static void on_le_encrypt_req(uint8_t conidx, uint32_t metainfo, uint16_t ediv,
-	const gap_le_random_nb_t *p_rand)
-{
-}
-
-static void on_auth_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level)
-{
-}
-
-static void on_auth_info(uint8_t conidx, uint32_t metainfo, uint8_t sec_lvl,
-				bool encrypted,
-				uint8_t key_size)
-{
-}
-
-static void on_pairing_succeed(uint8_t conidx, uint32_t metainfo, uint8_t pairing_level,
-				bool enc_key_present,
-				uint8_t key_type)
-{
-	LOG_INF("Pairing succeeded");
-}
-
-static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
-{
-}
-
-static void on_ltk_req(uint8_t conidx, uint32_t metainfo, uint8_t key_size)
-{
-}
-static void on_numeric_compare_req(uint8_t conidx, uint32_t metainfo, uint32_t numeric_value)
-{
-}
-static void on_key_pressed(uint8_t conidx, uint32_t metainfo, uint8_t notification_type)
-{
-}
-static void on_repeated_attempt(uint8_t conidx, uint32_t metainfo)
-{
-}
-
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
-};
-
-static const gapc_security_cb_t gapc_sec_cbs = {
-	.key_received = on_key_received,
-	.pairing_req = on_pairing_req,
-	.pairing_failed = on_pairing_failed,
-	.le_encrypt_req = on_le_encrypt_req,
-	.auth_req = on_auth_req,
-	.auth_info = on_auth_info,
-	.pairing_succeed = on_pairing_succeed,
-	.info_req = on_info_req,
-	.ltk_req = on_ltk_req,
-	.numeric_compare_req = on_numeric_compare_req,
-	.key_pressed = on_key_pressed,
-	.repeated_attempt = on_repeated_attempt,
-};
-
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-	/* Other callbacks in this struct are optional */
-};
-
-/* All callbacks in this struct are optional */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs;
-
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = &gapc_con_cbs,
-	.p_sec_cbs = &gapc_sec_cbs,
-	.p_info_cbs = &gapc_con_inf_cbs,
-	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL, /* BT classic so not required */
-	.p_gapm_cbs = &gapm_err_cbs,
-};
 
 static const glps_cb_t glps_cb = {
 	.cb_bond_data_upd = on_bond_data_upd,
@@ -507,6 +337,35 @@ static void service_process(void)
 	store_measurement(meas_value);
 }
 
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
+{
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		ctrl.connected = true;
+		LOG_INF("Connection index %u connected to known device", con_idx);
+		LOG_DBG("Please enable notifications on peer device..");
+		break;
+	case GAPM_API_DEV_CONNECTED:
+		ctrl.connected = true;
+		LOG_INF("Connection index %u connected to new device", con_idx);
+		LOG_DBG("Please enable notifications on peer device..");
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
+		ctrl.connected = false;
+		READY_TO_SEND = false;
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		break;
+	}
+}
+
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
+};
+
 int main(void)
 {
 	uint16_t err;
@@ -523,7 +382,7 @@ int main(void)
 
 	/* Configure Bluetooth Stack */
 	LOG_INF("Init gapm service");
-	err = bt_gapm_init(&gapm_cfg, &gapm_cbs, DEVICE_NAME, strlen(DEVICE_NAME));
+	err = bt_gapm_init(&gapm_cfg, &gapm_user_cb, DEVICE_NAME, strlen(DEVICE_NAME));
 	if (err) {
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;

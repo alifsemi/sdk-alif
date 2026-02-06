@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -8,7 +8,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(le_periph_blinky)
+project(le_periph_mcs)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../common/CMakeLists.txt)
 

@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -6,15 +6,5 @@
  * License Agreement with this file. If not, please write to:
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
+#include "alif_b1_pm.dtsi"
 
-#ifndef PRXP_APP_H
-#define PRXP_APP_H
-
-extern bool config_ready;
-void server_configure(void);
-void get_tx_power(void);
-void ias_process(void);
-void tx_power_read(void);
-void disc_notify(uint16_t reason);
-
-#endif /* PRXP_APP_H */

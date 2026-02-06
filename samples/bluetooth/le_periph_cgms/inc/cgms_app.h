@@ -12,7 +12,6 @@
 
 void server_configure(void);
 void disc_notify(uint16_t reason);
-gapm_callbacks_t append_cbs(gapm_callbacks_t *gapm_append_cbs);
 
 /* Service specific functions */
 void service_conn_cgms(struct shared_control *ctrl);

@@ -11,10 +11,12 @@
 
 &{/} {
 	aliases {
-		led0 = &aled0;
-		led1 = &aled1;
-		led2 = &aled2;
+		ledgreen = &aled0;
+		ledred = &aled1;
+		ledblue = &aled2;
 		sw0 = &button0;
+		sw1 = &button1;
+		sw2 = &button2;
 	};
 	leds {
 		compatible = "gpio-leds";
@@ -34,7 +36,22 @@
 		};
 	};
 
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = < &gpio5 7 GPIO_ACTIVE_LOW >;
+			label = "SW0";
+		};
+		button1: button_1 {
+			gpios = < &gpio5 6 GPIO_ACTIVE_LOW >;
+			label = "SW1";
+		};
 
+		button2: button_2 {
+			gpios = < &gpio5 5 GPIO_ACTIVE_LOW >;
+			label = "SW2";
+		};
+	};
 };
 
 /* for "buttons" node gpio5_7, enable software pull-up */
@@ -52,7 +69,9 @@
 	};
 
 	group1 {
-		pinmux = < PIN_P5_7__GPIO >;
+		pinmux = < PIN_P5_5__GPIO >,
+			 < PIN_P5_6__GPIO >,
+			 < PIN_P5_7__GPIO >;
 		driver-state-control = <1>;
 	};
 };

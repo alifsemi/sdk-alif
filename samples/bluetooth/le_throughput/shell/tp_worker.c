@@ -37,39 +37,15 @@
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
 
-#define BT_CONN_STATE_CONNECTED    0x00
-#define BT_CONN_STATE_DISCONNECTED 0x01
-
-/* Load names from configuration file */
-static const char device_name[] = CONFIG_BLE_TP_DEVICE_NAME;
-
-#if CONFIG_BLE_BONDING
-static struct app_con_bond_data {
-	/* Bond data for specific address */
-	gap_bdaddr_t addr;
-	/* Corresponding keys */
-	gapc_pairing_keys_t keys;
-} app_con_bond_data[APP_CON_NB_MAX];
-#endif
-
-enum app_con_status_bits {
-	APP_CON_STATUS_PAIRED = 1 << 0,
-};
-
 static struct app_con_info_ {
-	/* Peer device address */
-	gap_bdaddr_t addr;
 	/* Connection index */
 	uint8_t conidx;
-	/* Status (see app_con_status enumeration) */
-	uint8_t status_bf;
 } app_con_info = {
 	.conidx = GAP_INVALID_CONIDX,
 };
 
 /* Macros */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_ERR);
-K_SEM_DEFINE(gapm_init_sem, 0, 1);
 
 static enum app_state app_state;
 
@@ -131,314 +107,32 @@ uint16_t get_mtu_size(void)
 	return mtu - GATT_NTF_HEADER_LEN;
 }
 
-/**
- * Bluetooth GAPM callbacks
- */
-static void on_le_connection_req(uint8_t const conidx, uint32_t const metainfo,
-				 uint8_t const actv_idx, uint8_t const role,
-				 const gap_bdaddr_t *const p_peer_addr,
-				 const gapc_le_con_param_t *const p_con_params,
-				 uint8_t const clk_accuracy)
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
 {
-	LOG_INF("Connection request on index %u", conidx);
-
-	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
-
-	LOG_INF("Peer BD address %02X:%02X:%02X:%02X:%02X:%02X (conidx: %u)", p_peer_addr->addr[5],
-		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
-		p_peer_addr->addr[1], p_peer_addr->addr[0], conidx);
-
-	gapc_bond_data_t bond_data;
-
-	LOG_DBG("LE connection created: %s 0x%02X:%02X:%02X:%02X:%02X:%02X",
-		(p_peer_addr->addr_type == 0) ? "Public" : "Private", p_peer_addr->addr[5],
-		p_peer_addr->addr[4], p_peer_addr->addr[3], p_peer_addr->addr[2],
-		p_peer_addr->addr[1], p_peer_addr->addr[0]);
-
-	app_con_info.conidx = conidx;
-	memcpy(&(app_con_info.addr.addr), p_peer_addr->addr, sizeof(p_peer_addr->addr));
-	app_con_info.addr.addr_type = p_peer_addr->addr_type;
-
-	if (app_con_info.status_bf & APP_CON_STATUS_PAIRED) {
-		bond_data.enc_key_present = true;
-		bond_data.pairing_lvl = GAP_PAIRING_BOND_PRESENT_BIT;
-	}
-
-	/* Automatically accept connection */
-	gapc_le_connection_cfm(
-		conidx, 0, (app_con_info.status_bf & APP_CON_STATUS_PAIRED) ? &bond_data : NULL);
-
-	if (app_con_info.status_bf & APP_CON_STATUS_PAIRED) {
-		app_transition_to(APP_STATE_CONNECTED_PAIRED);
-	} else {
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		app_con_info.conidx = con_idx;
 		app_transition_to(APP_STATE_CONNECTED);
-	}
-}
-
-static void on_gapc_key_received(uint8_t const conidx, uint32_t const metainfo,
-				 const gapc_pairing_keys_t *const p_keys)
-{
-	LOG_DBG("STORE KEY RECEIVED AS BOND DATA  %d", conidx);
-#if CONFIG_BLE_BONDING
-	if (conidx != app_con_info.conidx) {
-		LOG_ERR("Invalid connection id!");
-		assert(0);
-	}
-
-	app_con_bond_data.keys = *p_keys;
-	app_con_bond_data.addr = app_con_info.addr;
-
-	LOG_DBG("BOND Address : 0x%02X:%02X:%02X:%02X:%02X:%02X Valid_Key 0x%02X  Pairing_lvl = "
-		"0x%02X",
-		app_con_bond_data.addr.addr[5], app_con_bond_data.addr.addr[4],
-		app_con_bond_data.addr.addr[3], app_con_bond_data.addr.addr[2],
-		app_con_bond_data.addr.addr[1], app_con_bond_data.addr.addr[0],
-		app_con_bond_data.keys.valid_key_bf, app_con_bond_data.keys.pairing_lvl);
-#endif
-}
-
-static void on_gapc_le_encrypt_req(uint8_t const conidx, uint32_t const metainfo,
-				   uint16_t const ediv, const gap_le_random_nb_t *const p_rand)
-{
-	LOG_DBG("ENCRYPT REQUEST %d", conidx);
-#if CONFIG_BLE_BONDING
-	if (conidx != app_con_info.conidx) {
-		LOG_ERR("Invalid connection id!");
-		assert(0);
-	}
-	gapc_le_encrypt_req_reply(conidx, true, &(app_con_bond_data.keys.ltk.key),
-				  app_con_bond_data.keys.ltk.key_size);
-#endif
-}
-
-/* Link authentication information */
-static void on_gapc_sec_auth_info(uint8_t const conidx, uint32_t const metainfo,
-				  uint8_t const sec_lvl, bool const encrypted,
-				  uint8_t const key_size)
-{
-	LOG_DBG("AUTH INFO %d, %d-%s", conidx, sec_lvl, (encrypted ? "TRUE" : "FALSE"));
-}
-
-static void on_gapc_pairing_succeed(uint8_t const conidx, uint32_t const metainfo,
-				    uint8_t const pairing_level, bool enc_key_present,
-				    uint8_t const key_type)
-{
-	LOG_DBG("PAIRING SUCCEED %d", conidx);
-	if (conidx != app_con_info.conidx) {
-		LOG_ERR("Invalid connection id!");
-		assert(0);
-	}
-	app_con_info.status_bf |= APP_CON_STATUS_PAIRED;
-
-	app_transition_to(APP_STATE_CONNECTED_PAIRED);
-}
-
-/* Informed that pairing failed */
-static void on_gapc_pairing_failed(uint8_t const conidx, uint32_t const metainfo,
-				   uint16_t const reason)
-{
-	LOG_ERR("PAIRING FAILED %d, 0x%04X", conidx, reason);
-}
-
-static void on_gapc_info_req(uint8_t const conidx, uint32_t const metainfo, uint8_t const exp_info)
-{
-	switch (exp_info) {
-	case GAPC_INFO_BT_PASSKEY: {
-		LOG_DBG("PAIRING PASSKEY GET %d", conidx);
-		/* Force 123456 PASS KEY */
-#if CONFIG_BLE_BONDING
-		gapc_pairing_provide_passkey(conidx, true, 123456);
-#endif
 		break;
-	}
-	default:
+	case GAPM_API_DEV_CONNECTED:
+		app_con_info.conidx = con_idx;
+		app_transition_to(APP_STATE_CONNECTED);
+
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
+		app_con_info.conidx = GAP_INVALID_CONIDX;
+		app_transition_to(APP_STATE_DISCONNECTED);
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
 		break;
 	}
 }
 
-static void on_gapc_pairing_req(uint8_t const conidx, uint32_t const metainfo,
-				uint8_t const auth_level)
-{
-	LOG_DBG("PAIRING REQ %d", conidx);
-#if CONFIG_BLE_BONDING
-	uint16_t status;
-	uint8_t sec_req_level = GAP_SEC1_NOAUTH_PAIR_ENC;
-	gapc_pairing_t pairing_info = {
-		.iocap = GAP_IO_CAP_NO_INPUT_NO_OUTPUT,
-		.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
-		.auth = GAP_AUTH_BOND,
-		.key_size = GAP_KEY_LEN,
-		.ikey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
-		.rkey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
-	};
-
-	gapm_le_configure_security_level(sec_req_level);
-	status = gapc_le_pairing_accept(conidx, true, &pairing_info, 0);
-	if (status != GAP_ERR_NO_ERROR) {
-		ASSERT_INFO(0, status, 0);
-	}
-#endif
-}
-
-static void on_gapc_sec_numeric_compare_req(uint8_t const conidx, uint32_t const metainfo,
-					    uint32_t const value)
-{
-	LOG_DBG("PAIRING USER VAL CFM %d %d", conidx, value);
-	/* Automatically confirm */
-#if CONFIG_BLE_BONDING
-	gapc_pairing_numeric_compare_rsp(conidx, true);
-#endif
-}
-
-static void on_gapc_sec_ltk_req(uint8_t const conidx, uint32_t const metainfo,
-				uint8_t const key_size)
-{
-	LOG_DBG("LTK REQUEST %d", conidx);
-#if CONFIG_BLE_BONDING
-	if (conidx != app_con_info.conidx) {
-		LOG_ERR("Invalid connection id!");
-		assert(0);
-	}
-
-	if (!CHECKB(app_con_info.status_bf, APP_CON_STATUS_PAIRED)) {
-		uint8_t cnt;
-
-		app_con_bond_data.keys.ltk.key_size = GAP_KEY_LEN;
-		app_con_bond_data.keys.ltk.ediv = (uint16_t)co_rand_word();
-
-		for (cnt = 0; cnt < RAND_NB_LEN; cnt++) {
-			app_con_bond_data.keys.ltk.key.key[cnt] = (uint8_t)co_rand_word();
-			app_con_bond_data.keys.ltk.randnb.nb[cnt] = (uint8_t)co_rand_word();
-		}
-
-		for (cnt = RAND_NB_LEN; cnt < GAP_KEY_LEN; cnt++) {
-			app_con_bond_data.keys.ltk.key.key[cnt] = (uint8_t)co_rand_word();
-		}
-	}
-
-	gapc_le_pairing_provide_ltk(conidx, &(app_con_bond_data.keys.ltk));
-#endif
-}
-
-static void on_disconnection(uint8_t const conidx, uint32_t const metainfo, uint16_t const reason)
-{
-	LOG_DBG("CONN disconnection idx=%d, meta=%u, reason=0x%04X", conidx, metainfo, reason);
-	app_transition_to(APP_STATE_DISCONNECTED);
-}
-
-static void on_name_get(uint8_t const conidx, uint32_t const metainfo, uint16_t const token,
-			uint16_t const offset, uint16_t const max_len)
-{
-	LOG_DBG("CONN name get idx=%u, meta=%u", conidx, metainfo);
-	const size_t device_name_len = sizeof(device_name) - 1;
-	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
-	const uint16_t status =
-		((offset < device_name_len) ? GAP_ERR_NO_ERROR : ATT_ERR_INVALID_OFFSET);
-
-	gapc_le_get_name_cfm(conidx, token, status, device_name_len, short_len,
-			     (const uint8_t *)device_name);
-}
-
-static void on_appearance_get(uint8_t const conidx, uint32_t const metainfo, uint16_t const token)
-{
-	/* Send 'unknown' appearance */
-	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
-}
-
-static void on_pref_param_get(uint8_t const conidx, uint32_t const metainfo, uint16_t const token)
-{
-	printk("%s\n", __func__);
-
-	gapc_le_preferred_periph_param_t prefs = {
-		.con_intv_min = 6,
-		.con_intv_max = 200,
-		.latency = 0,
-		.conn_timeout = 1000,
-	};
-
-	gapc_le_get_preferred_periph_params_cfm(conidx, token, GAP_ERR_NO_ERROR, prefs);
-}
-
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
-};
-
-static void on_param_update_req(uint8_t const conidx, uint32_t const metainfo,
-				const gapc_le_con_param_nego_t *const p_param)
-{
-	LOG_DBG("%s:%d", __func__, conidx);
-	gapc_le_update_params_cfm(conidx, true, 5, 10);
-}
-
-static void on_param_updated(uint8_t const conidx, uint32_t const metainfo,
-			     const gapc_le_con_param_t *const p_param)
-{
-	LOG_DBG("%s: interval: %d, latency: %d, timeout: %d", __func__, p_param->interval,
-		p_param->latency, p_param->sup_to);
-}
-
-static void on_packet_size_updated(uint8_t const conidx, uint32_t const metainfo,
-				   uint16_t const max_tx_octets, uint16_t const max_tx_time,
-				   uint16_t const max_rx_octets, uint16_t const max_rx_time)
-{
-	LOG_DBG("Packet size updated %u TX:%u max_tx_time:%d  max_rx_octets:%d "
-		"max_rx_time:%d\n",
-		conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
-}
-
-static void phy_updated(uint8_t const conidx, uint32_t const metainfo, uint8_t const tx_phy,
-			uint8_t const rx_phy)
-{
-	LOG_DBG("PHY updated %u TX:%u RX:%u", conidx, tx_phy, rx_phy);
-}
-
-static const gapc_security_cb_t gapc_sec_cbs = {
-	.le_encrypt_req = on_gapc_le_encrypt_req,
-	.auth_info = on_gapc_sec_auth_info,
-	.pairing_succeed = on_gapc_pairing_succeed,
-	.pairing_failed = on_gapc_pairing_failed,
-	.info_req = on_gapc_info_req,
-	.pairing_req = on_gapc_pairing_req,
-	.numeric_compare_req = on_gapc_sec_numeric_compare_req,
-	.ltk_req = on_gapc_sec_ltk_req,
-	.key_received = on_gapc_key_received,
-
-	/* All other callbacks in this struct are optional */
-};
-
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-	/* Other callbacks in this struct are optional */
-	.slave_pref_param_get = on_pref_param_get,
-};
-
-/* All callbacks in this struct are optional */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs = {
-	.param_update_req = on_param_update_req,
-	.param_updated = on_param_updated,
-	.packet_size_updated = on_packet_size_updated,
-	.phy_updated = phy_updated,
-};
-
-static void on_gapm_err(uint32_t const metainfo, uint8_t const code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = &gapc_con_cbs,
-	.p_sec_cbs = &gapc_sec_cbs,
-	.p_info_cbs = &gapc_con_inf_cbs,
-	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL,    /* BT classic so not required */
-	.p_gapm_cbs = &gapm_err_cbs,
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
 };
 
 /* ---------------------------------------------------------------------------------------- */
@@ -448,6 +142,15 @@ static int ble_configure(uint8_t const role)
 {
 	uint16_t rc;
 	const char device_name[] = CONFIG_BLE_TP_DEVICE_NAME;
+
+	gapc_le_con_param_nego_with_ce_len_t app_preferred_connection_param = {
+		.ce_len_min = 5,
+		.ce_len_max = 10,
+		.hdr.interval_min = 6,
+		.hdr.interval_max = 200,
+		.hdr.latency = 0,
+		.hdr.sup_to = 1000,
+	};
 
 	LOG_DBG("Configuring BLE to role %s", role == GAP_ROLE_LE_CENTRAL ? "CENTRAL" : "PERIPH");
 
@@ -500,7 +203,10 @@ static int ble_configure(uint8_t const role)
 		.dflt_link_policy = 0,
 	};
 
-	rc = bt_gapm_init(&gapm_cfg, &gapm_cbs, device_name, strlen(device_name));
+	/* Set a preferred connections params  */
+	bt_gapm_preferred_connection_paras_set(&app_preferred_connection_param);
+
+	rc = bt_gapm_init(&gapm_cfg, &gapm_user_cb, device_name, strlen(device_name));
 	if (rc != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_configure error %u", rc);
 		return -1;
