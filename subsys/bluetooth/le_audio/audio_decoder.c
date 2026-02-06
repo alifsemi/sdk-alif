@@ -11,7 +11,8 @@
 #include <zephyr/sys/check.h>
 #include <zephyr/sys/util.h>
 #include <zephyr/logging/log.h>
-
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
 #include <stdlib.h>
 
 #include "alif_lc3.h"
@@ -509,6 +510,10 @@ struct audio_decoder *audio_decoder_create(struct audio_decoder_params const *co
 
 	k_thread_name_set(dec->tid, "lc3_decoder");
 
+	/* Don't let the system enter OFF state while decoder is active */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+
 	return dec;
 }
 
@@ -656,6 +661,10 @@ int audio_decoder_delete(struct audio_decoder *decoder)
 	audio_queue_delete(decoder->audio_queue);
 
 	free(decoder);
+
+	/* allow OFF state when decoder is deleted */
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 
 	return 0;
 }

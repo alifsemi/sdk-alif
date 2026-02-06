@@ -7,12 +7,13 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 #include <stdio.h>
+#include <zephyr/drivers/counter.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/__assert.h>
 
-#include <se_service.h>
 #include <soc_common.h>
 
 #include "alif_ble.h"
@@ -21,6 +22,7 @@
 #include "gapc.h"
 #include "gapc_le.h"
 #include "gapc_sec.h"
+#include "power_mgr.h"
 
 #include "unicast_sink.h"
 #include "storage.h"
@@ -643,64 +645,30 @@ int main(void)
 
 	LOG_DBG("BLE enabled");
 
-	if (0 != ble_stack_configure(GAP_ROLE_LE_PERIPHERAL)) {
+	if (ble_stack_configure(GAP_ROLE_LE_PERIPHERAL)) {
 		return -1;
 	}
 
-	if (0 != unicast_sink_init()) {
+	if (unicast_sink_init()) {
 		return -1;
 	}
 
-	if (0 != unicast_sink_adv_start(APP_CON_ADDR)) {
+	if (unicast_sink_adv_start(APP_CON_ADDR)) {
 		return -1;
 	}
-
-	while (1) {
-		/* Nothing to do here... just sleep to keep app running */
-		k_sleep(K_SECONDS(5));
+#if CONFIG_LOG
+	/* just to let prints coming out properly */
+#if CONFIG_LOG_MODE_DEFERRED
+	log_flush();
+#else
+	while (log_process(false)) {
+		k_sleep(K_MSEC(1));
 	}
+#endif
+#endif
+	power_mgr_allow_sleep();
+
+	k_sleep(K_FOREVER);
 
 	return 0;
 }
-
-
-static int soc_run_profile(void)
-{
-#define HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON 0x20
-
-	const uint32_t host_bsys_pwr_req = sys_read32(HOST_BSYS_PWR_REQ);
-
-	sys_write32(host_bsys_pwr_req | HOST_SYSTOP_PWR_REQ_LOGIC_ON_MEM_ON, HOST_BSYS_PWR_REQ);
-
-	run_profile_t runp = {
-		.power_domains = PD_VBAT_AON_MASK | PD_SYST_MASK | PD_SSE700_AON_MASK |
-				 PD_DBSS_MASK | PD_SESS_MASK,
-		.dcdc_voltage = 825,
-		.dcdc_mode = DCDC_MODE_PFM_FORCED,
-		.aon_clk_src = CLK_SRC_LFXO,
-		.run_clk_src = CLK_SRC_PLL,
-		.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ,
-		.phy_pwr_gating = LDO_PHY_MASK,
-		.ip_clock_gating = LP_PERIPH_MASK,
-		.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8,
-		.scaled_clk_freq = SCALED_FREQ_XO_HIGH_DIV_38_4_MHZ,
-		.memory_blocks = (MRAM_MASK | (SRAM2_MASK | SRAM3_MASK) |
-				  (SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK) |
-				  /* M55-HE ITCM */
-				  (SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK) |
-				  /* M55-HE DTCM */
-				  (SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |
-				   SRAM5_5_MASK)),
-	};
-
-	if (se_service_set_run_cfg(&runp)) {
-		LOG_ERR("run profile set failed!");
-		return -ENOEXEC;
-	}
-
-	sys_write32(host_bsys_pwr_req, HOST_BSYS_PWR_REQ);
-	sys_write32(0xFFFFFFFF, 0x1A60900C);
-
-	return 0;
-}
-SYS_INIT(soc_run_profile, PRE_KERNEL_1, 3);
