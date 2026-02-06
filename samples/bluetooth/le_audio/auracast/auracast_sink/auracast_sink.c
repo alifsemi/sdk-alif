@@ -21,6 +21,7 @@
 #include "audio_datapath.h"
 #include "auracast_sink.h"
 #include "main.h"
+#include "power_mgr.h"
 
 LOG_MODULE_REGISTER(auracast_sink, CONFIG_AURACAST_SINK_LOG_LEVEL);
 
@@ -637,7 +638,15 @@ int auracast_sink_start(void)
 		return -ENODEV;
 	}
 
-	return start_scanning();
+	err = start_scanning();
+	if (err) {
+		return err;
+	}
+
+	/* Allow system to enter sleep mode */
+	power_mgr_allow_sleep();
+
+	return 0;
 }
 
 void auracast_sink_stop(void)

@@ -58,6 +58,9 @@ config INPUT_VOLUME_LEVEL
 	default 33
 	range 10 100
 
+config AURACAST_AUTOSTART_CMD
+	string "Auto start command"
+
 menu "Logging"
 
 module = MAIN

@@ -26,4 +26,13 @@ void power_mgr_disable_sleep(void);
  */
 void power_mgr_allow_sleep(void);
 
+#if CONFIG_PM && CONFIG_LOG
+/**
+ * Flush log buffer
+ */
+void power_mgr_log_flush(void);
+#else
+#define power_mgr_log_flush()
+#endif
+
 #endif /* __POWER_MGR_H__ */
