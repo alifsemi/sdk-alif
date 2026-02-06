@@ -1,0 +1,4 @@
+name: rtc-wrap
+append:
+  EXTRA_DTC_OVERLAY_FILE: alif_rtc_wrap.overlay
+  EXTRA_CONF_FILE: alif_rtc_wrap.conf
