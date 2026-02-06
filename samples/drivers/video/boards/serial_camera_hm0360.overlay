@@ -10,62 +10,127 @@
 #include <dt-bindings/pinctrl/ensemble-pinctrl.h>
 #include <dt-bindings/i2c/i2c.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
 
 
-&i2c1 {
-	status = "okay";
-	clock-frequency = <I2C_BITRATE_FAST_PLUS>;
-
-	hm0360: hm0360@24 {
-		compatible = "himax,hm0360";
-		reg = <0x24>;
-		pinctrl-0 = < &pinctrl_cam_xvclk >;
-		pinctrl-names = "default";
-		reset-gpios = <&gpio9 1 GPIO_ACTIVE_LOW>;
-		power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
-		xsleep-gpios = <&gpio6 3 GPIO_ACTIVE_LOW>;
-
+/{
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
 		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-		port {
-			hm0360_csi2_ep_out: endpoint {
-				remote-endpoint = <&csi2_ep_in>;
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@0 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hm0360: hm0360@24 {
+				compatible = "himax,hm0360";
+				reg = <0x24>;
+				reset-gpios = <&gpio9 1 GPIO_ACTIVE_LOW>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+				xsleep-gpios = <&gpio6 3 GPIO_ACTIVE_LOW>;
+
+				status = "okay";
+
+				port {
+					hm0360_csi2_ep_out: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = <176000000>;
+						data-lanes = <1>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in1";
+					};
+				};
 			};
 		};
 	};
 };
 
+&gpio6 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio9 {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	hcnt-offset = <30>;
+	lcnt-offset = <50>;
+};
+
 &cam {
 	status = "okay";
-	sensor = <&hm0360>;
-	csi-bus-if = <&csi>;
-	port {
+
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
 		/* MIPI CSI-2 bus endpoint. */
-		cam_csi2_ep_in: endpoint {
-			remote-endpoint = <&csi2_ep_out>;
+		port@0 {
+			reg = <0>;
+			cam_csi2_ep_in: endpoint {
+				remote-endpoint-label = "csi2_ep_out";
+			};
+		};
+
+		/* Video buffer output endpoint. */
+		port@1 {
+			reg = <1>;
+			cam_mem_ep_out: endpoint {
+				remote-endpoint-label = "application";
+			};
 		};
 	};
 };
 
 &csi {
-	#address-cells = <1>;
-	#size-cells = <0>;
-	data-lanes = <0x1>;
-	rx-ddr-clk = < 176000000 >;
-	port@1 {
-		reg = <1>;
-		csi2_ep_in: endpoint {
-			remote-endpoint = <&hm0360_csi2_ep_out>;
-		};
-	};
-	port@2 {
-		reg = <2>;
-		csi2_ep_out: endpoint {
-			remote-endpoint = <&cam_csi2_ep_in>;
-		};
-	};
-};
-
-&mipi_dsi {
 	status = "okay";
+
+	/* Selfie camera D-PHY*/
+	phy-if = <&dphy 0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csi2_ep_in1: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "hm0360_csi2_ep_out";
+			};
+		};
+		port@2 {
+			reg = <2>;
+			csi2_ep_out: endpoint {
+				remote-endpoint-label = "cam_csi2_ep_in";
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+			};
+		};
+	};
 };
