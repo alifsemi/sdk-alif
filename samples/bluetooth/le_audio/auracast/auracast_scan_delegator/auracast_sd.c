@@ -26,6 +26,7 @@
 #include "audio_datapath.h"
 #include "auracast_sd.h"
 #include "main.h"
+#include "power_mgr.h"
 
 LOG_MODULE_REGISTER(auracast_scan_delegator, CONFIG_AURACAST_SCAN_DELEGATOR_LOG_LEVEL);
 
@@ -68,12 +69,7 @@ LOG_MODULE_REGISTER(auracast_scan_delegator, CONFIG_AURACAST_SCAN_DELEGATOR_LOG_
 
 struct auracast_scan_delegator_env {
 	/* IDs / LIDs */
-	bap_bcast_id_t bcast_id;
-	bap_adv_id_t adv_id; /* stored from Add Source to reuse for PA sync */
-	uint8_t pa_lid;
 	uint8_t grp_lid;
-	uint8_t src_lid;
-	uint8_t con_lid;
 
 	/* Stream selection */
 	uint32_t chosen_streams_bf;
@@ -81,11 +77,7 @@ struct auracast_scan_delegator_env {
 	uint8_t left_channel_pos;
 	uint8_t right_channel_pos;
 
-	gaf_bcast_code_t bcast_code;
-	bool code_received;
-
 	/* Scan/session state */
-	bool scanning_active;
 	uint8_t expected_streams;
 	uint8_t stream_report_count;
 
@@ -98,38 +90,6 @@ struct auracast_scan_delegator_env {
 static struct auracast_scan_delegator_env sink_env;
 
 /* ================================================================
- *               WORKER QUEUE
- * ================================================================
- */
-
-enum sd_evt_type {
-	SD_EVT_REMOTE_SCAN,
-	SD_EVT_ADD,
-	SD_EVT_MODIFY,
-	SD_EVT_REMOVE,
-	SD_EVT_ESTABLISHED
-};
-
-struct sd_evt {
-	enum sd_evt_type type;
-
-	/* BA context */
-	uint8_t src_lid;
-	uint8_t con_lid;
-
-	/* Remote scan */
-	uint8_t remote_scan_state; /* 0 stop, 1 start */
-
-	/* Add/Modify context */
-	uint8_t nb_subgroups;
-	uint8_t pa_sync_req; /* 0x00 off, 0x01 PAST avail, 0x02 PAST not avail */
-	uint16_t pa_intv_frames;
-
-	bap_adv_id_t adv_id;
-	bap_bcast_id_t bcast_id;
-};
-
-/* ================================================================
  *                   HELPERS / INTERNAL API
  * ================================================================
  */
@@ -140,17 +100,11 @@ static void reset_sink_config(void)
 	sink_env.datapath_cfg_valid = true;
 	sink_env.right_channel_pos = INVALID_CHANNEL_INDEX;
 	sink_env.left_channel_pos = INVALID_CHANNEL_INDEX;
-	sink_env.src_lid = GAF_INVALID_LID;
-	sink_env.con_lid = GAF_INVALID_LID;
-	sink_env.pa_lid = GAF_INVALID_LID;
 	sink_env.grp_lid = GAF_INVALID_LID;
 	sink_env.chosen_streams_bf = 0;
 	sink_env.started_streams_bf = 0;
-	sink_env.scanning_active = false;
 	sink_env.expected_streams = 0;
 	sink_env.stream_report_count = 0;
-	sink_env.code_received = false;
-	memset(sink_env.bcast_code.bcast_code, '\0', GAP_KEY_LEN);
 
 	LOG_DBG("Reset sink config");
 }
@@ -215,12 +169,8 @@ static void on_bass_remote_scan(uint8_t con_lid, uint8_t state)
 static void on_bass_bcast_code(uint8_t src_lid, uint8_t con_lid,
 			       const gaf_bcast_code_t *p_bcast_code)
 {
-	ARG_UNUSED(p_bcast_code);
 	LOG_INF("BASS broadcast code: src=%u con=%u", src_lid, con_lid);
 	LOG_INF("Broadcast code received: %s", p_bcast_code->bcast_code);
-
-	sink_env.code_received = true;
-	memcpy(sink_env.bcast_code.bcast_code, p_bcast_code->bcast_code, GAP_KEY_LEN);
 }
 
 /* Add Source request from BA */
@@ -230,18 +180,13 @@ static void on_bass_add_source_req(uint8_t src_lid, uint8_t con_lid, const bap_a
 				   uint16_t metadata_len)
 {
 	ARG_UNUSED(pa_intv_frames);
-	ARG_UNUSED(metadata_len);
+	ARG_UNUSED(p_adv_id);
 
 	LOG_INF("BASS add source request: src=%u con=%u pa_sync=%u nb_sgrp=%u meta_len=%u", src_lid,
 		con_lid, pa_sync_req, nb_subgroups, metadata_len);
 
 	LOG_INF("Add source request: src=%u con=%u bcast_id=%02x:%02x:%02x", src_lid, con_lid,
 		p_bcast_id->id[0], p_bcast_id->id[1], p_bcast_id->id[2]);
-
-	sink_env.src_lid = src_lid;
-	sink_env.con_lid = con_lid;
-	memcpy(&sink_env.bcast_id, p_bcast_id, sizeof(sink_env.bcast_id));
-	memcpy(&sink_env.adv_id, p_adv_id, sizeof(sink_env.adv_id));
 
 	bap_bc_deleg_add_source_cfm(src_lid, true);
 }
@@ -252,7 +197,6 @@ static void on_bass_modify_source_req(uint8_t src_lid, uint8_t con_lid, uint8_t 
 				      uint16_t metadata_len)
 {
 	ARG_UNUSED(pa_intv_frames);
-	ARG_UNUSED(metadata_len);
 
 	LOG_INF("BASS modify source request: src=%u con=%u pa_sync=%u nb_sgrp=%u meta_len=%u",
 		src_lid, con_lid, pa_sync_req, nb_subgroups, metadata_len);
@@ -352,9 +296,9 @@ static void on_bap_bc_sink_status(uint8_t grp_lid, uint8_t state, uint32_t strea
 			uint16_t err = 0;
 
 			if (sink_env.left_channel_pos != INVALID_CHANNEL_INDEX) {
-				err = bap_bc_sink_start_streaming(grp_lid,
-						sink_env.left_channel_pos, &codec_id,
-						GAPI_DP_ISOOSHM, 0, NULL);
+				err = bap_bc_sink_start_streaming(
+					grp_lid, sink_env.left_channel_pos, &codec_id,
+					GAPI_DP_ISOOSHM, 0, NULL);
 				LOG_INF("Start streaming: L pos=%u rc=%u",
 					sink_env.left_channel_pos, err);
 				if (err) {
@@ -363,9 +307,9 @@ static void on_bap_bc_sink_status(uint8_t grp_lid, uint8_t state, uint32_t strea
 			}
 
 			if (sink_env.right_channel_pos != INVALID_CHANNEL_INDEX) {
-				err = bap_bc_sink_start_streaming(grp_lid,
-						sink_env.right_channel_pos, &codec_id,
-						GAPI_DP_ISOOSHM, 0, NULL);
+				err = bap_bc_sink_start_streaming(
+					grp_lid, sink_env.right_channel_pos, &codec_id,
+					GAPI_DP_ISOOSHM, 0, NULL);
 				LOG_INF("Start streaming: R pos=%u rc=%u",
 					sink_env.right_channel_pos, err);
 				if (err) {
@@ -392,8 +336,8 @@ static void on_bap_bc_sink_status(uint8_t grp_lid, uint8_t state, uint32_t strea
 static void on_bap_bc_sink_enable_req(uint8_t grp_lid, uint8_t src_lid, uint8_t con_lid,
 				      uint32_t stream_pos_bf, uint32_t stream_pos_bf_opt)
 {
-	LOG_INF("SINK enable_req: grp=%u src=%u con=%u stream_bf=0x%08x, bf_opt=0x%08x",
-		grp_lid, src_lid, con_lid, stream_pos_bf, stream_pos_bf_opt);
+	LOG_INF("SINK enable_req: grp=%u src=%u con=%u stream_bf=0x%08x, bf_opt=0x%08x", grp_lid,
+		src_lid, con_lid, stream_pos_bf, stream_pos_bf_opt);
 	sink_env.grp_lid = grp_lid;
 
 	bap_bc_sink_enable_cfm(grp_lid, true, stream_pos_bf | stream_pos_bf_opt, 1000, 1);
@@ -412,7 +356,6 @@ static const bap_bc_sink_cb_t sink_cbs = {
 	.cb_enable_req = on_bap_bc_sink_enable_req,
 	.cb_disable_req = on_bap_bc_sink_disable_req,
 };
-
 
 /* ================================================================
  *                   SCAN CALLBACKS
@@ -459,7 +402,6 @@ static void on_bap_bc_scan_pa_established(uint8_t pa_lid, const bap_adv_id_t *p_
 {
 	ARG_UNUSED(p_adv_id);
 	LOG_INF("PA established: pa_lid=%u phy=%u intv=%u", pa_lid, phy, interval_frames);
-	sink_env.pa_lid = pa_lid;
 }
 
 static void on_bap_bc_scan_pa_terminated(uint8_t pa_lid, uint8_t reason)
@@ -537,7 +479,6 @@ static void on_bap_bc_scan_stream_report(uint8_t pa_lid, uint8_t sgrp_id, uint8_
 					 const gaf_codec_id_t *p_codec_id,
 					 const bap_cfg_ptr_t *p_cfg)
 {
-	ARG_UNUSED(pa_lid);
 	ARG_UNUSED(sgrp_id);
 
 	/* NOTE: If other codec than LC3 is supported, then codec id needs
@@ -548,7 +489,6 @@ static void on_bap_bc_scan_stream_report(uint8_t pa_lid, uint8_t sgrp_id, uint8_
 	LOG_INF("Stream report: pos=%u loc_bf=0x%04x (count=%u/%u)", stream_pos,
 		p_cfg->param.location_bf, sink_env.stream_report_count + 1,
 		sink_env.expected_streams);
-
 
 	sink_env.datapath_cfg.sampling_rate_hz =
 		audio_bap_sampling_freq_to_hz(p_cfg->param.sampling_freq);
@@ -577,11 +517,11 @@ static void on_bap_bc_scan_stream_report(uint8_t pa_lid, uint8_t sgrp_id, uint8_
 			bap_bc_scan_pa_report_ctrl(pa_lid, 0);
 			if (sink_env.left_channel_pos != INVALID_CHANNEL_INDEX) {
 				sink_env.chosen_streams_bf |=
-				(1U << (sink_env.left_channel_pos - 1));
+					(1U << (sink_env.left_channel_pos - 1));
 			}
 			if (sink_env.right_channel_pos != INVALID_CHANNEL_INDEX) {
 				sink_env.chosen_streams_bf |=
-				(1U << (sink_env.right_channel_pos - 1));
+					(1U << (sink_env.right_channel_pos - 1));
 			}
 		} else {
 			LOG_INF("Invalid datapath");
@@ -595,8 +535,9 @@ static void on_bap_bc_scan_pa_sync_req(uint8_t pa_lid, uint8_t src_lid, uint8_t 
 	ARG_UNUSED(con_lid);
 	LOG_INF("PA sync req: pa_lid=%u", pa_lid);
 	bap_bc_scan_pa_synchronize_cfm(pa_lid, true, 10,
-					BAP_BC_SCAN_REPORT_ANNOUNCE_LVL_1_BIT |
-					BAP_BC_SCAN_REPORT_ANNOUNCE_LVL_3_BIT, 500, 10);
+				       BAP_BC_SCAN_REPORT_ANNOUNCE_LVL_1_BIT |
+					       BAP_BC_SCAN_REPORT_ANNOUNCE_LVL_3_BIT,
+				       500, 10);
 }
 
 static void on_bap_bc_scan_pa_terminate_req(uint8_t pa_lid, uint8_t con_lid)
@@ -735,8 +676,6 @@ int auracast_scan_delegator_init(void)
 		return -ENODEV;
 	}
 
-	LOG_INF("Broadcast sink BLE initialized");
-
 	/* Start solicitation advertising using a single, canonical API */
 	ret = auracast_scan_delegator_start_solicitation();
 	if (ret != 0) {
@@ -744,6 +683,12 @@ int auracast_scan_delegator_init(void)
 		return -1;
 	}
 
+	LOG_INF("Broadcast delegator initialized");
+
+	power_mgr_log_flush();
+#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+	power_mgr_allow_sleep();
+#endif
 	return 0;
 }
 
@@ -756,4 +701,8 @@ void auracast_scan_delegator_deinit(void)
 
 	/* Bring BIG down and wait */
 	sd_teardown_sink_and_wait();
+
+#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+	power_mgr_disable_sleep();
+#endif
 }

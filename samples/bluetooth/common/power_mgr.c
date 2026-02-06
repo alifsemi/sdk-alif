@@ -10,6 +10,7 @@
 #include <zephyr/drivers/counter.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/sys/poweroff.h>
@@ -79,6 +80,22 @@ void power_mgr_allow_sleep(void)
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 }
 
+#if CONFIG_PM && CONFIG_LOG
+/**
+ * Flush log buffer
+ */
+void power_mgr_log_flush(void)
+{
+#if CONFIG_LOG_MODE_DEFERRED
+	log_flush();
+#else
+	while (log_process()) {
+		k_sleep(K_MSEC(1));
+	}
+#endif
+}
+#endif
+
 static int set_off_profile(enum off_state const mode)
 {
 	int ret;
@@ -97,6 +114,11 @@ static int set_off_profile(enum off_state const mode)
 		.vtor_address = SCB->VTOR,
 		.vtor_address_ns = SCB->VTOR,
 	};
+
+#if CONFIG_SHELL && DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+	offp.ewic_cfg |= EWIC_ES1_LP_UART_IRQ;
+	offp.power_domains |= PD_SSE700_AON_MASK;
+#endif
 
 	switch (mode) {
 	case OFF_STATE_IDLE:
@@ -229,7 +251,9 @@ static int prepare_application_config(void)
 
 	ret = set_off_profile(OFF_STATE_STOP);
 
+#if PREKERNEL_DISABLE_SLEEP
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+#endif
 
 	return ret;
 }

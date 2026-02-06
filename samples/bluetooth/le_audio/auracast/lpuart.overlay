@@ -5,7 +5,25 @@
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
- *
  */
 
-#include "alif_b1_dk.overlay"
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	current-speed = <115200>;
+	dlf = <13>;
+	/*/delete-property/ dlf;*/
+	status = "okay";
+	/delete-property/ pinctrl-1; // = <&pinctrl_lpuart_sleep>;
+	pinctrl-names = "default";
+};
+
+/ {
+	chosen {
+		zephyr,console = &lpuart;
+		zephyr,shell-uart = &lpuart;
+		zephyr,uart-mcumgr = &lpuart;
+	};
+};
