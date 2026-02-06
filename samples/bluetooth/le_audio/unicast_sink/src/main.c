@@ -10,7 +10,6 @@
 #include <zephyr/drivers/counter.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/logging/log_ctrl.h>
 #include <zephyr/settings/settings.h>
 #include <zephyr/sys/__assert.h>
 
@@ -656,16 +655,8 @@ int main(void)
 	if (unicast_sink_adv_start(APP_CON_ADDR)) {
 		return -1;
 	}
-#if CONFIG_LOG
-	/* just to let prints coming out properly */
-#if CONFIG_LOG_MODE_DEFERRED
-	log_flush();
-#else
-	while (log_process(false)) {
-		k_sleep(K_MSEC(1));
-	}
-#endif
-#endif
+
+	power_mgr_log_flush();
 	power_mgr_allow_sleep();
 
 	k_sleep(K_FOREVER);
