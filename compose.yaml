@@ -1,0 +1,41 @@
+
+# Open Zephyr SDK container configuration for Alif Semiconductor's Zephyr-based SDK.
+# This configuration defines two services:
+#   'alif' for the base SDK environment mounted with the current directory.
+#   'full' for a complete development environment with Zephyr and additional modules
+#          mounted from the parent directory.
+#
+# Usage:
+#   1. Ensure Docker is installed and running on your system.
+#   2. Start the container with the command: `docker compose run --rm sdk`
+#
+
+services:
+  alif:
+    image: "ghcr.io/alifsemi/sdk-alif:zas-main"
+    stdin_open: true
+    tty: true
+    volumes:
+      - ${SSH_AUTH_SOCK:-/tmp/ssh_auth_sock}:/tmp/ssh_auth_sock
+      - .:/root/alif/alif
+      - pip-cache:/root/.cache/pip
+    environment:
+      - SSH_AUTH_SOCK=/tmp/ssh_auth_sock
+    working_dir: /root/alif/alif
+    command: /bin/bash
+
+  full:
+    extends:
+      service: alif
+    volumes:
+      - ./../zephyr:/root/alif/zephyr
+      - ./../modules:/root/alif/modules
+    command: bash -c "
+        pip install --upgrade pip &&
+        pip3 install --no-cache-dir -r ../zephyr/scripts/requirements.txt &&
+        pip3 install --no-cache-dir -r ../bootloader/mcuboot/scripts/requirements.txt &&
+        /bin/bash
+      "
+
+volumes:
+  pip-cache:
