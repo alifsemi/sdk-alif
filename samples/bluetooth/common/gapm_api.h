@@ -65,7 +65,7 @@ typedef struct {
 } gapm_user_cb_t;
 
 /**
- * @brief Set GAPM preferrefd connections params
+ * @brief Set GAPM preferred connections params
  *
  * Function initialize GAPM service with given name and configuration.
  *
