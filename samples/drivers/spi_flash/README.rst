@@ -8,14 +8,27 @@ Overview
 ********
 
 This is the test application to test and verify the Flash Read,Write and Erase opearations over OSPI interface.
-The OSPI driver placed under *modules/hal/alif/drivers*
+The OSPI driver placed under *modules/hal/alif/drivers*.
+
 As of current h/w support 16bit Data Frame Size been applied for R/W.
+
+Flash driver will be chosen based on configuration in ospi-flash node.
+
+Currently supported Flash devices are :
+       1. Synopsys IS25WX Flash
+       2. Macronix MX66UW Flash
 
 
 Building and Running
 ********************
 
-The application will build only for a target that has a devicetree entry with *:dt compatible:`snps,designware-ospi`* as a compatible.
+Example command to build:
+
+.. code-block:: console
+
+   west build -b alif_b1_dk/ab1c1f4m51820hh/rtss_he -S ospi-flash ../alif/samples/drivers/spi_flash -p
+   OR
+   west build -b alif_b1_dk/ab1c1f4m51820hh/rtss_he ../alif/samples/drivers/spi_flash -p -- -DSNIPPET=ospi-flash
 
 Sample Output
 =============
