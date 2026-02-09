@@ -22,7 +22,7 @@ fixed_t FP_sqrt(fixed_t x) {
 		t = q + b;
 		if (r >= t) {
 			r -= t;
-			q  = t + b;  // equivalent to q += 2*b
+			q  = t + b;  /* equivalent to q += 2*b */
 		}
 		r <<= 1;
 		b >>= 1;
@@ -32,14 +32,14 @@ fixed_t FP_sqrt(fixed_t x) {
 }
 
 fixed_t FP_log2(fixed_t x) {
-	// This implementation is based on Clay. S. Turner's fast binary logarithm
-	// algorithm[1].
+	/* This implementation is based on Clay. S. Turner's fast binary logarithm */
+	/* algorithm[1]. */
 	fixed_t b = 1U << (FRACT_BITS - 1);
 	fixed_t y = 0;
 	size_t i;
 	fixed_t z;
 	if (x == 0) {
-		return 0;  // represents negative infinity
+		return 0;  /* represents negative infinity */
 	}
 	while (x < 1U << FRACT_BITS) {
 		x <<= 1;
@@ -51,7 +51,7 @@ fixed_t FP_log2(fixed_t x) {
 	}
 	z = x;
 	for (i = 0; i < FRACT_BITS; i++) {
-		z = FIXEDMUL(z, z);  // >> FRACT_BITS;
+		z = FIXEDMUL(z, z);  /* >> FRACT_BITS; */
 		if (z >= 2U << FRACT_BITS) {
 			z >>= 1;
 			y  += b;
@@ -64,7 +64,9 @@ fixed_t FP_log2(fixed_t x) {
 fixed_t FP_log(fixed_t x) {
 	fixed_t y;
 
-	// macro value is in Q1.31 fomat, but we use Q16.  shift in two steps to keep multiply precision
+	/* macro value is in Q1.31 fomat, but we use Q16.
+	 * shift in two steps to keep multiply precision
+	 */
 	y   = FIXEDMUL(FP_log2(x), (INV_LOG2_E_Q1DOT31 >> Q31_TO_Q16_SHIFT_1));
 	y >>= Q31_TO_Q16_SHIFT_2;
 
@@ -83,18 +85,20 @@ fixed_t FP_log(fixed_t x) {
  */
 int32_t sqrt_int32(int32_t v) {
 	uint32_t t, q, b, r;
-	r = v;           // r = v - x²
-	b = 0x40000000;  // a²
-	q = 0;           // 2ax
+	r = v;           /* r = v - x square */
+	b = 0x40000000;  /* a square */
+	q = 0;           /* 2ax */
 	while (b > 0) {
-		t   = q + b;  // t = 2ax + a²
-		q >>= 1;      // if a' = a/2, then q' = q/2
-		if (r >= t)   // if (v - x²) >= 2ax + a²
+		t   = q + b;  /* t = 2ax + a square */
+		q >>= 1;      /* if a dash = a/2, then q dash = q/2 */
+		if (r >= t)   /* if (v - x square) >= 2ax + a square */
 		{
-			r -= t;  // r' = (v - x²) - (2ax + a²)
-			q += b;  // if x' = (x + a) then ax' = ax + a², thus q' = q' + b
+			r -= t;  /* r dash = (v - x square) - (2ax + a square) */
+			q += b;  /* if x dash = (x + a) then ax dash = ax + a square,
+				  * thus q dash = q dash + b
+				  */
 		}
-		b >>= 2;  // if a' = a/2, then b' = b / 4
+		b >>= 2;  /* if a dash = a/2, then b dash = b / 4 */
 	}
 	return q;
 }
