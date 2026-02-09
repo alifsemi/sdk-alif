@@ -1,5 +1,16 @@
 /*! \file ch_driver.h
  *
+ * This file is a modified version of SonicLib, originally provided by
+ * TDK InvenSense and licensed under the TDK InvenSense 5-Clause License.
+ *
+ * Modifications made by: <Shreehari H K>, <2025>
+ * Purpose of modification:
+ *  - Compile out <invn/icu_interface/shasta_pmut_instruction.h> statement with
+ *    INCLUDE_SHASTA_SUPPORT macro condition as not required for CH201 configuration.
+ *
+ *  - Compile out chdrv_adjust_rx_len() api signature  with INCLUDE_SHASTA_SUPPORT
+ *    macro condition as not required for CH201 configuration.
+ *
  * \brief Internal driver functions for operation with the Chirp ultrasonic sensor.
  *
  * This file contains definitions for the internal Chirp sensor driver functions
@@ -40,7 +51,9 @@ extern "C" {
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#ifdef INCLUDE_SHASTA_SUPPORT
 #include <invn/icu_interface/shasta_pmut_instruction.h>
+#endif
 
 #define CHDRV_I2C_MAX_WRITE_BYTES 256 /*!< maximum number of bytes in a single I2C write */
 
@@ -1321,7 +1334,9 @@ int16_t chdrv_is_mq_sanitize_enabled(const ch_dev_t *dev_ptr);
  * @retval 1 The trim could not be completed because it would result in a 0 length
  *           RX instruction. Either remove the final RX instruction or make it longer.
  */
+#ifdef INCLUDE_SHASTA_SUPPORT
 uint8_t chdrv_adjust_rx_len(volatile pmut_transceiver_inst_t *trx_inst, uint8_t cic_odr, int rx_len, int eof_idx);
+#endif
 
 #ifdef __cplusplus
 }
