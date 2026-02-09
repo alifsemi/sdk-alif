@@ -10,9 +10,10 @@ cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(ch201_test)
 
-FILE(GLOB app_sources ch201_lib/ch201_bsp.c)
+FILE(GLOB app_sources src/*.c)
 
 target_include_directories(app PRIVATE
+    src
     ch201_lib
     ch201_lib/invn/soniclib
     ch201_lib/invn/soniclib/details
@@ -29,6 +30,7 @@ list(APPEND app_sources
     ch201_lib/invn/soniclib/ch_log.c
     ch201_lib/invn/soniclib/ch_math_utils.c
     ch201_lib/invn/soniclib/ch_rangefinder.c
+    ch201_lib/ch201_bsp.c
     ch201_lib/invn/soniclib/chbsp_dummy.c
 
     # Firmware for CH201
