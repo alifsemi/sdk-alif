@@ -132,13 +132,13 @@ int ble_gpio_buttons_init(button_handler_cb buttonHandler)
 		}
 		err = gpio_pin_configure_dt(&buttons[i], GPIO_INPUT);
 		if (err) {
-			LOG_ERR("Button configure failed %d", i);
+			LOG_ERR("Button configure failed %zu", i);
 			return err;
 		}
 		/* Disable Interrupt by default */
 		err = gpio_pin_interrupt_configure_dt(&buttons[i], GPIO_INT_DISABLE);
 		if (err) {
-			LOG_ERR("Button %zu interrupt config failed: %d", i);
+			LOG_ERR("Button %zu interrupt config failed: %d", i, err);
 			return err;
 		}
 		callback_pin_mask |= BIT(buttons[i].pin);
