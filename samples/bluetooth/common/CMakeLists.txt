@@ -13,6 +13,8 @@ set(COMMON_SRCS
 	${CMAKE_CURRENT_LIST_DIR}/gapm_sec.c
 )
 
+zephyr_library_sources_ifdef(CONFIG_GPIO ${CMAKE_CURRENT_LIST_DIR}/ble_gpio.c)
+
 if(pm-ble IN_LIST SNIPPET)
     message("BLE PM is enabled, including power_mgr.c in common sources.")
     set(COMMON_SRCS
