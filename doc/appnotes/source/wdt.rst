@@ -43,13 +43,18 @@ Follow these steps to build the WDT application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he samples/drivers/watchdog/
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     samples/drivers/watchdog/
+
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp samples/drivers/watchdog/
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/drivers/watchdog/
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

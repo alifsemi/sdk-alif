@@ -47,13 +47,19 @@ Follow these steps to build the DMA application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_dw/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/spi_dw/
+
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/spi_dw/
+
 
 Ensure that the DMA-related configurations are enabled in ``../alif/samples/drivers/spi_dw/prj.conf``:
 

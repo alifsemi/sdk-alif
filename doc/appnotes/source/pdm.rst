@@ -218,13 +218,18 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif/
+
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif/
 
 
 Executing Binary on the DevKit

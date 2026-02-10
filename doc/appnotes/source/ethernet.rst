@@ -174,13 +174,19 @@ Follow these steps to build the Ethernet DHCP Client application using the Alif 
 
 .. code-block:: bash
 
-    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/net/dhcpv4_client/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/net/dhcpv4_client/
+
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/net/dhcpv4_client/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/net/dhcpv4_client/
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

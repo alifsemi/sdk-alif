@@ -65,13 +65,18 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/i2s/echo
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/i2s/echo
+
 
 3. Build commands for Balletto B1:
 
 .. code-block:: bash
 
-   west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he samples/drivers/i2s/output
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     samples/drivers/i2s/output
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
