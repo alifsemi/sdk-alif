@@ -164,9 +164,15 @@ Follow these steps to build the MIPI camera application using the Alif Zephyr SD
 
 2. Build commands for applications on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/video/ -DDTC_OVERLAY_FILE=${PWD}/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay -p always
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE=\
+     ${PWD}/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay
+
 
 Executing Binary on the DevKit
 ==============================================

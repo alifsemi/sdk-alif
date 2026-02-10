@@ -104,22 +104,24 @@ Follow these steps to build the Power Management Application using the Alif Zeph
 
 2. Build commands for HE application from TCM:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-    ../alif/samples/drivers/pm/system_off \
-    -S pm-system-off-he \
-    -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
-    -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
-    -DCONFIG_FLASH_SIZE=256
+     ../alif/samples/drivers/pm/system_off \
+     -- \
+     -S pm-system-off-he \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
 
 3. Build commands for HP application from MRAM:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-    ../alif/samples/drivers/pm/system_off \
-    -S pm-system-off-hp
+     ../alif/samples/drivers/pm/system_off \
+     -- \
+     -S pm-system-off-hp
 
 
 Executing Binary on the DevKit

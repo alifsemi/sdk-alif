@@ -48,22 +48,30 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
 
 2. Build commands for UART applications on the M55 HP core (default output on UART2):
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/uart/echo_bot
+
 
 3. Build commands for UART application on the M55 HE core (default output on UART4):
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/uart/echo_bot/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/uart/echo_bot
+
 
 4. Build commands for LPUART application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/uart/echo_bot/ \
-   -DDTC_OVERLAY_FILE=/<Zephyr_dir>/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/uart/echo_bot \
+     -- -DDTC_OVERLAY_FILE=$ZEPHYR_BASE/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
