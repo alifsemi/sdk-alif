@@ -60,7 +60,7 @@ Connection
 
 .. include:: note.rst
 
-Building an LPI2C Application with Zephyr
+Build an LPI2C Application with Zephyr
 ==========================================
 
 Follow these steps to build the LPI2C application using the Alif Zephyr SDK:
@@ -73,11 +73,13 @@ Follow these steps to build the LPI2C application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build command for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/lpi2c
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/lpi2c
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

@@ -20,7 +20,7 @@ Currently, LED0 (Green) is used for PWM output on the HP core, and LED1 (Red) is
 
 .. include:: note.rst
 
-Building an PWM Application with Zephyr
+Build an PWM Application with Zephyr
 ========================================
 
 Follow these steps to build the `fade_led` and `blinky_pwm` applications using the PWM driver and the west tool. The following commands are used to build the image with the GCC compiler on ITCM memory:
@@ -31,29 +31,44 @@ Follow these steps to build the `fade_led` and `blinky_pwm` applications using t
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for fade_led applications on the M55 HP core:
+2. Build command for fade_led application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/basic/fade_led
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/basic/fade_led/ \
+     -S alif-fade-led
 
-3. Build commands for blinky_pwm applications on the M55 HP core:
 
-.. code-block:: bash
+3. Build command for blinky_pwm application on the M55 HP core:
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/basic/blinky_pwm
+.. code-block:: console
 
-4. Build commands for fade_led applications on the M55 HE core:
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/basic/blinky_pwm/ \
+     -S alif-blinky-pwm
 
-.. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/basic/fade_led
+4. Build command for fade_led application on the M55 HE core:
 
-5. Build commands for blinky_pwm applications on the M55 HE core:
+.. code-block:: console
 
-.. code-block:: bash
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/basic/fade_led/ \
+     -S alif-fade-led
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/basic/blinky_pwm
+
+5. Build command for blinky_pwm application on the M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/basic/blinky_pwm/ \
+     -S alif-blinky-pwm
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

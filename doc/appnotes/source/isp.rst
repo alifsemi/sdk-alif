@@ -10,7 +10,7 @@ Introduction
 This application note describes how to capture camera frames using the ISP instances of the video driver with the ARX3A0 camera sensor.
 
 **Image data path**:
-CMOS sensor →CSI bus controller → CPI → ISP → Memory
+CMOS sensor → CSI bus controller → CPI → ISP → Memory
 
 Hardware Requirements
 ======================
@@ -20,10 +20,10 @@ CPI
 
 The CPI IP, provided by Alif Semiconductor, captures video frames and stores them in an allocated memory area. It can also forward the frames to the ISP IP from VeriSilicon, which is integrated into the Alif SoC.
 
-MIPI DPHY
+MIPI D-PHY
 -------------
 
-The MIPI DPHY physical layer receives serial input data from the camera sensor and transfers it to the MIPI CSI-2 host. Key features of the DPHY include:
+The MIPI D-PHY physical layer receives serial input data from the camera sensor and transfers it to the MIPI CSI-2 host. Key features of the D-PHY include:
 
 - **Flexible clock configuration**: Supports a clock frequency range of 17 MHz to 52 MHz.
 - **Lane operation**: Supports data rates from 80 Mbps to 2.5 Gbps per lane in the forward direction.
@@ -36,19 +36,19 @@ The MIPI DPHY physical layer receives serial input data from the camera sensor a
 
 This comprehensive set of features enables the D-PHY physical layer to efficiently handle a wide range of data rates and power modes while maintaining signal integrity and robust communication performance.
 
-MIPI CSI2
-------------
+MIPI CSI-2
+----------
 
-The MIPI CSI2 interface performs unpacking of serial input data according to the configured pixel data type. It conveys the unpacked pixel data and generates accurately timed video synchronization signals via the Image Pixel Interface (IPI).
+The MIPI CSI-2 interface unpacks serial input data according to the configured pixel data type. It conveys the unpacked pixel data and generates accurately timed video synchronization signals via the Image Pixel Interface (IPI).
 
-Key features of MIPI CSI2 include:
+Key features of MIPI CSI-2 include:
 
 - **Combo PHY Support**: Utilizes up to four RX data lanes on D-PHY.
 - **High Data Rate**: Supports data rates of up to 2.5 Gbps per lane in D-PHY mode.
 - **Data Format Flexibility**: Compatible with a wide range of primary and secondary data formats, including YUV, RGB, RAW, and user-defined byte-based formats.
 - **Robust Error Detection and Correction**: Implements mechanisms at multiple levels—PHY, packet, line, and frame—to ensure reliable data transmission.
 
-These features enable MIPI CSI2 to efficiently handle diverse pixel data formats, maintain precise synchronization, and deliver robust, error-resilient communication for image sensors.
+These features enable MIPI CSI-2 to efficiently handle diverse pixel data formats, maintain precise synchronization, and deliver robust, error-resilient communication for image sensors.
 
 
 I2C Controller
@@ -69,8 +69,8 @@ The camera sensor used is the ARX3A0, a significant advancement in CMOS imaging 
     ARX3A0 Camera Sensor
 
 
-VeriSilicon ISP Pico 8000L ISP
-------------------------------
+VeriSilicon ISP Pico 8000L
+--------------------------
 
 The VeriSilicon Vivante ISP IP is a full-featured image signal processor (ISP) capable of supporting a wide range of image processing functions.
 
@@ -132,12 +132,12 @@ ISP Configs
    CONFIG_ISP_LIB_SCALAR_MODULE=y
    CONFIG_ISP_LIB_DMSC_MODULE=y
 
-The above ISP configuration enables **Scalar** and **Demosaicing** functionality from the ISP IP.
+The above ISP configuration enables scaling and demosaicing in the ISP IP.
 
 Software Requirements for ISP Application
 =========================================
 
-To successfully run the MIPI camera application, you’ll need the following software components and drivers:
+To successfully run the ISP application, you'll need the following software components and drivers:
 
 - **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 - **West Tool**: For building Zephyr applications (refer to the `ZAS User Guide`_)
@@ -147,10 +147,9 @@ To successfully run the MIPI camera application, you’ll need the following sof
 Camera Drivers (MIPI Interface)
 --------------------------------
 
-- Alif Zephyr MIPI CSI2 Driver
+- Alif Zephyr MIPI CSI-2 Driver
 - Alif Zephyr Video Driver
-- Alif Zephyr MIPI DSI Driver
-- Alif Zephyr MIPI DPHY Driver
+- Alif Zephyr MIPI D-PHY Driver
 - Alif Zephyr ISP Driver
 - Alif Zephyr ISP HAL Driver
 
@@ -163,7 +162,7 @@ ARX3A0 Camera Sensor Driver
 Selected ARX3A0 Camera Sensor Configurations
 --------------------------------------------
 
-- **Interface**: MIPI CSI2
+- **Interface**: MIPI CSI-2
 - **Resolution**: 560×560
 - **Output Format**: RAW Bayer10
 
@@ -176,7 +175,7 @@ Selected ISP Configurations
 
 .. include:: note.rst
 
-Building an ISP Application with Zephyr
+Build an ISP Application with Zephyr
 ========================================
 
 Follow these steps to build the ISP application using the Alif Zephyr SDK:
@@ -188,30 +187,37 @@ Follow these steps to build the ISP application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-      ../alif/samples/drivers/video/ \
-      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
-      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
 
-3. Build commands for applications on the M55 HE core:
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
 
-.. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-      ../alif/samples/drivers/video/ \
-      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
-      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+3. Build command for application on the M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: bash
 
@@ -220,7 +226,7 @@ To execute binaries on the DevKit follow the command
 Console Output
 ===============
 
-The following output is observed in the console during execution of the ISP camera application:
+The following output is observed in the console during execution of the ISP application:
 
 .. code-block:: console
 

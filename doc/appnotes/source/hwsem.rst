@@ -13,7 +13,7 @@ This document provides detailed instructions on how to create, compile, and run 
 
 .. include:: note.rst
 
-Building an HWSEM Application with Zephyr
+Build an HWSEM Application with Zephyr
 ==========================================
 
 Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
@@ -24,29 +24,45 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the hwsem0_test M55 HE core:
+2. Build command for application on the hwsem0_test M55 HE core:
 
 .. code-block:: bash
 
-    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ipm/ipm_alif_hwsem/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
 
-3. Build commands for applications on the hwsem_test_all M55 HE core:
+
+3. Build command for application on the hwsem_test_all M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+
+4. Build command for application on the hwsem0_test M55 HP core:
 
 .. code-block:: bash
 
-    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ipm/ipm_alif_hwsem/ -DHWSEM_ALL=ON
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
 
-4. Build commands for applications on the hwsem0_test M55 HP core:
 
-.. code-block:: bash
+5. Build command for application on the hwsem_test_all M55 HP core:
 
-    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/ipm/ipm_alif_hwsem/
+.. code-block:: console
 
-5. Build commands for applications on the hwsem_test_all M55 HP core:
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
 
-.. code-block:: bash
-
-    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/ipm/ipm_alif_hwsem/ -DHWSEM_ALL=ON
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

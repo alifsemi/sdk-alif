@@ -35,7 +35,7 @@ UART2 and UART4 are directly available on the board. With only the power cable a
 
 .. include:: note.rst
 
-Building an UART Application with Zephyr
+Build an UART Application with Zephyr
 =========================================
 
 Follow these steps to build the UART application using the Alif Zephyr SDK:
@@ -46,24 +46,32 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for UART applications on the M55 HP core (default output on UART2):
+2. Build command for UART application on the M55 HP core (default output on UART2):
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/uart/echo_bot
 
-3. Build commands for UART application on the M55 HE core (default output on UART4):
 
-.. code-block:: bash
+3. Build command for UART application on the M55 HE core (default output on UART4):
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/uart/echo_bot/
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/uart/echo_bot
+
 
 4. Build commands for LPUART application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/uart/echo_bot/ \
-   -DDTC_OVERLAY_FILE=/<Zephyr_dir>/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/uart/echo_bot \
+     -- -DDTC_OVERLAY_FILE=$PWD/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

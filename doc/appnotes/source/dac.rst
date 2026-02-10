@@ -113,7 +113,7 @@ Device Tree Code Snippet
    };
 
 
-Building an DAC Application with Zephyr
+Build an DAC Application with Zephyr
 =========================================
 
 Follow these steps to build the DAC application using the Alif Zephyr SDK:
@@ -126,18 +126,23 @@ Follow these steps to build the DAC application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/dac
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/dac
 
 
-3. Build commands for applications on the M55 HP core:
+3. Build command for application on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/dac
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/dac
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

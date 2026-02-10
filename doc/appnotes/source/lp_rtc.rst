@@ -39,7 +39,7 @@ Required Config Features
 
 .. include:: note.rst
 
-Building an LPRTC Application with Zephyr
+Build an LPRTC Application with Zephyr
 ==========================================
 
 The LPRTC is integrated into the alarm application as a demonstration, shared with the LPTIMER and Utimer modules. Separate overlay and config files for LPRTC, LPTIMER, and Utimer are located in the board's directory within the alarm application. Users can select these files using the west build command.
@@ -52,17 +52,28 @@ Follow these steps to build the LPRTC alarm application using the Alif Zephyr SD
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=boards/alif_rtc.conf -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
 
-3. Build commands for applications on the M55 HE core:
 
-.. code-block:: bash
+3. Build command for application on the M55 HE core:
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ -DOVERLAY_CONFIG=boards/alif_rtc.conf -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

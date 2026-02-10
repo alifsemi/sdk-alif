@@ -2,3 +2,18 @@
 
 .. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.1.0/user_guide.pdf
 
+.. _`executorch Documentation`: https://pytorch.org/executorch/
+
+.. _`Arm Ethos-U NPU`: https://developer.arm.com/ip-products/processors/machine-learning/ethos-u
+
+.. _`Vela Compiler`: https://developer.arm.com/tools-and-software/open-source-software/ethos-u/ethos-u-vela
+
+.. _`Alif Semiconductor`: https://www.alifsemi.com/
+
+.. _`Google Speech Commands Dataset`: https://arxiv.org/abs/1804.03209
+
+.. _`DS-CNN Paper`: https://arxiv.org/abs/1711.07128
+
+.. _`RTSS HE MRAM JSON`:
+
+.. _`RTSS HP MRAM JSON`:

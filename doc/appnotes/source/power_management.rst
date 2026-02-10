@@ -90,7 +90,7 @@ This sample application can be used for basic power measurement and demonstrates
 
 .. include:: note.rst
 
-Building an PM Application with Zephyr
+Build an PM Application with Zephyr
 ========================================
 
 Follow these steps to build the Power Management Application using the Alif Zephyr SDK:
@@ -102,9 +102,9 @@ Follow these steps to build the Power Management Application using the Alif Zeph
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for HE application from TCM:
+2. Build command for the HE application from TCM:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
     ../alif/samples/drivers/pm/system_off \
@@ -113,13 +113,22 @@ Follow these steps to build the Power Management Application using the Alif Zeph
     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
     -DCONFIG_FLASH_SIZE=256
 
-3. Build commands for HP application from MRAM:
 
-.. code-block:: bash
+3. Build command for the HP application from MRAM:
+
+.. code-block:: console
 
    west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
     ../alif/samples/drivers/pm/system_off \
     -S pm-system-off-hp
+
+4. Build command for HE application from MRAM:
+
+.. code-block:: console
+
+   west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+    ../alif/samples/drivers/pm/system_off \
+    -S pm-system-off-he
 
 
 Executing Binary on the DevKit

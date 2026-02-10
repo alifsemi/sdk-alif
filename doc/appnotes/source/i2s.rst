@@ -50,7 +50,7 @@ For E7 DevKits, connect an external speaker to the board using a level shifter c
 
 .. include:: note.rst
 
-Building an I2S Application with Zephyr
+Build an I2S Application with Zephyr
 ========================================
 
 Follow these steps to build the I2S application using the Alif Zephyr SDK:
@@ -61,17 +61,24 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core:
+2. Build Command for the I2S Echo Sample Application
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/i2s/echo
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/i2s/echo \
+     -S alif-i2s-echo
 
-3. Build commands for Balletto B1:
+
+3. Build Commands for the I2S output Sample Application
 
 .. code-block:: bash
 
-   west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he samples/drivers/i2s/output
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     samples/drivers/i2s/output \
+     -S alif-i2s-output
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

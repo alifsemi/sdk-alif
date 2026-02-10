@@ -36,7 +36,7 @@ Furthermore, the LPTIMER is integrated into the Alarm application as a demo appl
 
 .. include:: note.rst
 
-Building an LP TIMER Application with Zephyr
+Build an LP TIMER Application with Zephyr
 ==============================================
 
 Follow these steps to build the LP TIMER application using the Alif Zephyr SDK:
@@ -49,17 +49,26 @@ Follow these steps to build the LP TIMER application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/counter/alarm/ -DDTC_OVERLAY_FILE=boards/alif_lptimer.overlay
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DDTC_OVERLAY_FILE=boards/alif_lptimer.overlay
 
-3. Build commands for applications on the M55 HE core:
 
-.. code-block:: bash
+3. Build command for application on the M55 HE core:
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/drivers/counter/alarm/ -DDTC_OVERLAY_FILE=boards/alif_lptimer.overlay
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DDTC_OVERLAY_FILE=boards/alif_lptimer.overlay
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

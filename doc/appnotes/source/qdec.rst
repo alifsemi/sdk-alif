@@ -13,7 +13,7 @@ The Alif UTIMER IP on the Alif Devkit supports Quadrature Decoder (QDEC) mode, e
 
 .. include:: note.rst
 
-Building an QDEC Application with Zephyr
+Build an QDEC Application with Zephyr
 =========================================
 
 Follow these steps to build the QDEC application using the Alif Zephyr SDK:
@@ -25,21 +25,23 @@ Follow these steps to build the QDEC application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
+.. code-block:: console
 
-.. code-block:: bash
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/sensor/qdec/ \
+     -S alif-qdec
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/sensor/qdec/ \
-       -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+3. Build command for application on the M55 HP core:
 
-3. Build commands for applications on the M55 HP core:
+.. code-block:: console
 
-
-.. code-block:: bash
-
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/sensor/qdec/ \
-       -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/sensor/qdec/ \
+     -S alif-qdec
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

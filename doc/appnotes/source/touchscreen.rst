@@ -87,9 +87,9 @@ Hardware Connections
    +----------------------------+----------+----------------------------------+
    | Configuration              | GPIO Pin | Function                         |
    +============================+==========+==================================+
-   | GT911 GPIO (B0 Flat Board) | P4_0     | Touch Interrupt Signal           |
+   | GT911 GPIO (B0 Flat Board) | P4_0     | Touch Reset Signal               |
    +----------------------------+----------+----------------------------------+
-   | GT911 GPIO (B0 Flat Board) | P9_4     | Touch Reset Signal               |
+   | GT911 GPIO (B0 Flat Board) | P9_4     | Touch Interrupt Signal           |
    +----------------------------+----------+----------------------------------+
    | I2C GPIO                   | P7_2     | I2C1_SDA_C (Data Line)           |
    +----------------------------+----------+----------------------------------+
@@ -137,7 +137,7 @@ To successfully run the GT911 touchscreen application, you'll need the following
 
 .. include:: note.rst
 
-Building an Touch Sensing Application with Zephyr
+Build an Touch Sensing Application with Zephyr
 ====================================================
 
 Follow these steps to build the GT911 touchscreen application using the Alif Zephyr SDK:
@@ -148,17 +148,24 @@ Follow these steps to build the GT911 touchscreen application using the Alif Zep
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/subsys/input/input_dump/ -S alif-ak-dk
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/subsys/input/input_dump \
+     -S alif-ak-dk
 
-3. Build commands for applications on the M55 HE core:
 
-.. code-block:: bash
+3. Build command for application on the M55 HE core:
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/subsys/input/input_dump/ -S alif-ak-dk
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/subsys/input/input_dump \
+     -S alif-ak-dk
 
 
 Executing Binary on the DevKit
