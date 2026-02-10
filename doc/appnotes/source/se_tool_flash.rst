@@ -33,13 +33,13 @@ Flashing the binary using the SE tool
 
 Follow these steps to build the application:
 
-1. Build commands for applications on the M55 HE core:
+1. Build command for application on the M55 HE core:
 
    .. code-block:: bash
 
       west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for application on the M55 HP core:
 
    .. code-block:: bash
 
@@ -113,7 +113,12 @@ Encrypt the binary for secure applications using a 16-byte AES key.
 
 .. code-block:: bash
 
-   /home/$USER/prebuilt-images/CSPI_AES128_ECB -i build/zephyr/zephyr.bin -o build/zephyr/zephyr_en.bin -k 0123456789ABCDEF -d 1
+   /home/$USER/prebuilt-images/CSPI_AES128_ECB \
+     -i build/zephyr/zephyr.bin \
+     -o build/zephyr/zephyr_en.bin \
+     -k 0123456789ABCDEF \
+     -d 1
+
 
 - Replace the key with your 16-byte AES key.
 - Update the JSON to use "binary": "zephyr_en.bin" and "signed": true.

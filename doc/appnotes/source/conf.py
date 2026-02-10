@@ -24,7 +24,6 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
-    'sphinx_rtd_theme',
 ]
 
 templates_path = ['_templates']
@@ -62,9 +61,20 @@ latex_elements = {
     'preamble': r'''
         \usepackage{float}
         \usepackage{graphicx}
+        \usepackage{fancyhdr}
         \input{_static/latex/alif_semiconductor.sty}
+
+        % Override Sphinx page style
+        \makeatletter
+        \fancypagestyle{sphinx}{
+            \fancyhf{}
+            \fancyfoot[C]{\thepage}
+            \renewcommand{\headrulewidth}{0pt}
+            \renewcommand{\footrulewidth}{0pt}
+        }
+        \makeatother
     ''',
-    'figure_align': 'H',  # Force figures to appear exactly where placed
+    'figure_align': 'H',
 }
 
 latex_table_style = ['booktabs', 'colorrows']
@@ -77,7 +87,7 @@ latex_documents = [
 ]
 
 latex_logo = "_static/logo.png"
-latex_show_urls = 'footnote'
+latex_show_urls = 'no'
 latex_domain_indices = False
 
 # -- Custom setup ------------------------------------------------------------

@@ -68,22 +68,24 @@ Below are example build commands using the west tool for each configuration.
 
 This example builds the hello world sample for the RTSS-HE target on the alif_e7_dk/ae722f80f55d5xx/rtss_he board:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world \
-       -DCONFIG_ARM_MPU=n \
-       -DCONFIG_FLASH_BASE_ADDRESS=0xC0200000 \
+     -- \
+     -DCONFIG_ARM_MPU=n \
+     -DCONFIG_FLASH_BASE_ADDRESS=0xC0200000
 
 **RTSS-HP Example**
 
 This command builds the uart/echo_bot driver sample for the RTSS-HP target on the alif_e7_dk/ae722f80f55d5xx/rtss_hp board:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/drivers/uart/echo_bot \
-       -DCONFIG_ARM_MPU=n \
-       -DCONFIG_FLASH_BASE_ADDRESS=0xC0000000 \
-       -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -- \
+     -DCONFIG_ARM_MPU=n \
+     -DCONFIG_FLASH_BASE_ADDRESS=0xC0000000 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0
 
 Encrypting the ZAS Application Binary (Optional)
 ================================================
@@ -109,15 +111,23 @@ Save the Encrypted Binary
 
 **RTSS-HP**
 
-.. code-block:: bash
+.. code-block:: console
 
-   cp build/zephyr/zephyr_en.bin /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshp_ospi1_en_helloworld.bin
+   IMAGE_DIR=/home/$USER/app-release-exec-linux/build/images
+
+   cp build/zephyr/zephyr_en.bin \
+     $IMAGE_DIR/zephyr_e7_rtsshp_ospi1_en_helloworld.bin
+
 
 **RTSS-HE**
 
-.. code-block:: bash
+.. code-block:: console
 
-   cp build/zephyr/zephyr_en.bin /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshe_ospi1_en_helloworld.bin
+   IMAGE_DIR=/home/$USER/app-release-exec-linux/build/images
+
+   cp build/zephyr/zephyr_en.bin \
+     $IMAGE_DIR/zephyr_e7_rtsshe_ospi1_en_helloworld.bin
+
 
 Executing Binary on DevKit
 =============================

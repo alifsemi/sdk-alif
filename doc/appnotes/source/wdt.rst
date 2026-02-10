@@ -25,7 +25,7 @@ Key Features of the WDT_RTSS Module:
 
 .. include:: note.rst
 
-Building an WDT Application with Zephyr
+Build an WDT Application with Zephyr
 =========================================
 
 The Watchdog Timer (WDT) is integrated into the standard samples/drivers/watchdog application as a demonstration.
@@ -39,17 +39,22 @@ Follow these steps to build the WDT application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he samples/drivers/watchdog/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/drivers/watchdog -S alif-wdt
 
-3. Build commands for applications on the M55 HP core:
 
-.. code-block:: bash
+3. Build command for application on the M55 HP core:
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp samples/drivers/watchdog/
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/watchdog -S alif-wdt
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

@@ -203,7 +203,7 @@ The DevKit has internal PDM microphones. To test LPPDM channels 0 and 1, connect
 
 .. include:: note.rst
 
-Building an PDM and LPPDM Application with Zephyr
+Build an PDM and LPPDM Application with Zephyr
 ===================================================
 
 Follow these steps to build the PDM and LPPDM application using the Alif Zephyr SDK:
@@ -214,17 +214,24 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
 
-3. Build commands for applications on the M55 HP core:
+
+3. Build command for application on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/audio/dmic_alif/
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
 
 
 Executing Binary on the DevKit

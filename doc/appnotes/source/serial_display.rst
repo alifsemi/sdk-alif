@@ -276,8 +276,8 @@ The Alif DevKit connects to the ILI9806E panel via the MIPI DSI interface. The M
 
    Hardware Setup
 
-Build CDC200 Application in Zephyr
-====================================
+Build an CDC200 Application in Zephyr
+========================================
 
 Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
@@ -288,17 +288,30 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for HE application for TCM memory:
+2. Build command for HE application for TCM memory:
 
-   .. code-block:: bash
+.. code-block:: console
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/display/ -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
 
-3. Build commands for HP application for TCM memory:
+   west build -p always \
+    -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+    ../alif/samples/drivers/display \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
 
-   .. code-block:: bash
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/display/ -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+3. Build command for HP application for TCM memory:
+
+.. code-block:: console
+
+
+   west build -p always \
+    -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+    ../alif/samples/drivers/display \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

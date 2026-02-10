@@ -101,3 +101,45 @@
         \includegraphics[width=2cm]{_static/logo.png}
     }
 }
+
+% Footer Formatting (Keep header, remove section title from footer)
+% ----------------------------------------------------------------------------
+\usepackage{fancyhdr}
+
+\makeatletter
+
+% Main page style
+\fancypagestyle{normal}{
+  \fancyhf{}
+  \fancyhead[L]{\leftmark}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
+
+% Pages after lists/code blocks
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyhead[L]{\leftmark}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
+
+% Pages with headings
+\fancypagestyle{sphinxheadings}{
+  \fancyhf{}
+  \fancyhead[L]{\leftmark}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
+
+% Some Sphinx builds use this style
+\fancypagestyle{sphinxplain}{
+  \fancyhf{}
+  \fancyhead[L]{\leftmark}
+  \fancyhead[R]{\thepage}
+  \renewcommand{\headrulewidth}{0.4pt}
+}
+
+\pagestyle{normal}
+
+\makeatother

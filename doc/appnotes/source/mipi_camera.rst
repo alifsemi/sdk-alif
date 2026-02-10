@@ -112,7 +112,6 @@ Required Configuration Features
 - ``CONFIG_I2C_TARGET=y``
 - ``CONFIG_I2C=y``
 - ``CONFIG_I2C_DW_CLOCK_SPEED=100``
-- ``CONFIG_MT9M114_PARALLEL_INIT=n``
 
 Software Requirements
 =====================
@@ -151,7 +150,7 @@ To convert a Bayer 10 image to RGB format for viewing, run the following command
 
 .. include:: note.rst
 
-Building an MIPI Camera Application with Zephyr
+Build an MIPI Camera Application with Zephyr
 ================================================
 
 Follow these steps to build the MIPI camera application using the Alif Zephyr SDK:
@@ -162,11 +161,16 @@ Follow these steps to build the MIPI camera application using the Alif Zephyr SD
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HP core:
+2. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/video/ -DDTC_OVERLAY_FILE=${PWD}/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay -p always
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay"
+
 
 Executing Binary on the DevKit
 ==============================================

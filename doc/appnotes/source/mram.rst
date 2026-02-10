@@ -31,7 +31,7 @@ To enhance performance, the MRAM controller incorporates a read cache and a writ
 
 .. include:: note.rst
 
-Building an MRAM Application with Zephyr
+Build an MRAM Application with Zephyr
 =========================================
 
 Follow these steps to build the MRAM application using the Alif Zephyr SDK:
@@ -42,18 +42,25 @@ Follow these steps to build the MRAM application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the Alif E8 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
 .. code-block:: console
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he samples/subsys/fs/littlefs/ -p -- -DSNIPPET=alif-lfs-mram
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     samples/subsys/fs/littlefs \
+     -S alif-lfs-mram
 
-3. Build commands for applications on the M55 HP core:
 
+3. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp samples/subsys/fs/littlefs/ -p -- -DSNIPPET=alif-lfs-mram
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/subsys/fs/littlefs \
+     -S alif-lfs-mram
+
 
 Executing Binary on the DevKit
 ===============================
