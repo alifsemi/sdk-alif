@@ -19,6 +19,5 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
     src/main.c
-    ../common/ble_gpio.c
     ${COMMON_SRCS}
 )
