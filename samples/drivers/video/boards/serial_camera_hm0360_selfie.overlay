@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code are permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement.
  *
@@ -12,6 +12,49 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/video/video-interfaces.h>
 
+
+/{
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@0 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hm0360: hm0360@24 {
+				compatible = "himax,hm0360";
+				reg = <0x24>;
+				reset-gpios = <&gpio9 1 GPIO_ACTIVE_LOW>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+				xsleep-gpios = <&gpio6 3 GPIO_ACTIVE_LOW>;
+
+				status = "okay";
+
+				port {
+					hm0360_csi2_ep_out: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = <176000000>;
+						data-lanes = <1>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in1";
+					};
+				};
+			};
+		};
+	};
+};
+
 &gpio6 {
 	status = "okay";
 };
@@ -21,6 +64,10 @@
 };
 
 &gpio9 {
+	status = "okay";
+};
+
+&gpio14 {
 	status = "okay";
 };
 
@@ -35,27 +82,6 @@
 	 */
 	hcnt-offset = <30>;
 	lcnt-offset = <50>;
-
-	hm0360: hm0360@24 {
-		compatible = "himax,hm0360";
-		reg = <0x24>;
-		reset-gpios = <&gpio9 1 GPIO_ACTIVE_LOW>;
-		power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
-		xsleep-gpios = <&gpio6 3 GPIO_ACTIVE_LOW>;
-
-		status = "okay";
-
-		port {
-			hm0360_csi2_ep_out: endpoint {
-				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
-				link-frequencies = <176000000>;
-				data-lanes = <1>;
-				clock-lane = <0>;
-
-				remote-endpoint-label = "csi2_ep_in";
-			};
-		};
-	};
 };
 
 &cam {
@@ -89,14 +115,15 @@
 &csi {
 	status = "okay";
 
-	/* RX-DPHY */
+	/* Selfie camera D-PHY*/
 	phy-if = <&dphy 0>;
+
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		port@0 {
 			reg = <0>;
-			csi2_ep_in: endpoint {
+			csi2_ep_in1: endpoint {
 				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
 				data-lanes = <1>;
 				clock-lane = <0>;
