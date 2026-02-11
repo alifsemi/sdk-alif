@@ -29,6 +29,9 @@
 #include "gapm_api.h"
 #include "ble_gpio.h"
 #include "arc_vcs.h"
+#include "arc_vocs.h"
+#include "arc_aics.h"
+#include "l2cap_coc.h"
 
 #define BUTTON_PRESSED 1  /* SW5 */
 #define BUTTON_UP      16 /* SW1 */
@@ -42,9 +45,9 @@ static gapm_config_t gapm_cfg = {
 	.pairing_mode = GAPM_PAIRING_SEC_CON,
 	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
 	.renew_dur = 1500,
-	.private_identity.addr = {0x78, 0x59, 0x94, 0xDE, 0x11, 0xFF},
+	.private_identity.addr = {0x78, 0x59, 0x94, 0xDE, 0x11, 0xFA},
 	.irk.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08, 0x11, 0x22, 0x33, 0x44, 0x55,
-		    0x66, 0x77, 0x88},
+		    0x66, 0x77, 0x89},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
 	.att_cfg = 0,
@@ -62,6 +65,7 @@ struct service_env {
 	uint8_t mute;
 	uint8_t volume;
 	uint16_t ntf_cfg;
+	uint8_t vocs_lid;
 };
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
@@ -74,9 +78,16 @@ static uint8_t adv_type; /* Advertising type, set by address_verification() */
 
 static struct service_env env;
 static arc_vcs_cb_t vcs_cb;
+static arc_vocs_cb_t vocs_cb;
+static arc_aics_cb_t aics_cb;
 
+#define VOCS_MAX_DESC_LEN 20
+#define VOCS_CFG_BF 0
 #define DEFAULT_VCS_STEP_SIZE 6
 #define DEFAULT_VCS_FLAGS 0
+
+#define AICS_CFG_BF 0
+#define AICS_DESC_MAX_LEN 20
 
 static void led_worker_handler(struct k_work *work);
 
@@ -106,14 +117,6 @@ static void UpdateMuteLedstate(void)
 static int set_advertising_data(uint8_t actv_idx)
 {
 	int ret;
-	/* gatt service identifier */
-	uint16_t svc = GATT_SVC_VOLUME_CONTROL;
-
-	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID, &svc, sizeof(svc));
-	if (ret) {
-		LOG_ERR("AD profile set fail %d", ret);
-		return ATT_ERR_INSUFF_RESOURCE;
-	}
 
 	ret = bt_adv_data_set_name_auto(DEVICE_NAME, strlen(DEVICE_NAME));
 
@@ -155,13 +158,13 @@ static void server_configure(void)
 	}
 }
 
-void vcs_cb_bond_data(uint8_t con_lid, uint8_t cli_cfg_bf)
+static void vcs_cb_bond_data(uint8_t con_lid, uint8_t cli_cfg_bf)
 {
 	LOG_DBG("VCS Bond data updated, con_lid: %u, cfg: %u", con_lid, cli_cfg_bf);
 	env.ntf_cfg = cli_cfg_bf;
 }
 
-void vcs_cb_volume(uint8_t volume, uint8_t mute, bool local)
+static void vcs_cb_volume(uint8_t volume, uint8_t mute, bool local)
 {
 	(void)local;
 	env.volume = volume;
@@ -172,9 +175,52 @@ void vcs_cb_volume(uint8_t volume, uint8_t mute, bool local)
 
 }
 
-void vcs_cb_flags(uint8_t flags)
+static void vcs_cb_flags(uint8_t flags)
 {
 	(void)flags;
+}
+
+static void vocs_cb_offset(uint8_t output_lid, int16_t offset)
+{
+	LOG_DBG("VOCS offset updated, output_lid: %u, offset: %d", output_lid, offset);
+}
+
+static void vocs_cb_bond_data(uint8_t output_lid, uint8_t con_lid, uint8_t cli_cfg_bf)
+{
+	LOG_DBG("VOCS Bond data updated, output_lid: %u, con_lid: %u, cfg: %u", output_lid, con_lid,
+		cli_cfg_bf);
+}
+
+static void vocs_cb_description_req(uint8_t output_lid, uint8_t con_lid, uint8_t desc_len,
+			     const char *p_desc)
+{
+	LOG_DBG("VOCS description req, output_lid: %u, con_lid: %u, desc_len: %u, desc: %s",
+		output_lid, con_lid, desc_len, p_desc);
+}
+
+static void vocs_cb_location_req(uint8_t output_lid, uint8_t con_lid, uint32_t location_bf)
+{
+	LOG_DBG("VOCS location req, output_lid: %u, con_lid: %u, location_bf: %" PRIu32, output_lid,
+		con_lid, location_bf);
+}
+
+static void aics_cb_bond_data(uint8_t input_lid, uint8_t con_lid, uint8_t cli_cfg_bf)
+{
+	LOG_DBG("AICS Bond data updated, input_lid: %u, con_lid: %u, cfg: %u", input_lid, con_lid,
+		cli_cfg_bf);
+}
+
+static void aics_cb_state(uint8_t input_lid, arc_aic_state_t *p_state)
+{
+	LOG_DBG("AICS state updated, input_lid: %u, gain: %u, mute: %u, gain_mode: %u", input_lid,
+		p_state->gain, p_state->mute, p_state->gain_mode);
+}
+
+static void aics_cb_description_req(uint8_t input_lid, uint8_t con_lid, uint8_t desc_len,
+			     const char *p_desc)
+{
+	LOG_DBG("AICS description req, input_lid: %u, con_lid: %u, desc_len: %u, desc: %s",
+		input_lid, con_lid, desc_len, p_desc);
 }
 
 /*
@@ -184,17 +230,64 @@ static uint16_t service_init(void)
 {
 	uint16_t status;
 
+	env.mute = 0;
+	env.volume = 10;
+	env.ntf_cfg = 0;
+	env.vocs_lid = 0;
+
+	/* First configure VOCS */
+	vocs_cb.cb_bond_data = vocs_cb_bond_data;
+	vocs_cb.cb_offset = vocs_cb_offset;
+	vocs_cb.cb_description_req = vocs_cb_description_req;
+	vocs_cb.cb_location_req = vocs_cb_location_req;
+
+	status = arc_vocs_configure(&vocs_cb, 1, L2CAP_COC_MTU_MIN);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("VOCS configure problem %u", status);
+	}
+
+	status = arc_vocs_add(VOCS_MAX_DESC_LEN, VOCS_CFG_BF, GATT_INVALID_HDL, &env.vocs_lid);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("VOCS add problem %u", status);
+	}
+
+	/* then Configure AICS */
+	aics_cb.cb_bond_data = aics_cb_bond_data;
+	aics_cb.cb_state = aics_cb_state;
+	aics_cb.cb_description_req = aics_cb_description_req;
+
+	status = arc_aics_configure(&aics_cb, 1, L2CAP_COC_MTU_MIN);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("AICS configure problem %u", status);
+	}
+
+	arc_aic_gain_prop_t props = {
+		.gain_units = 5, /* 1/10 dB */
+		.gain_min = -30,
+		.gain_max = 10
+	};
+
+	uint8_t input_lid;
+
+	status = arc_aics_add(&props, ARC_AIC_INPUT_TYPE_MICROPHONE, AICS_DESC_MAX_LEN, AICS_CFG_BF,
+			      GATT_INVALID_HDL, &input_lid);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("AICS add problem %u", status);
+		return status;
+	}
+
+	/* Lastly Configure VCS */
 	vcs_cb.cb_bond_data = vcs_cb_bond_data;
 	vcs_cb.cb_volume = vcs_cb_volume;
 	vcs_cb.cb_flags = vcs_cb_flags;
 
-	env.mute = 0;
-	env.volume = 10;
-	env.ntf_cfg = 0;
+	uint8_t input_lids[1];
+
+	input_lids[0] = input_lid;
 
 	status = arc_vcs_configure(&vcs_cb, DEFAULT_VCS_STEP_SIZE, DEFAULT_VCS_FLAGS, env.volume,
-				env.mute, GATT_INVALID_HDL, ARC_VCS_CFG_FLAGS_NTF_BIT, 0,
-				NULL);
+				   env.mute, GATT_INVALID_HDL, ARC_VCS_CFG_FLAGS_NTF_BIT, 1,
+				   input_lids);
 
 	if (status != GAP_ERR_NO_ERROR) {
 		LOG_ERR("VCS configure problem %u", status);
