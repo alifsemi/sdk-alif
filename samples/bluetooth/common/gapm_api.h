@@ -67,6 +67,11 @@ typedef struct {
 					 uint16_t status);
 } gapm_user_cb_t;
 
+struct connection_status {
+	gap_bdaddr_t addr; /*!< Peer device address */
+	uint8_t conidx; /*!< connection index */
+};
+
 /**
  * @brief Set GAPM preferred connections params
  *
@@ -147,5 +152,37 @@ uint16_t bt_gapm_advertisement_start(uint8_t adv_index);
  * @return 0 on success, positive error code otherwise
  */
 uint16_t bt_gapm_advertisement_continue(uint8_t adv_index);
+
+/**
+ * @brief GAF advertisement service create
+ *
+ * @param name String pointer to name
+ * @param name_len Name length by strlen(name)
+ * @param p_gap_adr Pointer to store connection peer address
+ *
+ * @return 0 on success, positive error code otherwise
+ */
+uint16_t bt_gaf_create_adv(const char *name, size_t name_len, gap_bdaddr_t *p_gap_adr);
+
+/**
+ * @brief GAF advertisement start
+ *
+ * @param p_gap_adr Peer address pointer NULL or p_client_addr.addr_type 0xff start general
+ * advertisement otherwise direct
+ *
+ * @return 0 on success, positive error code otherwise
+ */
+uint16_t bt_gaf_adv_start(gap_bdaddr_t *p_client_addr);
+
+/**
+ * @brief Generate and load random static private address
+ *
+ * Function generate and config private identity.
+ *
+ * @param p_cfg GAPM configure
+ *
+ */
+void bt_generate_private_identity(gapm_config_t *p_cfg);
+
 
 #endif /* GAPM_API_H */
