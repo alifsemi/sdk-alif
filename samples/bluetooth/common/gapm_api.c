@@ -730,4 +730,5 @@ void bt_generate_private_identity(gapm_config_t *p_cfg)
 					 sizeof(gap_addr_t));
 		}
 	}
+	p_cfg->privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT; /*Privacy address bit*/
 }
