@@ -25,14 +25,12 @@
 #include "gatt_db.h"
 #include "gatt_srv.h"
 #include "ke_mem.h"
-#include "address_verification.h"
 #include <zephyr/drivers/gpio.h>
-#include <alif/bluetooth/bt_adv_data.h>
-#include <alif/bluetooth/bt_scan_rsp.h>
+#include "address_verification.h"
 #include "gapm_api.h"
 #include "ble_gpio.h"
 #include "arc_mics.h"
-
+#include "ble_storage.h"
 
 /* List of Mute value for MCS */
 enum app_mic_mute {
@@ -50,7 +48,7 @@ static gapm_config_t gapm_cfg = {
 	.pairing_mode = GAPM_PAIRING_SEC_CON,
 	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
 	.renew_dur = 1500,
-	.private_identity.addr = {0x78, 0x59, 0x94, 0xDE, 0x11, 0xFF},
+	.private_identity.addr = {0},
 	.irk.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF6, 0x07, 0x08, 0x11, 0x22, 0x33, 0x44, 0x55,
 		    0x66, 0x77, 0x88},
 	.gap_start_hdl = 0,
@@ -58,8 +56,8 @@ static gapm_config_t gapm_cfg = {
 	.att_cfg = 0,
 	.sugg_max_tx_octets = GAP_LE_MIN_OCTETS,
 	.sugg_max_tx_time = GAP_LE_MIN_TIME,
-	.tx_pref_phy = GAP_PHY_ANY,
-	.rx_pref_phy = GAP_PHY_ANY,
+	.tx_pref_phy = GAP_PHY_LE_2MBPS,
+	.rx_pref_phy = GAP_PHY_LE_2MBPS,
 	.tx_path_comp = 0,
 	.rx_path_comp = 0,
 	.class_of_device = 0,  /* BT Classic only */
@@ -72,12 +70,9 @@ struct service_env {
 };
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
-static uint8_t adv_actv_idx;
-static uint8_t adv_type; /* Advertising type, set by address_verification() */
 
 /* Load name from configuration file */
 #define DEVICE_NAME      CONFIG_BLE_DEVICE_NAME
-#define SAMPLE_ADDR_TYPE ALIF_GEN_RSLV_RAND_ADDR
 
 static struct service_env env;
 
@@ -88,6 +83,11 @@ static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
 static const struct gpio_dt_spec activeLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledgreen), gpios);
 static const struct gpio_dt_spec muteLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledred), gpios);
 static const struct gpio_dt_spec bleLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledblue), gpios);
+
+static struct connection_status app_con_info = {
+	.conidx = GAP_INVALID_CONIDX,
+	.addr.addr_type = 0xff,
+};
 
 /* Macros */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -102,49 +102,19 @@ static void UpdateMuteLedstate(void)
 	k_work_reschedule(&ledWork, K_MSEC(1));
 }
 
-/**
- * Bluetooth GAPM callbacks
- */
-
-static int set_advertising_data(uint8_t actv_idx)
-{
-	int ret;
-	/* gatt service identifier */
-	uint16_t svc = GATT_SVC_MICROPHONE_CONTROL;
-
-	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID, &svc, sizeof(svc));
-	if (ret) {
-		LOG_ERR("AD profile set fail %d", ret);
-		return ATT_ERR_INSUFF_RESOURCE;
-	}
-
-	ret = bt_adv_data_set_name_auto(DEVICE_NAME, strlen(DEVICE_NAME));
-
-	if (ret) {
-		LOG_ERR("AD device name data fail %d", ret);
-		return ATT_ERR_INSUFF_RESOURCE;
-	}
-
-	return bt_gapm_advertiment_data_set(actv_idx);
-}
-
 static uint16_t create_advertising(void)
 {
-	gapm_le_adv_create_param_t adv_create_params = {
-		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
-		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
-		.tx_pwr = 0,
-		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
-		.prim_cfg = {
-				.adv_intv_min = 160,
-				.adv_intv_max = 800,
-				.ch_map = ADV_ALL_CHNLS_EN,
-				.phy = GAPM_PHY_TYPE_LE_1M,
-			},
-	};
 
-	return bt_gapm_le_create_advertisement_service(adv_type, &adv_create_params, NULL,
-						       &adv_actv_idx);
+	uint16_t err;
+
+	err = bt_gaf_create_adv(DEVICE_NAME, strlen(DEVICE_NAME), &app_con_info.addr);
+	if (err != GAF_ERR_NO_ERROR) {
+		LOG_ERR("Unable to configure GAF advertiser! Error %u (0x%02X)", err, err);
+		return err;
+	}
+	LOG_DBG("GAF advertiser is configured");
+
+	return err;
 }
 
 static void server_configure(void)
@@ -292,6 +262,8 @@ int main(void)
 {
 	uint16_t err;
 
+	ble_storage_init();
+
 	err = ble_gpio_buttons_init(ButtonUpdateHandler);
 	if (err) {
 		LOG_ERR("Button Init fail %u", err);
@@ -308,10 +280,8 @@ int main(void)
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
-	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
-		LOG_ERR("Address verification failed");
-		return -EADV;
-	}
+	/* Define Private identity */
+	bt_generate_private_identity(&gapm_cfg);
 
 	/* Configure Bluetooth Stack */
 	LOG_INF("Init gapm service");
@@ -329,19 +299,9 @@ int main(void)
 		return -1;
 	}
 
-	err = set_advertising_data(adv_actv_idx);
-	if (err) {
-		LOG_ERR("Advertisement data set fail %u", err);
-		return -1;
-	}
+	/* Start a Generic audio advertisement */
+	err = bt_gaf_adv_start(&app_con_info.addr);
 
-	err = bt_gapm_scan_response_set(adv_actv_idx);
-	if (err) {
-		LOG_ERR("Scan response set fail %u", err);
-		return -1;
-	}
-
-	err = bt_gapm_advertisement_start(adv_actv_idx);
 	if (err) {
 		LOG_ERR("Advertisement start fail %u", err);
 		return -1;
