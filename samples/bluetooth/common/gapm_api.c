@@ -8,6 +8,7 @@
  */
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include "gaf_adv.h"
 #include "gapm.h"
 #include "gap_le.h"
 #include "gapc_le.h"
@@ -19,15 +20,33 @@
 #include "gapm_api.h"
 #include "power_mgr.h"
 #include "gapm_sec.h"
+#include "ble_storage.h"
 
 K_SEM_DEFINE(gapm_sem, 0, 1);
 
 LOG_MODULE_REGISTER(gapm, LOG_LEVEL_DBG);
 
-static uint8_t adv_actv_idx;
+static uint8_t adv_actv_idx = GAP_INVALID_CONIDX;
 static uint16_t gapm_status;
 
+/* GAF advertising */
+#define ADV_SET_LOCAL_IDX     0
+#define ADV_TIMEOUT           0 /* Infinite (until explicitly stopped) */
+#define ADV_TIMEOUT_DIRECT    5
+#define ADV_SID               0
+#define ADV_INTERVAL_QUICK_MS 45
+#define ADV_INTERVAL_MS       150
+#define ADV_PHY               GAP_PHY_1MBPS
+#define ADV_PHY_2nd           GAP_PHY_2MBPS
+#define ADV_MAX_TX_PWR        -20
+#define ADV_MAX_SKIP          1
+
+static char gaf_adv_data[27];
+static size_t gaf_adv_data_len;
+
 static gapm_user_cb_t *user_gapm_cb;
+
+static gap_bdaddr_t *gaf_gap_adr;
 
 static gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
 	.ce_len_min = 5,
@@ -140,8 +159,13 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	uint16_t err;
 
 	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
+	if (adv_actv_idx != GAP_INVALID_CONIDX) {
+		err = bt_gapm_advertisement_continue(adv_actv_idx);
+	} else {
+		/* Start a Generic audio advertisement */
+		err = bt_gaf_adv_start(gaf_gap_adr);
+	}
 
-	err = bt_gapm_advertisement_continue(adv_actv_idx);
 	if (err) {
 		LOG_ERR("Error restarting advertising: %u", err);
 	} else {
@@ -168,7 +192,12 @@ static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
 static void on_bond_data_updated(uint8_t conidx, uint32_t metainfo,
 				 const gapc_bond_data_updated_t *p_data)
 {
-	LOG_DBG("%s", __func__);
+	LOG_INF("Client %u bond data updated: gatt_start_hdl:%u, gatt_end_hdl:%u, "
+		"svc_chg_hdl:%u, cli_info:%u, cli_feat:%u, srv_feat:%u",
+		conidx, p_data->gatt_start_hdl, p_data->gatt_end_hdl, p_data->svc_chg_hdl,
+		p_data->cli_info, p_data->cli_feat, p_data->srv_feat);
+
+	gapm_sec_bondata_update(conidx, metainfo, p_data);
 }
 
 static void on_auth_payload_timeout(uint8_t conidx, uint32_t metainfo)
@@ -333,7 +362,6 @@ uint16_t bt_gapm_init(const gapm_config_t *p_cfg, gapm_user_cb_t *p_cbs, const c
 		sec_pairing = false;
 	}
 	user_gapm_cb = p_cbs;
-
 	/* Define Security callbacks */
 	gapm_cbs.p_sec_cbs = gapm_sec_init(sec_pairing, app_pairing_status_cb, &(p_cfg->irk));
 
@@ -490,4 +518,216 @@ uint16_t bt_gapm_advertisement_continue(uint8_t adv_index)
 	}
 
 	return rc;
+}
+
+static void on_gaf_advertising_cmp_evt(uint8_t const cmd_type, uint16_t const status,
+				       uint8_t const set_lid)
+{
+	uint8_t adv_index;
+
+	__ASSERT(status == GAF_ERR_NO_ERROR, "GAF advertising error:%u, cmd:%u", status, cmd_type);
+	adv_index = gaf_adv_get_actv_idx(set_lid);
+
+	switch (cmd_type) {
+	case GAF_ADV_CMD_TYPE_START: {
+		LOG_DBG("GAF advertising started");
+		address_verification_log_advertising_address(adv_index);
+		break;
+	}
+	case GAF_ADV_CMD_TYPE_STOP: {
+		LOG_INF("GAF advertising stopped");
+		break;
+	}
+	case GAF_ADV_CMD_TYPE_START_DIRECTED: {
+		LOG_DBG("GAF directed advertising started");
+		address_verification_log_advertising_address(adv_index);
+		break;
+	}
+	case GAF_ADV_CMD_TYPE_START_DIRECTED_FAST: {
+		LOG_DBG("GAF high-duty cycle directed advertising started");
+		address_verification_log_advertising_address(adv_index);
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+static void on_gaf_advertising_stopped(uint8_t const set_lid, uint8_t const reason)
+{
+	(void)set_lid;
+
+	static const char *const reason_str[] = {"Requested by Upper Layer", "Internal error",
+						 "Timeout", "Connection established"};
+
+	LOG_DBG("GAF advertising stopped. Reason: %s",
+		reason < ARRAY_SIZE(reason_str) ? reason_str[reason] : "Unknown");
+
+	if (reason != GAF_ADV_STOP_REASON_CON_ESTABLISHED) {
+		/* Restart normal advertising */
+		bt_gaf_adv_start(NULL);
+	}
+}
+
+static const struct gaf_adv_cb gaf_adv_cbs = {
+	.cb_cmp_evt = on_gaf_advertising_cmp_evt,
+	.cb_stopped = on_gaf_advertising_stopped,
+};
+
+uint16_t bt_gaf_create_adv(const char *name, size_t name_len, gap_bdaddr_t *p_gap_adr)
+{
+
+	uint16_t err;
+	size_t adv_name_len = name_len;
+	uint8_t ad_type;
+	struct gaf_adv_cfg config = {
+		.nb_sets = 1,
+	};
+
+	err = gaf_adv_configure(&config, &gaf_adv_cbs);
+	if (err != GAF_ERR_NO_ERROR) {
+		LOG_ERR("Unable to configure GAF advertiser! Error %u (0x%02X)", err, err);
+		return err;
+	}
+
+	/* Pre config Gaf Adv data */
+	if (adv_name_len > (sizeof(gaf_adv_data) - 2)) {
+		adv_name_len = sizeof(gaf_adv_data) - 2;
+		ad_type = GAP_AD_TYPE_SHORTENED_NAME;
+	} else {
+		ad_type = GAP_AD_TYPE_COMPLETE_NAME;
+	}
+
+	gaf_adv_data[0] = adv_name_len + 1;
+	gaf_adv_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
+	strncpy(&gaf_adv_data[2], name, adv_name_len);
+	gaf_adv_data_len = adv_name_len + 2;
+	LOG_DBG("GAF advertiser is configured");
+	gaf_gap_adr = p_gap_adr;
+
+	gapm_sec_load_peer_address(p_gap_adr);
+
+	return err;
+}
+
+uint16_t bt_gaf_adv_start(gap_bdaddr_t *p_client_addr)
+{
+
+	uint16_t err;
+
+	err = gaf_adv_set_params(ADV_SET_LOCAL_IDX, ADV_INTERVAL_QUICK_MS, ADV_INTERVAL_MS, ADV_PHY,
+				 ADV_PHY_2nd, ADV_ALL_CHNLS_EN, ADV_MAX_TX_PWR, ADV_MAX_SKIP);
+	if (err != GAF_ERR_NO_ERROR) {
+		LOG_ERR("Failed to set advertising params, err %u (0x%02X)", err, err);
+		return err;
+	}
+
+	uint32_t adv_config = GAPM_ADV_MODE_GEN_DISC;
+
+	if (p_client_addr && p_client_addr->addr_type != 0xff) {
+		LOG_INF("Starting directed advertising with address %02X:%02X:%02X:%02X:%02X:%02X",
+			p_client_addr->addr[5], p_client_addr->addr[4], p_client_addr->addr[3],
+			p_client_addr->addr[2], p_client_addr->addr[1], p_client_addr->addr[0]);
+		err = gaf_adv_start_directed(ADV_SET_LOCAL_IDX, adv_config, ADV_TIMEOUT_DIRECT,
+					     ADV_SID, gaf_adv_data_len, (uint8_t *)gaf_adv_data,
+					     NULL, p_client_addr);
+
+	} else {
+
+		LOG_INF("Starting general advertising");
+		err = gaf_adv_start(
+			ADV_SET_LOCAL_IDX, (adv_config | GAF_ADV_CFG_GENERAL_ANNOUNCEMENT_BIT),
+			ADV_TIMEOUT, ADV_SID, gaf_adv_data_len, (uint8_t *)gaf_adv_data, NULL);
+	}
+
+	if (err != GAF_ERR_NO_ERROR) {
+		LOG_ERR("Failed to start advertising, err %u (0x%02X)", err, err);
+	}
+
+	return err;
+}
+/* Temp buffer pointer */
+static gap_addr_t *private_address;
+
+static void on_gapm_le_random_addr_cb(uint16_t const status, const gap_addr_t *const p_addr)
+{
+	gapm_status = status;
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("GAPM address generation error %u", status);
+	} else {
+
+		LOG_DBG("Generated address: %02X:%02X:%02X:%02X:%02X:%02X", p_addr->addr[5],
+			p_addr->addr[4], p_addr->addr[3], p_addr->addr[2], p_addr->addr[1],
+			p_addr->addr[0]);
+
+		*private_address = *p_addr;
+	}
+
+	k_sem_give(&gapm_sem);
+}
+
+static uint16_t bt_gapm_generate_random_addr(gapm_config_t *p_cfg,
+					     enum gap_le_random_addr_type addr_type)
+{
+	uint16_t err;
+
+	/* Temporary usage only */
+	gapm_cbs.p_sec_cbs = gapm_sec_cb_got();
+
+	private_address = &p_cfg->private_identity;
+
+	err = gapm_configure(1, p_cfg, &gapm_cbs, on_gapm_process_complete);
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapm_configure error %u", err);
+		return err;
+	}
+	if (k_sem_take(&gapm_sem, K_MSEC(1000)) != 0) {
+		LOG_ERR("  FAIL! GAPM config timeout!");
+		return GAP_ERR_TIMEOUT;
+	}
+
+	/* Generate random static address */
+	err = gapm_le_generate_random_addr(addr_type, on_gapm_le_random_addr_cb);
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapm_le_generate_random_addr error %u", err);
+		return err;
+	}
+	if (k_sem_take(&gapm_sem, K_MSEC(1000)) != 0) {
+		LOG_ERR("  FAIL! GAPM random address timeout!");
+		return GAP_ERR_TIMEOUT;
+	}
+
+	if (gapm_status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapm_le_generate_random_addr fail by status %u", gapm_status);
+		return gapm_status;
+	}
+
+	/* Reset GAPM to set address */
+	err = gapm_reset(3, on_gapm_process_complete);
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_ERR("gapm_reset error %u", err);
+		return err;
+	}
+	if (k_sem_take(&gapm_sem, K_MSEC(1000)) != 0) {
+		LOG_ERR("  FAIL! GAPM reset timeout!");
+		return GAP_ERR_TIMEOUT;
+	}
+	return 0;
+}
+
+void bt_generate_private_identity(gapm_config_t *p_cfg)
+{
+	if (IS_ENABLED(CONFIG_SETTINGS)) {
+		ble_storage_load(BLE_PRIV_ID_NAME, &p_cfg->private_identity, sizeof(gap_addr_t));
+	}
+
+	if (p_cfg->private_identity.addr[5] == 0) {
+		/* Define Random static address */
+		bt_gapm_generate_random_addr(p_cfg, GAP_BD_ADDR_STATIC);
+		if (IS_ENABLED(CONFIG_SETTINGS)) {
+			/* Save generated address */
+			ble_storage_save(BLE_PRIV_ID_NAME, &p_cfg->private_identity,
+					 sizeof(gap_addr_t));
+		}
+	}
 }
