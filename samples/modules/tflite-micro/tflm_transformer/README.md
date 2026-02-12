@@ -14,10 +14,10 @@ This application demonstrates real-time transformer model inference using:
 
 ### Key Features
 
-✅ **Dual-Core Support**: Optimized configurations for both HP and HE cores  
-✅ **NPU Acceleration**: Leverages Ethos-U85 for matrix operations  
-✅ **Memory Optimized**: Core-specific tensor arena sizing  
-✅ **Multi-Threaded**: Parallel inference job processing  
+✅ **Dual-Core Support**: Optimized configurations for both HP and HE cores
+✅ **NPU Acceleration**: Leverages Ethos-U85 for matrix operations
+✅ **Memory Optimized**: Core-specific tensor arena sizing
+✅ **Multi-Threaded**: Parallel inference job processing
 
 ## Architecture
 
@@ -67,7 +67,7 @@ This application demonstrates real-time transformer model inference using:
 
 - **Processor**: Dual Cortex-M55 (RTSS_HP + RTSS_HE)
 - **NPU**: ARM Ethos-U85 (256 MACs)
-- **RAM**: 
+- **RAM**:
   - RTSS_HP: 1MB DTCM
   - RTSS_HE: 256KB DTCM
   - Shared: 4MB SRAM1
@@ -82,9 +82,9 @@ This application demonstrates real-time transformer model inference using:
 
 ## Requirements
 
-* Alif Ensemble E8 Development Kit
-* ARM Ethos-U85 NPU support
-* Zephyr SDK with TensorFlow Lite Micro module
+- Alif Ensemble E8 Development Kit
+- ARM Ethos-U85 NPU support
+- Zephyr SDK with TensorFlow Lite Micro module
 
 ## Building and Running
 
@@ -95,22 +95,22 @@ and `enable_ethosu85.overlay` to enable the NPU.
 
 The HP core has 1MB DTCM, allowing a larger tensor arena (700KB).
 
-```
+```bash
 cd zephyr
 west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
     ../alif/samples/modules/tflite-micro/tflm_transformer \
-    -DDTC_OVERLAY_FILE="boards/alif_e8_dk_rtss_hp.overlay;boards/enable_ethosu85.overlay"
+    -DDTC_OVERLAY_FILE="boards/alif_e8_dk_rtss_hp.overlay;boards/enable_ethosu85.overlay" -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 ```
 
 ### Building for RTSS_HE Core
 
 The HE core has 256KB DTCM, using a smaller tensor arena (128KB).
 
-```
+```bash
 cd zephyr
 west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
     ../alif/samples/modules/tflite-micro/tflm_transformer \
-    -DDTC_OVERLAY_FILE="boards/alif_e8_dk_rtss_he.overlay;boards/enable_ethosu85.overlay"
+    -DDTC_OVERLAY_FILE="boards/alif_e8_dk_rtss_he.overlay;boards/enable_ethosu85.overlay" -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 ```
 
 ### Flashing
@@ -121,7 +121,7 @@ Refer Alif's official documentation for flashing
 
 ### Successful Inference (HP Core)
 
-```
+```shell
 Starting BERT-Tiny Transformer Model Demo on Ethos-U85 NPU
 Model: bert_tiny
 Tensor arena size: 716800 bytes
@@ -160,6 +160,7 @@ All inferences completed successfully!
 ### Resource Utilization
 
 **RTSS_HP (1MB DTCM):**
+
 - Tensor Arena: 700KB (68%)
 - Application Code/Data: ~40KB
 - Stacks: 16KB
@@ -167,12 +168,12 @@ All inferences completed successfully!
 - **Available Margin**: ~282KB
 
 **RTSS_HE (256KB DTCM):**
+
 - Tensor Arena: 128KB (50%)
 - Application Code/Data: ~40KB
 - Stacks: 16KB
 - Heaps: 24KB
 - **Available Margin**: ~86KB
-
 
 ## Advanced Usage
 
@@ -189,6 +190,7 @@ Edit `src/main.cpp`:
 ### Using Different Models
 
 1. Optimize your model with Vela for Ethos-U85:
+
    ```bash
    vela --accelerator-config=ethos-u85-256 \
         --system-config=Ethos_U85_SRAM_MRAM \
@@ -202,6 +204,7 @@ Edit `src/main.cpp`:
 ## Documentation
 
 Refer to the SDK User Guide for:
+
 - Build and flash instructions
 - Troubleshooting common issues
 - Memory profiling and optimization techniques
@@ -213,6 +216,5 @@ Refer to the SDK User Guide for:
 - [Zephyr RTOS](https://docs.zephyrproject.org/)
 - [TensorFlow Lite Micro](https://www.tensorflow.org/lite/microcontrollers)
 - [BERT Paper](https://arxiv.org/abs/1810.04805)
-
 
 **Status**: ✅ Tested and working on both RTSS_HP and RTSS_HE cores (Nov 2025)
