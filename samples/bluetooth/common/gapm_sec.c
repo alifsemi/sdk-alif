@@ -22,6 +22,7 @@
 #include "gatt_srv.h"
 #include "ke_mem.h"
 #include "gapm_sec.h"
+#include "ble_storage.h"
 
 LOG_MODULE_REGISTER(sec, LOG_LEVEL_DBG);
 
@@ -33,15 +34,7 @@ static uint8_t temp_conidx;
 static uint32_t temp_metainfo;
 static pairing_status_cb sec_pairing_status_cb;
 static gap_sec_key_t sec_irk;
-
-static gapc_pairing_t p_pairing_info = {
-	.auth = GAP_AUTH_BOND | GAP_AUTH_SEC_CON | GAP_AUTH_MITM,
-	.ikey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
-	.iocap = GAP_IO_CAP_DISPLAY_ONLY,
-	.key_size = GAP_KEY_LEN,
-	.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
-	.rkey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
-};
+static gap_bdaddr_t *temp_gap_adr;
 
 /* Security callbacks */
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -59,9 +52,8 @@ static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairin
 	stored_keys.valid_key_bf = p_keys->valid_key_bf;
 	if (IS_ENABLED(CONFIG_SETTINGS)) {
 
-		/* Save under the key "ble/bond_keys_0" */
-		err = settings_save_one(BLE_BOND_KEYS_KEY_0, &stored_keys,
-					sizeof(gapc_pairing_keys_t));
+		err = ble_storage_save_with_index(BLE_BOND_KEYS_NAME, 0, &stored_keys,
+						  sizeof(gapc_pairing_keys_t));
 		if (err) {
 			LOG_ERR("Failed to store test_data (err %d)", err);
 		}
@@ -73,9 +65,25 @@ static void on_pairing_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level
 {
 	uint16_t err;
 
+	gapc_pairing_t pairing_info = {
+		.auth = GAP_AUTH_REQ_NO_MITM_NO_BOND,
+		.iocap = GAP_IO_CAP_NO_INPUT_NO_OUTPUT,
+		.ikey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
+		.key_size = GAP_KEY_LEN,
+		.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
+		.rkey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
+	};
+
+	if (auth_level & GAP_AUTH_BOND) {
+		pairing_info.auth = GAP_AUTH_REQ_SEC_CON_BOND;
+		pairing_info.iocap = GAP_IO_CAP_DISPLAY_ONLY;
+	} else if (auth_level & GAP_AUTH_SEC_CON) {
+		pairing_info.auth = GAP_AUTH_SEC_CON;
+	}
+
 	LOG_INF("pairing req %u , level %u", conidx, auth_level);
 
-	err = gapc_le_pairing_accept(conidx, true, &p_pairing_info, 0);
+	err = gapc_le_pairing_accept(conidx, true, &pairing_info, 0);
 
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Pairing error %u", err);
@@ -113,10 +121,19 @@ static void on_pairing_succeed(uint8_t conidx, uint32_t metainfo, uint8_t pairin
 	bond_data_saved.pairing_lvl = pairing_level;
 	bond_data_saved.enc_key_present = true;
 	if (IS_ENABLED(CONFIG_SETTINGS)) {
-		err = settings_save_one(BLE_BOND_DATA_KEY_0, &bond_data_saved,
-					sizeof(gapc_bond_data_t));
+		err = ble_storage_save_with_index(BLE_BOND_DATA_NAME, 0, &bond_data_saved,
+						  sizeof(gapc_bond_data_t));
 		if (err) {
 			LOG_ERR("Failed to store test_data (err %d)", err);
+		}
+
+		/* Store Peer connection information */
+		if (temp_gap_adr) {
+			err = ble_storage_save_with_index(BLE_BOND_PEER_NAME, 0, temp_gap_adr,
+							  sizeof(gap_bdaddr_t));
+			if (err) {
+				LOG_ERR("Failed to store test_data (err %d)", err);
+			}
 		}
 	}
 
@@ -127,6 +144,28 @@ static void on_pairing_succeed(uint8_t conidx, uint32_t metainfo, uint8_t pairin
 		LOG_INF("Peer device bonded");
 	}
 	sec_pairing_status_cb(GAP_ERR_NO_ERROR, conidx, false);
+}
+
+void gapm_sec_bondata_update(uint8_t conidx, uint32_t metainfo,
+			     const gapc_bond_data_updated_t *p_data)
+{
+
+	bond_data_saved.local_sign_counter = p_data->local_sign_counter;
+	bond_data_saved.remote_sign_counter = p_data->peer_sign_counter;
+	bond_data_saved.gatt_start_hdl = p_data->gatt_start_hdl;
+	bond_data_saved.gatt_end_hdl = p_data->gatt_end_hdl;
+	bond_data_saved.svc_chg_hdl = p_data->svc_chg_hdl;
+	bond_data_saved.cli_info = p_data->cli_info;
+	bond_data_saved.cli_feat = p_data->cli_feat;
+	bond_data_saved.srv_feat = p_data->srv_feat;
+
+	if (IS_ENABLED(CONFIG_SETTINGS)) {
+		int err = ble_storage_save_with_index(BLE_BOND_DATA_NAME, 0, &bond_data_saved,
+						      sizeof(gapc_bond_data_t));
+		if (err) {
+			LOG_ERR("Failed to store test_data (err %d)", err);
+		}
+	}
 }
 
 static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
@@ -143,14 +182,26 @@ static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
 		}
 	} break;
 
-	case GAPC_INFO_PASSKEY_DISPLAYED:
+	case GAPC_INFO_CSRK: {
+		/* CSRK exchange if bonding enabled */
+		err = gapc_pairing_provide_csrk(conidx, &bond_data_saved.local_csrk);
+		if (err) {
+			LOG_ERR("Client %u CSRK provide failed. err: %u", conidx, err);
+			break;
+		}
+		LOG_INF("Client %u CSRK sent successful", conidx);
+		break;
+	}
+
+	case GAPC_INFO_BT_PASSKEY:
+	case GAPC_INFO_PASSKEY_DISPLAYED: {
 		err = gapc_pairing_provide_passkey(conidx, true, 123456);
 		if (err) {
 			LOG_ERR("ERROR PROVIDING PASSKEY 0x%02x", err);
 		} else {
 			LOG_INF("PASSKEY 123456");
 		}
-		break;
+	} break;
 
 	default:
 		LOG_WRN("Requested info 0x%02x", exp_info);
@@ -235,72 +286,21 @@ static const gapc_security_cb_t gapc_sec_cbs = {
 };
 
 #ifdef CONFIG_SETTINGS
-static int keys_settings_set(const char *name, size_t len_rd, settings_read_cb read_cb,
-			     void *cb_arg)
-{
-	int err;
-
-	if (strcmp(name, BLE_BOND_KEYS_NAME_0) == 0) {
-
-		if (len_rd != sizeof(stored_keys)) {
-			LOG_ERR("Incorrect length for test_data: %zu", len_rd);
-			return -EINVAL;
-		}
-
-		err = read_cb(cb_arg, &stored_keys, sizeof(gapc_pairing_keys_t));
-		if (err < 0) {
-			LOG_ERR("Failed to read test_data (err: %d)", err);
-			return err;
-		}
-
-		return 0;
-	} else if (strcmp(name, BLE_BOND_DATA_NAME_0) == 0) {
-
-		if (len_rd != sizeof(bond_data_saved)) {
-			LOG_ERR("Incorrect length for test_data: %zu", len_rd);
-			return -EINVAL;
-		}
-
-		err = read_cb(cb_arg, &bond_data_saved, sizeof(gapc_bond_data_t));
-		if (err < 0) {
-			LOG_ERR("Failed to read test_data (err: %d)", err);
-			return err;
-		}
-
-		return 0;
-	}
-
-	LOG_ERR("stored data not correct");
-	return 0;
-}
-
-static struct settings_handler ble_cgms_conf = {
-	.name = "ble",
-	.h_set = keys_settings_set,
-};
-
 int gapc_keys_setting_storage_init(void)
 {
 	int err;
 
-	err = settings_subsys_init();
+	err = ble_storage_init();
 	if (err) {
-		LOG_ERR("settings_subsys_init() failed (err %d)", err);
+		LOG_ERR("ble_storage_init() failed (err %d)", err);
 		return err;
 	}
 
-	err = settings_register(&ble_cgms_conf);
-	if (err) {
-		LOG_ERR("Failed to register settings handler, err %d", err);
-		return err;
-	}
+	ble_storage_load_with_index(BLE_BOND_KEYS_NAME, 0, &stored_keys, sizeof(stored_keys));
+	ble_storage_load_with_index(BLE_BOND_DATA_NAME, 0, &bond_data_saved,
+				    sizeof(gapc_bond_data_t));
 
-	err = settings_load();
-	if (err) {
-		LOG_ERR("settings_load() failed, err %d", err);
-	}
-
-	return err;
+	return 0;
 }
 #else
 int gapc_keys_setting_storage_init(void)
@@ -308,6 +308,11 @@ int gapc_keys_setting_storage_init(void)
 	return 0;
 }
 #endif
+
+const gapc_security_cb_t *gapm_sec_cb_got(void)
+{
+	return &gapc_sec_cbs;
+}
 
 const gapc_security_cb_t *gapm_sec_init(bool security, pairing_status_cb pairing_cb,
 					const gap_sec_key_t *irk)
@@ -325,10 +330,60 @@ const gapc_security_cb_t *gapm_sec_init(bool security, pairing_status_cb pairing
 	return &gapc_sec_cbs;
 }
 
+void gapm_sec_load_peer_address(gap_bdaddr_t *p_gap_adr)
+{
+	temp_gap_adr = p_gap_adr;
+
+	if (IS_ENABLED(CONFIG_SETTINGS)) {
+		if (temp_gap_adr) {
+			int err = ble_storage_init();
+
+			if (err) {
+				LOG_ERR("ble_storage_init() failed (err %d)", err);
+				return;
+			}
+			ble_storage_load(BLE_BOND_PEER_NAME, temp_gap_adr, sizeof(gap_bdaddr_t));
+		}
+	}
+}
+
+static void on_get_peer_version_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
+				       uint16_t const status, const gapc_version_t *const p_version)
+{
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Client %u Peer version fetch failed! err:%u", conidx, status);
+		return;
+	}
+	LOG_INF("Client %u company_id:%u, lmp_subversion:%u, lmp_version:%u", conidx,
+		p_version->company_id, p_version->lmp_subversion, p_version->lmp_version);
+}
+
+static void on_peer_features_cmp_cb(uint8_t const conidx, uint32_t const metainfo, uint16_t status,
+				    const uint8_t *const p_features)
+{
+	if (status == GAP_ERR_NO_ERROR) {
+		LOG_INF("Client %u features: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", conidx,
+			p_features[0], p_features[1], p_features[2], p_features[3], p_features[4],
+			p_features[5], p_features[6], p_features[7]);
+	} else {
+		LOG_ERR("Client %u get peer features failed! status:%u", conidx, status);
+	}
+
+	status = gapc_get_peer_version(conidx, 0, on_get_peer_version_cmp_cb);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Client %u unable to get peer version! err:%u", conidx, status);
+	}
+}
+
 static void on_address_resolved_cb(uint16_t status, const gap_addr_t *p_addr,
 				   const gap_sec_key_t *pirk)
 {
 	bool resolved = (status != GAP_ERR_NO_ERROR) ? false : true;
+
+	if (temp_gap_adr) {
+		temp_gap_adr->addr_type = GAP_ADDR_RAND;
+		memcpy(temp_gap_adr->addr, p_addr->addr, sizeof(p_addr->addr));
+	}
 
 	if (resolved) {
 		LOG_INF("Known peer device");
@@ -337,18 +392,31 @@ static void on_address_resolved_cb(uint16_t status, const gap_addr_t *p_addr,
 	} else {
 		LOG_INF("Unknown peer device");
 		gapc_le_connection_cfm(temp_conidx, temp_metainfo, NULL);
+
+		status = gapc_le_get_peer_features(temp_conidx, 0, on_peer_features_cmp_cb);
+		if (status != GAP_ERR_NO_ERROR) {
+			LOG_ERR("Client %u Unable to get peer features! err:%u", temp_conidx,
+				status);
+		}
 		sec_pairing_status_cb(GAP_ERR_NO_ERROR, temp_conidx, false);
 	}
 }
 
 void gapm_connection_confirm(uint8_t conidx, uint32_t metainfo, const gap_bdaddr_t *p_peer_addr)
 {
+	uint16_t status;
+
 	temp_conidx = conidx;
 	temp_metainfo = metainfo;
 
-	if (sec_enabled) {
+	bool const public = (p_peer_addr->addr_type == GAP_ADDR_PUBLIC);
+
+	LOG_DBG("  Peer address: %s %02X:%02X:%02X:%02X:%02X:%02X", public ? "Public" : "Private",
+		p_peer_addr->addr[5], p_peer_addr->addr[4], p_peer_addr->addr[3],
+		p_peer_addr->addr[2], p_peer_addr->addr[1], p_peer_addr->addr[0]);
+
+	if (sec_enabled || !public) {
 		/* Number of IRKs */
-		uint16_t status;
 		uint8_t nb_irk = 1;
 
 		/* Resolve Address */
@@ -360,5 +428,9 @@ void gapm_connection_confirm(uint8_t conidx, uint32_t metainfo, const gap_bdaddr
 	}
 
 	gapc_le_connection_cfm(conidx, metainfo, NULL);
+	status = gapc_get_peer_version(conidx, 0, on_get_peer_version_cmp_cb);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Client %u unable to get peer version! err:%u", conidx, status);
+	}
 	sec_pairing_status_cb(GAP_ERR_NO_ERROR, conidx, false);
 }
