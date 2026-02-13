@@ -59,7 +59,7 @@ Follow these steps to install dependencies and configure the environment for the
       pip install west pyelftools
 
 Fetching and installing the Alif Zephyr SDK
-----------------------------
+----------------------------------------------
 
 This section explains how to build Zephyr using the GCC toolchain. For details on
 toolchain selection, refer to Zephyr's documentation:
@@ -87,7 +87,7 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 
 .. code-block:: bash
 
-   west init -m https://github.com/alifsemi/sdk-alif --mr v2.1.0-zas-branch
+   west init -m https://github.com/alifsemi/sdk-alif --mr v2.2.0-zas-branch
 
 **Install required Python packages for building:**
 
