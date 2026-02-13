@@ -14,6 +14,7 @@
 
 #include "bap_capa_cli.h"
 #include "bap_uc_cli.h"
+#include "arc_vcc.h"
 #include "ke_mem.h"
 
 #include "bluetooth/le_audio/audio_utils.h"
@@ -39,8 +40,6 @@ LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
 
 #define SINK_PAC_MAX_CNT   10
 #define SOURCE_PAC_MAX_CNT 10
-
-#define DISCOVER_PACS_BEFORE_ASCS 1
 
 #define CONFIGURE_ALL_FROM_CMP_EVT 1
 
@@ -159,6 +158,11 @@ struct pac_capa {
 	uint8_t max_frames_sdu;
 };
 
+struct volume {
+	uint8_t volume;
+	bool mute;
+};
+
 struct unicast_peer {
 	/** Connection index */
 	uint8_t conidx;
@@ -179,6 +183,9 @@ struct unicast_peer {
 #endif
 	/** Bonding data */
 	struct bap_uc_cli_ascs ascs_bond_data;
+
+	struct volume volume;
+	arc_vcc_vcs_t volume_bond_data;
 };
 
 struct unicast_source_env {
@@ -707,17 +714,13 @@ static void on_bap_uc_cli_cmp_evt(uint8_t const cmd_type, uint16_t const status,
 
 	switch (cmd_type) {
 	case BAP_UC_CLI_CMD_TYPE_DISCOVER: {
-#if DISCOVER_PACS_BEFORE_ASCS
-		peer_ready(con_lid);
-#else
-		/* Discover PACS */
-		uint16_t const err =
-			bap_capa_cli_discover(con_lid, GATT_INVALID_HDL, GATT_INVALID_HDL);
+		/* Discover volume control services */
+		uint32_t const err = arc_vcc_discover(con_lid, GATT_INVALID_HDL, GATT_INVALID_HDL);
 
 		if (err != GAF_ERR_NO_ERROR) {
-			LOG_ERR("PACS discovery start failed. Error:%u", err);
+			LOG_ERR("Volume Control Server discovery start failed. Error:%u", err);
+			return;
 		}
-#endif
 		break;
 	}
 	case BAP_UC_CLI_CMD_TYPE_CONFIGURE_CODEC: {
@@ -1163,14 +1166,10 @@ static void on_bap_capa_client_cb_cmp_evt(uint8_t const cmd_type, uint16_t statu
 	__ASSERT(status == GAF_ERR_NO_ERROR, "BAP Capa Client cmd failed!");
 
 	if (BAP_CAPA_CLI_CMD_TYPE_DISCOVER == cmd_type) {
-#if DISCOVER_PACS_BEFORE_ASCS
 		status = bap_uc_cli_discover(con_lid, GATT_MIN_HDL, GATT_MAX_HDL);
 		if (status != GAF_ERR_NO_ERROR) {
 			LOG_ERR("ACSC discovery start failed. Error:%u", status);
 		}
-#else
-		peer_ready(con_lid);
-#endif
 	}
 }
 
@@ -1305,6 +1304,109 @@ static const struct bap_capa_cli_cb bap_capa_cli_callbacks = {
 };
 
 /* ---------------------------------------------------------------------------------------- */
+/* Volume Control Service */
+
+static const char *volume_cmd_type_str(uint8_t const cmd_type)
+{
+	switch (cmd_type) {
+	case ARC_VCC_CMD_TYPE_DISCOVER:
+		return "DISCOVER";
+	case ARC_VCC_CMD_TYPE_CONTROL:
+		return "CONTROL";
+	case ARC_VCC_CMD_TYPE_GET:
+		return "GET";
+	case ARC_VCC_CMD_TYPE_SET_CFG:
+		return "SET_CFG";
+	default:
+		return "??";
+	}
+}
+
+static void volume_renderer_cb_cmp_evt(uint8_t const cmd_type, uint16_t const status,
+				       uint8_t const con_lid, uint8_t const param)
+{
+	LOG_DBG("Volume Control Server cmp evt: cmd_type:%s, status:%u, con_lid:%u, param:%u",
+		volume_cmd_type_str(cmd_type), status, con_lid, param);
+
+	__ASSERT(status == GAF_ERR_NO_ERROR, "VCS cmd failed!");
+
+	if (status == GAF_ERR_NO_ERROR && cmd_type == ARC_VCC_CMD_TYPE_DISCOVER) {
+		/* Services discover completed */
+		peer_ready(con_lid);
+	}
+}
+
+static void volume_renderer_cb_volume(uint8_t const con_lid, uint8_t const volume,
+				      uint8_t const mute)
+{
+	LOG_DBG("Volume Control Server volume cb: con_lid:%u, volume:%u, mute:%u", con_lid, volume,
+		mute);
+
+	struct unicast_peer *p_unicast_env = get_unicast_env_by_connection_index(con_lid);
+
+	if (!p_unicast_env) {
+		return;
+	}
+
+	p_unicast_env->volume.volume = volume;
+	p_unicast_env->volume.mute = mute;
+}
+
+static void volume_renderer_cb_flags(uint8_t const con_lid, uint8_t const flags)
+{
+	LOG_DBG("Volume Control Server flags cb: con_lid:%u, flags:%u", con_lid, flags);
+}
+
+static void volume_renderer_cb_bond_data(uint8_t const con_lid, arc_vcc_vcs_t *p_svc_info)
+{
+	LOG_DBG("Volume Control Server bond data cb: con_lid:%u", con_lid);
+
+	struct unicast_peer *p_unicast_env = get_unicast_env_by_connection_index(con_lid);
+
+	if (!p_unicast_env) {
+		return;
+	}
+
+	p_unicast_env->volume_bond_data = *p_svc_info;
+}
+
+static void volume_renderer_cb_included_svc(uint8_t const con_lid, uint16_t const uuid,
+					    uint16_t const shdl, uint16_t const ehdl)
+{
+	LOG_DBG("Volume Control Server included svc cb: con_lid:%u, uuid:0x%04X, shdl:%u, ehdl:%u",
+		con_lid, uuid, shdl, ehdl);
+}
+
+static void volume_renderer_cb_svc_changed(uint8_t const con_lid)
+{
+	LOG_DBG("Volume Control Server svc changed cb: con_lid:%u", con_lid);
+}
+
+int init_volume_control_service(void)
+{
+	uint32_t err;
+
+	static const arc_vcc_cb_t cbs_arc_vcc = {
+		.cb_cmp_evt = volume_renderer_cb_cmp_evt,
+		.cb_volume = volume_renderer_cb_volume,
+		.cb_flags = volume_renderer_cb_flags,
+		.cb_bond_data = volume_renderer_cb_bond_data,
+		.cb_included_svc = volume_renderer_cb_included_svc,
+		.cb_svc_changed = volume_renderer_cb_svc_changed,
+	};
+
+	err = arc_vcc_configure(&cbs_arc_vcc);
+	if (err != GAF_ERR_NO_ERROR) {
+		LOG_ERR("Unable to configure Volume Control Server! Error %u (0x%02X)", err, err);
+		return -1;
+	}
+
+	LOG_DBG("Volume Control Server is configured");
+
+	return 0;
+}
+
+/* ---------------------------------------------------------------------------------------- */
 
 int unicast_source_configure(void)
 {
@@ -1369,6 +1471,10 @@ int unicast_source_configure(void)
 	}
 	LOG_DBG("BAP capa client configured");
 
+	if (init_volume_control_service()) {
+		return -1;
+	}
+
 	/* Create a datapath configuration before QoS configuration to be able to
 	 * setup streaming channels during the setup phase.
 	 * Presentation delay is set to 10ms (internal buffering, effects to queue size).
@@ -1389,12 +1495,7 @@ int unicast_source_discover(uint8_t const con_lid)
 		return -ENOMEM;
 	}
 
-#if DISCOVER_PACS_BEFORE_ASCS
 	err = bap_capa_cli_discover(con_lid, GATT_INVALID_HDL, GATT_INVALID_HDL);
-#else
-	err = bap_uc_cli_discover(con_lid, GATT_MIN_HDL, GATT_MAX_HDL);
-#endif
-
 	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Unicast client discovery start failed. Error:%u", err);
 		return -ENOEXEC;
@@ -1433,6 +1534,36 @@ int unicast_enable_streams(uint8_t const con_lid)
 	}
 
 	enable_streaming_all_ase(p_unicast_env);
+
+	return 0;
+}
+
+int unicast_volume_up_all(void)
+{
+	for (size_t index = 0; index < ARRAY_SIZE(unicast_env.peers); index++) {
+		struct unicast_peer *const p_unicast_env = &unicast_env.peers[index];
+
+		if (p_unicast_env->conidx == GAP_INVALID_CONIDX) {
+			continue;
+		}
+
+		arc_vcc_volume_increase(p_unicast_env->conidx);
+	}
+
+	return 0;
+}
+
+int unicast_volume_down_all(void)
+{
+	for (size_t index = 0; index < ARRAY_SIZE(unicast_env.peers); index++) {
+		struct unicast_peer *const p_unicast_env = &unicast_env.peers[index];
+
+		if (p_unicast_env->conidx == GAP_INVALID_CONIDX) {
+			continue;
+		}
+
+		arc_vcc_volume_decrease(p_unicast_env->conidx);
+	}
 
 	return 0;
 }
