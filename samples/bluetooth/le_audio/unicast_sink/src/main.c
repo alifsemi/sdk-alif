@@ -193,7 +193,7 @@ static void on_le_connection_req(uint8_t const conidx, uint32_t const metainfo,
 
 		if (status == GAP_ERR_INVALID_PARAM) {
 			/* Address not resolvable, just confirm the connection */
-			connection_confirm_not_bonded(conidx, NULL);
+			connection_confirm_not_bonded(conidx, &app_con_bond_data.bond_data);
 		} else if (status != GAP_ERR_NO_ERROR) {
 			LOG_ERR("Client %u Unable to start resolve address! err:%u", conidx,
 				status);
