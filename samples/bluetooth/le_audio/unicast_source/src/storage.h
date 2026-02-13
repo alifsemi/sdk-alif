@@ -12,10 +12,9 @@
 
 #include <stdint.h>
 
-#define SETTINGS_BASE           "uc_central"
-#define SETTINGS_NAME_KEYS      "bond_keys"
-#define SETTINGS_NAME_BOND_DATA "bond_data"
-#define SETTINGS_NAME_PEER      "peer"
+#define SETTINGS_BASE             "uc_central"
+#define SETTINGS_NAME_KEYS        "bond_keys"
+#define SETTINGS_NAME_BOND_DATA   "bond_data"
 
 /**
  * @brief Stores data in the flash memory.
