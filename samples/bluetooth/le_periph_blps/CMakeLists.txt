@@ -7,6 +7,12 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
+
+# Include BLE Power Management snippet by default
+if(NOT pm-ble IN_LIST SNIPPET)
+  set(SNIPPET pm-ble ${SNIPPET} CACHE STRING "" FORCE)
+endif()
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(le_periph_blps)
 
