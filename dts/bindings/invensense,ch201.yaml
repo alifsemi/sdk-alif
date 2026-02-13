@@ -1,0 +1,35 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+description: Chirp CH201 Time of Flight Sensor device
+
+compatible: "invensense,ch201"
+
+include: [sensor-device.yaml, i2c-device.yaml]
+
+properties:
+  int-gpios:
+    type: phandle-array
+    description: |
+      The INT signal default configuration is active-high. The
+      property value should ensure the flags properly describe the
+      signal that is presented to the driver.
+
+  prog-gpios:
+    type: phandle-array
+    description: |
+      The PROG signal default configuration is active-high. The
+      property value should ensure the flags properly describe the
+      signal that is presented to the driver.
+
+  reset-gpios:
+    type: phandle-array
+    description: |
+      The RESETn signal default configuration is active-low. The
+      property value should ensure the flags properly describe the
+      signal that is presented to the driver.

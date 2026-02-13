@@ -1,0 +1,55 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+module = CH201_TDK
+module-str = ch201-tdk
+
+menuconfig CH201
+	bool "CH201 Time of Flight Tracking device"
+	default y
+	depends on DT_HAS_INVENSENSE_CH201_ENABLED
+	#depends on ZEPHYR_HAL_TDK_MODULE
+	select I2C if $(dt_compat_on_bus,$(DT_COMPAT_INVENSENSE_CH201),i2c)
+	help
+	  Enable driver for CH201 I2C-based Time of Flight Tracking device.
+
+if CH201
+config CH201_MAX_NUM_SENSORS
+	int "Maximum number of ch201 sensors connected"
+	default	1
+	help
+	  It is the maximum number of ch201 sensors connected on the bus
+
+config CH201_NUM_BUSES
+	int "Number of buses that ch201 sensors connected onto"
+	default	1
+	help
+	  It is the number of bus that the ch201 sensors connected onto
+
+config CH201_SENSOR_NUM_INT_PIN
+	int "Number of ch201 interrupt pins"
+	default	1
+	help
+	  It is the number of ch201 interrupt pins
+
+config CH201_SENSOR_NUM_TRIG_PIN
+	int "Number of ch201 trigger pins"
+	default	1
+	help
+	  It is the number of ch201 trigger pins
+
+config CH201_RTC_CAL_PULSE_MS
+	int "CH201 RTC calculation pulse in millisec"
+	default	100
+	range 1 1000
+	help
+	 It is the CH201 RTC calculation pulse in millisec.
+	 This value will be used to calibrate CH201's internal RTC.
+endif #CH201
+
+source "Kconfig.zephyr"
