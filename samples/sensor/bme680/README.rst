@@ -30,13 +30,16 @@ Building and Running
 This project outputs sensor data to the console. It requires a BME680
 sensor. It should work with any platform featuring a I2C peripheral interface.
 It does not work on QEMU.
-In this example below the :ref:`nrf52840dk_nrf52840` board is used.
+In this example below the :ref:`alif_e7_dk/ae722f80f55d5xx/rtss_he` board is used.
 
+Use alif-dk snippet to build on all alif boards.
+The overlays in the snippet configure the i2c and BME sensor instances.
 
 .. zephyr-app-commands::
    :zephyr-app: samples/sensor/bme680
-   :board: nrf52840dk_nrf52840
-   :goals: build flash
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :gen-args: -S alif-dk
 
 Sample Output
 =============
