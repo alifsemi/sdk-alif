@@ -1158,7 +1158,8 @@ int init_volume_control_service(void)
 		return -1;
 	}
 
-	LOG_DBG("Volume Control Server is configured");
+	LOG_DBG("Volume Control Server is configured. Volume: %u, Mute: %u", env_volume.volume,
+		env_volume.mute);
 
 	return 0;
 }

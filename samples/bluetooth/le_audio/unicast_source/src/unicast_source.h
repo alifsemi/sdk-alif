@@ -46,4 +46,18 @@ int unicast_setup_streams(uint8_t con_lid);
  */
 int unicast_enable_streams(uint8_t con_lid);
 
+/**
+ * @brief Volume up all peripherals
+ *
+ * @return 0 on success
+ */
+int unicast_volume_up_all(void);
+
+/**
+ * @brief Volume down all peripherals
+ *
+ * @return 0 on success
+ */
+int unicast_volume_down_all(void);
+
 #endif /* _UNICAST_SOURCE_H */

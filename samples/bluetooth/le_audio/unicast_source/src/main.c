@@ -42,6 +42,11 @@ LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 K_SEM_DEFINE(wait_procedure_sem, 0, 1);
 K_SEM_DEFINE(wait_connection_sem, 0, 1);
 
+/* This is a workaround to multiple scan triggers.
+ * Should be removed when scanning error is fixed.
+ */
+static bool is_connected;
+
 struct app_env {
 	uint8_t actv_idx;
 	uint8_t conidx;
@@ -261,6 +266,8 @@ static int request_pairing_and_bonding(uint8_t const conidx)
 
 static void on_link_encryption(uint8_t const conidx, uint32_t const start_uc, uint16_t const status)
 {
+	LOG_INF("Peer %u link encryption! start_uc:%u status:%u", conidx, start_uc, status);
+
 	if (status == SMP_ERR_ENC_KEY_MISSING) {
 		LOG_ERR("Peer %u bond data was incorrect! Restart pairing", conidx);
 		/* Bond data was incorrect. Request a new pairing */
@@ -279,13 +286,28 @@ static void on_link_encryption(uint8_t const conidx, uint32_t const start_uc, ui
 static void on_get_peer_version_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
 				       uint16_t status, const gapc_version_t *const p_version)
 {
-	ARG_UNUSED(metainfo);
+	struct client_data *p_peer = (struct client_data *)metainfo;
 
 	__ASSERT(status == GAP_ERR_NO_ERROR, "Peer %u get peer version failed! status:%u", conidx,
 		 status);
 
 	LOG_INF("Peer %u company_id:%u, lmp_subversion:%u, lmp_version:%u", conidx,
 		p_version->company_id, p_version->lmp_subversion, p_version->lmp_version);
+
+	if (p_peer->bond.bond_data.pairing_lvl & GAP_PAIRING_BOND_PRESENT_BIT) {
+		LOG_INF("Peer %u already bonded, try to encrypt link", conidx);
+
+		if (p_peer->bond.keys.valid_key_bf & GAP_KDIST_ENCKEY) {
+			status = gapc_le_encrypt(conidx, true, &p_peer->bond.keys.ltk,
+						 on_link_encryption);
+			if (status != GAP_ERR_NO_ERROR) {
+				LOG_ERR("Peer %u unable to start encryption! err:%u", conidx,
+					status);
+			}
+			return;
+		}
+		LOG_WRN("Peer %u LTK not found, request pairing", conidx);
+	}
 
 	request_pairing_and_bonding(conidx);
 }
@@ -306,15 +328,20 @@ static void on_peer_features_cmp_cb(uint8_t const conidx, uint32_t const metainf
 	}
 }
 
-static void connection_confirm_not_bonded(uint_fast8_t const conidx, uint32_t const metainfo)
+static void connection_confirmation(uint_fast8_t const conidx, struct client_data *p_peer)
 {
 	uint_fast16_t status;
+	bool bonded =
+		(p_peer->bond.bond_data.pairing_lvl & GAP_PAIRING_BOND_PRESENT_BIT) ? true : false;
 
-	status = gapc_le_connection_cfm(conidx, metainfo, NULL);
+	LOG_INF("Peer %u confirm %s!", conidx, bonded ? "BONDED" : "NOT BONDED");
+
+	status = gapc_le_connection_cfm(conidx, (uint32_t)p_peer,
+					bonded ? &p_peer->bond.bond_data : NULL);
 	if (status != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Peer %u connection confirmation failed! err:%u", conidx, status);
 	}
-	status = gapc_le_get_peer_features(conidx, metainfo, on_peer_features_cmp_cb);
+	status = gapc_le_get_peer_features(conidx, (uint32_t)p_peer, on_peer_features_cmp_cb);
 	if (status != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Peer %u unable to get peer features! err:%u", conidx, status);
 	}
@@ -338,17 +365,7 @@ static void on_address_resolved_cb(uint16_t status, const gap_addr_t *const p_ad
 	if (!p_peer) {
 		return;
 	}
-
-	if (resolved) {
-		status = gapc_le_connection_cfm(conidx, 0, &p_peer->bond.bond_data);
-		__ASSERT(status == GAP_ERR_NO_ERROR,
-			 "Peer %u bonded connection confirmation failed! err:%u", conidx, status);
-		status = gapc_le_encrypt(conidx, true, &p_peer->bond.keys.ltk, on_link_encryption);
-		__ASSERT(status == GAP_ERR_NO_ERROR, "Peer %u unable to start encryption! err:%u",
-			 conidx, status);
-		return;
-	}
-	connection_confirm_not_bonded(conidx, (uint32_t)p_peer);
+	connection_confirmation(conidx, p_peer);
 }
 
 static void on_le_connection_req(uint8_t const conidx, uint32_t const metainfo,
@@ -368,19 +385,27 @@ static void on_le_connection_req(uint8_t const conidx, uint32_t const metainfo,
 	p_peer->env.conidx = conidx;
 	resolve_conidx = conidx;
 
-	/* Number of IRKs */
-	uint8_t nb_irk = 1;
-	/* Resolve Address */
-	uint16_t const status =
-		gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, nb_irk,
-					&p_peer->bond.keys.irk.key, on_address_resolved_cb);
+	uint32_t const add_type =
+		(p_peer_addr->addr[GAP_BD_ADDR_LEN - 1] & BD_ADDR_RND_ADDR_TYPE_MSK);
 
-	if (status == GAP_ERR_INVALID_PARAM) {
-		/* Address not resolvable, just confirm the connection */
-		connection_confirm_not_bonded(conidx, (uint32_t)p_peer);
-	} else if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Peer %u Unable to start resolve address! err:%u", conidx, status);
-		/* TODO: restart scanning when connection failed */
+	if (add_type != BD_ADDR_RSLV) {
+		/* Number of IRKs */
+		uint8_t nb_irk = 1;
+		/* Resolve Address */
+		uint16_t const status =
+			gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, nb_irk,
+						&p_peer->bond.keys.irk.key, on_address_resolved_cb);
+
+		if (status == GAP_ERR_INVALID_PARAM) {
+			LOG_INF("Peer %u Address not resolvable", conidx);
+			/* Address not resolvable, just confirm the connection */
+			connection_confirmation(conidx, p_peer);
+		} else if (status != GAP_ERR_NO_ERROR) {
+			LOG_ERR("Peer %u Unable to start resolve address! err:%u", conidx, status);
+			/* TODO: restart scanning when connection failed */
+		}
+	} else {
+		connection_confirmation(conidx, p_peer);
 	}
 
 	LOG_INF("---- PEER PTR %X -----", (uint32_t)p_peer);
@@ -421,8 +446,8 @@ static void on_gapc_pairing_succeed(uint8_t const conidx, uint32_t const metainf
 		return;
 	}
 
-	LOG_INF("Peer %u Pairing SUCCEED. pairing_level:%u, bonded:%s", conidx, pairing_level,
-		bonded ? "TRUE" : "FALSE");
+	LOG_INF("Peer %u Pairing SUCCEED. pairing_level:%u, bonded:%s, enc_key_present:%d", conidx,
+		pairing_level, bonded ? "TRUE" : "FALSE", enc_key_present);
 
 	p_peer->bond.bond_data.pairing_lvl = pairing_level;
 	p_peer->bond.bond_data.enc_key_present = enc_key_present;
@@ -519,11 +544,6 @@ static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairin
 	if (valid_key_bf & GAP_KDIST_IDKEY) {
 		memcpy(&p_appkeys->irk, &p_keys->irk, sizeof(p_appkeys->irk));
 		key_bits |= GAP_KDIST_IDKEY;
-
-		LOG_INF("Peer %u IRK received. Address: %02X:%02X:%02X:%02X:%02X:%02X", conidx,
-			p_keys->irk.identity.addr[5], p_keys->irk.identity.addr[4],
-			p_keys->irk.identity.addr[3], p_keys->irk.identity.addr[2],
-			p_keys->irk.identity.addr[1], p_keys->irk.identity.addr[0]);
 	}
 
 	if (valid_key_bf & GAP_KDIST_SIGNKEY) {
@@ -564,6 +584,24 @@ static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
 		"svc_chg_hdl:%u, cli_info:%u, cli_feat:%u, srv_feat:%u",
 		conidx, p_data->gatt_start_hdl, p_data->gatt_end_hdl, p_data->svc_chg_hdl,
 		p_data->cli_info, p_data->cli_feat, p_data->srv_feat);
+
+	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+
+	if (!p_peer) {
+		return;
+	}
+
+	p_peer->bond.bond_data.local_sign_counter = p_data->local_sign_counter;
+	p_peer->bond.bond_data.remote_sign_counter = p_data->peer_sign_counter;
+	p_peer->bond.bond_data.gatt_start_hdl = p_data->gatt_start_hdl;
+	p_peer->bond.bond_data.gatt_end_hdl = p_data->gatt_end_hdl;
+	p_peer->bond.bond_data.svc_chg_hdl = p_data->svc_chg_hdl;
+	p_peer->bond.bond_data.cli_info = p_data->cli_info;
+	p_peer->bond.bond_data.cli_feat = p_data->cli_feat;
+	p_peer->bond.bond_data.srv_feat = p_data->srv_feat;
+
+	storage_store(SETTINGS_NAME_BOND_DATA, p_peer->env.storage_index, &p_peer->bond.bond_data,
+		      sizeof(p_peer->bond.bond_data));
 }
 
 static void on_name_get(uint8_t const conidx, uint32_t const metainfo, uint16_t const token,
@@ -605,7 +643,7 @@ static const gapm_callbacks_t gapm_cbs = {
 	.p_sec_cbs = &gapc_sec_cbs,
 	.p_info_cbs = &gapc_inf_cbs,
 	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL,    /* BT classic so not required */
+	.p_bt_config_cbs = NULL, /* BT classic so not required */
 	.p_gapm_cbs = &gapm_err_cbs,
 };
 
@@ -769,6 +807,8 @@ static void connect_to_peers(struct k_work *work)
 	ARG_UNUSED(work);
 	LOG_INF("Request connect to peers...");
 
+	is_connected = true;
+
 	struct client_data *p_peer;
 	sys_snode_t *node = NULL;
 
@@ -923,7 +963,7 @@ static int ble_stack_configure(uint8_t const role)
 	}
 
 	/* Generate resolvable random address */
-	err = gapm_le_generate_random_addr(GAP_BD_ADDR_STATIC, on_gapm_le_random_addr_cb);
+	err = gapm_le_generate_random_addr(GAP_BD_ADDR_RSLV, on_gapm_le_random_addr_cb);
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_le_generate_random_addr error %u", err);
 		return -1;
@@ -991,78 +1031,126 @@ static int ble_stack_configure(uint8_t const role)
 
 /* ---------------------------------------------------------------------------------------- */
 
+void joystick_press(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	if (is_connected) {
+		/* Just ignore to avoid scan while connected to peers */
+		return;
+	}
+
+	unicast_source_scan_start(scanning_ready_callback);
+}
+static K_WORK_DEFINE(joystick_press_work, joystick_press);
+
+void joystick_up(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	unicast_volume_up_all();
+}
+static K_WORK_DEFINE(joystick_up_work, joystick_up);
+
+void joystick_down(struct k_work *work)
+{
+	ARG_UNUSED(work);
+	unicast_volume_down_all();
+}
+static K_WORK_DEFINE(joystick_down_work, joystick_down);
+
 #if !DT_NODE_EXISTS(BUTTON_NODELABEL)
 #error "Button is mandatory!"
 #endif
 
 #include <zephyr/drivers/gpio.h>
 
-static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(BUTTON_NODELABEL, gpios, {0});
+struct gpio_data {
+	const struct gpio_dt_spec spec;
+	struct gpio_callback cb_data;
+	struct k_work *execute_func;
+	uint32_t last_clicked_ms;
+};
 
-#define BUTTON_DEBOUNCE_MS 10
-#define BUTTON_INVERTED    true
+#define BUTTON_DEBOUNCE_MS 15
 
-static bool get_button_state(void)
+static bool check_debounce(uint32_t *const p_last_time_ms)
 {
-	if (!button.port) {
+	uint32_t const current_time_ms = k_uptime_get_32();
+
+	if ((current_time_ms - *p_last_time_ms) < BUTTON_DEBOUNCE_MS) {
 		return false;
 	}
-	return (!!gpio_pin_get_dt(&button)) ^ BUTTON_INVERTED;
+
+	*p_last_time_ms = current_time_ms;
+	return true;
 }
 
-static void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+static void gpio_isr_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-	bool const button_state = get_button_state();
+	struct gpio_data *p_data = CONTAINER_OF(cb, struct gpio_data, cb_data);
+	gpio_port_value_t value;
 
-	/* Joystich has bad debounce, this is used to filter out noise */
-	static uint32_t last_clicked_ms;
-
-	if ((k_uptime_get_32() - last_clicked_ms) < 2000) {
-		return;
-	}
-	last_clicked_ms = k_uptime_get_32();
-
-	if (!button_state) {
-		/* ignore invalid state, just for paranoia */
+	if (gpio_port_get(dev, &value)) {
+		LOG_ERR("Failed to read button state");
 		return;
 	}
 
-	unicast_source_scan_start(scanning_ready_callback);
+	if (!check_debounce(&p_data->last_clicked_ms)) {
+		return;
+	}
+
+	if (value & pins) {
+		/* ignore invalid state */
+		return;
+	}
+
+	if (!p_data->execute_func) {
+		return;
+	}
+
+	k_work_submit(p_data->execute_func);
 }
 
-static int configure_button(void)
+static int configure_button(struct gpio_data *p_button)
 {
-	static struct gpio_callback button_cb_data;
-
-	if (!button.port) {
+	if (!p_button->spec.port) {
 		LOG_ERR("Button is not valid!");
 		return -EEXIST;
 	}
 
 	/* Configure button */
-	if (!gpio_is_ready_dt(&button)) {
+	if (!gpio_is_ready_dt(&p_button->spec)) {
 		LOG_ERR("Button is not ready");
 		return -EEXIST;
 	}
 
-	if (gpio_pin_configure_dt(&button, GPIO_INPUT)) {
+	if (gpio_pin_configure_dt(&p_button->spec, GPIO_INPUT)) {
 		LOG_ERR("Button configure failed");
 		return -EIO;
 	}
 
-	if (gpio_pin_interrupt_configure_dt(&button, GPIO_INT_LEVEL_LOW)) {
+	if (gpio_pin_interrupt_configure_dt(&p_button->spec, GPIO_INT_EDGE_FALLING)) {
 		LOG_ERR("button int conf failed");
 		return -EIO;
 	}
 
-	gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
-	if (gpio_add_callback(button.port, &button_cb_data)) {
+	gpio_init_callback(&p_button->cb_data, gpio_isr_handler, BIT(p_button->spec.pin));
+	if (gpio_add_callback(p_button->spec.port, &p_button->cb_data)) {
 		LOG_ERR("cb add failed");
 		return -EIO;
 	}
 
 	return 0;
 }
+
+static struct gpio_data joystick_conf[] = {
+	[0] = {.spec = GPIO_DT_SPEC_GET_OR(BUTTON_NODELABEL, gpios, {0}),
+	       .execute_func = &joystick_press_work},
+	[1] = {.spec = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(button_up), gpios, {0}),
+	       .execute_func = &joystick_up_work},
+	[2] = {.spec = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(button_down), gpios, {0}),
+	       .execute_func = &joystick_down_work},
+};
 
 /* ---------------------------------------------------------------------------------------- */
 
@@ -1103,9 +1191,6 @@ int main(void)
 		clients[iter].bond.bond_data = (gapc_bond_data_t){
 			.local_csrk.key = {0xbb, 0x2c, 0xdf, 0x2a, 0x37, 0x3b, 0x6b, 0x65 + iter,
 					   0x9, 0xb4, 0x7c, 0xcd, 0x28, 0xa2, 0x54, 0xa3 + iter},
-			.pairing_lvl = GAP_PAIRING_BOND_UNAUTH,
-			.cli_info = GAPC_CLI_SVC_CHANGED_IND_EN_BIT,
-			.srv_feat = GAPC_SRV_EATT_SUPPORTED_BIT,
 		};
 
 		sys_slist_append(&free_client_contexts, &clients[iter].node);
@@ -1137,9 +1222,11 @@ int main(void)
 		return ret;
 	}
 
-	ret = configure_button();
-	if (ret) {
-		return ret;
+	for (size_t iter = 0; iter < ARRAY_SIZE(joystick_conf); iter++) {
+		ret = configure_button(&joystick_conf[iter]);
+		if (ret) {
+			return ret;
+		}
 	}
 
 	ret = configure_all_leds();

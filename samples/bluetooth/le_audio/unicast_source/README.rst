@@ -37,3 +37,11 @@ Building and Running
 This sample can be found under :zephyr_file:`samples/bluetooth/le_audio/unicast_source` in the sdk-alif tree.
 
 See :ref:`Alif bluetooth samples section <alif-bluetooth-samples>` for details.
+
+
+Features
+********
+
+Volume control is supported in this sample. It can be used to adjust the volume of the audio stream on the acceptor side.
+Volume can be adjusted using joystick up and down buttons. Volume control is only supported when the acceptor device
+supports volume control service (VCS) and has it enabled.
