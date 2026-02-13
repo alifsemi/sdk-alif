@@ -39,14 +39,12 @@ uint8_t address_verification(uint8_t addr_type, uint8_t *adv_type, gapm_config_t
 	case ALIF_GEN_RSLV_RAND_ADDR:
 		gapm_cfg->privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT; /*Privacy address bit*/
 		*adv_type = GAPM_GEN_RSLV_ADDR; /*Resolvable random address*/
-		gapm_cfg->privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT; /*Privacy address bit*/
 		sys_rand_get(gapm_cfg->private_identity.addr, GAP_BD_ADDR_LEN);
 		gapm_cfg->private_identity.addr[5] |= 0xC0; /*MSB position*/
 		break;
 	case ALIF_GEN_NON_RSLV_RAND_ADDR:
 		gapm_cfg->privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT; /*Privacy address bit*/
 		*adv_type = GAPM_GEN_NON_RSLV_ADDR; /*Non-resolvable random address*/
-		gapm_cfg->privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT; /*Privacy address bit*/
 		sys_rand_get(gapm_cfg->private_identity.addr, GAP_BD_ADDR_LEN);
 		gapm_cfg->private_identity.addr[5] |= 0xC0; /*MSB position*/
 		break;
