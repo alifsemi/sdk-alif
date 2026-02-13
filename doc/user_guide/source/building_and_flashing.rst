@@ -59,7 +59,7 @@ Follow these steps to install dependencies and configure the environment for the
       pip install west pyelftools
 
 Fetching and installing the Alif Zephyr SDK
-----------------------------
+----------------------------------------------
 
 This section explains how to build Zephyr using the GCC toolchain. For details on
 toolchain selection, refer to Zephyr's documentation:
@@ -87,7 +87,7 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 
 .. code-block:: bash
 
-   west init -m https://github.com/alifsemi/sdk-alif --mr v2.1.0-zas-branch
+   west init -m https://github.com/alifsemi/sdk-alif --mr v2.2.0-zas-branch
 
 **Install required Python packages for building:**
 
@@ -223,8 +223,8 @@ for SE-UART device communication.
 
    .. note::
 
-      Replace `/dev/ttyACM0` with the appropriate port for your board.
-      This step prevents “permission denied” errors during flashing.
+      Replace ``/dev/ttyACM0`` with the appropriate SE-UART port for your board.
+      This step prevents "permission denied" errors during flashing.
 
    .. code-block:: console
 
@@ -237,6 +237,16 @@ for SE-UART device communication.
    .. code-block:: console
 
       west flash
+
+   .. note::
+
+      If the SE-UART port is different, use the ``--com-port`` option.
+
+      **Example:**
+
+   .. code-block:: console
+
+      west flash --com-port=ACM0
 
 6. Debug the application:
 
