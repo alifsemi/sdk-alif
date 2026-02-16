@@ -225,6 +225,15 @@
 		};
 	};
 
+	pinctrl_can0:pinctrl_can0 {
+		group0 {
+			pinmux = < PIN_P8_2__CAN0_RXD_C >,
+				< PIN_P8_3__CAN0_TXD_C >,
+				< PIN_P8_4__CAN0_STBY_C >;
+			read-enable = < 0x1 >;
+		};
+	};
+
 	pinctrl_adc0:pinctrl_adc0 {
 		group0 {
 			pinmux = <PIN_P0_0__ANA_S0>,
