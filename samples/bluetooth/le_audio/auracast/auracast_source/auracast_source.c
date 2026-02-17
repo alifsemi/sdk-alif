@@ -26,7 +26,7 @@
 
 LOG_MODULE_REGISTER(auracast_source, CONFIG_AURACAST_SOURCE_LOG_LEVEL);
 
-#define MIC_NODE DT_ALIAS(i2s_mic)
+#define MIC_NODE DT_ALIAS(pdm_mic)
 
 #define MIC_ENABLED (DT_NODE_EXISTS(MIC_NODE) && DT_NODE_EXISTS(DT_ALIAS(sw0)))
 
@@ -455,7 +455,7 @@ static void stop_push_to_talk(struct k_work *work)
 {
 	ARG_UNUSED(work);
 	/* Stop push to talk.... */
-	mic_i2s_control(false);
+	mic_control(false);
 	set_led(false);
 }
 
@@ -478,7 +478,7 @@ static void debounce_expired(struct k_work *work)
 	if (button_state) {
 		/* pressed... */
 		(void)k_work_cancel_delayable(&stop_ptt_work);
-		mic_i2s_control(true);
+		mic_control(true);
 		set_led(true);
 		return;
 	}

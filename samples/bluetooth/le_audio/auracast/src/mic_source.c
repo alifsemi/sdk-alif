@@ -9,22 +9,24 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/__assert.h>
 #include <zephyr/sys/util.h>
-#include "drivers/i2s_sync.h"
-#include "gapi_isooshm.h"
+#include <zephyr/audio/dmic.h>
+#include <zephyr/drivers/pdm/pdm_alif.h>
 
+#include "gapi_isooshm.h"
 #include "bluetooth/le_audio/audio_queue.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 #include "bluetooth/le_audio/audio_source_i2s.h"
 #include "mic_source.h"
 
+static const uint32_t fir[18] = {0x00000001, 0x00000003, 0x00000003, 0x000007F4, 0x00000004,
+				 0x000007ED, 0x000007F5, 0x000007F4, 0x000007D3, 0x000007FE,
+				 0x000007BC, 0x000007E5, 0x000007D9, 0x00000793, 0x00000029,
+				 0x0000072C, 0x00000072, 0x000002FD};
+
 struct mic_source_env {
 	const struct device *dev;
 	struct audio_queue *audio_queue;
-	size_t block_size;
-	size_t number_of_channels;
-	bool started;
 	bool capture;
 };
 
@@ -36,89 +38,50 @@ static struct mic_source_env mic_source;
 #define INT_RAMFUNC
 #endif
 
-#define MIC_LEVEL_CALC(_s)   (((int)(_s) * CONFIG_MICROPHONE_GAIN) / 100)
-#define INPUT_LEVEL_CALC(_s) (((int)(_s) * CONFIG_INPUT_VOLUME_LEVEL) / 100)
+#define INPUT_LEVEL_CALC(_s)   (((int)(_s)*CONFIG_INPUT_VOLUME_LEVEL) / 100)
+#define NUMBER_OF_MIC_CHANNELS 2
 
 LOG_MODULE_DECLARE(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
-
-INT_RAMFUNC static void recv_next_block(const struct device *dev)
-{
-	struct audio_block *p_block = NULL;
-	int ret = k_mem_slab_alloc(&mic_source.audio_queue->slab, (void **)&p_block, K_NO_WAIT);
-
-	if (ret || !p_block) {
-		return;
-	}
-
-	i2s_sync_recv(dev, p_block->channels, mic_source.block_size);
-
-	p_block->timestamp = 0;
-	p_block->num_channels = mic_source.number_of_channels;
-}
-
-INT_RAMFUNC static void on_data_received(const struct device *dev,
-					 const enum i2s_sync_status status, void *block)
-{
-	ARG_UNUSED(status);
-
-	recv_next_block(dev);
-
-	if (!block) {
-		return;
-	}
-
-	struct audio_block *p_block = CONTAINER_OF(block, struct audio_block, channels);
-
-	if (!mic_source.capture) {
-		/* Just ignore the block */
-		k_mem_slab_free(&mic_source.audio_queue->slab, p_block);
-		return;
-	}
-
-	if (k_msgq_put(&mic_source.audio_queue->msgq, &p_block, K_NO_WAIT)) {
-		/* Failed to put into queue */
-		k_mem_slab_free(&mic_source.audio_queue->slab, p_block);
-	}
-}
 
 INT_RAMFUNC static void audio_encoder_mixer_thread_func(void *p1, void *p2, void *p3)
 {
 	/* thread:
 	 * get audio input jack buffer
-	 * if audio_queue_mic has data available
-	 *     adjust mic gain
+	 * if pdm_mic has data available
 	 *     lower input audio gain
 	 *     mix mic and audio input samples
-	 *     free mic data
 	 * end
+	 * free mic data
 	 * push audio samples to LC3 encoder
 	 * free audio input buffer
 	 */
 
 	struct audio_queue *audio_queue_in1 = p1; /* input I2S codec (WM8904) */
-	struct audio_queue *audio_queue_in2 = p2; /* input I2S MIC */
+	struct audio_queue *audio_queue_in2 = p2; /* input PDM MIC */
 	struct audio_queue *audio_queue_out = p3; /* output (to LC3 encoder) */
 	struct audio_block *audio_in1;
-	struct audio_block *audio_in2;
 	struct audio_block *audio_out;
 	int ret;
+	size_t size;
+	void *buffer = NULL;
 
 	LOG_DBG("Mixer thread started");
 
 	while (1) {
-		audio_out = audio_in2 = audio_in1 = NULL;
+
+		audio_out = audio_in1 = NULL;
 		ret = k_msgq_get(&audio_queue_in1->msgq, &audio_in1, K_FOREVER);
 		if (ret || !audio_in1) {
 			continue;
 		}
 
-		ret = k_msgq_get(&audio_queue_in2->msgq, &audio_in2, K_NO_WAIT);
-		if (!ret && audio_in2) {
-			/* Do mixing... */
-			size_t const samples =
-				audio_queue_in2->audio_block_samples * audio_in2->num_channels;
-			pcm_sample_t *p_mic_data = audio_in2->channels[0];
-			bool const mic_has_right_channel = audio_in2->num_channels > 1;
+		ret = dmic_read(mic_source.dev, 0, &buffer, &size, 0);
+
+		/* Do mixing... */
+		if (!ret && mic_source.capture) {
+			size_t const samples = size / sizeof(pcm_sample_t); /* stereo interleaved */
+			pcm_sample_t *p_mic_data = buffer;
+			bool const mic_has_right_channel = !!(audio_in1->num_channels > 1);
 
 			pcm_sample_t *p_input_left = audio_in1->channels[0];
 			pcm_sample_t *p_input_right =
@@ -126,25 +89,28 @@ INT_RAMFUNC static void audio_encoder_mixer_thread_func(void *p1, void *p2, void
 			pcm_sample_t data;
 
 			for (size_t sample = 0; sample < samples; sample++) {
-				data = *p_mic_data++;
-				data = MIC_LEVEL_CALC(data);
-
 				if ((sample & 1) && mic_has_right_channel) { /* Right channel */
+					data = *p_mic_data++;
 					if (p_input_right) {
 						*p_input_right =
 							data + INPUT_LEVEL_CALC(*p_input_right);
 						p_input_right++;
 					}
 				} else { /* Left channel */
+					data = *p_mic_data++;
 					*p_input_left = data + INPUT_LEVEL_CALC(*p_input_left);
 					p_input_left++;
 				}
 			}
-			k_mem_slab_free(&audio_queue_in2->slab, audio_in2);
+		}
+		if (!ret && buffer) {
+			k_mem_slab_free(&audio_queue_in2->slab, buffer);
+			buffer = NULL;
 		}
 
 		ret = k_mem_slab_alloc(&audio_queue_out->slab, (void **)&audio_out, K_NO_WAIT);
 		if (ret || !audio_out) {
+			LOG_ERR("Failed to allocate audio output block");
 			k_mem_slab_free(&audio_queue_in1->slab, audio_in1);
 			continue;
 		}
@@ -160,58 +126,93 @@ INT_RAMFUNC static void audio_encoder_mixer_thread_func(void *p1, void *p2, void
 	}
 }
 
-static int configure_i2s_sync(const struct device *dev, struct audio_queue *audio_queue)
+static int16_t fs_to_pdm_mode(uint32_t fs)
 {
-	if (!dev || !audio_queue) {
+	switch (fs) {
+	case 192000:
+		return 9;
+	case 96000:
+		return 8;
+	case 48000:
+		return 6;
+	case 32000:
+		return 5;
+	case 16000:
+		return 2;
+	case 8000:
+		return 1;
+	default:
+		return -EINVAL;
+	}
+}
+
+static int configure_pdm_source(const struct device *pdm_dev, struct audio_queue *audio_queue_mic)
+{
+	int ret;
+	struct dmic_cfg cfg = {0};
+	struct pcm_stream_cfg stream = {0};
+	struct pdm_ch_config pdm_coef_reg = {0};
+	int16_t pdm_mode_val = fs_to_pdm_mode(audio_queue_mic->sampling_freq_hz);
+
+	if (pdm_mode_val < 0) {
+		LOG_ERR("Unsupported sampling frequency %u", audio_queue_mic->sampling_freq_hz);
 		return -EINVAL;
 	}
 
-	struct i2s_sync_config i2s_cfg;
+	memcpy(pdm_coef_reg.ch_fir_coef, fir, sizeof(pdm_coef_reg.ch_fir_coef));
+	pdm_coef_reg.ch_iir_coef = CONFIG_AUDIO_IIR_COEF;
 
-	if (i2s_sync_get_config(dev, &i2s_cfg)) {
-		return -EIO;
+	cfg.streams = &stream;
+	cfg.streams[0].mem_slab = &audio_queue_mic->slab;
+	cfg.channel.req_num_streams = 1;
+	cfg.channel.req_num_chan = NUMBER_OF_MIC_CHANNELS;
+	cfg.streams[0].block_size = audio_queue_mic->audio_block_samples * NUMBER_OF_MIC_CHANNELS *
+				    sizeof(pcm_sample_t);
+	cfg.channel.req_chan_map_lo =
+		((1 << CONFIG_AUDIO_L_CHANNEL) | (1 << CONFIG_AUDIO_R_CHANNEL));
+	ret = dmic_configure(pdm_dev, &cfg);
+	if (ret != 0) {
+		LOG_ERR("Failed to configure DMIC, err %d", ret);
+		return ret;
 	}
 
-	if (i2s_cfg.channel_count > MAX_NUMBER_OF_CHANNELS) {
-		return -EINVAL;
-	}
+	/* Configure left channel */
+	pdm_set_ch_phase(pdm_dev, CONFIG_AUDIO_L_CHANNEL, CONFIG_AUDIO_PDM_PHASE);
+	pdm_set_ch_gain(pdm_dev, CONFIG_AUDIO_L_CHANNEL, (CONFIG_MICROPHONE_GAIN << 4));
+	pdm_coef_reg.ch_num = CONFIG_AUDIO_L_CHANNEL;
+	pdm_channel_config(pdm_dev, &pdm_coef_reg);
 
-	i2s_cfg.sample_rate = audio_queue->sampling_freq_hz;
-	if (i2s_sync_configure(dev, &i2s_cfg)) {
-		return -EIO;
-	}
+	/* Configure right channel */
+	pdm_set_ch_gain(pdm_dev, CONFIG_AUDIO_R_CHANNEL, (CONFIG_MICROPHONE_GAIN << 4));
+	pdm_set_ch_phase(pdm_dev, CONFIG_AUDIO_R_CHANNEL, CONFIG_AUDIO_PDM_PHASE);
+	pdm_coef_reg.ch_num = CONFIG_AUDIO_R_CHANNEL;
+	pdm_channel_config(pdm_dev, &pdm_coef_reg);
 
-	/* Shutdown existing stream and wait for start */
-	i2s_sync_disable(dev, I2S_DIR_RX);
+	pdm_mode(pdm_dev, pdm_mode_val);
 
-	mic_source.dev = dev;
-	mic_source.audio_queue = audio_queue;
-	mic_source.block_size =
-		i2s_cfg.channel_count * audio_queue->audio_block_samples * sizeof(pcm_sample_t);
-	mic_source.number_of_channels = i2s_cfg.channel_count;
-	mic_source.started = false;
-	mic_source.capture = false;
+	mic_source.dev = pdm_dev;
+	mic_source.audio_queue = audio_queue_mic;
 
-	int ret = i2s_sync_register_cb(dev, I2S_DIR_RX, on_data_received);
-
+	ret = dmic_trigger(pdm_dev, DMIC_TRIGGER_START);
 	if (ret) {
+		LOG_ERR("Failed to start DMIC");
 		return ret;
 	}
 
 	return 0;
 }
 
-int mic_i2s_configure(const struct device *i2s_mic_dev, const struct device *i2s_dev,
-		      struct audio_encoder *audio_encoder)
+int mic_configure(const struct device *mic_dev, const struct device *i2s_dev,
+		  struct audio_encoder *audio_encoder)
 {
-	if (!i2s_mic_dev || !i2s_dev || !audio_encoder) {
+	if (!mic_dev || !i2s_dev || !audio_encoder) {
 		return -EINVAL;
 	}
 
 	/*
-	 * Two I2S input queues are used:
-	 *   - audio jack I2S input (audio_queue_i2s)
-	 *   - mic I2S input (audio_queue_mic)
+	 * Two input queues are used for audio mixing:
+	 *   - audio_queue_i2s: receives audio from the audio jack via I2S
+	 *   - audio_queue_mic: receives audio from the PDM microphone
 	 *
 	 * Configured (audio encoder input) audio I2S input queue will be changed
 	 * to audio_queue_i2s and the created thread will mix audio_queue_mic
@@ -256,14 +257,13 @@ int mic_i2s_configure(const struct device *i2s_mic_dev, const struct device *i2s
 		return ret;
 	}
 
-	ret = configure_i2s_sync(i2s_mic_dev, audio_queue_mic);
+	ret = configure_pdm_source(mic_dev, audio_queue_mic);
 	if (ret != 0) {
 		audio_queue_delete(audio_queue_i2s);
 		audio_queue_delete(audio_queue_mic);
-		LOG_ERR("Failed to configure mic I2S, err %d", ret);
+		LOG_ERR("Failed to configure mic, err %d", ret);
 		return ret;
 	}
-
 	static struct k_thread mixer_thread;
 
 	static K_THREAD_STACK_DEFINE(mixer_thread_stack, 2048);
@@ -285,35 +285,25 @@ int mic_i2s_configure(const struct device *i2s_mic_dev, const struct device *i2s
 	return 0;
 }
 
-void mic_i2s_start(void)
+void mic_start(void)
 {
 	if (!mic_source.dev) {
 		return;
-	}
-
-	/* Kick the I2S receive operation */
-	if (!mic_source.started) {
-		recv_next_block(mic_source.dev);
-		mic_source.started = true;
 	}
 
 	mic_source.capture = true;
 }
 
-void mic_i2s_stop(void)
+void mic_stop(void)
 {
 	if (!mic_source.dev) {
-		return;
-	}
-
-	if (!mic_source.started) {
 		return;
 	}
 
 	mic_source.capture = false;
 }
 
-void mic_i2s_control(bool const start)
+void mic_control(bool const start)
 {
 	if (!mic_source.dev) {
 		return;
@@ -321,10 +311,10 @@ void mic_i2s_control(bool const start)
 
 	if (start) {
 		LOG_INF("MIC start...");
-		mic_i2s_start();
+		mic_start();
 		return;
 	}
 
 	LOG_INF("MIC stop...");
-	mic_i2s_stop();
+	mic_stop();
 }

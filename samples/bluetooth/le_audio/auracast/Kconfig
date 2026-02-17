@@ -49,9 +49,9 @@ config APP_PRINT_STATS_INTERVAL
 	  SDU interval this is around 10 seconds.
 
 config MICROPHONE_GAIN
-	int "Microphone gain in percentage"
-	default 800
-	range 100 1000
+	int "Microphone gain"
+	default 20
+	range 1 256
 
 config INPUT_VOLUME_LEVEL
 	int "Input volume level in percentage when MIC input is active"
@@ -60,6 +60,26 @@ config INPUT_VOLUME_LEVEL
 
 config AURACAST_AUTOSTART_CMD
 	string "Auto start command"
+
+config AUDIO_L_CHANNEL
+	int "PDM audio left channel"
+	default 4
+	range 0 7
+
+config AUDIO_R_CHANNEL
+	int "PDM audio right channel"
+	default 5
+	range 0 7
+
+config AUDIO_PDM_PHASE
+	int "PDM channel phase delay in units of PDM_Ci cycle counts"
+	default 0
+	range 0 64
+
+config AUDIO_IIR_COEF
+	int "IIR filter coefficient value"
+	default 0
+	range 0 32
 
 menu "Logging"
 

@@ -19,8 +19,12 @@
 	aliases {
 		audio-codec = &wm8904;
 		i2s-bus = &i2s0;
-		/*i2s-mic = &i2s2;*/
+		pdm-mic = &lppdm;
 	};
+};
+
+&lppdm {
+	status = "okay";
 };
 
 &dma2 {
@@ -101,4 +105,15 @@
 };
 &rng {
 	status = "disabled";
+};
+
+&pinctrl_lppdm {
+	group0 {
+		pinmux = < PIN_P7_4__LPPDM_C2_C >;
+		read-enable = < 0x0 >;
+	};
+	group1 {
+		pinmux = < PIN_P7_5__LPPDM_D2_C >;
+		read-enable = < 0x1 >;
+	};
 };
