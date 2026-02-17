@@ -1,6 +1,6 @@
 {
     "HE_testapp": {
-        "binary": "test-app.bin",
+        "binary": "zephyr.bin",
         "version" : "1.0.0",
         "mramAddress": "0x80000000",
         "cpu_id": "M55_HE",
