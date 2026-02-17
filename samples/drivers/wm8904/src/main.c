@@ -49,7 +49,7 @@ static void tx_data_populate(void)
 		int16_t *right = &tx_data_block[i * I2S_CHANNEL_COUNT + 1];
 
 		int16_t sample = SIGNAL_AMPLITUDE *
-				 sin((2.0f * PI * SIGNAL_FREQUENCY * i) / I2S_SAMPLE_FREQUENCY);
+				 sinf((2.0f * PI * SIGNAL_FREQUENCY * i) / I2S_SAMPLE_FREQUENCY);
 		*left = sample;
 		*right = sample;
 	}
