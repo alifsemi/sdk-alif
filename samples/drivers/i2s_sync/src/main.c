@@ -87,7 +87,9 @@ static void send_next_block(const struct device *dev)
 	i2s_sync_send(dev, tx_block, I2S_BLOCK_SIZE_BYTES);
 }
 
-static void on_i2s_rx_complete(const struct device *dev, enum i2s_sync_status status)
+static void on_i2s_rx_complete(const struct device *dev,
+			       enum i2s_sync_status status,
+			       void *buffer)
 {
 	finish_rx();
 	recv_next_block(dev);
@@ -98,7 +100,9 @@ static void on_i2s_rx_complete(const struct device *dev, enum i2s_sync_status st
 	}
 }
 
-static void on_i2s_tx_complete(const struct device *dev, enum i2s_sync_status status)
+static void on_i2s_tx_complete(const struct device *dev,
+			       enum i2s_sync_status status,
+			       void *buffer)
 {
 	finish_tx();
 	send_next_block(dev);
