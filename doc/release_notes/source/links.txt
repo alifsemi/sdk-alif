@@ -1,6 +1,6 @@
 .. ### This page lists links used in Alif docs.
 
-.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.1.0/user_guide.pdf
+.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.2.0/user_guide.pdf
 .. _`Alif Trademarks`: https://alifsemi.com/legal
 .. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
 .. _`Alif SDK`: https://github.com/alifsemi/sdk-alif
