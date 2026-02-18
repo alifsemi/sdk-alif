@@ -109,6 +109,8 @@ Communication Interfaces
      - Low-power SPI controller capable of operating in deep sleep modes, enabling communication with external sensors and peripherals while minimizing power consumption, with wake-on-transfer support for event-driven applications in Zephyr.
    * - USB-Device
      - USB device mode support using the Synopsys DWC3 controller with Alif’s UDC driver. Includes CDC-ACM class implementation to enable the board to function as a virtual COM port, allowing serial communication with a host PC. Supports standard USB device enumeration and data transfer in Zephyr RTOS.
+   * - CAN-FD
+     - Controller Area Network (CAN) driver for 2-wire bus communication used to transmit sensor data and control information between system components. Commonly used in automotive applications for reliable communication between Electronic Control Units (ECUs).
 
 
 Display Interfaces
@@ -172,7 +174,8 @@ System Resources
      - Power management framework supporting deep sleep states including Suspend-to-RAM (S2RAM), where SRAM is retained, enabling fast resume and ultra-low power idle operation.
    * -  LP-GPIO
      - Low-power GPIO controller that maintains state and wake-up capability during system sleep modes, allowing external events to trigger resume from low-power states.
-
+   * - EVTRTR
+     - The Event Router (EVTRTR) is a module that can associate an event originated by one peripheral with an action executed by another.
 
 Timers and PWM
 ~~~~~~~~~~~~~~
@@ -201,13 +204,19 @@ Memory and Storage
 
    * - **Peripheral**
      - **Description**
+
    * - MRAM
      - Magnetoresistive RAM with Read and Write operations.
+
    * - OSPI Flash
-     - 64MB ISSI Flash (IS25WX512) with Zephyr flash APIs for erase, read, and write operations.
+     - | **ISSI Flash (IS25WX512)** support using Zephyr flash APIs for erase, read, and write operations.
+       | **Macronix Flash (MX66UW)** support for high-speed execute-in-place (XIP) and data storage, with erase, read, and write operations through the Zephyr flash subsystem.
+
    * - SD
      - Secure Digital host controller supporting SD/SDIO/MMC protocols for external memory card interfacing, including command queuing and data transfer at high-speed rates.
 
+   * - HexSPI support for AP memory PSRAM (APS512XXN)
+     - HexSPI interface support for external APMEM device, enabling high-bandwidth external memory expansion.
 
 Security and Data Integrity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -253,6 +262,8 @@ AI Acceleration
        integrated into Alif’s microcontroller platforms that leverages Arm
        Ethos microNPUs to boost machine learning inference performance
        for CNN and transformer models.
+   * - Executorch
+     - ML inference application using the PyTorch ExecutorTorch runtime with Arm Ethos-U NPU acceleration. Demonstrates keyword spotting using a quantized DS-CNN model with optimized inference performance.
 
 Imaging Interfaces
 ~~~~~~~~~~~~~~~~~~~
@@ -271,6 +282,8 @@ Imaging Interfaces
      - MIPI Camera Serial Interface (CSI-2) supporting high-speed serial transmission of pixel data from image sensors (e.g., ARX3A0). Data is received via D-PHY, processed through the PHY Protocol Interface (PPI), unpacked by the MIPI CSI-2 host controller, and delivered via the Image Pixel Interface (IPI) to the Camera Pixel Interface (CPI) for storage in memory over AXI. Integrated with Zephyr’s video input subsystem for streaming and frame capture.
    * - ISP
      - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, and color correction. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
+   * - TOF Sensor
+     - CH201 ultrasonic Time-of-Flight (ToF) sensor for proximity sensing and distance measurement. Supports I²C communication with interrupt-based event signaling.
 
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
@@ -297,6 +310,23 @@ Breaking Changes
 
 - **BLE ROM Version Configuration**:
   BLE ROM version is now hardware-specific and defined in device tree. Support for BLE ROM v1.0 has been removed. Only BLE ROM v1.2 is supported. The ROM version is automatically detected from hardware and cannot be manually configured by users.
+
+Planned Deprecations
+--------------------
+
+The following items are planned for deprecation in the next release:
+
+- **CGU Clock Initialization**
+
+  CGU clock initialization will be performed using clock device tree nodes and the clock driver. Hard-coded initialization currently implemented in ``soc_common.c`` or in sample source files will be deprecated.
+
+- **E3-DK and E4-DK Board Support**
+
+  Support for **E3-DK** and **E4-DK** board files will be removed. Support for **E3** and **E4** SoCs will continue to be available through **E8-DK** and **E7-DK** builds.
+
+- **DMA Node Referencing**
+
+  Referring to DMA nodes directly in device driver nodes will be deprecated. All drivers using DMA must reference DMA resources through **EVTRTR** nodes.
 
 Known Issues
 ------------
