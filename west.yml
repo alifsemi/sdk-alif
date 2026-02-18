@@ -38,6 +38,7 @@ manifest:
           - canopennode
           - chre
           - edtt
+          - executorch
           - fatfs
           - hal_alif
           - hal_ethos_u
@@ -91,3 +92,4 @@ manifest:
   self:
     path: alif
     west-commands: scripts/west-commands.yml
+    import: submanifests
