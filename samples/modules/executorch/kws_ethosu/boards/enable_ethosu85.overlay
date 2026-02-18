@@ -1,0 +1,37 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Ethos-U85 NPU Enable Overlay for ExecutorTorch KWS Application
+ *
+ * This overlay enables the Ethos-U85 NPU (ethosu1) for E4/E8 boards.
+ *
+ * Applicable Boards:
+ *   - E4 (alif_e4_dk)      - U55 + U85
+ *   - E8 (alif_e8_dk)      - U55 + U85
+ *
+ * Note: Only E4 and E8 boards have ethosu1 (U85).
+ *
+ * Usage:
+ *   west build -b alif_e8_dk/... <app_path> -- \
+ *     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay" \
+ *     -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+ */
+
+/ {
+	ethosu_u85_check {
+		compatible = "vnd,ethosu-u85-check";
+		ethosu-node = <&ethosu1>;
+	};
+};
+
+&ethosu1 {
+	status = "okay";
+};

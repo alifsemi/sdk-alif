@@ -1,0 +1,9 @@
+sample:
+  name: ExecutorTorch Keyword Spotting with Ethos-U
+  description: Keyword spotting using ExecutorTorch with Ethos-U NPU acceleration
+common:
+  tags: executorch ml npu ethos-u kws
+  depends_on: executorch arm_ethos_u
+tests:
+  sample.executorch.kws_ethosu:
+    platform_allow: alif_e8_dk alif_e7_dk alif_e3_dk

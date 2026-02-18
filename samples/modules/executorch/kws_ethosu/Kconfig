@@ -1,0 +1,29 @@
+# Copyright 2025 Alif Semiconductor
+# Copyright (c) Meta Platforms, Inc. and affiliates.
+# Copyright 2025 Arm Limited and/or its affiliates.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+source "Kconfig.zephyr"
+
+menu "ExecutorTorch KWS sample configuration"
+
+config EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE
+	int "Method allocator pool size in bytes"
+	default 1572864
+	depends on EXECUTORCH
+	help
+	  Size of the method allocator pool in bytes. This memory is used
+	  for allocating ExecuTorch method instances and their metadata.
+	  Default is 1.5MB for KWS model requirements.
+
+config EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE
+	int "Temporary allocator pool size in bytes"
+	default 1572864
+	depends on EXECUTORCH
+	help
+	  Size of the temporary allocator pool in bytes. This memory is used
+	  for temporary allocations during model execution such as Ethos-U
+	  scratch memory. Default is 1.5MB for KWS model requirements.
+
+endmenu
