@@ -33,3 +33,5 @@ Document History
       - Release with Zephyr v4.1.0. Added driver support for UART, SPI, I2C, LPI2C, I3C, LP-UART, LP-SPI, MIPI-DSI, CDC-200, LP-Timer, I2S, LPI2S, PDM, LPPDM, GPIO, MHU, HWSEM, RTC, WDT, Clk-Ctrl, PinMUX, Touch Screen, System Power Management (suspend to ram), LP-GPIO, PWM, QDEC, UTimer Counter, MRAM, OSPI Flash, SD, CRC, Entropy, DAC 12, ADC 12, CPI, LP-CPI, Ethos.
     * - 2.1
       - Updated the document to include MIPI-CSI, CMP, ISP, USB-device, Ethernet.
+    * - 2.2
+      - Updated the document to include OV5640 camera, TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), Executorch, EVTRTR, Basic Power Management (I2S, SPI, I2C, RTC, UART), and Deep Sleep IWIC support.
