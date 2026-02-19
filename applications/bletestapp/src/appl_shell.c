@@ -33,6 +33,8 @@ uint32_t ble_rtc_wakeup __attribute__((noinit));
 uint32_t ble_rtc_connected_wakeup __attribute__((noinit));
 uint16_t reset_after_sleep __attribute__((noinit));
 
+enum lp_counter_source counter_source = -1;
+
 static int app_shell_init(void)
 {
 	/* If we are sleeping dont set the shell prompt off */
@@ -231,6 +233,22 @@ static int cmd_set_name(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
+static int cmd_select_timer(const struct shell *shell, size_t argc, char **argv)
+{
+	if (!strcmp(argv[1], "LPRTC")) {
+		counter_source = LPRTC;
+		shell_print(shell, "Selected LPRTC as wakeup source");
+	} else if (!strcmp(argv[1], "LPTIMER")) {
+		counter_source = LPTIMER;
+		shell_print(shell, "Selected LPTIMER as wakeup source");
+	} else {
+		shell_error(shell, "Select timer source from LPRTC and LPTIMER");
+		return -ENOEXEC;
+	}
+	return 0;
+}
+
+
 static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **argv)
 {
 	if (!strcmp(argv[1], "STOP")) {
@@ -282,6 +300,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 		      10),
 	SHELL_CMD_ARG(set-name, NULL, "set name for BLE <name>", cmd_set_name, 2, 10),
 	SHELL_CMD_ARG(set_offprofile, NULL, "Set off profile", cmd_set_offprofile, 2, 10),
+	SHELL_CMD_ARG(select_timer, NULL, "Select timer source <LPRTC/LPTIMER>",
+		cmd_select_timer, 2, 10),
 	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(ble_appl, &sub_cmds, "Ble configuration commands", NULL);
