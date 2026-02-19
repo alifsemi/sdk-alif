@@ -12,11 +12,19 @@
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
 #include <zephyr/drivers/counter.h>
+#include <zephyr/shell/shell.h>
+#include <zephyr/shell/shell_uart.h>
 #include <cmsis_core.h>
 #include <se_service.h>
 #include "power_mgr.h"
 #include "power_defines.h"
 #include "ble_handler.h"
+
+struct k_timer sleep_end_timer;
+void sleep_period_end(struct k_timer *timer_id);
+void sleep_period_done(struct k_work *work);
+
+K_WORK_DEFINE(sleep_end_worker, sleep_period_done);
 
 LOG_MODULE_DECLARE(main, CONFIG_MAIN_LOG_LEVEL);
 
@@ -28,40 +36,10 @@ run_profile_t current_runp __attribute__((noinit));
 off_profile_t current_offp __attribute__((noinit));
 int16_t power_profile __attribute__((noinit));
 
-static bool cold_boot;
-#define VBAT_RESUME_ENABLED 0xcafecafe
-
-uint32_t vbat_resume __attribute__((noinit));
-
-static void balletto_vbat_resume_enable(void)
-{
-	vbat_resume = VBAT_RESUME_ENABLED;
-}
-
-static bool balletto_vbat_resume_enabled(void)
-{
-	if (vbat_resume == VBAT_RESUME_ENABLED) {
-		return true;
-	}
-	return false;
-}
-
-static int pm_application_init(void)
-{
-	if (!balletto_vbat_resume_enabled()) {
-		/* Mark a cold boot */
-		cold_boot = true;
-	}
-
-	return 0;
-}
-SYS_INIT(pm_application_init, PRE_KERNEL_1, 3);
-
-int pwm_init(void)
+static int power_mgr_init(void)
 {
 	counter_started = false;
 	wakeup_dev = 0;
-	balletto_vbat_resume_enable();
 	return select_timer_source(LPRTC);
 }
 
@@ -117,8 +95,19 @@ int select_timer_source(enum lp_counter_source source)
 
 	counter_source = source;
 	counter_started = true;
+	get_default_off_cfg(&current_offp);
+	ret = set_off_profile(PM_STATE_MODE_STOP_1);
+
+	get_default_run_cfg(&current_runp);
+
+	if (ret) {
+		LOG_ERR("off profile set failed. error: %d", ret);
+	}
+	k_timer_init(&sleep_end_timer, sleep_period_end, NULL);
+
 	return 0;
 }
+SYS_INIT(power_mgr_init, POST_KERNEL, 99);
 
 void app_ready_for_sleep(void)
 {
@@ -130,6 +119,25 @@ void app_prevent_off(void)
 {
 	pm_policy_state_lock_get(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+}
+
+void sleep_period_done(struct k_work *work)
+{
+	const struct shell *shell = shell_backend_uart_get_ptr();
+
+	shell_print(shell, "sleep period done.");
+}
+
+void sleep_period_end(struct k_timer *timer_id)
+{
+	app_prevent_off();
+	k_work_submit(&sleep_end_worker);
+}
+
+void app_sleep_start(uint32_t time_s)
+{
+	k_timer_start(&sleep_end_timer, K_SECONDS(time_s), K_NO_WAIT);
+	app_ready_for_sleep();
 }
 
 int set_current_off_profile(void)
@@ -267,38 +275,7 @@ void get_default_off_cfg(off_profile_t *offp)
  */
 int app_set_run_params(void)
 {
-	/**
-	 * In case of the cold boot, set default values.
-	 * Otherwise, current_runp should contain the correct values.
-	 */
-	if (is_cold_boot()) {
-		get_default_run_cfg(&current_runp);
-	}
-
 	int ret = se_service_set_run_cfg(&current_runp);
 
 	return ret;
-}
-
-bool is_cold_boot(void)
-{
-	return cold_boot;
-}
-
-uint32_t get_current_ticks(void)
-{
-	uint32_t curr_ticks;
-	int ret = counter_get_value(wakeup_dev, &curr_ticks);
-
-	if (ret) {
-		LOG_ERR("ERROR: %s ret = %d!\n", __func__, ret);
-	}
-
-	return curr_ticks;
-}
-
-uint32_t s_to_ticks(const uint32_t s)
-{
-	/* this might saturate the ticks (return UINT32T_MAX) if value would exceed uint32_t */
-	return counter_us_to_ticks(wakeup_dev, s * 1000 * 1000);
 }

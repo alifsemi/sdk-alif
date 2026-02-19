@@ -13,27 +13,42 @@
 #include <zephyr/logging/log.h>
 #include <stdlib.h>
 #include "power_mgr.h"
+#include "ble_handler.h"
 
-#define DEVICE_NAME_LEN 9
 LOG_MODULE_DECLARE(main, CONFIG_MAIN_LOG_LEVEL);
 
 static struct k_sem waiting_semaphore;
 static bool __attribute__((noinit)) force_ble_restart;
 static bool __attribute__((noinit)) skip_wait;
-static bool __attribute__((noinit)) sleep_allowed;
 static uint32_t __attribute__((noinit)) wakeup_time;
 /* BLESW-1005: can't be longer than 8 chars */
-char __attribute__((noinit)) app_shell_device_name[DEVICE_NAME_LEN];
 
-uint16_t ble_adv_int_min __attribute__((noinit));
-uint16_t ble_adv_int_max __attribute__((noinit));
-uint16_t ble_conn_int_min __attribute__((noinit));
-uint16_t ble_conn_int_max __attribute__((noinit));
 uint32_t ble_rtc_wakeup __attribute__((noinit));
 uint32_t ble_rtc_connected_wakeup __attribute__((noinit));
 uint16_t reset_after_sleep __attribute__((noinit));
-
 enum lp_counter_source counter_source = -1;
+
+void appl_shell_reset(void)
+{
+	skip_wait = false;
+	force_ble_restart = false;
+	wakeup_time = 0;
+	ble_adv_int_min = 1000;
+	ble_adv_int_max = 1000;
+	ble_conn_int_min = 800;
+	ble_conn_int_max = 800;
+	ble_rtc_wakeup = 20000;
+	strncpy(app_shell_device_name, "APPL_SHL", DEVICE_NAME_LEN - 1);
+	app_shell_device_name[8] = 0;
+	reset_after_sleep = 0;
+}
+
+void appl_shell_init(void)
+{
+	/* Mark a cold boot */
+	appl_shell_reset();
+	k_sem_init(&waiting_semaphore, 0, 1);
+}
 
 static int app_shell_init(void)
 {
@@ -43,13 +58,9 @@ static int app_shell_init(void)
 	if (!shell) {
 		return 0;
 	}
-	if (is_cold_boot()) {
-		shell_start(shell);
-		return 0;
-	}
-	if (!sleep_allowed) {
-		shell_start(shell);
-	}
+	shell_start(shell);
+	appl_shell_init();
+
 	return 0;
 }
 
@@ -79,68 +90,16 @@ char *param_get_char(size_t argc, char **argv, char *p_param, char *def_value)
 	return def_value;
 }
 
-void appl_shell_reset(void)
-{
-	skip_wait = false;
-	sleep_allowed = false;
-	force_ble_restart = false;
-	wakeup_time = 0;
-	ble_adv_int_min = 1000;
-	ble_adv_int_max = 1000;
-	ble_conn_int_min = 800;
-	ble_conn_int_max = 800;
-	ble_rtc_wakeup = 20000;
-	ble_rtc_connected_wakeup = 2151;
-	strncpy(app_shell_device_name, "APPL_SHL", DEVICE_NAME_LEN - 1);
-	app_shell_device_name[8] = 0;
-	reset_after_sleep = 0;
-}
-
-void appl_shell_init(void)
-{
-	if (is_cold_boot()) {
-		/* Mark a cold boot */
-		appl_shell_reset();
-	}
-	k_sem_init(&waiting_semaphore, 0, 1);
-}
-
-bool appl_allow_sleep(void)
-{
-	if (!sleep_allowed) {
-		return false;
-	}
-	uint32_t curr_ticks = get_current_ticks();
-
-	if (wakeup_time && curr_ticks >= wakeup_time) {
-		sleep_allowed = false;
-		/* Shell is disabled during sleep to prevent spam of prompt */
-		app_prevent_off();
-		const struct shell *shell = shell_backend_uart_get_ptr();
-
-		shell_start(shell);
-		shell_print(shell, "sleep period done.");
-	}
-	return sleep_allowed;
-}
-
 void appl_wait_to_continue(void)
 {
-	appl_shell_init();
-	printk("BLE testapp started!\n");
+	const struct shell *shell = shell_backend_uart_get_ptr();
+
+	shell_print(shell, "BLE testapp started!\n");
+
 	if (!skip_wait) {
 		k_sem_take(&waiting_semaphore, K_FOREVER);
 		LOG_INF("continuing.");
 	}
-}
-
-bool appl_restart_ble(void)
-{
-	if (force_ble_restart) {
-		force_ble_restart = false;
-		return true;
-	}
-	return false;
 }
 
 /**
@@ -190,34 +149,25 @@ static int cmd_continue(const struct shell *shell, size_t argc, char **argv)
 	return 0;
 }
 
-static int cmd_restart_ble(const struct shell *shell, size_t argc, char **argv)
+void appl_shell_sleep_period_end(void)
 {
-	force_ble_restart = true;
-	shell_print(shell, "BLE application is restarted on next wakeup");
-	return 0;
+	if (reset_after_sleep) {
+		const struct shell *shell = shell_backend_uart_get_ptr();
+		int ret;
+
+		appl_shell_reset();
+		ret = ble_uninit();
+		shell_print(shell, "BLE application is restarted %d", ret);
+	}
 }
 
 static int cmd_sleep(const struct shell *shell, size_t argc, char **argv)
 {
-	unsigned long sleeptime_s = strtoul(argv[1], 0, 10);
-	uint32_t curr_ticks = get_current_ticks();
+	uint32_t sleeptime_s = strtoul(argv[1], 0, 10);
 
-	wakeup_time = curr_ticks + s_to_ticks(sleeptime_s);
+	shell_print(shell, "start sleep cycle %d s", sleeptime_s);
 
-	if (ble_rtc_wakeup > sleeptime_s * 1000) {
-		ble_rtc_wakeup = sleeptime_s * 1000;
-		shell_print(shell, "shorter sleep than wakeup adjusting RTC wakeup to %d ms",
-			    ble_rtc_wakeup);
-	}
-
-	if (wakeup_time <= curr_ticks) {
-		shell_error(shell, "Too long sleep! (wakeup_time overflowed)");
-		return -ENOEXEC;
-	}
-	shell_print(shell, "start sleep cycle");
-
-	sleep_allowed = true;
-	app_ready_for_sleep();
+	app_sleep_start(sleeptime_s);
 	return 0;
 }
 
@@ -251,8 +201,10 @@ static int cmd_select_timer(const struct shell *shell, size_t argc, char **argv)
 
 static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **argv)
 {
+	int ret;
+
 	if (!strcmp(argv[1], "STOP")) {
-		int ret = set_off_profile(PM_STATE_MODE_STOP_1);
+		ret = set_off_profile(PM_STATE_MODE_STOP_1);
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);
@@ -260,7 +212,7 @@ static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **arg
 		}
 		shell_print(shell, "Off profile set to STOP");
 	} else if (!strcmp(argv[1], "IDLE")) {
-		int ret = set_off_profile(PM_STATE_MODE_IDLE_1);
+		ret = set_off_profile(PM_STATE_MODE_IDLE_1);
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);
@@ -268,7 +220,7 @@ static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **arg
 		}
 		shell_print(shell, "Off profile set to IDLE");
 	} else if (!strcmp(argv[1], "STANDBY")) {
-		int ret = set_off_profile(PM_STATE_MODE_STANDBY_1);
+		ret = set_off_profile(PM_STATE_MODE_STANDBY_1);
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);
@@ -296,8 +248,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(continue, NULL, "Start ble application --reset_after <0/1>",
 		cmd_continue, 1, 10),
 	SHELL_CMD_ARG(sleep, NULL, "allow sleep in <seconds>", cmd_sleep, 2, 10),
-	SHELL_CMD_ARG(re-start, NULL, "restart BLE stack on next startup", cmd_restart_ble, 1,
-		      10),
+	SHELL_CMD_ARG(init, NULL, "BLE stack initialize", cmd_sleep, 2, 10),
 	SHELL_CMD_ARG(set-name, NULL, "set name for BLE <name>", cmd_set_name, 2, 10),
 	SHELL_CMD_ARG(set_offprofile, NULL, "Set off profile", cmd_set_offprofile, 2, 10),
 	SHELL_CMD_ARG(select_timer, NULL, "Select timer source <LPRTC/LPTIMER>",

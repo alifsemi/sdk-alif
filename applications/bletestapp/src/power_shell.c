@@ -512,4 +512,4 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(set_off_cfg, NULL, SET_OFF_HELP, cmd_set_off_cfg, 0, 0),
 	SHELL_CMD_ARG(clocks_set_divider, NULL, SET_CLK_HELP, cmd_set_clk_divider, 0, 0),
 	SHELL_SUBCMD_SET_END);
-SHELL_CMD_REGISTER(senc, &power_sub_cmds, "Ble power configuration commands", NULL);
+SHELL_CMD_REGISTER(senc, &power_sub_cmds, "Secure Enclave configuration commands", NULL);
