@@ -7,20 +7,12 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-extern uint16_t ble_adv_int_min;
-extern uint16_t ble_adv_int_max;
-extern uint16_t ble_conn_int_min;
-extern uint16_t ble_conn_int_max;
 extern uint32_t ble_rtc_wakeup;
 extern uint32_t ble_rtc_connected_wakeup;
 extern uint16_t reset_after_sleep;
-extern char app_shell_device_name[];
-
 
 int64_t param_get_int(size_t argc, char **argv, char *p_param, int def_value);
 char *param_get_char(size_t argc, char **argv, char *p_param, char *def_value);
-void appl_wait_to_continue(void);
-bool appl_allow_sleep(void);
-void cmd_appl_shell_init(void);
 void appl_shell_reset(void);
-bool appl_restart_ble(void);
+void appl_wait_to_continue(void);
+void appl_shell_sleep_period_end(void);
