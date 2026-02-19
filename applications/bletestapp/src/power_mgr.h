@@ -7,7 +7,7 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
- #include <aipm.h>
+ #include "power_defines.h"
 
   /* Power modes. Based on E8 power modes so same tests can be run with E8 and B1. */
 enum pm_state_mode_type {
@@ -30,14 +30,13 @@ enum pm_state_mode_type {
 
 
 int pwm_init(void);
-
+int select_timer_source(enum lp_counter_source source);
 void app_ready_for_sleep(void);
 void get_default_run_cfg(run_profile_t *runp);
 void get_default_off_cfg(off_profile_t *offp);
 int set_current_off_profile(void);
 int set_off_profile(const enum pm_state_mode_type pm_mode);
 int app_set_run_params(void);
-uint32_t get_wakeup_irq_status(void);
 bool is_cold_boot(void);
 uint32_t get_current_ticks(void);
 uint32_t s_to_ticks(const uint32_t s);
