@@ -79,8 +79,6 @@ static void pm_notify_state_entry(enum pm_state const state)
  */
 static void pm_notify_pre_device_resume(enum pm_state const state)
 {
-	wakeup_status = get_wakeup_irq_status();
-
 	switch (state) {
 	case PM_STATE_SUSPEND_TO_RAM: {
 		run_profile_error = app_set_run_params();

@@ -13,6 +13,25 @@
 	status = "okay";
 };
 
+&lpgpio {
+	pinctrl-0 = < &pinctrl_lpgpio >;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/ {
+	wakeup_pins: wakeup_pins {
+		compatible = "lpgpio-wakeup-pin";
+		/* Use only P15_1 as p15_0 has some issues */
+		lpgpios = <&lpgpio 1 GPIO_ACTIVE_LOW>;
+	};
+};
+
+/* LPTimer0 */
+&timer0 {
+	status = "okay";
+};
+
 &uart_hci {
 	status = "okay";
 };
