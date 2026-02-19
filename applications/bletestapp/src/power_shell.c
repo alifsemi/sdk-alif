@@ -16,6 +16,7 @@
 
 #include "appl_shell.h"
 #include "power_mgr.h"
+#include "power_defines.h"
 #include "power_shell.h"
 
 extern run_profile_t current_runp;
@@ -23,22 +24,6 @@ extern off_profile_t current_offp;
 extern int16_t power_profile;
 
 LOG_MODULE_REGISTER(power_shell, CONFIG_MAIN_LOG_LEVEL);
-
-#define APP_RET_MEM_BLOCKS \
-	SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | SRAM5_1_MASK | SRAM5_2_MASK |  \
-	SRAM5_3_MASK | SRAM5_4_MASK | SRAM5_5_MASK
-
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
-#define WAKEUP_SOURCE         DT_NODELABEL(rtc0)
-#define SE_OFFP_EWIC_CFG      EWIC_RTC_A
-#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
-#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
-#define WAKEUP_SOURCE         DT_NODELABEL(timer0)
-#define SE_OFFP_EWIC_CFG      EWIC_VBAT_TIMER
-#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
-#else
-#error "Wakeup Device not enabled in the dts"
-#endif
 
 static int16_t get_power_profile(const char *power_profile)
 {

@@ -15,33 +15,14 @@
 #include <cmsis_core.h>
 #include <se_service.h>
 #include "power_mgr.h"
+#include "power_defines.h"
 #include "ble_handler.h"
-
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
-#define WAKEUP_SOURCE         DT_NODELABEL(rtc0)
-#define SE_OFFP_EWIC_CFG      EWIC_RTC_A
-#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
-#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
-#define WAKEUP_SOURCE         DT_NODELABEL(timer0)
-#define SE_OFFP_EWIC_CFG      EWIC_VBAT_TIMER
-#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
-#else
-#error "Wakeup Device not enabled in the dts"
-#endif
-
-#define WAKEUP_SOURCE_IRQ DT_IRQ_BY_IDX(WAKEUP_SOURCE, 0, irq)
 
 LOG_MODULE_DECLARE(main, CONFIG_MAIN_LOG_LEVEL);
 
-static const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
-
-/**
- * As per the application requirements, it can remove the memory blocks which are not in use.
- */
-#define APP_RET_MEM_BLOCKS                                                                         \
-	SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | SRAM5_1_MASK | SRAM5_2_MASK |  \
-		SRAM5_3_MASK | SRAM5_4_MASK | SRAM5_5_MASK
-#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
+extern enum lp_counter_source counter_source;
+static const struct device *wakeup_dev;
+static bool counter_started;
 
 run_profile_t current_runp __attribute__((noinit));
 off_profile_t current_offp __attribute__((noinit));
@@ -78,19 +59,64 @@ SYS_INIT(pm_application_init, PRE_KERNEL_1, 3);
 
 int pwm_init(void)
 {
+	counter_started = false;
+	wakeup_dev = 0;
 	balletto_vbat_resume_enable();
+	return select_timer_source(LPRTC);
+}
+
+int select_timer_source(enum lp_counter_source source)
+{
+	int ret = 0;
+
+	if (counter_source == source) {
+		return 0;
+	}
+
+	if (counter_started) {
+		ret = counter_stop(wakeup_dev);
+		if (ret && ret != -EALREADY) {
+			printk("failed to stop counter: %d", ret);
+			return -1;
+		}
+		counter_started = false;
+	}
+
+	wakeup_dev = 0;
+
+	if (source == LPRTC) {
+#ifndef WAKEUP_SOURCE_RTC
+		printk("Wakeup Device RTC not enabled in the dts");
+		return -1;
+#else
+		wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE_RTC);
+#endif
+	} else if (source == LPTIMER) {
+#ifndef WAKEUP_SOURCE_LPTIMER
+		printk("Wakeup Device LPTIMER not enabled in the dts");
+		return -1;
+#else
+		wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE_LPTIMER);
+#endif
+	} else {
+		LOG_ERR("Invalid timer source selected");
+		return -1;
+	}
+
 	if (!device_is_ready(wakeup_dev)) {
 		printk("%s: device not ready", wakeup_dev->name);
 		return -1;
 	}
 
-	int ret = counter_start(wakeup_dev);
+	ret = counter_start(wakeup_dev);
 
 	if (ret && ret != -EALREADY) {
 		printk("failed to start counter: %d", ret);
 		return -1;
 	}
 
+	counter_source = source;
+	counter_started = true;
 	return 0;
 }
 
@@ -162,8 +188,16 @@ int set_off_profile(const enum pm_state_mode_type pm_mode)
 	current_offp.aon_clk_src = CLK_SRC_LFXO;
 	current_offp.stby_clk_src = CLK_SRC_HFRC;
 	current_offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_0_075_MHZ;
-	current_offp.ewic_cfg = SE_OFFP_EWIC_CFG;
-	current_offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
+	if (counter_source == LPRTC) {
+		current_offp.ewic_cfg = EWIC_RTC_A;
+		current_offp.wakeup_events = WE_LPRTC;
+	} else if (counter_source == LPTIMER) {
+		current_offp.ewic_cfg = EWIC_VBAT_TIMER;
+		current_offp.wakeup_events = WE_LPTIMER;
+	} else {
+		LOG_ERR("Invalid timer source selected");
+		return -1;
+	}
 	current_offp.vtor_address = SCB->VTOR;
 	current_offp.vtor_address_ns = SCB->VTOR;
 
@@ -215,8 +249,15 @@ void get_default_off_cfg(off_profile_t *offp)
 	offp->aon_clk_src = CLK_SRC_LFXO;
 	offp->stby_clk_src = CLK_SRC_HFRC;
 	offp->stby_clk_freq = SCALED_FREQ_RC_STDBY_0_075_MHZ;
-	offp->ewic_cfg = SE_OFFP_EWIC_CFG;
-	offp->wakeup_events = SE_OFFP_WAKEUP_EVENTS;
+	if (counter_source == LPRTC) {
+		offp->ewic_cfg = EWIC_RTC_A;
+		offp->wakeup_events = WE_LPRTC;
+	} else if (counter_source == LPTIMER) {
+		offp->ewic_cfg = EWIC_VBAT_TIMER;
+		offp->wakeup_events = WE_LPTIMER;
+	} else {
+		LOG_ERR("Invalid timer source selected");
+	}
 	offp->vtor_address = SCB->VTOR;
 	offp->vtor_address_ns = SCB->VTOR;
 }
@@ -237,11 +278,6 @@ int app_set_run_params(void)
 	int ret = se_service_set_run_cfg(&current_runp);
 
 	return ret;
-}
-
-uint32_t get_wakeup_irq_status(void)
-{
-	return NVIC_GetPendingIRQ(WAKEUP_SOURCE_IRQ);
 }
 
 bool is_cold_boot(void)
