@@ -28,16 +28,11 @@ enum pm_state_mode_type {
 	PM_STATE_MODE_STOP_5
 };
 
-
-int pwm_init(void);
 int select_timer_source(enum lp_counter_source source);
-void app_ready_for_sleep(void);
+void app_sleep_start(uint32_t time_s);
 void get_default_run_cfg(run_profile_t *runp);
 void get_default_off_cfg(off_profile_t *offp);
 int set_current_off_profile(void);
 int set_off_profile(const enum pm_state_mode_type pm_mode);
 int app_set_run_params(void);
-bool is_cold_boot(void);
-uint32_t get_current_ticks(void);
-uint32_t s_to_ticks(const uint32_t s);
 void app_prevent_off(void);

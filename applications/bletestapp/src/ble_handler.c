@@ -27,6 +27,8 @@
 #include "gatt_srv.h"
 
 #include "appl_shell.h"
+#include <zephyr/shell/shell.h>
+#include <zephyr/shell/shell_uart.h>
 #include <alif/bluetooth/bt_adv_data.h>
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
@@ -35,6 +37,14 @@ LOG_MODULE_DECLARE(main, CONFIG_MAIN_LOG_LEVEL);
 
 static uint8_t hello_arr[] = "HelloHello";
 static uint8_t hello_arr_index __attribute__((noinit));
+
+/* BLE configurations*/
+char __attribute__((noinit)) app_shell_device_name[DEVICE_NAME_LEN];
+
+uint16_t ble_adv_int_min __attribute__((noinit));
+uint16_t ble_adv_int_max __attribute__((noinit));
+uint16_t ble_conn_int_min __attribute__((noinit));
+uint16_t ble_conn_int_max __attribute__((noinit));
 
 /* Service Definitions */
 #define ATT_128_PRIMARY_SERVICE    ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
@@ -69,13 +79,12 @@ enum service_att_list {
 	HELLO_IDX_NB,
 };
 
-static volatile bool is_connected __attribute__((noinit));
+static volatile bool conn_status __attribute__((noinit));
 /* Store advertising activity index for re-starting after disconnection */
 static volatile uint8_t conn_idx __attribute__((noinit));
 static uint8_t adv_actv_idx __attribute__((noinit));
 static struct service_env env __attribute__((noinit));
 
-static volatile bool wakeup_status;
 static volatile int run_profile_error;
 
 static const char *device_name = app_shell_device_name;
@@ -131,17 +140,31 @@ struct service_env {
 	volatile uint16_t ntf_cfg;
 };
 
-static gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {.ce_len_min = 5,
-									  .ce_len_max = 10,
-									  .hdr.interval_min = 0,
-									  .hdr.interval_max = 10,
-									  .hdr.latency = 0,
-									  .hdr.sup_to = 800};
+static gapc_le_con_param_nego_with_ce_len_t app_preferred_connection_param = {.ce_len_min = 5,
+									      .ce_len_max = 10,
+									      .hdr.interval_min = 0,
+									      .hdr.interval_max =
+										      10,
+									      .hdr.latency = 0,
+									      .hdr.sup_to = 800};
 
 /* function headers */
 static uint16_t service_init(void);
 
 /* Functions */
+
+int ble_shell_reset(void)
+{
+	ble_adv_int_min = 1000;
+	ble_adv_int_max = 1000;
+	ble_conn_int_min = 800;
+	ble_conn_int_max = 800;
+	strncpy(app_shell_device_name, "test_shl", DEVICE_NAME_LEN - 1);
+	app_shell_device_name[8] = 0;
+	return 0;
+}
+
+SYS_INIT(ble_shell_reset, POST_KERNEL, 91);
 
 /**
  * Bluetooth GAPM callbacks
@@ -150,86 +173,39 @@ void on_gapc_proc_cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status)
 {
 	LOG_INF("%s conn:%d status:%d\n", __func__, conidx, status);
 }
+static void app_connected_handler(uint8_t con_idx)
+{
+	const struct shell *shell = shell_backend_uart_get_ptr();
+	uint16_t ret;
 
-void on_bond_data_updated(uint8_t conidx, uint32_t metainfo, const gapc_bond_data_updated_t *p_data)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_auth_payload_timeout(uint8_t conidx, uint32_t metainfo)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_no_more_att_bearer(uint8_t conidx, uint32_t metainfo)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_cli_hash_info(uint8_t conidx, uint32_t metainfo, uint16_t handle, const uint8_t *p_hash)
-{
-	LOG_DBG("%s", __func__);
-}
-void on_name_set(uint8_t conidx, uint32_t metainfo, uint16_t token, co_buf_t *p_buf)
-{
-	LOG_DBG("%s", __func__);
-	gapc_le_set_name_cfm(conidx, token, GAP_ERR_NO_ERROR);
-}
-void on_appearance_set(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t appearance)
-{
-	LOG_DBG("%s", __func__);
-	gapc_le_set_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR);
-}
+	conn_status = BT_CONN_STATE_CONNECTED;
+	conn_idx = con_idx;
+	ret = gapc_le_update_params(con_idx, 0, &app_preferred_connection_param,
+				    on_gapc_proc_cmp_cb);
 
-void on_param_update_req(uint8_t conidx, uint32_t metainfo, const gapc_le_con_param_nego_t *p_param)
-{
-	LOG_DBG("%s:%d", __func__, conidx);
-	gapc_le_update_params_cfm(conidx, true, preferred_connection_param.ce_len_min,
-				  preferred_connection_param.ce_len_max);
-}
-void on_param_updated(uint8_t conidx, uint32_t metainfo, const gapc_le_con_param_t *p_param)
-{
-	LOG_DBG("%s conn:%d", __func__, conidx);
-}
-void on_packet_size_updated(uint8_t conidx, uint32_t metainfo, uint16_t max_tx_octets,
-			    uint16_t max_tx_time, uint16_t max_rx_octets, uint16_t max_rx_time)
-{
-	LOG_DBG("%s conn:%d max_tx_octets:%d max_tx_time:%d  max_rx_octets:%d "
-		"max_rx_time:%d",
-		__func__, conidx, max_tx_octets, max_tx_time, max_rx_octets, max_rx_time);
-
-	/* PeHo: Seppo why this is done here? */
-	const uint16_t ret =
-		gapc_le_update_params(conidx, 0, &preferred_connection_param, on_gapc_proc_cmp_cb);
-
-	LOG_INF("Update connection %u ret:%d\n", conidx, ret);
-}
-
-void on_phy_updated(uint8_t conidx, uint32_t metainfo, uint8_t tx_phy, uint8_t rx_phy)
-{
-	LOG_DBG("%s conn:%d tx_phy:%d rx_phy:%d", __func__, conidx, tx_phy, rx_phy);
-}
-void on_subrate_updated(uint8_t conidx, uint32_t metainfo,
-			const gapc_le_subrate_t *p_subrate_params)
-{
-	LOG_DBG("%s conn:%d", __func__, conidx);
+	shell_print(shell, "BLE Connected conn:%d", con_idx);
 }
 
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
 				  uint16_t status)
 {
+	const struct shell *shell = shell_backend_uart_get_ptr();
+
 	switch (con_event) {
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
-		is_connected = true;
-		LOG_INF("BLE Connected conn:%d.", con_idx);
+		app_connected_handler(con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
-		is_connected = true;
-		LOG_INF("BLE Connected conn:%d.", con_idx);
+		app_connected_handler(con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
-		is_connected = false;
-		LOG_INF("BLE disconnected conn:%d. Waiting new connection", con_idx);
+		conn_status = BT_CONN_STATE_DISCONNECTED;
+		conn_idx = GAP_INVALID_CONIDX;
+		shell_print(shell, "BLE disconnected conn:%d. Waiting new connection", con_idx);
 		break;
 	case GAPM_API_PAIRING_FAIL:
-		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		shell_print(shell, "Connection pairing index %u fail for reason %u", con_idx,
+			    status);
 		break;
 	}
 }
@@ -508,75 +484,122 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 int ble_init(void)
 {
 	/* Update preferred connection parameters */
-	preferred_connection_param.hdr.interval_min = ble_conn_int_min;
-	preferred_connection_param.hdr.interval_max = ble_conn_int_max;
+	app_preferred_connection_param.hdr.interval_min = ble_conn_int_min;
+	app_preferred_connection_param.hdr.interval_max = ble_conn_int_max;
 
 	/* Start up bluetooth host stack. */
 	uint16_t ble_status = alif_ble_enable(NULL);
-
-	if (ble_status == 0) {
-		uint16_t rc;
-		/* BLE initialized first time */
-		hello_arr_index = 0;
-		conn_idx = GAP_INVALID_CONIDX;
-		memset(&env, 0, sizeof(struct service_env));
-		is_connected = false;
-
-		/* Generate random address */
-		se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
-		/* Configure Bluetooth Stack */
-		LOG_INF("Init gapm service");
-		rc = bt_gapm_init(&gapm_cfg, &gapm_user_cb, device_name, strlen(device_name));
-		if (rc) {
-			LOG_ERR("gapm_configure error %u", rc);
-			return -1;
-		}
-
-		server_configure();
-
-		/* Create an advertising activity */
-		rc = create_advertising();
-		if (rc) {
-			LOG_ERR("Advertisement create fail %u", rc);
-			return -1;
-		}
-
-		rc = set_advertising_data(adv_actv_idx);
-		if (rc) {
-			LOG_ERR("Advertisement data set fail %u", rc);
-			return -1;
-		}
-
-		rc = set_scan_data(adv_actv_idx);
-		if (rc) {
-			LOG_ERR("Scan response data set fail %u", rc);
-			return -1;
-		}
-
-		rc = bt_gapm_advertisement_start(adv_actv_idx);
-		if (rc) {
-			LOG_ERR("Advertisement start fail %u", rc);
-			return -1;
-		}
-
-		LOG_INF("Init complete!");
-	}
 
 	if (ble_status && ble_status != -EALREADY) {
 		LOG_ERR("alif_ble_enable error %d", ble_status);
 		return -1;
 	}
+	return 0;
+}
 
+int ble_start(void)
+{
+	uint16_t rc;
+	/* BLE initialized first time */
+	hello_arr_index = 0;
+	conn_idx = GAP_INVALID_CONIDX;
+	memset(&env, 0, sizeof(struct service_env));
+	conn_status = BT_CONN_STATE_DISCONNECTED;
+
+	/* Set a preferred connections params  */
+	bt_gapm_preferred_connection_paras_set(&app_preferred_connection_param);
+	/* Generate random address */
+	se_service_get_rnd_num(&gapm_cfg.private_identity.addr[3], 3);
+	/* Configure Bluetooth Stack */
+	LOG_INF("Init gapm service");
+	rc = bt_gapm_init(&gapm_cfg, &gapm_user_cb, device_name, strlen(device_name));
+	if (rc) {
+		LOG_ERR("gapm_configure error %u", rc);
+		return -1;
+	}
+
+	server_configure();
+
+	/* Create an advertising activity */
+	rc = create_advertising();
+	if (rc) {
+		LOG_ERR("Advertisement create fail %u", rc);
+		return -1;
+	}
+
+	rc = set_advertising_data(adv_actv_idx);
+	if (rc) {
+		LOG_ERR("Advertisement data set fail %u", rc);
+		return -1;
+	}
+
+	rc = set_scan_data(adv_actv_idx);
+	if (rc) {
+		LOG_ERR("Scan response data set fail %u", rc);
+		return -1;
+	}
+
+	rc = bt_gapm_advertisement_start(adv_actv_idx);
+	if (rc) {
+		LOG_ERR("Advertisement start fail %u", rc);
+		return -1;
+	}
+
+	LOG_INF("start complete!");
 	return 0;
 }
 
 int ble_uninit(void)
 {
-	is_connected = false;
+	conn_status = BT_CONN_STATE_DISCONNECTED;
 	return alif_ble_disable();
 }
 
 bool ble_is_connected(void)
 {
-	return is_connected;
+	return (BT_CONN_STATE_DISCONNECTED == BT_CONN_STATE_CONNECTED);
 }
+
+static int cmd_bt_disable(const struct shell *shell, size_t argc, char **argv)
+{
+	int ret;
+
+	ble_shell_reset();
+	ret = ble_uninit();
+	shell_print(shell, "BLE application is restarted %d", ret);
+	return 0;
+}
+
+static int cmd_bt_init(const struct shell *shell, size_t argc, char **argv)
+{
+	int ret = ble_init();
+
+	shell_print(shell, "BLE stack init %d", ret);
+	return 0;
+}
+
+static int cmd_bt_name(const struct shell *shell, size_t argc, char **argv)
+{
+	/* app_shell_device_name has null-ending as per cold boot init */
+	strncpy(app_shell_device_name, argv[1], DEVICE_NAME_LEN - 1);
+	shell_print(shell, "BLE name set to %s", app_shell_device_name);
+	return 0;
+}
+
+static int cmd_bt_advertise(const struct shell *shell, size_t argc, char **argv)
+{
+	int ret;
+
+	ret = ble_start();
+	shell_print(shell, "BLE advertisement started %d", ret);
+	return 0;
+}
+
+SHELL_STATIC_SUBCMD_SET_CREATE(
+	sub_cmds,
+	SHELL_CMD_ARG(init, NULL, "[none]", cmd_bt_init, 1, 10),
+	SHELL_CMD_ARG(advertise, NULL, "<type: off, on, nconn>", cmd_bt_advertise, 1, 10),
+	SHELL_CMD_ARG(disable, NULL, "[none]", cmd_bt_disable, 1, 10),
+	SHELL_CMD_ARG(name, NULL, "[name]", cmd_bt_name, 2, 10),
+	SHELL_SUBCMD_SET_END);
+SHELL_CMD_REGISTER(bt, &sub_cmds, "bt - Bluetooth shell commands", NULL);

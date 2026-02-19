@@ -36,9 +36,14 @@
 	status = "okay";
 };
 
+/* Sleep pincontrol needs to be removed as it causes a extra characters on output and input
+ */
+
 &uart2 {
 	/*clocks = <&clockctrl ALIF_UART2_38M4_CLK>;*/
 	status = "okay";
+	/delete-property/ pinctrl-1; // = <&pinctrl_uart2_sleep>;
+	pinctrl-names = "default";
 };
 
 &stop_s2ram {
