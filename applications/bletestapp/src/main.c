@@ -72,20 +72,10 @@ static int app_pre_console_init(void)
 SYS_INIT(app_pre_console_init, PRE_KERNEL_1, 50);
 #endif
 
-static volatile bool wakeup_status;
 static volatile int run_profile_error;
 
 /* Macros */
 LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
-
-/*
- * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
- * NOTE! pm_application_init + 1 so we can check for cold boot
- *
- * On cold boot: SYSTOP is already ON by default, safe to call.
- * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
- */
-SYS_INIT(app_set_run_params, PRE_KERNEL_1, 4);
 
 /**
  * PM Notifier callback for power state entry
@@ -224,62 +214,27 @@ int main(void)
 {
 	int ret = 0;
 
-	if (is_cold_boot()) {
-		ret = pwm_init();
+	printk("BLE testapp cold start\n");
 
-		if (ret) {
-			LOG_ERR("pwm_init failed: %d", ret);
-			return ret;
-		}
+	appl_wait_to_continue();
 
-		ret = set_off_profile(PM_STATE_MODE_STOP_1);
+	ret = ble_init();
 
-		if (ret) {
-			LOG_ERR("off profile set failed. error: %d", ret);
-			return ret;
-		}
-		printk("BLE testapp cold start\n");
+	if (ret) {
+		return ret;
 	}
-
-	bool run_ble_init = true;
+	ret = ble_start();
+	if (ret) {
+		return ret;
+	}
+	printk("Init complete!");
 
 	while (1) {
-		if (run_ble_init) {
-			appl_wait_to_continue();
-
-			ret = ble_init();
-
-			if (ret) {
-				return ret;
-			}
-
-			if (appl_allow_sleep()) {
-				app_ready_for_sleep();
-			}
-			run_ble_init = false;
-		}
-
-		/* checks for whether sleep period is done */
-		appl_allow_sleep();
-
 		if (ble_is_connected()) {
 			k_sleep(K_MSEC(ble_rtc_connected_wakeup));
 		} else {
 			k_sleep(K_MSEC(ble_rtc_wakeup));
-			printk("Woke up from CPU sleep\n");
 		}
-
-		if (reset_after_sleep) {
-			app_prevent_off();
-			appl_shell_reset();
-			ret = ble_uninit();
-			printk("BLE uninit done: %d\n", ret);
-			if (ret) {
-				return ret;
-			}
-			run_ble_init = true;
-		}
-
 	}
 	return 0;
 }
