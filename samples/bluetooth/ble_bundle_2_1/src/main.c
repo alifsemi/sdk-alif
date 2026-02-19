@@ -41,6 +41,24 @@
 #include "prf_types.h"
 #include "rwprf_config.h"
 
+//HTPT
+#include "htpt.h"
+#include "htpt_msg.h"
+
+enum hrps_feat_bf {
+    HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS = 0,
+    HRPS_BODY_SENSOR_LOC_CHAR_SUP_BIT = CO_BIT(HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS),
+    HRPS_ENGY_EXP_FEAT_SUP_POS = 1,
+    HRPS_ENGY_EXP_FEAT_SUP_BIT = CO_BIT(HRPS_ENGY_EXP_FEAT_SUP_POS),
+    HRPS_HR_MEAS_NTF_CFG_POS = 2,
+    HRPS_HR_MEAS_NTF_CFG_BIT = CO_BIT(HRPS_HR_MEAS_NTF_CFG_POS),
+};
+
+/* HTPT config values not exported by headers */
+#define HTPT_CFG_STABLE_MEAS_IND_DIS 0
+static uint32_t ht_temp_value = 35;   // dummy starting temp
+static int8_t ht_direction = 1;
+
 #define BODY_SENSOR_LOCATION_CHEST 0x01
 
 /* Define advertising address type */
@@ -57,6 +75,8 @@ static uint16_t current_value = 70;
 /* Separate readiness flags for each service (set by CCCD enable + send complete) */
 static bool hr_ready_to_send;
 static bool bp_ready_to_send;
+static bool ht_ready_to_send;
+
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
@@ -153,6 +173,8 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
     /* Reset both service gates; phone must re-enable CCCDs after reconnect */
     hr_ready_to_send = false;
     bp_ready_to_send = false;
+    ht_ready_to_send = false;
+
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -232,6 +254,46 @@ static void on_blps_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cf
     }
 }
 
+/* ---------------- HTPT callbacks ---------------- */
+static void on_htpt_meas_send_complete(uint16_t status)
+{
+    ARG_UNUSED(status);
+    ht_ready_to_send = true;
+}
+
+static void on_htpt_bond_data_upd(uint8_t conidx, uint8_t cfg_val)
+{
+    switch (cfg_val)
+    {
+    case HTPT_CFG_STABLE_MEAS_IND:
+        LOG_INF("HTP: Client enabled indications");
+        ht_ready_to_send = true;
+        break;
+
+    case 0:
+        LOG_INF("HTP: Client disabled indications");
+        ht_ready_to_send = false;
+        break;
+
+    default:
+        LOG_INF("HTP: Unsupported cfg change");
+        break;
+    }
+}
+
+static void on_htpt_meas_intv_chg(uint8_t conidx, uint16_t interval)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(interval);
+}
+
+static const htpt_cb_t htpt_cb = {
+    .cb_bond_data_upd = on_htpt_bond_data_upd,
+    .cb_temp_send_cmp = on_htpt_meas_send_complete,
+    .cb_meas_intv_chg_req = on_htpt_meas_intv_chg,
+};
+
+
 /* ---------------- GAP callbacks wiring ---------------- */
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -283,65 +345,16 @@ static const blps_cb_t blps_cb = {
 
 /* ---------------- Advertising data ---------------- */
 
-/*
-static uint16_t set_advertising_data(uint8_t actv_idx)
-{
-    uint16_t err;
-
-    // 16-bit Service UUIDs to advertise (HR + BP + Battery)
-    uint16_t svc_hr   = GATT_SVC_HEART_RATE;
-    uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;
-    uint16_t svc_batt = get_batt_id();
-
-    const uint8_t num_svc = 3;
-
-    const size_t device_name_len = sizeof(device_name) - 1;
-    const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
-    const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc); 
-
-
-    // Keep adv small: Name + UUID list only (no manufacturer data) 
-    const uint16_t adv_len = adv_device_name + adv_uuid_svc;
-
-    co_buf_t *p_buf;
-    err = co_buf_alloc(&p_buf, 0, adv_len, 0);
-    __ASSERT(err == 0, "Buffer allocation failed");
-
-    uint8_t *p_data = co_buf_data(p_buf);
-
-    // Complete Local Name 
-    p_data[0] = device_name_len + 1;
-    p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
-    memcpy(p_data + 2, device_name, device_name_len);
-
-    // 16-bit UUID list
-    p_data += adv_device_name;
-    p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
-    p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
-
-    memcpy(p_data + 2, (void *)&svc_hr, sizeof(svc_hr));
-    memcpy(p_data + 4, (void *)&svc_bp, sizeof(svc_bp));
-    memcpy(p_data + 6, (void *)&svc_batt, sizeof(svc_batt));
-
-    err = gapm_le_set_adv_data(actv_idx, p_buf);
-    co_buf_release(p_buf);
-
-    if (err) {
-        LOG_ERR("Failed to set advertising data with error %u", err);
-    }
-
-    return err;
-} */
-
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
     uint16_t err;
 
     uint16_t svc_hr   = GATT_SVC_HEART_RATE;      // 0x180D
     uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;  // 0x1810
+    uint16_t svc_htp  = GATT_SVC_HEALTH_THERMOM;
     uint16_t svc_batt = get_batt_id();            // 0x180F
 
-    const uint8_t num_svc = 3;
+    const uint8_t num_svc = 4;
 
     const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
     const uint16_t adv_len = adv_uuid_svc;
@@ -358,29 +371,14 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 
     memcpy(p_data + 2, &svc_hr,   sizeof(svc_hr));
     memcpy(p_data + 4, &svc_bp,   sizeof(svc_bp));
-    memcpy(p_data + 6, &svc_batt, sizeof(svc_batt));
+    memcpy(p_data + 6, &svc_htp, 2);
+    memcpy(p_data + 8, &svc_batt, sizeof(svc_batt));
 
     err = gapm_le_set_adv_data(actv_idx, p_buf);
     co_buf_release(p_buf);
 
     return err;
 }
-
-/*static uint16_t set_scan_data(uint8_t actv_idx)
-{
-    co_buf_t *p_buf;
-    uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
-    __ASSERT(err == 0, "Buffer allocation failed");
-
-    err = gapm_le_set_scan_response_data(actv_idx, p_buf);
-    co_buf_release(p_buf);
-
-    if (err) {
-        LOG_ERR("Failed to set scan data with error %u", err);
-    }
-
-    return err;
-} */
 
 static uint16_t set_scan_data(uint8_t actv_idx)
 {
@@ -496,8 +494,7 @@ static void server_configure(void)
     uint16_t start_hdl_hr = 0;
     struct hrps_db_cfg hrps_cfg = {0};
 
-    //hrps_cfg.features = HRPS_BODY_SENSOR_LOC_CHAR_SUP_BIT | HRPS_HR_MEAS_NTF_CFG_BIT;
-	hrps_cfg.features = 0;
+    hrps_cfg.features = HRPS_BODY_SENSOR_LOC_CHAR_SUP_BIT | HRPS_HR_MEAS_NTF_CFG_BIT;
     hrps_cfg.body_sensor_loc = BODY_SENSOR_LOCATION_CHEST;
 
     err = prf_add_profile(TASK_ID_HRPS, 0, 0, &hrps_cfg, &hrps_cb, &start_hdl_hr);
@@ -516,6 +513,19 @@ static void server_configure(void)
     if (err) {
         LOG_ERR("Error %u adding BLPS profile", err);
     }
+
+    //HTPT
+    uint16_t start_hdl_ht = 0;
+    struct htpt_db_cfg htpt_cfg = {
+    .features = HTPT_TEMP_TYPE_CHAR_SUP_BIT,
+    .temp_type = HTP_TYPE_BODY,
+    };
+
+    err = prf_add_profile(TASK_ID_HTPT, 0, 0, &htpt_cfg, &htpt_cb, &start_hdl_ht);
+    if (err) {
+    LOG_ERR("Error %u adding HTPT profile", err);
+    }
+
 }
 
 void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
@@ -594,6 +604,31 @@ static void update_sensor_value(void)
     }
 }
 
+static void update_ht_temp(void)
+{
+    ht_temp_value += ht_direction;
+
+    if (ht_temp_value == 40 || ht_temp_value == 35)
+        ht_direction = -ht_direction;
+}
+
+static void send_htpt_measurement(void)
+{
+    uint16_t err;
+
+    htp_temp_meas_t meas = {
+        .flags = HTP_UNIT_CELCIUS,
+        .temp = ht_temp_value,
+    };
+
+    err = htpt_temp_send(&meas, HTP_TEMP_STABLE);
+
+    if (err) {
+        LOG_ERR("HTP send error %u", err);
+    }
+}
+
+
 static void combined_process(void)
 {
     update_sensor_value();
@@ -615,6 +650,13 @@ static void combined_process(void)
         send_bp_measurement(current_value);
         bp_ready_to_send = false;
     }
+
+    update_ht_temp();
+    if (ht_ready_to_send) {
+    send_htpt_measurement();
+    ht_ready_to_send = false;
+    }
+
 }
 
 int main(void)
