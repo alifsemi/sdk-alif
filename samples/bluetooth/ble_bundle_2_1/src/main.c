@@ -1,4 +1,3 @@
-
 /* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
@@ -42,31 +41,6 @@
 #include "prf_types.h"
 #include "rwprf_config.h"
 
-//CSCPS
-#include "cscp_common.h"
-#include "cscps.h"
-#include "cscps_msg.h"
-
-//RSCPS
-#include "rscp_common.h"
-#include "rscps.h"
-#include "rscps_msg.h"
-
-//HTPT
-#include "htpt.h"
-#include "htpt_msg.h"
-
-/* GLPS */
-#include "glps.h"
-#include "glps_msg.h"
-#include "rtc_emulator.h"
-
-//PRXP
-#include "prxp_app.h"
-
-//CGMS
-#include "cgms_app.h"
-
 #define BODY_SENSOR_LOCATION_CHEST 0x01
 
 /* Define advertising address type */
@@ -74,9 +48,6 @@
 
 /* Store and share advertising address type */
 static uint8_t adv_type;
-
-/* Store advertising activity index for re-starting after disconnection */
-static uint8_t adv_actv_idx;
 
 struct shared_control ctrl = { false, 0, 0 };
 
@@ -86,56 +57,6 @@ static uint16_t current_value = 70;
 /* Separate readiness flags for each service (set by CCCD enable + send complete) */
 static bool hr_ready_to_send;
 static bool bp_ready_to_send;
-static bool cs_ready_to_send;
-static bool rsc_ready_to_send;
-static bool glps_ready_to_send;
-static bool glps_demo_mode = true;
-
-//static bool cgms_ready = false;
-
-
-/* ---------------- GLPS state ---------------- */
-
-//#define GLPS_STORE_MAX  0xFFFF
-#define GLPS_STORE_MAX 20
-#define GLPS_TX_INTERVAL_MS 2000
-
-
-
-static uint16_t glps_seq_num = 1;
-static uint16_t glps_store_idx;
-
-static uint16_t glps_send_idx = 0;
-static bool glps_available_data;
-static bool glps_transfer_in_process;
-static uint8_t glps_last_racp_op;
-
-static uint16_t glps_total_to_send;   // total records for THIS RACP transaction
-static uint16_t glps_nb_to_send;      // remaining records to send in THIS transaction
-
-
-
-struct extended_glucose_meas {
-    uint16_t ext_seq_num;
-    glp_meas_t p_meas;
-};
-
-static struct extended_glucose_meas glps_ext_meas[GLPS_STORE_MAX];
-
-
-static uint32_t rsc_total_distance = 0;
-static uint16_t rsc_current_value = 1;
-
-static uint16_t cs_evt_time = 0;
-
-static bool ht_ready_to_send = false;
-static uint32_t ht_temp_value = 35;   // dummy starting temp
-static int8_t ht_direction = 1;
-
-
-static cscp_csc_meas_t cs_meas = {
-    .flags = CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
-};
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
@@ -169,7 +90,8 @@ static gapm_config_t gapm_cfg = {
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 static const char device_name[] = DEVICE_NAME;
 
-
+/* Store advertising activity index for re-starting after disconnection */
+static uint8_t adv_actv_idx;
 
 static uint16_t start_le_adv(uint8_t actv_idx)
 {
@@ -186,7 +108,6 @@ static uint16_t start_le_adv(uint8_t actv_idx)
     return err;
 }
 
-//uint8_t cgms_conidx = 0xFF;
 /**
  * Bluetooth GAPM callbacks
  */
@@ -203,14 +124,10 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
     LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
 
     ctrl.connected = true;
-    glps_ready_to_send = true;
 
     k_sem_give(&conn_sem);
 
     LOG_DBG("Please enable notifications/indications on peer device..");
-
-    /* CGMS sample uses this to unblock its conn_sem */
-    addr_res_done();
 }
 
 static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
@@ -231,25 +148,11 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
         LOG_DBG("Restarting advertising");
     }
 
-    /* ADD THIS LINE (from standalone proximity app) */
-    prxp_disc_notify(reason);
-    //cgms_disc_notify(reason);
-    
-    //cgms_conidx = 0xFF;
-
     ctrl.connected = false;
-    //cgms_ready = false;
-
 
     /* Reset both service gates; phone must re-enable CCCDs after reconnect */
     hr_ready_to_send = false;
     bp_ready_to_send = false;
-    cs_ready_to_send = false;
-    rsc_ready_to_send = false;
-    ht_ready_to_send = false;
-    glps_ready_to_send = false;
-    glps_transfer_in_process = false;
-
 }
 
 static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
@@ -329,264 +232,6 @@ static void on_blps_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cf
     }
 }
 
-/* ---------------- CSCPS callbacks ---------------- */
-
-static void on_csc_meas_send_complete(uint16_t status)
-{
-    ARG_UNUSED(status);
-    cs_ready_to_send = true;
-}
-
-static void on_csc_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
-{
-    ARG_UNUSED(conidx);
-
-    if (char_code == CSCP_CSCS_CSC_MEAS_CHAR) {
-        switch (cfg_val) {
-        case PRF_CLI_STOP_NTFIND:
-            LOG_INF("CSC: Client requested stop notifications");
-            cs_ready_to_send = false;
-            break;
-
-        case PRF_CLI_START_NTF:
-        case PRF_CLI_START_IND:
-            LOG_INF("CSC: Client requested start notifications");
-            cs_ready_to_send = true;
-            break;
-        }
-    }
-}
-
-/* ---------------- RSCPS callbacks ---------------- */
-
-static void on_rsc_meas_send_complete(uint16_t status)
-{
-    ARG_UNUSED(status);
-    rsc_ready_to_send = true;
-}
-
-static void on_rsc_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
-{
-    ARG_UNUSED(conidx);
-
-    switch (cfg_val)
-    {
-    case PRF_CLI_STOP_NTFIND:
-        LOG_INF("RSC: Client requested stop notifications");
-        rsc_ready_to_send = false;
-        break;
-
-    case PRF_CLI_START_NTF:
-    case PRF_CLI_START_IND:
-        LOG_INF("RSC: Client requested start notifications");
-        rsc_ready_to_send = true;
-        break;
-    }
-}
-
-static void on_rsc_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
-                               const union rscp_sc_ctnl_pt_req_val *p_value)
-{
-    ARG_UNUSED(conidx);
-    ARG_UNUSED(op_code);
-    ARG_UNUSED(p_value);
-}
-
-static void on_rsc_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
-{
-    ARG_UNUSED(conidx);
-    ARG_UNUSED(status);
-}
-
-static const rscps_cb_t rscps_cb = {
-    .cb_bond_data_upd = on_rsc_bond_data_upd,
-    .cb_meas_send_cmp = on_rsc_meas_send_complete,
-    .cb_ctnl_pt_req = on_rsc_ctnl_pt_req,
-    .cb_ctnl_pt_rsp_send_cmp = on_rsc_ctnl_pt_rsp_send_cmp,
-};
-
-
-static void on_csc_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
-                               const union cscp_sc_ctnl_pt_req_val *p_value)
-{
-    ARG_UNUSED(conidx);
-    ARG_UNUSED(op_code);
-    ARG_UNUSED(p_value);
-}
-
-static void on_csc_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
-{
-    ARG_UNUSED(conidx);
-    ARG_UNUSED(status);
-}
-
-static const cscps_cb_t cscps_cb = {
-    .cb_bond_data_upd = on_csc_bond_data_upd,
-    .cb_meas_send_cmp = on_csc_meas_send_complete,
-    .cb_ctnl_pt_req = on_csc_ctnl_pt_req,
-    .cb_ctnl_pt_rsp_send_cmp = on_csc_ctnl_pt_rsp_send_cmp,
-};
-
-/* ---------------- HTPT callbacks ---------------- */
-
-static void on_htpt_meas_send_complete(uint16_t status)
-{
-    ARG_UNUSED(status);
-    ht_ready_to_send = true;
-}
-
-static void on_htpt_bond_data_upd(uint8_t conidx, uint8_t cfg_val)
-{
-    switch (cfg_val)
-    {
-    case HTPT_CFG_STABLE_MEAS_IND:
-        LOG_INF("HTP: Client enabled indications");
-        ht_ready_to_send = true;
-        break;
-
-    case 0:
-        LOG_INF("HTP: Client disabled indications");
-        ht_ready_to_send = false;
-        break;
-
-    default:
-        LOG_INF("HTP: Unsupported cfg change");
-        break;
-    }
-}
-
-static void on_htpt_meas_intv_chg(uint8_t conidx, uint16_t interval)
-{
-    ARG_UNUSED(conidx);
-    ARG_UNUSED(interval);
-}
-
-static const htpt_cb_t htpt_cb = {
-    .cb_bond_data_upd = on_htpt_bond_data_upd,
-    .cb_temp_send_cmp = on_htpt_meas_send_complete,
-    .cb_meas_intv_chg_req = on_htpt_meas_intv_chg,
-};
-
-/* ---------------- GLPS callbacks ---------------- */
-
-static void on_glps_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
-{
-    if (glps_demo_mode) {
-        glps_ready_to_send = true;
-        return;
-    }
-
-    switch (evt_cfg) {
-    case PRF_CLI_STOP_NTFIND:
-        glps_ready_to_send = false;
-        break;
-    case PRF_CLI_START_NTF:
-        glps_ready_to_send = true;
-        break;
-    }
-}
-
- 
-static void on_glps_meas_send_complete(uint8_t conidx, uint16_t status)
-{
-    ARG_UNUSED(status);
-
-    LOG_INF("GLPS meas send complete: status=%d, nb_to_send=%d", status, glps_nb_to_send);
-    
-    /* Re-enable sending */
-    glps_ready_to_send = true;
-
-    if (glps_nb_to_send == 0) {
-        /* All records sent - send RACP response */
-        LOG_INF("GLPS: All records sent, total=%d", glps_total_to_send);
-        glps_racp_rsp_send(conidx, glps_last_racp_op, GLP_RSP_SUCCESS, glps_total_to_send);
-        
-        /* Reset for next transfer */
-        glps_send_idx = 0;
-        return;
-    }
-
-    /* Send next record */
-    LOG_INF("GLPS: Sending next record, idx=%d, seq=%d", 
-            glps_send_idx, glps_ext_meas[glps_send_idx].ext_seq_num);
-    
-    glps_meas_send(conidx,
-                   glps_ext_meas[glps_send_idx].ext_seq_num,
-                   &glps_ext_meas[glps_send_idx].p_meas,
-                   NULL);
-
-    glps_send_idx++;
-    glps_nb_to_send--;
-}  
-
-
-static void on_glps_racp_req(uint8_t conidx, uint8_t op_code,
-                            uint8_t func_operator,
-                            uint8_t filter_type,
-                            const union glp_filter *p_filter)
-{
-    ARG_UNUSED(func_operator);
-    ARG_UNUSED(filter_type);
-    ARG_UNUSED(p_filter);
-
-    LOG_INF("GLPS RACP req: op=%d, store_idx=%d, ready=%d, available=%d", 
-            op_code, glps_store_idx, glps_ready_to_send, glps_available_data);
-
-    if (glps_transfer_in_process) {
-        LOG_WRN("GLPS transfer already in process");
-        return;
-    }
-
-    glps_transfer_in_process = true;
-    glps_last_racp_op = op_code;
-
-    /* Save the number of records to send */
-    glps_nb_to_send = glps_store_idx;
-    glps_total_to_send = glps_store_idx;
-    
-    /* Check if we can send */
-    if (!glps_ready_to_send || !glps_available_data || (glps_nb_to_send == 0)) {
-        LOG_INF("GLPS: No records to send or not ready");
-        glps_racp_rsp_send(conidx, glps_last_racp_op, GLP_RSP_NO_RECS_FOUND, 0);
-        glps_transfer_in_process = false;
-        return;
-    }
-
-    /* Clear available flag */
-    glps_available_data = false;
-    
-    /* Send first record */
-    LOG_INF("GLPS: Sending first record, seq=%d", glps_ext_meas[glps_send_idx].ext_seq_num);
-    if (glps_send_idx >= GLPS_STORE_MAX) {
-    glps_transfer_in_process = false;
-    return;
-    }
-
-    glps_meas_send(conidx,
-                   glps_ext_meas[glps_send_idx].ext_seq_num,
-                   &glps_ext_meas[glps_send_idx].p_meas,
-                   NULL);
-
-    glps_send_idx++;
-    glps_nb_to_send--;
-}
-
-static void on_glps_racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
-{
-    ARG_UNUSED(conidx);
-    ARG_UNUSED(status);
-    LOG_INF("GLPS RACP response sent, status=%d", status);
-    glps_transfer_in_process = false;
-}
-
-static const glps_cb_t glps_cb = {
-    .cb_bond_data_upd = on_glps_bond_data_upd,
-    .cb_meas_send_cmp = on_glps_meas_send_complete,
-    .cb_racp_req = on_glps_racp_req,
-    .cb_racp_rsp_send_cmp = on_glps_racp_rsp_send_cmp,
-};
-
-
 /* ---------------- GAP callbacks wiring ---------------- */
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -636,6 +281,57 @@ static const blps_cb_t blps_cb = {
     .cb_meas_send_cmp = on_blps_meas_send_complete,
 };
 
+/* ---------------- Advertising data ---------------- */
+
+/*
+static uint16_t set_advertising_data(uint8_t actv_idx)
+{
+    uint16_t err;
+
+    // 16-bit Service UUIDs to advertise (HR + BP + Battery)
+    uint16_t svc_hr   = GATT_SVC_HEART_RATE;
+    uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;
+    uint16_t svc_batt = get_batt_id();
+
+    const uint8_t num_svc = 3;
+
+    const size_t device_name_len = sizeof(device_name) - 1;
+    const uint16_t adv_device_name = GATT_HANDLE_LEN + device_name_len;
+    const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc); 
+
+
+    // Keep adv small: Name + UUID list only (no manufacturer data) 
+    const uint16_t adv_len = adv_device_name + adv_uuid_svc;
+
+    co_buf_t *p_buf;
+    err = co_buf_alloc(&p_buf, 0, adv_len, 0);
+    __ASSERT(err == 0, "Buffer allocation failed");
+
+    uint8_t *p_data = co_buf_data(p_buf);
+
+    // Complete Local Name 
+    p_data[0] = device_name_len + 1;
+    p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
+    memcpy(p_data + 2, device_name, device_name_len);
+
+    // 16-bit UUID list
+    p_data += adv_device_name;
+    p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
+    p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
+
+    memcpy(p_data + 2, (void *)&svc_hr, sizeof(svc_hr));
+    memcpy(p_data + 4, (void *)&svc_bp, sizeof(svc_bp));
+    memcpy(p_data + 6, (void *)&svc_batt, sizeof(svc_batt));
+
+    err = gapm_le_set_adv_data(actv_idx, p_buf);
+    co_buf_release(p_buf);
+
+    if (err) {
+        LOG_ERR("Failed to set advertising data with error %u", err);
+    }
+
+    return err;
+} */
 
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
@@ -643,15 +339,9 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 
     uint16_t svc_hr   = GATT_SVC_HEART_RATE;      // 0x180D
     uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;  // 0x1810
-    uint16_t svc_csc  = GATT_SVC_CYCLING_SPEED_CADENCE; // 0x1816
-    uint16_t svc_rsc  = GATT_SVC_RUNNING_SPEED_CADENCE;  // 0x1814
-    uint16_t svc_htp  = GATT_SVC_HEALTH_THERMOM; 
-    uint16_t svc_glps = GATT_SVC_GLUCOSE; // 0x1808
-    uint16_t svc_cgms = GATT_SVC_CONTINUOUS_GLUCOSE_MONITORING;
-    uint16_t svc_lls  = GATT_SVC_LINK_LOSS; 
     uint16_t svc_batt = get_batt_id();            // 0x180F
 
-    const uint8_t num_svc = 9;
+    const uint8_t num_svc = 3;
 
     const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
     const uint16_t adv_len = adv_uuid_svc;
@@ -666,15 +356,9 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
     p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
     p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 
-    memcpy(p_data + 2, &svc_hr,   2);
-    memcpy(p_data + 4, &svc_bp,   2);
-    memcpy(p_data + 6, &svc_csc,  2);
-    memcpy(p_data + 8, &svc_rsc, 2);
-    memcpy(p_data + 10, &svc_htp, 2);
-    memcpy(p_data + 12, &svc_glps, 2);
-    memcpy(p_data + 14, &svc_cgms, 2);
-    memcpy(p_data + 16, &svc_lls,  2);
-    memcpy(p_data + 18, &svc_batt, 2);
+    memcpy(p_data + 2, &svc_hr,   sizeof(svc_hr));
+    memcpy(p_data + 4, &svc_bp,   sizeof(svc_bp));
+    memcpy(p_data + 6, &svc_batt, sizeof(svc_batt));
 
     err = gapm_le_set_adv_data(actv_idx, p_buf);
     co_buf_release(p_buf);
@@ -682,6 +366,21 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
     return err;
 }
 
+/*static uint16_t set_scan_data(uint8_t actv_idx)
+{
+    co_buf_t *p_buf;
+    uint16_t err = co_buf_alloc(&p_buf, 0, 0, 0);
+    __ASSERT(err == 0, "Buffer allocation failed");
+
+    err = gapm_le_set_scan_response_data(actv_idx, p_buf);
+    co_buf_release(p_buf);
+
+    if (err) {
+        LOG_ERR("Failed to set scan data with error %u", err);
+    }
+
+    return err;
+} */
 
 static uint16_t set_scan_data(uint8_t actv_idx)
 {
@@ -789,7 +488,7 @@ static uint16_t create_advertising(void)
 
 /* ---------------- Add profiles ---------------- */
 
-static void bundle_server_configure(void)
+static void server_configure(void)
 {
     uint16_t err;
 
@@ -817,74 +516,6 @@ static void bundle_server_configure(void)
     if (err) {
         LOG_ERR("Error %u adding BLPS profile", err);
     }
-
-    /* CSCPS */
-    uint16_t start_hdl_csc = 0;
-
-    struct cscps_db_cfg cscps_cfg = {
-        .csc_feature = CSCP_FEAT_CRANK_REV_DATA_SUPP_BIT,
-        .sensor_loc = CSCP_LOC_FRONT_WHEEL,
-        .sensor_loc_supp = 0x01,
-    };
-
-    err = prf_add_profile(TASK_ID_CSCPS, 0, 0, &cscps_cfg, &cscps_cb, &start_hdl_csc);
-    if (err) {
-        LOG_ERR("Error %u adding CSCPS profile", err);
-    }
-
-    /* RSCPS */
-    uint16_t start_hdl_rsc = 0;
-
-    struct rscps_db_cfg rsc_cfg = {
-        .rsc_feature = RSCP_FEAT_INST_STRIDE_LEN_SUPP_BIT |
-                       RSCP_FEAT_WALK_RUN_STATUS_SUPP_BIT |
-                       RSCP_FEAT_TOTAL_DST_MEAS_SUPP_BIT,
-        .sensor_loc_supp = 0x01,
-        .sensor_loc = RSCP_LOC_CHEST,
-    };
-
-    err = prf_add_profile(TASK_ID_RSCPS, 0, 0, &rsc_cfg, &rscps_cb, &start_hdl_rsc);
-    if (err) {
-        LOG_ERR("Error %u adding RSCPS profile", err);
-    }
-
-    /* HTPT */
-    uint16_t start_hdl_ht = 0;
-
-    struct htpt_db_cfg ht_cfg = {
-        .features = HTPT_TEMP_TYPE_CHAR_SUP_BIT,
-        .temp_type = HTP_TYPE_BODY,
-    };
-
-    err = prf_add_profile(TASK_ID_HTPT, 0, 0, &ht_cfg, &htpt_cb, &start_hdl_ht);
-    if (err) {
-        LOG_ERR("Error %u adding HTPT profile", err);
-    }
-
-    /* GLPS */
-    uint16_t start_hdl_glps = 0;
-    struct glps_db_cfg glps_cfg = {
-    .meas_ctx_supported = false,
-    .features = GLP_FET_LOW_BAT_DET_DUR_MEAS_SUPP_BIT |
-                GLP_FET_TIME_FLT_SUPP_BIT
-    };
-
-    err = prf_add_profile(
-    TASK_ID_GLPS,
-    0, //initially it was GAP_SEC1_NOAUTH_PAIR_ENC
-    0,
-    &glps_cfg,
-    &glps_cb,
-    &start_hdl_glps
-    );
-
-    if (err) {
-        LOG_ERR("Error %u adding GLPS profile", err);
-    }
-
-    //CGMS server
-    cgms_server_configure();
-
 }
 
 void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
@@ -953,43 +584,6 @@ static void send_bp_measurement(uint16_t value)
     }
 }
 
-static void send_csc_measurement(void)
-{
-    cs_evt_time += 2000;  // dummy event time advance
-
-    cs_meas.cumul_wheel_rev += 6;
-    cs_meas.last_wheel_evt_time = cs_evt_time;
-
-    cs_meas.cumul_crank_rev += 3;
-    cs_meas.last_crank_evt_time = cs_evt_time;
-
-    uint16_t err = cscps_meas_send(UINT32_MAX, 0, &cs_meas);
-    if (err) {
-        LOG_ERR("Error %u sending CSCPS measurement", err);
-    }
-}
-
-static void send_rsc_measurement(void)
-{
-    uint16_t err;
-
-    rscp_rsc_meas_t meas = {
-        .flags = RSCP_MEAS_ALL_PRESENT,
-        .inst_speed = 0x1C2 - rsc_current_value,
-        .inst_cad = 0xA0 - rsc_current_value,
-        .inst_stride_len = 0x96 - rsc_current_value,
-        .total_dist = rsc_total_distance,
-    };
-
-    rsc_total_distance += (meas.inst_speed * 0.0039111 * 10);
-
-    err = rscps_meas_send(UINT32_MAX, &meas);
-
-    if (err) {
-        LOG_ERR("RSC send error %u", err);
-    }
-}
-
 static void update_sensor_value(void)
 {
     /* Generating dummy values between 70 and 130 */
@@ -998,45 +592,6 @@ static void update_sensor_value(void)
     } else {
         current_value++;
     }
-}
-
-static void update_rsc_value(void)
-{
-    if (rsc_current_value >= 4)
-        rsc_current_value = 1;
-    else
-        rsc_current_value++;
-}
-
-static void update_ht_temp(void)
-{
-    ht_temp_value += ht_direction;
-
-    if (ht_temp_value == 40 || ht_temp_value == 35)
-        ht_direction = -ht_direction;
-}
-
-static void send_htpt_measurement(void)
-{
-    uint16_t err;
-
-    htp_temp_meas_t meas = {
-        .flags = HTP_UNIT_CELCIUS,
-        .temp = ht_temp_value,
-    };
-
-    err = htpt_temp_send(&meas, HTP_TEMP_STABLE);
-
-    if (err) {
-        LOG_ERR("HTP send error %u", err);
-    }
-}
-
-static prf_sfloat glps_convert_to_sfloat(float glucose)
-{
-    unsigned short mantissa = ((int)glucose) & 0x0FFF;
-    unsigned short exponent = 0b1011;
-    return (exponent << 12) | mantissa;
 }
 
 static void combined_process(void)
@@ -1060,53 +615,11 @@ static void combined_process(void)
         send_bp_measurement(current_value);
         bp_ready_to_send = false;
     }
-
-    /* CSCPS gated by CCCD enable + send complete */
-    if (cs_ready_to_send) {
-        send_csc_measurement();
-        cs_ready_to_send = false;
-    }
-
-    /* RSCPS gated by CCCD enable + send complete */
-    update_rsc_value();
-    if (rsc_ready_to_send) {
-        send_rsc_measurement();
-        rsc_ready_to_send = false;
-    }
-
-    /* HTPT gated by CCCD enable + send complete */
-    update_ht_temp();
-    if (ht_ready_to_send) {
-        send_htpt_measurement();
-        ht_ready_to_send = false;
-    }
-
-    //* DEMO GLPS PUSH */
-    static uint32_t glps_push_timer = 0;
-
-    glps_push_timer++;
-    if (glps_demo_mode && ctrl.connected && glps_ready_to_send) {
-    if (glps_push_timer >= 2) {  // every ~2s
-        glps_push_timer = 0;
-
-        glp_meas_t meas = {
-            .base_time = *(prf_date_time_t *)get_device_time(),
-            .concentration = glps_convert_to_sfloat(90 + (glps_seq_num % 20)),
-            .type = GLP_TYPE_CAPILLARY_WHOLE_BLOOD,
-            .location = GLP_LOC_FINGER,
-            .flags = GLP_MEAS_GL_CTR_TYPE_AND_SPL_LOC_PRES_BIT,
-        };
-
-        glps_meas_send(0, glps_seq_num++, &meas, NULL);
-    }
-}
 }
 
 int main(void)
 {
     uint16_t err;
-
-    start_rtc_emulator();
 
     /* Start up bluetooth host stack */
     alif_ble_enable(NULL);
@@ -1116,12 +629,7 @@ int main(void)
         return -EADV;
     }
 
-   gapm_callbacks_t merged = gapm_cbs;
-    merged = prxp_append_cbs(&merged);
-    merged = cgms_append_cbs(&merged);
-
-
-    err = gapm_configure(0, &gapm_cfg, &merged, on_gapm_process_complete);
+    err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
     if (err) {
         LOG_ERR("gapm_configure error %u", err);
         return -1;
@@ -1131,15 +639,14 @@ int main(void)
     k_sem_take(&init_sem, K_FOREVER);
     LOG_DBG("Init complete!\n");
 
-    /* Add both profiles */
-    bundle_server_configure();
-
     /* Share connection info */
     service_conn(&ctrl);
-    service_conn_cgms(&ctrl);
 
     /* Adding battery service */
     config_battery_service();
+
+    /* Add both profiles */
+    server_configure();
 
     /* Create an advertising activity */
     create_advertising();
@@ -1148,11 +655,5 @@ int main(void)
         k_sleep(K_SECONDS(1));
         combined_process();
         battery_process();
-        ias_process();
-
-        if(ctrl.connected && cgms_is_ready())
-        {
-            cgms_process(current_value);
-        }
-}
+    }
 }

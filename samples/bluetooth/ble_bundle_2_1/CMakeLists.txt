@@ -19,9 +19,6 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
     src/main.c
-    src/rtc_emulator.c
-    src/prxp_rom_1_2.c
-    src/cgms_rom_1_2.c
     ${COMMON_SRCS}
 )
 
