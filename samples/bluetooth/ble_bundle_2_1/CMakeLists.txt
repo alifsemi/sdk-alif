@@ -19,6 +19,7 @@ target_include_directories(app PRIVATE
 
 target_sources(app PRIVATE
     src/main.c
+    src/prxp_rom_1_2.c
     ${COMMON_SRCS}
 )
 

@@ -1,3 +1,4 @@
+
 /* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
@@ -30,7 +31,7 @@
 #include "batt_svc.h"
 
 #include "prf.h"
-
+#include "bass.h"
 /* HRPS */
 #include "hrp_common.h"
 #include "hrps.h"
@@ -44,6 +45,23 @@
 //HTPT
 #include "htpt.h"
 #include "htpt_msg.h"
+
+//GLPS
+#include "glps.h"
+#include "glps_msg.h"
+
+//CSCPS
+#include "cscp_common.h"
+#include "cscps.h"
+#include "cscps_msg.h"
+
+//RSCPS
+#include "rscp_common.h"
+#include "rscps.h"
+#include "rscps_msg.h"
+
+//PRXP
+#include "prxp_app.h"
 
 enum hrps_feat_bf {
     HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS = 0,
@@ -76,7 +94,10 @@ static uint16_t current_value = 70;
 static bool hr_ready_to_send;
 static bool bp_ready_to_send;
 static bool ht_ready_to_send;
-
+static bool gl_ready_to_send;
+static bool gl_sent_once;
+static bool cs_ready_to_send;
+static bool rsc_ready_to_send;
 
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
@@ -113,6 +134,14 @@ static const char device_name[] = DEVICE_NAME;
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
 
+
+static cscp_csc_meas_t cs_meas = {
+    .flags = CSCP_MEAS_CRANK_REV_DATA_PRESENT_BIT,
+};
+
+static uint16_t cs_evt_time = 0;
+static uint32_t rsc_total_distance = 0;
+static uint16_t rsc_current_value = 1;
 static uint16_t start_le_adv(uint8_t actv_idx)
 {
     uint16_t err;
@@ -168,12 +197,18 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
         LOG_DBG("Restarting advertising");
     }
 
+    prxp_disc_notify(reason);
     ctrl.connected = false;
 
     /* Reset both service gates; phone must re-enable CCCDs after reconnect */
     hr_ready_to_send = false;
     bp_ready_to_send = false;
     ht_ready_to_send = false;
+    gl_ready_to_send = false;
+    gl_sent_once = false;
+    cs_ready_to_send = false;
+    rsc_ready_to_send = false;
+
 
 }
 
@@ -293,7 +328,178 @@ static const htpt_cb_t htpt_cb = {
     .cb_meas_intv_chg_req = on_htpt_meas_intv_chg,
 };
 
+//GLPS callbacks
+static void on_glps_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
+{
+    ARG_UNUSED(conidx);
 
+    if (evt_cfg == PRF_CLI_START_NTF) {
+        gl_ready_to_send = true;
+        gl_sent_once = false;
+    } else {
+        gl_ready_to_send = false;
+    }
+}
+static void on_glps_meas_send_complete(uint8_t conidx, uint16_t status)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(status);
+}
+
+static void on_glps_racp_req(uint8_t conidx, uint8_t op_code,
+                             uint8_t func_operator,
+                             uint8_t filter_type,
+                             const union glp_filter *p_filter)
+{
+    ARG_UNUSED(func_operator);
+    ARG_UNUSED(filter_type);
+    ARG_UNUSED(p_filter);
+
+    // Dummy response: no records
+    glps_racp_rsp_send(conidx, op_code, GLP_RSP_NO_RECS_FOUND, 0);
+}
+
+static void on_glps_racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(status);
+}
+
+static const glps_cb_t glps_cb = {
+    .cb_bond_data_upd = on_glps_bond_data_upd,
+    .cb_meas_send_cmp = on_glps_meas_send_complete,
+    .cb_racp_req = on_glps_racp_req,
+    .cb_racp_rsp_send_cmp = on_glps_racp_rsp_send_cmp,
+};
+
+
+
+static prf_sfloat glucose_to_sfloat(float mg_dl)
+{
+    uint16_t mantissa = ((uint16_t)mg_dl) & 0x0FFF;
+    uint16_t exponent = 0x0; // simple
+    return (exponent << 12) | mantissa;
+}
+
+static void send_glucose_once(void)
+{
+    glp_meas_t meas = {
+        .flags = GLP_MEAS_GL_CTR_TYPE_AND_SPL_LOC_PRES_BIT,
+        .concentration = glucose_to_sfloat(95.0f),
+        .type = GLP_TYPE_CAPILLARY_WHOLE_BLOOD,
+        .location = GLP_LOC_FINGER,
+        .base_time = {
+            .year = 2024,
+            .month = 4,
+            .day = 1,
+            .hour = 12,
+            .min = 0,
+            .sec = 0,
+        },
+    };
+
+    uint16_t err = glps_meas_send(0, 1, &meas, NULL);
+    if (err) {
+        LOG_ERR("GLPS send error %u", err);
+    }
+}
+
+/* ---------------- CSCPS callbacks ---------------- */
+
+static void on_csc_meas_send_complete(uint16_t status)
+{
+    ARG_UNUSED(status);
+    cs_ready_to_send = true;
+}
+
+static void on_csc_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
+{
+    ARG_UNUSED(conidx);
+
+    if (char_code == CSCP_CSCS_CSC_MEAS_CHAR) {
+        switch (cfg_val) {
+        case PRF_CLI_STOP_NTFIND:
+            LOG_INF("CSC: Client requested stop notifications");
+            cs_ready_to_send = false;
+            break;
+
+        case PRF_CLI_START_NTF:
+        case PRF_CLI_START_IND:
+            LOG_INF("CSC: Client requested start notifications");
+            cs_ready_to_send = true;
+            break;
+        }
+    }
+}
+
+static void on_csc_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
+                               const union cscp_sc_ctnl_pt_req_val *p_value)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(op_code);
+    ARG_UNUSED(p_value);
+}
+
+static void on_csc_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(status);
+}
+
+static const cscps_cb_t cscps_cb = {
+    .cb_bond_data_upd = on_csc_bond_data_upd,
+    .cb_meas_send_cmp = on_csc_meas_send_complete,
+    .cb_ctnl_pt_req = on_csc_ctnl_pt_req,
+    .cb_ctnl_pt_rsp_send_cmp = on_csc_ctnl_pt_rsp_send_cmp,
+};
+
+/* ---------------- RSCPS callbacks ---------------- */
+
+static void on_rsc_meas_send_complete(uint16_t status)
+{
+    ARG_UNUSED(status);
+    rsc_ready_to_send = true;
+}
+
+static void on_rsc_bond_data_upd(uint8_t conidx, uint8_t char_code, uint16_t cfg_val)
+{
+    ARG_UNUSED(conidx);
+
+    switch (cfg_val)
+    {
+    case PRF_CLI_STOP_NTFIND:
+        LOG_INF("RSC: Client requested stop notifications");
+        rsc_ready_to_send = false;
+        break;
+
+    case PRF_CLI_START_NTF:
+    case PRF_CLI_START_IND:
+        LOG_INF("RSC: Client requested start notifications");
+        rsc_ready_to_send = true;
+        break;
+    }
+}
+
+static void on_rsc_ctnl_pt_req(uint8_t conidx, uint8_t op_code,
+                               const union rscp_sc_ctnl_pt_req_val *p_value)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(op_code);
+    ARG_UNUSED(p_value);
+}
+
+static void on_rsc_ctnl_pt_rsp_send_cmp(uint8_t conidx, uint16_t status)
+{
+    ARG_UNUSED(conidx);
+    ARG_UNUSED(status);
+}
+
+static const rscps_cb_t rscps_cb = {
+    .cb_bond_data_upd = on_rsc_bond_data_upd,
+    .cb_meas_send_cmp = on_rsc_meas_send_complete,
+    .cb_ctnl_pt_req = on_rsc_ctnl_pt_req,
+    .cb_ctnl_pt_rsp_send_cmp = on_rsc_ctnl_pt_rsp_send_cmp,
+};
 /* ---------------- GAP callbacks wiring ---------------- */
 
 static const gapc_connection_req_cb_t gapc_con_cbs = {
@@ -352,9 +558,16 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
     uint16_t svc_hr   = GATT_SVC_HEART_RATE;      // 0x180D
     uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;  // 0x1810
     uint16_t svc_htp  = GATT_SVC_HEALTH_THERMOM;
+    uint16_t svc_gl = GATT_SVC_GLUCOSE; // 0x1808
+    uint16_t svc_csc  = GATT_SVC_CYCLING_SPEED_CADENCE; // 0x1816
+    uint16_t svc_rsc  = GATT_SVC_RUNNING_SPEED_CADENCE;  // 0x1814
+    uint16_t svc_lls = GATT_SVC_LINK_LOSS;        // 0x1803
+    uint16_t svc_ias = GATT_SVC_IMMEDIATE_ALERT; // 0x1802
+    uint16_t svc_tps = GATT_SVC_TX_POWER;        // 0x1804
+
     uint16_t svc_batt = get_batt_id();            // 0x180F
 
-    const uint8_t num_svc = 4;
+    const uint8_t num_svc = 10;
 
     const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
     const uint16_t adv_len = adv_uuid_svc;
@@ -371,8 +584,15 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 
     memcpy(p_data + 2, &svc_hr,   sizeof(svc_hr));
     memcpy(p_data + 4, &svc_bp,   sizeof(svc_bp));
-    memcpy(p_data + 6, &svc_htp, 2);
-    memcpy(p_data + 8, &svc_batt, sizeof(svc_batt));
+    memcpy(p_data + 6, &svc_htp, sizeof(svc_htp));
+    memcpy(p_data + 8, &svc_gl, sizeof(svc_gl));
+    memcpy(p_data + 10, &svc_csc,  sizeof(svc_csc));
+    memcpy(p_data + 12, &svc_rsc, sizeof(svc_rsc));
+    memcpy(p_data + 14, &svc_lls, sizeof(svc_lls));
+    memcpy(p_data + 16, &svc_ias, sizeof(svc_ias));
+    memcpy(p_data + 18, &svc_tps, sizeof(svc_tps));
+
+    memcpy(p_data + 20, &svc_batt, sizeof(svc_batt));
 
     err = gapm_le_set_adv_data(actv_idx, p_buf);
     co_buf_release(p_buf);
@@ -486,7 +706,7 @@ static uint16_t create_advertising(void)
 
 /* ---------------- Add profiles ---------------- */
 
-static void server_configure(void)
+static void bundle_server_configure(void)
 {
     uint16_t err;
 
@@ -526,6 +746,51 @@ static void server_configure(void)
     LOG_ERR("Error %u adding HTPT profile", err);
     }
 
+
+    //GLPS
+    uint16_t start_hdl_gl = 0;
+    struct glps_db_cfg glps_cfg = {0};
+    err = prf_add_profile(
+    TASK_ID_GLPS,
+    0,      // NO security
+    0,
+    &glps_cfg,
+    &glps_cb,
+    &start_hdl_gl);
+
+    if (err) {
+    LOG_ERR("Error %u adding GLPS profile", err);
+    }
+
+    /* CSCPS */
+    uint16_t start_hdl_csc = 0;
+
+    struct cscps_db_cfg cscps_cfg = {
+        .csc_feature = CSCP_FEAT_CRANK_REV_DATA_SUPP_BIT,
+        .sensor_loc = CSCP_LOC_FRONT_WHEEL,
+        .sensor_loc_supp = 0x01,
+    };
+
+    err = prf_add_profile(TASK_ID_CSCPS, 0, 0, &cscps_cfg, &cscps_cb, &start_hdl_csc);
+    if (err) {
+        LOG_ERR("Error %u adding CSCPS profile", err);
+    }
+
+     /* RSCPS */
+    uint16_t start_hdl_rsc = 0;
+
+    struct rscps_db_cfg rsc_cfg = {
+        .rsc_feature = RSCP_FEAT_INST_STRIDE_LEN_SUPP_BIT |
+                       RSCP_FEAT_WALK_RUN_STATUS_SUPP_BIT |
+                       RSCP_FEAT_TOTAL_DST_MEAS_SUPP_BIT,
+        .sensor_loc_supp = 0x01,
+        .sensor_loc = RSCP_LOC_CHEST,
+    };
+
+    err = prf_add_profile(TASK_ID_RSCPS, 0, 0, &rsc_cfg, &rscps_cb, &start_hdl_rsc);
+    if (err) {
+        LOG_ERR("Error %u adding RSCPS profile", err);
+    }
 }
 
 void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
@@ -538,7 +803,6 @@ void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
     LOG_DBG("gapm process completed successfully");
     k_sem_give(&init_sem);
 }
-
 /* ---------------- Measurement senders ---------------- */
 
 static void send_hr_measurement(uint16_t value)
@@ -628,6 +892,50 @@ static void send_htpt_measurement(void)
     }
 }
 
+static void send_csc_measurement(void)
+{
+    cs_evt_time += 2000;  // dummy event time advance
+
+    cs_meas.cumul_wheel_rev += 6;
+    cs_meas.last_wheel_evt_time = cs_evt_time;
+
+    cs_meas.cumul_crank_rev += 3;
+    cs_meas.last_crank_evt_time = cs_evt_time;
+
+    uint16_t err = cscps_meas_send(UINT32_MAX, 0, &cs_meas);
+    if (err) {
+        LOG_ERR("Error %u sending CSCPS measurement", err);
+    }
+}
+
+static void send_rsc_measurement(void)
+{
+    uint16_t err;
+
+    rscp_rsc_meas_t meas = {
+        .flags = RSCP_MEAS_ALL_PRESENT,
+        .inst_speed = 0x1C2 - rsc_current_value,
+        .inst_cad = 0xA0 - rsc_current_value,
+        .inst_stride_len = 0x96 - rsc_current_value,
+        .total_dist = rsc_total_distance,
+    };
+
+    rsc_total_distance += (meas.inst_speed * 0.0039111 * 10);
+
+    err = rscps_meas_send(UINT32_MAX, &meas);
+
+    if (err) {
+        LOG_ERR("RSC send error %u", err);
+    }
+}
+
+ static void update_rsc_value(void)
+    {
+    if (rsc_current_value >= 4)
+        rsc_current_value = 1;
+    else
+        rsc_current_value++;
+    }
 
 static void combined_process(void)
 {
@@ -657,6 +965,23 @@ static void combined_process(void)
     ht_ready_to_send = false;
     }
 
+    if (gl_ready_to_send && !gl_sent_once) {
+    send_glucose_once();
+    gl_sent_once = true;
+    }
+
+    /* CSCPS gated by CCCD enable + send complete */
+    if (cs_ready_to_send) {
+        send_csc_measurement();
+        cs_ready_to_send = false;
+    }
+
+    /* RSCPS gated by CCCD enable + send complete */
+    update_rsc_value();
+    if (rsc_ready_to_send) {
+        send_rsc_measurement();
+        rsc_ready_to_send = false;
+    }
 }
 
 int main(void)
@@ -671,7 +996,10 @@ int main(void)
         return -EADV;
     }
 
-    err = gapm_configure(0, &gapm_cfg, &gapm_cbs, on_gapm_process_complete);
+    gapm_callbacks_t merged = gapm_cbs;
+    merged = prxp_append_cbs(&merged);
+
+    err = gapm_configure(0, &gapm_cfg, &merged, on_gapm_process_complete);
     if (err) {
         LOG_ERR("gapm_configure error %u", err);
         return -1;
@@ -688,7 +1016,8 @@ int main(void)
     config_battery_service();
 
     /* Add both profiles */
-    server_configure();
+    bundle_server_configure();
+    prxp_server_configure();
 
     /* Create an advertising activity */
     create_advertising();
@@ -697,5 +1026,6 @@ int main(void)
         k_sleep(K_SECONDS(1));
         combined_process();
         battery_process();
+        ias_process();
     }
 }
