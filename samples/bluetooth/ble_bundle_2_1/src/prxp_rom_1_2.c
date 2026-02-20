@@ -24,12 +24,12 @@ LOG_MODULE_REGISTER(prxp, LOG_LEVEL_DBG);
 
 void ll_notify(void);
 void ias_reset(void);
-static bool tx_read_cmp;
+//static bool tx_read_cmp;
 
 /* profile callbacks */
 static uint8_t ll_level;
 static uint8_t iass_level;
-static int8_t tx_pwr_lvl;
+//static int8_t tx_pwr_lvl;
 
 void ll_notify(void)
 {
@@ -77,7 +77,7 @@ static const llss_cbs_t llss_cb = {
 	.cb_set_level_req = on_set_level_req,
 };
 
-static void on_level(uint8_t conidx, co_buf_t *p_buf)
+/* static void on_level(uint8_t conidx, co_buf_t *p_buf)
 {
 	uint8_t level = *co_buf_data(p_buf);
 
@@ -86,7 +86,7 @@ static void on_level(uint8_t conidx, co_buf_t *p_buf)
 	} else {
 		LOG_ERR("Invalid Immediate Alert Level");
 	}
-}
+} */
 
 /* static const iass_cbs_t iass_cb = {
 	.cb_level = on_level,
@@ -94,7 +94,7 @@ static void on_level(uint8_t conidx, co_buf_t *p_buf)
 
 uint16_t temp_token;
 
-static void cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status, uint8_t phy,
+/* static void cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status, uint8_t phy,
 		   int8_t power_level, int8_t max_power_level)
 {
 	tx_pwr_lvl = power_level;
@@ -105,16 +105,15 @@ static void cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status, uint8_t p
 	*co_buf_data(p_buf) = (uint8_t)tx_pwr_lvl;
 	tpss_level_cfm(conidx, temp_token, p_buf);
 	co_buf_release(p_buf);
-	/* Show Tx Power value in signed integer format */
 	LOG_INF("Tx Power level 1M PHY sent:: %" PRId8 "\n", tx_pwr_lvl);
 	temp_token = 0;
-}
+} */
 
-static void on_level_req(uint8_t conidx, uint16_t token)
+/*static void on_level_req(uint8_t conidx, uint16_t token)
 {
 	temp_token = token;
 	gapc_le_get_local_tx_power_level(conidx, 0, GAPC_PHY_PWR_1MBPS_VALUE, cmp_cb);
-}
+} */
 
 /* static const tpss_cbs_t tpss_cb = {
 	.cb_level_req = on_level_req,
