@@ -16,6 +16,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/gpio.h>
 
 #include "alif_ble.h"
 #include "gapm.h"
@@ -63,6 +64,17 @@
 //PRXP
 #include "prxp_app.h"
 
+//Blinky
+#include "gatt_db.h"
+#include "gatt_srv.h"
+#include "ke_mem.h"
+
+#define LED0_NODE DT_ALIAS(led0)
+#define LED2_NODE DT_ALIAS(led2)
+
+static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
+
 enum hrps_feat_bf {
     HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS = 0,
     HRPS_BODY_SENSOR_LOC_CHAR_SUP_BIT = CO_BIT(HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS),
@@ -99,11 +111,52 @@ static bool gl_sent_once;
 static bool cs_ready_to_send;
 static bool rsc_ready_to_send;
 
+
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
+/* ---------- BLINKY (Custom GATT Service) ---------- */
+
+
+/* 128-bit UUIDs */
+#define BLINKY_UUID_SVC   {0x23,0xD1,0xBC,0xEA,0x5F,0x78,0x23,0x15,0xDE,0xEF,0x12,0x12,0x23,0x15,0x00,0x00}
+#define BLINKY_UUID_CHAR  {0x23,0xD1,0xBC,0xEA,0x5F,0x78,0x23,0x15,0xDE,0xEF,0x12,0x12,0x24,0x15,0x00,0x00}
+
+static const uint8_t blinky_svc_uuid128[16] = BLINKY_UUID_SVC;
+enum {
+    BLINKY_IDX_SVC,
+    BLINKY_IDX_CHAR_DECL,
+    BLINKY_IDX_CHAR_VAL,
+    BLINKY_IDX_CHAR_CCCD,
+    BLINKY_IDX_NB,
+};
+
+struct blinky_env {
+    uint16_t start_hdl;
+    uint8_t  user_lid;
+    uint8_t  value;
+    uint16_t cccd;
+    bool     ntf_ongoing;
+};
+
+static struct blinky_env blinky;
+static bool blinky_active = false;
+
+static const gatt_att_desc_t blinky_att_db[BLINKY_IDX_NB] = {
+    [BLINKY_IDX_SVC] =
+        { ATT_128_PRIMARY_SERVICE, ATT_UUID(16) | PROP(RD), 0 },
+
+    [BLINKY_IDX_CHAR_DECL] =
+        { ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0 },
+
+    [BLINKY_IDX_CHAR_VAL] =
+        { BLINKY_UUID_CHAR, ATT_UUID(128) | PROP(RD) | PROP(WR) | PROP(N), OPT(NO_OFFSET) },
+
+    [BLINKY_IDX_CHAR_CCCD] =
+        { ATT_128_CLIENT_CHAR_CFG, ATT_UUID(16) | PROP(RD) | PROP(WR), 0 },
+};
 /**
  * Bluetooth stack configuration
  */
@@ -199,6 +252,8 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 
     prxp_disc_notify(reason);
     ctrl.connected = false;
+    blinky_active = false;
+    gpio_pin_set_dt(&led0, 0);
 
     /* Reset both service gates; phone must re-enable CCCDs after reconnect */
     hr_ready_to_send = false;
@@ -555,75 +610,75 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 {
     uint16_t err;
 
-    uint16_t svc_hr   = GATT_SVC_HEART_RATE;      // 0x180D
-    uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;  // 0x1810
+    uint16_t svc_hr   = GATT_SVC_HEART_RATE;
+    uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;
     uint16_t svc_htp  = GATT_SVC_HEALTH_THERMOM;
-    uint16_t svc_gl = GATT_SVC_GLUCOSE; // 0x1808
-    uint16_t svc_csc  = GATT_SVC_CYCLING_SPEED_CADENCE; // 0x1816
-    uint16_t svc_rsc  = GATT_SVC_RUNNING_SPEED_CADENCE;  // 0x1814
-    uint16_t svc_lls = GATT_SVC_LINK_LOSS;        // 0x1803
-    uint16_t svc_ias = GATT_SVC_IMMEDIATE_ALERT; // 0x1802
-    uint16_t svc_tps = GATT_SVC_TX_POWER;        // 0x1804
-
-    uint16_t svc_batt = get_batt_id();            // 0x180F
+    uint16_t svc_gl   = GATT_SVC_GLUCOSE;
+    uint16_t svc_csc  = GATT_SVC_CYCLING_SPEED_CADENCE;
+    uint16_t svc_rsc  = GATT_SVC_RUNNING_SPEED_CADENCE;
+    uint16_t svc_lls  = GATT_SVC_LINK_LOSS;
+    uint16_t svc_ias  = GATT_SVC_IMMEDIATE_ALERT;
+    uint16_t svc_tps  = GATT_SVC_TX_POWER;
+    uint16_t svc_batt = get_batt_id();
 
     const uint8_t num_svc = 10;
-
-    const uint16_t adv_uuid_svc = GATT_HANDLE_LEN + (GATT_UUID_16_LEN * num_svc);
-    const uint16_t adv_len = adv_uuid_svc;
+    const uint16_t adv_len = 1 + 1 + (num_svc * 2);
 
     co_buf_t *p_buf;
     err = co_buf_alloc(&p_buf, 0, adv_len, 0);
-	 __ASSERT(err == 0, "ADV buffer alloc failed");
+    __ASSERT(err == 0, "ADV buffer alloc failed");
 
-    uint8_t *p_data = co_buf_data(p_buf);
+    uint8_t *p = co_buf_data(p_buf);
 
-    // Length of UUID list
-    p_data[0] = (GATT_UUID_16_LEN * num_svc) + 1;
-    p_data[1] = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
+    *p++ = (num_svc * 2) + 1;
+    *p++ = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
 
-    memcpy(p_data + 2, &svc_hr,   sizeof(svc_hr));
-    memcpy(p_data + 4, &svc_bp,   sizeof(svc_bp));
-    memcpy(p_data + 6, &svc_htp, sizeof(svc_htp));
-    memcpy(p_data + 8, &svc_gl, sizeof(svc_gl));
-    memcpy(p_data + 10, &svc_csc,  sizeof(svc_csc));
-    memcpy(p_data + 12, &svc_rsc, sizeof(svc_rsc));
-    memcpy(p_data + 14, &svc_lls, sizeof(svc_lls));
-    memcpy(p_data + 16, &svc_ias, sizeof(svc_ias));
-    memcpy(p_data + 18, &svc_tps, sizeof(svc_tps));
-
-    memcpy(p_data + 20, &svc_batt, sizeof(svc_batt));
+    memcpy(p, &svc_hr,   2); p += 2;
+    memcpy(p, &svc_bp,   2); p += 2;
+    memcpy(p, &svc_htp,  2); p += 2;
+    memcpy(p, &svc_gl,   2); p += 2;
+    memcpy(p, &svc_csc,  2); p += 2;
+    memcpy(p, &svc_rsc,  2); p += 2;
+    memcpy(p, &svc_lls,  2); p += 2;
+    memcpy(p, &svc_ias,  2); p += 2;
+    memcpy(p, &svc_tps,  2); p += 2;
+    memcpy(p, &svc_batt, 2);
 
     err = gapm_le_set_adv_data(actv_idx, p_buf);
     co_buf_release(p_buf);
-
     return err;
 }
 
 static uint16_t set_scan_data(uint8_t actv_idx)
 {
-    co_buf_t *p_buf;
     uint16_t err;
+    co_buf_t *p_buf;
 
     const size_t name_len = sizeof(device_name) - 1;
-    const uint16_t scan_len = GATT_HANDLE_LEN + name_len;
+    const uint16_t scan_len =
+        1 + 1 + name_len +        // device name
+        1 + 1 + 16;               // 128-bit UUID
 
     err = co_buf_alloc(&p_buf, 0, scan_len, 0);
     __ASSERT(err == 0, "SCAN buffer alloc failed");
 
-    uint8_t *p_data = co_buf_data(p_buf);
+    uint8_t *p = co_buf_data(p_buf);
 
     /* Complete device name */
-    p_data[0] = name_len + 1;
-    p_data[1] = GAP_AD_TYPE_COMPLETE_NAME;
-    memcpy(p_data + 2, device_name, name_len);
+    *p++ = name_len + 1;
+    *p++ = GAP_AD_TYPE_COMPLETE_NAME;
+    memcpy(p, device_name, name_len);
+    p += name_len;
+
+    /* 128-bit Blinky service UUID */
+    *p++ = GATT_UUID_128_LEN + 1;
+    *p++ = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
+    memcpy(p, blinky_svc_uuid128, 16);
 
     err = gapm_le_set_scan_response_data(actv_idx, p_buf);
     co_buf_release(p_buf);
-
     return err;
 }
-
 /**
  * Advertising callbacks
  */
@@ -679,6 +734,51 @@ static const gapm_le_adv_cb_actv_t le_adv_cbs = {
     .created = on_adv_created,
 };
 
+static void blinky_att_read(uint8_t conidx, uint8_t user_lid, uint16_t token,
+                            uint16_t hdl, uint16_t offset, uint16_t max_len)
+{
+    co_buf_t *buf;
+    co_buf_alloc(&buf, GATT_BUFFER_HEADER_LEN, 1, GATT_BUFFER_TAIL_LEN);
+    *co_buf_data(buf) = blinky.value;
+    gatt_srv_att_read_get_cfm(conidx, user_lid, token, GAP_ERR_NO_ERROR, 1, buf);
+    co_buf_release(buf);
+}
+
+/* static void blinky_att_write(uint8_t conidx, uint8_t user_lid, uint16_t token,
+                             uint16_t hdl, uint16_t offset, co_buf_t *data)
+{
+    memcpy(&blinky.cccd, co_buf_data(data), sizeof(uint16_t));
+    gatt_srv_att_val_set_cfm(conidx, user_lid, token, GAP_ERR_NO_ERROR);
+} */
+
+static void blinky_att_write(uint8_t conidx, uint8_t user_lid, uint16_t token,
+                             uint16_t hdl, uint16_t offset, co_buf_t *data)
+{
+    uint16_t att_idx = hdl - blinky.start_hdl;
+
+    if (att_idx == BLINKY_IDX_CHAR_VAL) 
+    {
+        blinky_active = true; 
+        blinky.value = *co_buf_data(data);
+        gpio_pin_set_dt(&led0, blinky.value);
+    } else if (att_idx == BLINKY_IDX_CHAR_CCCD) {
+        memcpy(&blinky.cccd, co_buf_data(data), sizeof(uint16_t));
+    }
+
+    gatt_srv_att_val_set_cfm(conidx, user_lid, token, GAP_ERR_NO_ERROR);
+}
+
+static void blinky_evt_sent(uint8_t conidx, uint8_t user_lid,
+                            uint16_t metainfo, uint16_t status)
+{
+    blinky.ntf_ongoing = false;
+}
+
+static const gatt_srv_cb_t blinky_gatt_cbs = {
+    .cb_att_read_get = blinky_att_read,
+    .cb_att_val_set  = blinky_att_write,
+    .cb_event_sent   = blinky_evt_sent,
+};
 static uint16_t create_advertising(void)
 {
     uint16_t err;
@@ -704,6 +804,27 @@ static uint16_t create_advertising(void)
     return err;
 }
 
+static uint16_t blinky_init(void)
+{
+    uint16_t err;
+
+    err = gatt_user_srv_register(L2CAP_LE_MTU_MIN, 0,
+                                 &blinky_gatt_cbs,
+                                 &blinky.user_lid);
+    if (err) return err;
+
+    static const uint8_t svc_uuid[] = BLINKY_UUID_SVC;
+
+    err = gatt_db_svc_add(blinky.user_lid, SVC_UUID(128),
+                          svc_uuid,
+                          BLINKY_IDX_NB,
+                          NULL,
+                          blinky_att_db,
+                          BLINKY_IDX_NB,
+                          &blinky.start_hdl);
+
+    return err;
+}
 /* ---------------- Add profiles ---------------- */
 
 static void bundle_server_configure(void)
@@ -939,13 +1060,28 @@ static void send_rsc_measurement(void)
 
 static void combined_process(void)
 {
+    static bool led2_state;
+
+    /* Blinky owns the LED — do NOTHING here */
+    if (blinky_active) {
+        return;
+    }
+
+    /* Connection indicator logic */
+    if (!ctrl.connected) {
+        led2_state = !led2_state;
+        gpio_pin_set_dt(&led2, led2_state);
+        return;
+    }
+
+    gpio_pin_set_dt(&led2, 0);
     update_sensor_value();
 
-    if (!ctrl.connected) {
+    /* if (!ctrl.connected) {
         LOG_DBG("Waiting for peer connection...\n");
         k_sem_take(&conn_sem, K_FOREVER);
         return;
-    }
+    } */
 
     /* HR gated by CCCD enable + send complete */
     if (hr_ready_to_send) {
@@ -1009,6 +1145,20 @@ int main(void)
     k_sem_take(&init_sem, K_FOREVER);
     LOG_DBG("Init complete!\n");
 
+    /* Configure LED0 (BLE controlled) */
+    if (!gpio_is_ready_dt(&led0)) {
+    LOG_ERR("LED0 not ready");
+    return 0;
+    }
+    gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
+
+    /* Configure LED2 (connection indicator) */
+    if (!gpio_is_ready_dt(&led2)) {
+    LOG_ERR("LED2 not ready");
+    return 0;
+    }
+    gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
+
     /* Share connection info */
     service_conn(&ctrl);
 
@@ -1019,6 +1169,8 @@ int main(void)
     bundle_server_configure();
     prxp_server_configure();
 
+    blinky_init();
+
     /* Create an advertising activity */
     create_advertising();
 
@@ -1027,5 +1179,23 @@ int main(void)
         combined_process();
         battery_process();
         ias_process();
+
+       /** if (ctrl.connected &&
+        blinky.cccd == PRF_CLI_START_NTF &&
+        !blinky.ntf_ongoing) {
+
+        blinky.value ^= 1;
+
+        co_buf_t *buf;
+        co_buf_alloc(&buf, GATT_BUFFER_HEADER_LEN, 1, GATT_BUFFER_TAIL_LEN);
+        *co_buf_data(buf) = blinky.value;
+
+        gatt_srv_event_send(0, blinky.user_lid, 0,
+                        GATT_NOTIFY,
+                        blinky.start_hdl + BLINKY_IDX_CHAR_VAL,
+                        buf);
+
+        co_buf_release(buf);
+        blinky.ntf_ongoing = true; } */
     }
 }
