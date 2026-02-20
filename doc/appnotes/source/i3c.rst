@@ -89,13 +89,21 @@ Follow these steps to build the I3C application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/sensor/bmi323 -S alif-dk-ak
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/sensor/bmi323 \
+     -S alif-dk-ak
+
 
 3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/sensor/bmi323 -S alif-dk-ak
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/sensor/bmi323 \
+     -S alif-dk-ak
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

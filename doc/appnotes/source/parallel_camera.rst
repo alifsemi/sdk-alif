@@ -161,7 +161,10 @@ Follow these steps to build the parallel camera application using the Alif Zephy
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/video
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video
+
 
 Executing Binary on the DevKit
 ==============================================

@@ -188,23 +188,31 @@ Follow these steps to build the ISP application using the Alif Zephyr SDK:
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
 
-2. Build commands for applications on the M55 HP core:
+3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-      ../alif/samples/drivers/video/ \
-      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
-      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+   west build \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD"/../alif/samples/drivers/video/boards/\
+     serial_camera_arx3a0_selfie.overlay \
+     -DOVERLAY_CONFIG="$PWD"/../alif/samples/drivers/video/boards/\
+     isp.conf
 
-3. Build commands for applications on the M55 HE core:
+
+4. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-      ../alif/samples/drivers/video/ \
-      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
-      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+   west build \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD"/../alif/samples/drivers/video/boards/\
+     serial_camera_arx3a0_selfie.overlay \
+     -DOVERLAY_CONFIG="$PWD"/../alif/samples/drivers/video/boards/\
+     isp.conf
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

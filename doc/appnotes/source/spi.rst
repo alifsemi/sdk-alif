@@ -41,15 +41,21 @@ Follow these steps to build the SPI application using the Alif Zephyr SDK:
 
 2. Build commands for applications on the M55 HP core, application will fetch SPI0 and SPI1 instances:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/spi_dw
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/spi_dw
+
 
 3. Build commands for applications on the M55 HE core, application will fetch SPI0 and LP SPI instances:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/spi_dw
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/spi_dw
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

@@ -27,19 +27,27 @@ Follow these steps to build the QDEC application using the Alif Zephyr SDK:
 
 2. Build commands for applications on the M55 HE core:
 
-
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/sensor/qdec/ \
-       -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/sensor/qdec/ \
+     -DCONFIG_FLASH_BASE_ADDRESS=0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0 \
+     -DCONFIG_FLASH_SIZE=256
+
 
 3. Build commands for applications on the M55 HP core:
 
-
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/sensor/qdec/ \
-       -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0 -DCONFIG_FLASH_SIZE=256
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/sensor/qdec/ \
+     -DCONFIG_FLASH_BASE_ADDRESS=0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0 \
+     -DCONFIG_FLASH_SIZE=256
+
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

@@ -46,14 +46,25 @@ Follow these steps to build the MRAM application using the Alif Zephyr SDK:
 
 .. code-block:: console
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he samples/subsys/fs/littlefs/ -p -- -DSNIPPET=alif-lfs-mram
+   west build \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     samples/subsys/fs/littlefs/ \
+     -p \
+     -- \
+     -DSNIPPET=alif-lfs-mram
+
 
 3. Build commands for applications on the M55 HP core:
 
-
 .. code-block:: bash
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp samples/subsys/fs/littlefs/ -p -- -DSNIPPET=alif-lfs-mram
+   west build \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/subsys/fs/littlefs/ \
+     -p \
+     -- \
+     -DSNIPPET=alif-lfs-mram
+
 
 Executing Binary on the DevKit
 ===============================

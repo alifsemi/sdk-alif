@@ -152,13 +152,20 @@ Follow these steps to build the GT911 touchscreen application using the Alif Zep
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/subsys/input/input_dump/ -S alif-ak-dk
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/subsys/input/input_dump/ \
+     -S alif-ak-dk
+
 
 3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/subsys/input/input_dump/ -S alif-ak-dk
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/subsys/input/input_dump/ \
+     -S alif-ak-dk
 
 
 Executing Binary on the DevKit

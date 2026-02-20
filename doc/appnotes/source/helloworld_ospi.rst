@@ -111,13 +111,17 @@ Save the Encrypted Binary
 
 .. code-block:: bash
 
-   cp build/zephyr/zephyr_en.bin /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshp_ospi1_en_helloworld.bin
+   cp build/zephyr/zephyr_en.bin \
+     /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshp_ospi1_en_helloworld.bin
+
 
 **RTSS-HE**
 
 .. code-block:: bash
 
-   cp build/zephyr/zephyr_en.bin /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshe_ospi1_en_helloworld.bin
+   cp build/zephyr/zephyr_en.bin \
+     /home/$USER/app-release-exec-linux/build/images/zephyr_e7_rtsshe_ospi1_en_helloworld.bin
+
 
 Executing Binary on DevKit
 =============================

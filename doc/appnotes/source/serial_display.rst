@@ -290,15 +290,24 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
 2. Build commands for HE application for TCM memory:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/display/ -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/display/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+
 
 3. Build commands for HP application for TCM memory:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-      west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/display/ -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/display/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

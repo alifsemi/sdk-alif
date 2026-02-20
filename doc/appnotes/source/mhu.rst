@@ -35,13 +35,21 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he -DRTSS_HP_MHU0=on
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -DRTSS_HP_MHU0=on
+
 
 3. Build commands for applications on the M55 HP core:
 
 .. code-block:: bash
 
-        west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp -DRTSS_HE_MHU0=on
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -DRTSS_HE_MHU0=on
+
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

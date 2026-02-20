@@ -24,6 +24,8 @@ The ADC12 supports 8 channels (6 external and 2 internal inputs). One temperatur
   - Single-channel scan
   - Continuous conversion
 
+**Note: In Balletto, Channel 7 (Vref) has been removed from the ADC12.**
+
 .. figure:: _static/adc12_diagram.png
    :alt: 12-Bit ADC Block Diagram
    :align: center
@@ -56,14 +58,20 @@ Follow these steps to build the ADC application using the Alif Zephyr SDK:
 
 .. code-block:: bash
 
-   west build -p always -b  alif_e7_dk/ae722f80f55d5xx/rtss_hp ../alif/samples/drivers/adc -S alif-adc
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/adc \
+     -S alif-adc
 
 
 3. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -p always -b  alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/adc -S alif-adc
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/adc \
+     -S alif-adc
 
 
 ADC Interface
