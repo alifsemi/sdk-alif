@@ -8,7 +8,7 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(le_periph_hr)
+project(le_multiprofile)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../common/CMakeLists.txt)
 
