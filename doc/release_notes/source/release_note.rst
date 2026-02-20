@@ -109,6 +109,8 @@ Communication Interfaces
      - Low-power SPI controller capable of operating in deep sleep modes, enabling communication with external sensors and peripherals while minimizing power consumption, with wake-on-transfer support for event-driven applications in Zephyr.
    * - USB-Device
      - USB device mode support using the Synopsys DWC3 controller with Alif’s UDC driver. Includes CDC-ACM class implementation to enable the board to function as a virtual COM port, allowing serial communication with a host PC. Supports standard USB device enumeration and data transfer in Zephyr RTOS.
+   * - CAN-FD
+     - Controller Area Network Flexible Data-rate (CAN-FD) driver supporting high-speed automotive and industrial communication. Provides classical CAN and CAN-FD modes with extended payload up to 64 bytes, error handling, filtering, and interrupt-driven operation.
 
 
 Display Interfaces
@@ -172,7 +174,8 @@ System Resources
      - Power management framework supporting deep sleep states including Suspend-to-RAM (S2RAM), where SRAM is retained, enabling fast resume and ultra-low power idle operation.
    * -  LP-GPIO
      - Low-power GPIO controller that maintains state and wake-up capability during system sleep modes, allowing external events to trigger resume from low-power states.
-
+   * - EVTRTR
+     - Event Router (EVTRTR) driver enabling configurable routing of hardware events between peripherals and subsystems. Supports low-latency event triggering, interrupt generation, and cross-subsystem synchronization.
 
 Timers and PWM
 ~~~~~~~~~~~~~~
@@ -207,7 +210,10 @@ Memory and Storage
      - 64MB ISSI Flash (IS25WX512) with Zephyr flash APIs for erase, read, and write operations.
    * - SD
      - Secure Digital host controller supporting SD/SDIO/MMC protocols for external memory card interfacing, including command queuing and data transfer at high-speed rates.
-
+   * - OSPI Macronix Flash
+     - Octal SPI (OSPI) Macronix external flash memory support for high-speed execute-in-place (XIP) and data storage. Supports erase, read, write operations with memory-mapped mode integration through Zephyr flash subsystem.
+   * - HexSPI APMEM
+     - Hexa-SPI interface support for external APMEM devices, enabling high-bandwidth external memory expansion. Supports memory-mapped access and optimized burst transfers for AI and multimedia workloads.
 
 Security and Data Integrity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -253,6 +259,8 @@ AI Acceleration
        integrated into Alif’s microcontroller platforms that leverages Arm
        Ethos microNPUs to boost machine learning inference performance
        for CNN and transformer models.
+   * - Executorch Support
+     - Integration support for Executorch lightweight runtime enabling deployment of PyTorch-based machine learning models on embedded platforms. Optimized to leverage Ethos-U NPU acceleration and CMSIS-NN for efficient inference execution.
 
 Imaging Interfaces
 ~~~~~~~~~~~~~~~~~~~
@@ -271,6 +279,10 @@ Imaging Interfaces
      - MIPI Camera Serial Interface (CSI-2) supporting high-speed serial transmission of pixel data from image sensors (e.g., ARX3A0). Data is received via D-PHY, processed through the PHY Protocol Interface (PPI), unpacked by the MIPI CSI-2 host controller, and delivered via the Image Pixel Interface (IPI) to the Camera Pixel Interface (CPI) for storage in memory over AXI. Integrated with Zephyr’s video input subsystem for streaming and frame capture.
    * - ISP
      - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, and color correction. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
+   * - OV5640 Camera
+     - 5-MP CMOS image sensor driver supporting MIPI-CSI2 interface. Provides configurable resolution, frame rate control, auto-exposure, auto-white balance, and autofocus. Integrated with the MIPI-CSI and ISP pipeline for real-time video capture and image processing.
+   * - TOF Sensor
+     - Time-of-Flight (ToF) distance sensor driver enabling depth measurement and proximity detection. Supports I2C communication interface with configurable ranging modes, interrupt support, and integration with vision and AI-based applications.
 
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
