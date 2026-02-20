@@ -1,0 +1,24 @@
+Legal Disclaimer
+
+Below modifications are done on Soniclib library
+to make it work on Alif boards:
+
+- Compile out <invn/icu_interface/shasta_pmut_instruction.h>
+  statement with INCLUDE_SHASTA_SUPPORT macro condition
+  as not required for CH201 configuration.
+
+- Compile out chdrv_adjust_rx_len() api signature with INCLUDE_SHASTA_SUPPORT
+  macro condition as not required for CH201 configuration.
+
+- Unused SonicLib components and folders not required for CH201
+  operation were removed to reduce memory footprint and simplify
+  integration.
+
+- chirp_board_config.h is derived from invn/soniclib/details/chirp_board_config.h and
+  it includes board-specific changes to the macro definitions.
+
+- Modified below ascii characters in invn/soniclib/ch_math_utils.c:
+  a. inverted to dash
+  b. power of 2 to square
+
+See LICENSE.txt for complete licensing terms.

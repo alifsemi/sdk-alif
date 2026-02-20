@@ -1,0 +1,37 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+&i2c1 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	hcnt-offset = <30>;
+	lcnt-offset = <40>;
+
+	ch201: ch201@29 {
+		compatible	= "invensense,ch201";
+		reg = <0x29>;
+		prog-gpios	= <&gpio6 2 GPIO_ACTIVE_HIGH>;
+		int-gpios	= <&gpio6 3 GPIO_ACTIVE_HIGH>;
+		reset-gpios	= <&gpio6 4 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&pinctrl_gpio6 {
+	group0 {
+		/* Enable only Port-6 Pin-2, Pin-3 and Pin-4 */
+		pinmux = <PIN_P6_2__GPIO>,
+			<PIN_P6_3__GPIO>,
+			<PIN_P6_4__GPIO>;
+	};
+};
+
+&gpio6 {
+	pinctrl-0       = <&pinctrl_gpio6>;
+	pinctrl-names   = "default";
+	status		= "okay";
+};
