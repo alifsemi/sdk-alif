@@ -1,24 +1,31 @@
-.. _bluetooth-periph-hr-sample:
+.. _bluetooth-periph-multi-profile:
 
-BLE Heart Rate Sample
+BLE Multi-Profile Integration Sample
 #####################
 
 Overview
 ********
 
-Application to demonstrate the use of the Heart Rate BLE profile.
+Application to demonstrate simultaneous integration of multiple BLE profiles, including standard health profiles and a custom Blinky service, within a single peripheral device.
+
+This is a demo-only bundle intended for integration testing and reference.
 
 Requirements
 ************
 
 * Alif Balletto Development Kit
+* BLE-capable central (phone / BLE app)
 
 Building and Running
 ********************
 
-This sample can be found under :zephyr_file:`samples/bluetooth/le_periph_hr` in the
-sdk-alif tree.
+When running, the device starts advertising and waits for a central to connect.
+After connection, individual profiles begin operation once the corresponding CCCDs are enabled by the central.
+Dummy measurements are sent for supported profiles.
+The custom Blinky service allows LED control from the central device.
 
-When running, the sample application starts advertising and waits for a central to connect.
-After connection, the central should start notifications and the peripheral will send measurements every second.
-Notifications for battery service are handled independently.
+Limitations
+********************
+
+* GLPS / CGMS advertise correctly, but measurement values are not visible in some BLE apps due to incomplete RACP handling (demo limitation).
+* Measurements are dummy values and not sensor-backed.
