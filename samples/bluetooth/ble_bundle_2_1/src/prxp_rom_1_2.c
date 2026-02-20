@@ -88,9 +88,9 @@ static void on_level(uint8_t conidx, co_buf_t *p_buf)
 	}
 }
 
-static const iass_cbs_t iass_cb = {
+/* static const iass_cbs_t iass_cb = {
 	.cb_level = on_level,
-};
+}; */
 
 uint16_t temp_token;
 
@@ -116,9 +116,9 @@ static void on_level_req(uint8_t conidx, uint16_t token)
 	gapc_le_get_local_tx_power_level(conidx, 0, GAPC_PHY_PWR_1MBPS_VALUE, cmp_cb);
 }
 
-static const tpss_cbs_t tpss_cb = {
+/* static const tpss_cbs_t tpss_cb = {
 	.cb_level_req = on_level_req,
-};
+}; */
 
 /* Add profile to the stack */
 void prxp_server_configure(void)
@@ -132,13 +132,13 @@ void prxp_server_configure(void)
 	err = prf_add_profile(TASK_ID_LLSS, 0, 0, NULL, &llss_cb, &start_hdl);
 	alif_ble_mutex_unlock();
 
-	alif_ble_mutex_lock(K_FOREVER);
+	/*alif_ble_mutex_lock(K_FOREVER);
 	err = prf_add_profile(TASK_ID_IASS, 0, 0, NULL, &iass_cb, &start_hdl);
-	alif_ble_mutex_unlock();
+	alif_ble_mutex_unlock();*/
 
-	alif_ble_mutex_lock(K_FOREVER);
+	/* alif_ble_mutex_lock(K_FOREVER);
 	err = prf_add_profile(TASK_ID_TPSS, 0, 0, NULL, &tpss_cb, &start_hdl);
-	alif_ble_mutex_unlock();
+	alif_ble_mutex_unlock(); */
 
 	if (err) {
 		LOG_ERR("Error %u adding profile", err);

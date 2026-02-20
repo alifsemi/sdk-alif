@@ -111,7 +111,7 @@ static bool gl_sent_once;
 static bool cs_ready_to_send;
 static bool rsc_ready_to_send;
 
-
+static void send_glucose_once(void);  // ← forward declaration
 K_SEM_DEFINE(init_sem, 0, 1);
 K_SEM_DEFINE(conn_sem, 0, 1);
 
@@ -122,7 +122,7 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* 128-bit UUIDs */
 #define BLINKY_UUID_SVC   {0x23,0xD1,0xBC,0xEA,0x5F,0x78,0x23,0x15,0xDE,0xEF,0x12,0x12,0x23,0x15,0x00,0x00}
-#define BLINKY_UUID_CHAR  {0x23,0xD1,0xBC,0xEA,0x5F,0x78,0x23,0x15,0xDE,0xEF,0x12,0x12,0x24,0x15,0x00,0x00}
+#define BLINKY_UUID_CHAR  {0x23,0xD1,0xBC,0xEA,0x5F,0x78,0x23,0x15,0xDE,0xEF,0x12,0x12,0x25,0x15,0x00,0x00}
 
 static const uint8_t blinky_svc_uuid128[16] = BLINKY_UUID_SVC;
 enum {
@@ -152,7 +152,7 @@ static const gatt_att_desc_t blinky_att_db[BLINKY_IDX_NB] = {
         { ATT_128_CHARACTERISTIC, ATT_UUID(16) | PROP(RD), 0 },
 
     [BLINKY_IDX_CHAR_VAL] =
-        { BLINKY_UUID_CHAR, ATT_UUID(128) | PROP(RD) | PROP(WR) | PROP(N), OPT(NO_OFFSET) },
+        { BLINKY_UUID_CHAR, ATT_UUID(128) | PROP(RD) | PROP(WR) | PROP(N), OPT(NO_OFFSET) | sizeof(uint8_t) },
 
     [BLINKY_IDX_CHAR_CCCD] =
         { ATT_128_CLIENT_CHAR_CFG, ATT_UUID(16) | PROP(RD) | PROP(WR), 0 },
@@ -226,6 +226,8 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
     LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
 
     ctrl.connected = true;
+    gl_ready_to_send = true;   
+    gl_sent_once = false;    
 
     k_sem_give(&conn_sem);
 
@@ -406,12 +408,8 @@ static void on_glps_racp_req(uint8_t conidx, uint8_t op_code,
                              uint8_t filter_type,
                              const union glp_filter *p_filter)
 {
-    ARG_UNUSED(func_operator);
-    ARG_UNUSED(filter_type);
-    ARG_UNUSED(p_filter);
-
-    // Dummy response: no records
-    glps_racp_rsp_send(conidx, op_code, GLP_RSP_NO_RECS_FOUND, 0);
+    send_glucose_once();   // ← send measurement first
+    glps_racp_rsp_send(conidx, op_code, GLP_RSP_SUCCESS, 1); 
 }
 
 static void on_glps_racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
@@ -617,11 +615,11 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
     uint16_t svc_csc  = GATT_SVC_CYCLING_SPEED_CADENCE;
     uint16_t svc_rsc  = GATT_SVC_RUNNING_SPEED_CADENCE;
     uint16_t svc_lls  = GATT_SVC_LINK_LOSS;
-    uint16_t svc_ias  = GATT_SVC_IMMEDIATE_ALERT;
-    uint16_t svc_tps  = GATT_SVC_TX_POWER;
+    //uint16_t svc_ias  = GATT_SVC_IMMEDIATE_ALERT;
+    //uint16_t svc_tps  = GATT_SVC_TX_POWER;
     uint16_t svc_batt = get_batt_id();
 
-    const uint8_t num_svc = 10;
+    const uint8_t num_svc = 8;
     const uint16_t adv_len = 1 + 1 + (num_svc * 2);
 
     co_buf_t *p_buf;
@@ -640,8 +638,8 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
     memcpy(p, &svc_csc,  2); p += 2;
     memcpy(p, &svc_rsc,  2); p += 2;
     memcpy(p, &svc_lls,  2); p += 2;
-    memcpy(p, &svc_ias,  2); p += 2;
-    memcpy(p, &svc_tps,  2); p += 2;
+    //memcpy(p, &svc_ias,  2); p += 2;
+    //memcpy(p, &svc_tps,  2); p += 2;
     memcpy(p, &svc_batt, 2);
 
     err = gapm_le_set_adv_data(actv_idx, p_buf);
@@ -756,11 +754,15 @@ static void blinky_att_write(uint8_t conidx, uint8_t user_lid, uint16_t token,
 {
     uint16_t att_idx = hdl - blinky.start_hdl;
 
-    if (att_idx == BLINKY_IDX_CHAR_VAL) 
-    {
-        blinky_active = true; 
+    if (att_idx == BLINKY_IDX_CHAR_VAL) {
+        if (co_buf_data_len(data) != sizeof(uint8_t)) {
+            gatt_srv_att_val_set_cfm(conidx, user_lid, token, ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN);
+            return;
+        }
+        blinky_active = true;
         blinky.value = *co_buf_data(data);
-        gpio_pin_set_dt(&led0, blinky.value);
+        gpio_pin_set_dt(&led0, blinky.value ? 1 : 0);
+
     } else if (att_idx == BLINKY_IDX_CHAR_CCCD) {
         memcpy(&blinky.cccd, co_buf_data(data), sizeof(uint16_t));
     }
@@ -870,7 +872,10 @@ static void bundle_server_configure(void)
 
     //GLPS
     uint16_t start_hdl_gl = 0;
-    struct glps_db_cfg glps_cfg = {0};
+    //struct glps_db_cfg glps_cfg = {0};
+    struct glps_db_cfg glps_cfg = {
+    .meas_ctx_supported = 0,
+    };
     err = prf_add_profile(
     TASK_ID_GLPS,
     0,      // NO security
@@ -1165,11 +1170,13 @@ int main(void)
     /* Adding battery service */
     config_battery_service();
 
+    blinky_init();
+    /* LOG_INF("blinky_init result: %u, start_hdl: %u, user_lid: %u",
+    berr, blinky.start_hdl, blinky.user_lid); */
+
     /* Add both profiles */
     bundle_server_configure();
     prxp_server_configure();
-
-    blinky_init();
 
     /* Create an advertising activity */
     create_advertising();
@@ -1178,7 +1185,7 @@ int main(void)
         k_sleep(K_SECONDS(1));
         combined_process();
         battery_process();
-        ias_process();
+        //ias_process();
 
        /** if (ctrl.connected &&
         blinky.cccd == PRF_CLI_START_NTF &&
