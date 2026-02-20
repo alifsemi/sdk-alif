@@ -1,0 +1,6 @@
+west-commands:
+  - file: scripts/west_executorch_setup.py
+    commands:
+      - name: executorch-setup
+        class: ExecutorchSetup
+        help: Initialize executorch submodules and run setup scripts
