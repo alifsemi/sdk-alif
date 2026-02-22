@@ -446,14 +446,17 @@ int main(void)
 	bool is_mram_boot = IS_BOOTING_FROM_MRAM();
 
 	if (is_mram_boot) {
-		LOG_INF("\n%s RTSS_HE (MRAM boot): PM states demo (RUNTIME_IDLE, SOFT_OFF)",
+		LOG_INF("%s RTSS_HE (MRAM boot): PM states demo "
+			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)",
 			CONFIG_BOARD);
 	} else {
-		LOG_INF("\n%s RTSS_HE (TCM boot): PM states demo (RUNTIME_IDLE, S2RAM)",
+		LOG_INF("%s RTSS_HE (TCM boot): PM states demo "
+			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)",
 			CONFIG_BOARD);
 	}
 #else
-	LOG_INF("\n%s RTSS_HP: PM states demo (RUNTIME_IDLE, SOFT_OFF)", CONFIG_BOARD);
+	LOG_INF("%s RTSS_HP: PM states demo "
+		"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)", CONFIG_BOARD);
 #endif
 
 	ret = counter_start(wakeup_dev);
@@ -462,24 +465,27 @@ int main(void)
 	LOG_INF("POWER STATE SEQUENCE:");
 #if defined(CONFIG_POWEROFF)
 	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
-	LOG_INF("  2. Power off (sys_poweroff)");
+	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
+	LOG_INF("  3. Power off (sys_poweroff)");
 #elif defined(CONFIG_RTSS_HE)
 	/* HE core: sequence depends on boot location */
 	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
 	if (!is_mram_boot) {
 		/* TCM boot: S2RAM works (TCM retention) */
-		LOG_INF("  2. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)");
-		LOG_INF("  3. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)");
-		LOG_INF("  4. (SOFT_OFF skipped - TCM boot, using retention)");
+		LOG_INF("  3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)");
+		LOG_INF("  4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)");
+		LOG_INF("  5. (SOFT_OFF skipped - TCM boot, using retention)");
 	} else {
 		/* MRAM boot: Enable Only SOFT_OFF */
-		LOG_INF("  2. (S2RAM skipped - MRAM boot)");
-		LOG_INF("  3. PM_STATE_SOFT_OFF");
+		LOG_INF("  3. (S2RAM skipped - MRAM boot)");
+		LOG_INF("  4. PM_STATE_SOFT_OFF");
 	}
 #else
 	/* HP core: no retention, only SOFT_OFF supported */
 	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
-	LOG_INF("  2. PM_STATE_SOFT_OFF");
+	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
+	LOG_INF("  3. PM_STATE_SOFT_OFF");
 #endif
 
 	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
@@ -491,10 +497,15 @@ int main(void)
 	LOG_INF("Exited from RUNTIME_IDLE sleep");
 	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 
-#if DT_NODE_HAS_STATUS(DT_NODELABEL(suspend_idle), okay)
-	LOG_INF("Enter PM_STATE_SUSPEND_TO_IDLE for (%d microseconds)", SUSPEND_IDLE_SLEEP_USEC);
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
+	LOG_INF("Enter PM_STATE_SUSPEND_TO_IDLE for (%d microseconds)",
+		SUSPEND_IDLE_SLEEP_USEC);
 	k_sleep(K_USEC(SUSPEND_IDLE_SLEEP_USEC));
 	LOG_INF("Exited from PM_STATE_SUSPEND_TO_IDLE");
+#else
+	/* Lock SUSPEND_TO_IDLE when LPM timer support is not configured */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	LOG_INF("PM_STATE_SUSPEND_TO_IDLE (skipped - LPM timer not enabled)");
 #endif
 
 #if defined(CONFIG_POWEROFF)
