@@ -8,6 +8,7 @@
  */
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include "alif_ble.h"
 #include "gaf_adv.h"
 #include "gapm.h"
 #include "gap_le.h"
@@ -28,6 +29,8 @@ LOG_MODULE_REGISTER(gapm, LOG_LEVEL_DBG);
 
 static uint8_t adv_actv_idx = GAP_INVALID_CONIDX;
 static uint16_t gapm_status;
+
+#define BLE_MUTEX_TIMEOUT_MS 10000
 
 /* GAF advertising */
 #define ADV_SET_LOCAL_IDX     0
@@ -126,9 +129,16 @@ static uint16_t bt_gapm_device_name_set(const char *name, size_t name_len)
 {
 	uint16_t rc;
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	k_sem_reset(&gapm_sem);
 
 	rc = gapm_set_name(0, name_len, name, on_gapm_process_complete);
+	alif_ble_mutex_unlock();
+
 	if (rc != GAP_ERR_NO_ERROR) {
 		LOG_ERR("Failed to set device name, error: %u", rc);
 		return rc;
@@ -377,11 +387,17 @@ uint16_t bt_gapm_init(const gapm_config_t *p_cfg, gapm_user_cb_t *p_cbs, const c
 		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
 	k_sem_reset(&gapm_sem);
 
 	LOG_INF("Init gapm service and set device name %s", name);
 
 	rc = gapm_configure(0, p_cfg, &gapm_cbs, on_gapm_process_complete);
+	alif_ble_mutex_unlock();
+
 	if (rc) {
 		LOG_ERR("gapm_configure error %u", rc);
 		return rc;
@@ -420,6 +436,11 @@ uint16_t bt_gapm_le_create_advertisement_service(enum gapm_le_own_addr addrstype
 
 	memset(&le_adv_cbs, 0, sizeof(gapm_le_adv_cb_actv_t));
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	k_sem_reset(&gapm_sem);
 	/* This will be always local one */
 	le_adv_cbs.hdr.actv.proc_cmp = on_adv_actv_proc_cmp;
@@ -444,6 +465,7 @@ uint16_t bt_gapm_le_create_advertisement_service(enum gapm_le_own_addr addrstype
 	LOG_INF("Allocate LE Advertisement service");
 
 	err = gapm_le_create_adv_legacy(0, addrstype, adv_create_params, &le_adv_cbs);
+	alif_ble_mutex_unlock();
 	if (err) {
 		LOG_ERR("Error %u creating advertising activity", err);
 	}
@@ -458,11 +480,17 @@ uint16_t bt_gapm_advertiment_data_set(uint8_t adv_index)
 {
 	uint16_t err;
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	k_sem_reset(&gapm_sem);
 
 	LOG_INF("Set Advertisement data to service %u", adv_index);
 
 	err = bt_adv_data_set_update(adv_index);
+	alif_ble_mutex_unlock();
 	if (err) {
 		LOG_ERR("Error %u creating advertising activity", err);
 	}
@@ -475,11 +503,17 @@ uint16_t bt_gapm_scan_response_set(uint8_t adv_index)
 {
 	uint16_t rc;
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	k_sem_reset(&gapm_sem);
 
 	LOG_INF("Set Scan response buffer to service %u", adv_index);
 
 	rc = bt_scan_rsp_set(adv_index);
+	alif_ble_mutex_unlock();
 	if (rc) {
 		LOG_ERR("Failed to set scan data, error: %d", rc);
 		return rc;
@@ -494,11 +528,17 @@ uint16_t bt_gapm_advertisement_start(uint8_t adv_index)
 {
 	uint16_t rc;
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	k_sem_reset(&gapm_sem);
 
 	LOG_INF("Start LE Advertisement to service %u", adv_index);
 
 	rc = bt_adv_start_le_adv(adv_index, 0, 0, 0);
+	alif_ble_mutex_unlock();
 	if (rc) {
 		LOG_ERR("Failed to start advertising, error: %d", rc);
 		return rc;
@@ -584,7 +624,14 @@ uint16_t bt_gaf_create_adv(const char *name, size_t name_len, gap_bdaddr_t *p_ga
 		.nb_sets = 1,
 	};
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	err = gaf_adv_configure(&config, &gaf_adv_cbs);
+	alif_ble_mutex_unlock();
+
 	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Unable to configure GAF advertiser! Error %u (0x%02X)", err, err);
 		return err;
@@ -615,14 +662,26 @@ uint16_t bt_gaf_adv_start(gap_bdaddr_t *p_client_addr)
 
 	uint16_t err;
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	err = gaf_adv_set_params(ADV_SET_LOCAL_IDX, ADV_INTERVAL_QUICK_MS, ADV_INTERVAL_MS, ADV_PHY,
 				 ADV_PHY_2nd, ADV_ALL_CHNLS_EN, ADV_MAX_TX_PWR, ADV_MAX_SKIP);
+	alif_ble_mutex_unlock();
+
 	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Failed to set advertising params, err %u (0x%02X)", err, err);
 		return err;
 	}
 
 	uint32_t adv_config = GAPM_ADV_MODE_GEN_DISC;
+
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
 
 	if (p_client_addr && p_client_addr->addr_type != 0xff) {
 		LOG_INF("Starting directed advertising with address %02X:%02X:%02X:%02X:%02X:%02X",
@@ -639,6 +698,7 @@ uint16_t bt_gaf_adv_start(gap_bdaddr_t *p_client_addr)
 			ADV_SET_LOCAL_IDX, (adv_config | GAF_ADV_CFG_GENERAL_ANNOUNCEMENT_BIT),
 			ADV_TIMEOUT, ADV_SID, gaf_adv_data_len, (uint8_t *)gaf_adv_data, NULL);
 	}
+	alif_ble_mutex_unlock();
 
 	if (err != GAF_ERR_NO_ERROR) {
 		LOG_ERR("Failed to start advertising, err %u (0x%02X)", err, err);
@@ -676,7 +736,14 @@ static uint16_t bt_gapm_generate_random_addr(gapm_config_t *p_cfg,
 
 	private_address = &p_cfg->private_identity;
 
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
+
 	err = gapm_configure(1, p_cfg, &gapm_cbs, on_gapm_process_complete);
+	alif_ble_mutex_unlock();
+
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_configure error %u", err);
 		return err;
@@ -687,7 +754,12 @@ static uint16_t bt_gapm_generate_random_addr(gapm_config_t *p_cfg,
 	}
 
 	/* Generate random static address */
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
 	err = gapm_le_generate_random_addr(addr_type, on_gapm_le_random_addr_cb);
+	alif_ble_mutex_unlock();
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_le_generate_random_addr error %u", err);
 		return err;
@@ -703,7 +775,12 @@ static uint16_t bt_gapm_generate_random_addr(gapm_config_t *p_cfg,
 	}
 
 	/* Reset GAPM to set address */
+	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
+		__ASSERT(false, "BLE mutex lock timeout");
+		return GAP_ERR_TIMEOUT;
+	}
 	err = gapm_reset(3, on_gapm_process_complete);
+	alif_ble_mutex_unlock();
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_reset error %u", err);
 		return err;
