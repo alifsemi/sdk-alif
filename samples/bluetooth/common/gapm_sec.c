@@ -415,15 +415,31 @@ void gapm_connection_confirm(uint8_t conidx, uint32_t metainfo, const gap_bdaddr
 		p_peer_addr->addr[5], p_peer_addr->addr[4], p_peer_addr->addr[3],
 		p_peer_addr->addr[2], p_peer_addr->addr[1], p_peer_addr->addr[0]);
 
-	if (sec_enabled || !public) {
-		/* Number of IRKs */
-		uint8_t nb_irk = 1;
+	if (sec_enabled) {
 
-		/* Resolve Address */
-		status = gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, nb_irk,
-						 &(stored_keys.irk.key), on_address_resolved_cb);
-		if (status == GAP_ERR_NO_ERROR) {
+		if (public) {
+			if (temp_gap_adr) {
+				temp_gap_adr->addr_type = p_peer_addr->addr_type;
+				memcpy(temp_gap_adr->addr, p_peer_addr->addr,
+				       sizeof(p_peer_addr->addr));
+			}
+
+			status = gapc_le_connection_cfm(temp_conidx, temp_metainfo,
+							&(bond_data_saved));
+			sec_pairing_status_cb(status, temp_conidx, true);
 			return;
+
+		} else {
+			/* Number of IRKs */
+			uint8_t nb_irk = 1;
+
+			/* Resolve Address */
+			status = gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, nb_irk,
+							 &(stored_keys.irk.key),
+							 on_address_resolved_cb);
+			if (status == GAP_ERR_NO_ERROR) {
+				return;
+			}
 		}
 	}
 
