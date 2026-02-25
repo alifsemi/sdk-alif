@@ -1,0 +1,31 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+source "Kconfig.zephyr"
+
+config IUT_TESTER_ENABLED
+	bool "IUT interface for PPTS testing"
+	default n
+	help
+	  IUT configure interface for init setup.
+
+config VOLUME_STEP_SIZE
+	int "Data string size"
+	range 1 32
+	default 1 if IUT_TESTER_ENABLE
+	default 6
+	help
+	  Defines step size for volume update event.
+
+menu "Logging"
+
+module = MAIN
+module-str = main
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu # "Logging"

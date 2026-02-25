@@ -67,6 +67,10 @@ struct service_env {
 	uint8_t vocs_lid;
 };
 
+#define VOCS_MAX_DESC_LEN 20
+#define VOCS_CFG_BF 0
+#define DEFAULT_VCS_FLAGS 0
+
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
 /* Load name from configuration file */
@@ -77,15 +81,15 @@ static struct connection_status app_con_info = {
 	.addr.addr_type = 0xff,
 };
 
-static struct service_env env;
+static struct service_env env = {
+	.volume = 10,
+	.mute = 0,
+	.ntf_cfg = 0,
+	.vocs_lid = 0,
+};
 static arc_vcs_cb_t vcs_cb;
 static arc_vocs_cb_t vocs_cb;
 static arc_aics_cb_t aics_cb;
-
-#define VOCS_MAX_DESC_LEN 20
-#define VOCS_CFG_BF 0
-#define DEFAULT_VCS_STEP_SIZE 6
-#define DEFAULT_VCS_FLAGS 0
 
 #define AICS_CFG_BF 0
 #define AICS_DESC_MAX_LEN 20
@@ -105,6 +109,81 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 static uint16_t service_init(void);
 
 /* Functions */
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+K_SEM_DEFINE(test_sem, 0, 1);
+static int TEST_case_num = 1;
+
+static void test_case_configure_set(void)
+{
+	switch (TEST_case_num) {
+	case 1:
+		env.volume = (CONFIG_VOLUME_STEP_SIZE * 2);
+		env.mute = 0;
+		break;
+	case 2:
+		env.volume = 255 - (CONFIG_VOLUME_STEP_SIZE * 2);
+		env.mute = 0;
+		break;
+	case 3:
+		env.volume = (CONFIG_VOLUME_STEP_SIZE * 2);
+		env.mute = 1;
+		break;
+	case 4:
+		env.volume = 255 - (CONFIG_VOLUME_STEP_SIZE * 2);
+		env.mute = 1;
+		break;
+	case 5:
+		env.volume = 255 - (CONFIG_VOLUME_STEP_SIZE * 2);
+		env.mute = 1;
+		break;
+	case 6:
+		env.volume = 255 - (CONFIG_VOLUME_STEP_SIZE * 2);
+		env.mute = 1;
+		break;
+	case 7:
+		env.volume = 253;
+		env.mute = 1;
+		break;
+	default:
+		env.volume = 0;
+		env.mute = 0;
+		break;
+	}
+}
+
+static void test_case_print(void)
+{
+	LOG_INF("Test case VCS/SR/CP/BV-%d: Step size %u, Volume %u, Mute %u", TEST_case_num,
+		CONFIG_VOLUME_STEP_SIZE, env.volume, env.mute);
+}
+
+static void test_case_default_set(void)
+{
+	TEST_case_num = 1;
+	test_case_configure_set();
+	test_case_print();
+	LOG_INF("Update IUT test values by BUTTON_UP  and select by BUTTON_PRESSED");
+	k_sem_take(&test_sem, K_FOREVER);
+}
+
+static void test_case_toggle(void)
+{
+	if (TEST_case_num < 7) {
+		TEST_case_num++;
+	} else {
+		TEST_case_num = 1;
+	}
+	test_case_configure_set();
+	test_case_print();
+	LOG_INF("Update IUT test values by BUTTON_UP  and select by BUTTON_PRESSED");
+}
+
+static void test_setup_activate(void)
+{
+	LOG_INF("Take a current setup");
+	k_sem_give(&test_sem);
+}
+#endif
 
 static void UpdateMuteLedstate(void)
 {
@@ -146,8 +225,10 @@ static void vcs_cb_volume(uint8_t volume, uint8_t mute, bool local)
 {
 	(void)local;
 	env.volume = volume;
+	LOG_INF("Updated volume Level %u", env.volume);
 	if (env.mute != mute) {
 		env.mute = mute;
+		LOG_INF("Updated Mute state: %u", mute);
 		UpdateMuteLedstate();
 	}
 
@@ -155,7 +236,7 @@ static void vcs_cb_volume(uint8_t volume, uint8_t mute, bool local)
 
 static void vcs_cb_flags(uint8_t flags)
 {
-	(void)flags;
+	LOG_INF("Volume flags %u", flags);
 }
 
 static void vocs_cb_offset(uint8_t output_lid, int16_t offset)
@@ -208,11 +289,6 @@ static uint16_t service_init(void)
 {
 	uint16_t status;
 
-	env.mute = 0;
-	env.volume = 10;
-	env.ntf_cfg = 0;
-	env.vocs_lid = 0;
-
 	/* First configure VOCS */
 	vocs_cb.cb_bond_data = vocs_cb_bond_data;
 	vocs_cb.cb_offset = vocs_cb_offset;
@@ -263,7 +339,7 @@ static uint16_t service_init(void)
 
 	input_lids[0] = input_lid;
 
-	status = arc_vcs_configure(&vcs_cb, DEFAULT_VCS_STEP_SIZE, DEFAULT_VCS_FLAGS, env.volume,
+	status = arc_vcs_configure(&vcs_cb, CONFIG_VOLUME_STEP_SIZE, DEFAULT_VCS_FLAGS, env.volume,
 				   env.mute, GATT_INVALID_HDL, ARC_VCS_CFG_FLAGS_NTF_BIT, 1,
 				   input_lids);
 
@@ -276,12 +352,28 @@ static uint16_t service_init(void)
 
 static void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+	if (has_changed & BUTTON_PRESSED) {
+		/* Press Button Update toggle led when state goes to 0 */
+		if (!(button_state & BUTTON_PRESSED)) {
+			test_setup_activate();
+		}
+	}
+
+	if (has_changed & BUTTON_UP) {
+		if (!(button_state & BUTTON_UP)) {
+			test_case_toggle();
+		}
+	}
+#else
 	if (has_changed & BUTTON_PRESSED) {
 		/* Press Button Update toggle led when state goes to 0 */
 		if (!(button_state & BUTTON_PRESSED)) {
 			if (env.mute == 0) {
+				LOG_INF("Mute vcs");
 				arc_vcs_mute();
 			} else {
+				LOG_INF("UnMute vcs");
 				arc_vcs_unmute();
 			}
 
@@ -291,15 +383,18 @@ static void button_update_handler(uint32_t button_state, uint32_t has_changed)
 
 	if (has_changed & BUTTON_UP) {
 		if (!(button_state & BUTTON_UP)) {
+			LOG_INF("Volume UP");
 			arc_vcs_volume_increase();
 		}
 	}
 
 	if (has_changed & BUTTON_DOWN) {
 		if (!(button_state & BUTTON_DOWN)) {
+			LOG_INF("Volume Down");
 			arc_vcs_volume_decrease();
 		}
 	}
+#endif
 }
 
 static void led_worker_handler(struct k_work *work)
@@ -360,9 +455,6 @@ int main(void)
 {
 	uint16_t err;
 
-	env.mute = 0;
-	env.volume = 0;
-
 	err = ble_gpio_buttons_init(button_update_handler);
 	if (err) {
 		LOG_ERR("Button Init fail %u", err);
@@ -377,6 +469,10 @@ int main(void)
 	}
 
 	ble_storage_init();
+
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+	test_case_default_set();
+#endif
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
