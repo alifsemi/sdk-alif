@@ -33,16 +33,14 @@
 #include <alif/bluetooth/bt_adv_data.h>
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
+#include "ble_storage.h"
 
 struct shared_control ctrl = { false, 0, 0 };
 
 #define CSCP_SENSOR_LOCATION_SUPPORT 0x01
 
-/* Define advertising address type */
-#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
-
 /* Store and share advertising address type */
-static uint8_t adv_type;
+static uint8_t adv_type = GAPM_STATIC_ADDR;
 
 /* Variable to check if peer device is ready to receive data"*/
 static bool ready_to_send;
@@ -72,7 +70,7 @@ static gapm_config_t gapm_cfg = {
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	/*      Dummy address   */
-	.private_identity.addr = {0xCB, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
+	.private_identity.addr = {0},
 	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
@@ -279,13 +277,13 @@ int main(void)
 {
 	uint16_t err;
 
+	ble_storage_init();
+
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
-	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
-		LOG_ERR("Address verification failed");
-		return -EADV;
-	}
+	/* Define Private identity */
+	bt_generate_private_identity(&gapm_cfg);
 
 	/* Configure Bluetooth Stack */
 	LOG_INF("Init gapm service");
