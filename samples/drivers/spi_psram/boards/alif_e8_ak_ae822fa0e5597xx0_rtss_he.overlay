@@ -8,7 +8,7 @@
  */
 
 /*
- * For OSPI0 Test with APS512XXN RAM
+ * For HSPI0 Test with APS512XXN RAM
  */
 
 / {
@@ -27,21 +27,31 @@
 				 < PIN_P2_4__OSPI0_D4_B >,
 				 < PIN_P2_5__OSPI0_D5_B >,
 				 < PIN_P2_6__OSPI0_D6_B >,
-				 < PIN_P2_7__OSPI0_D7_B >;
+				 < PIN_P2_7__OSPI0_D7_B >,
+				 < PIN_P16_0__OSPI0_D8_B >,
+				 < PIN_P16_1__OSPI0_D9_B >,
+				 < PIN_P16_2__OSPI0_D10_B >,
+				 < PIN_P16_3__OSPI0_D11_B >,
+				 < PIN_P16_4__OSPI0_D12_B >,
+				 < PIN_P16_5__OSPI0_D13_B >,
+				 < PIN_P16_6__OSPI0_D14_B >,
+				 < PIN_P16_7__OSPI0_D15_B >;
 			read-enable = <0x1>;
-			drive-strength = <4>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
 			schmitt-enable = <0x1>;
 		};
 		group1 {
 			pinmux = < PIN_P3_0__OSPI0_SCLK_B >,
 				 < PIN_P3_2__OSPI0_SS0_B >;
 			read-enable = <0x1>;
-			drive-strength = <4>;
+			drive-strength = <12>;
 		};
 		group2 {
-			pinmux = < PIN_P1_6__OSPI0_RXDS_B >;
+			pinmux = < PIN_P1_6__OSPI0_RXDS_B >,
+				 < PIN_P8_5__OSPI0_RXDS1_A >;
 			read-enable = <0x1>;
-			drive-strength = <4>;
+			drive-strength = <12>;
 			slew-rate = <0x1>;
 			schmitt-enable = <0x1>;
 		};
@@ -50,20 +60,20 @@
 
 
 &ospi0 {
-	pinctrl-0 = <&pinctrl_ospi0>;
-	bus-speed = <100000000>;
-	clock-frequency = <400000000>;
-	cs-pin = <0>;
-	rx-ds-delay = <17>;
+	rx-ds-delay = <11>;
 	xip-wait-cycles = <255>;
 	tx-fifo-threshold = <0>;
 	ddr-drive-edge = <1>;
+	clocks = <&clockctrl ALIF_OSPI0_ACLK_CLK>;
 	xip-base-address = <0xA0000000 0x10000000>;
+	bus-speed = <100000000>;
 	status = "okay";
 
 	aps512xxn: aps512xxn {
 		compatible = "alif,apmemory-aps512xxn";
 		size = <DT_SIZE_M(64)>;
+		x16-data-transfer-mode;
+		latency-code = <4>;
 		status = "okay";
 	};
 };
