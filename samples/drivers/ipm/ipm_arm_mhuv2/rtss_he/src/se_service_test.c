@@ -149,6 +149,7 @@ K_THREAD_DEFINE(thread1, STACK_SIZE, thread1_start,
 		NULL, NULL, NULL, PRIORITY, 0, 0);
 int main(void)
 {
+	printk("SE Service test on %s\n", CONFIG_BOARD);
 	k_thread_start(thread0);
 	k_thread_start(thread1);
 	return 0;
