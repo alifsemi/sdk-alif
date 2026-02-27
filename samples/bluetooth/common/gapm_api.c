@@ -415,13 +415,13 @@ uint16_t bt_gapm_init(const gapm_config_t *p_cfg, gapm_user_cb_t *p_cbs, const c
 		gapm_le_configure_security_level(GAP_SEC1_NOAUTH_PAIR_ENC);
 	}
 
+	power_mgr_log_flush();
+
 #if CONFIG_PM && SNIPPET_PM_BLE_USED
 #if PREKERNEL_DISABLE_SLEEP
 	/* Update PM policy to allow sleeps */
 	power_mgr_allow_sleep();
 #endif
-	/* Give some time for the system to log before entering sleep */
-	k_sleep(K_MSEC(50));
 #endif
 
 	return rc;
