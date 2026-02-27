@@ -38,17 +38,6 @@ void ias_process(void);
 void prxp_disc_notify(uint16_t reason);
 
 /**
- * @brief Append PRXP GAP callbacks to an existing callback struct.
- *
- * Merges the PRXP hardware error callback into the provided
- * gapm_callbacks_t struct and returns the updated struct.
- *
- * @param gapm_append_cbs  Pointer to the base GAP callback struct.
- * @return Updated gapm_callbacks_t with PRXP callbacks merged in.
- */
-gapm_callbacks_t prxp_append_cbs(gapm_callbacks_t *gapm_append_cbs);
-
-/**
  * @brief Append PRXP advertising parameters to an existing param struct.
  *
  * Sets the TX power parameter for advertising and returns the

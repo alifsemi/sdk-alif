@@ -33,6 +33,10 @@
 #include "gapm_le_adv.h"
 #include "co_buf.h"
 #include "address_verification.h"
+#include <alif/bluetooth/bt_adv_data.h>
+#include <alif/bluetooth/bt_scan_rsp.h>
+#include "gapm_api.h"
+#include "ble_gpio.h"
 
 #include "shared_control.h"
 #include "batt_svc.h"
@@ -85,6 +89,10 @@
 static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
 
+
+void LedWorkerHandler(struct k_work *work);
+
+static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
 /* HRPS feature flags */
 enum hrps_feat_bf {
 	HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS = 0,
@@ -104,9 +112,6 @@ static int8_t ht_direction = 1;
 
 /* Body sensor location value used in HRPS configuration */
 #define BODY_SENSOR_LOCATION_CHEST 0x01
-
-/* Use static random address for advertising */
-#define SAMPLE_ADDR_TYPE ALIF_STATIC_RAND_ADDR
 
 /* Advertising address type, resolved at startup by address_verification() */
 static uint8_t adv_type;
@@ -130,9 +135,6 @@ static bool rsc_ready_to_send;
 
 static void send_glucose_once(void);
 
-K_SEM_DEFINE(init_sem, 0, 1);
-K_SEM_DEFINE(conn_sem, 0, 1);
-
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* BLINKY - Custom 128-bit GATT Service
@@ -146,14 +148,18 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
  */
 
 /* Service UUID */
-#define BLINKY_UUID_SVC  {0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0x23, 0x15, \
-			  0xDE, 0xEF, 0x12, 0x12, 0x23, 0x15, 0x00, 0x00}
+#define BLINKY_UUID_SVC                                                                            \
+	{0x5b, 0xda, 0x7d, 0x73, 0x0b, 0x5f, 0x52, 0x91,                                           \
+	 0x58, 0x43, 0xc7, 0x8f, 0x31, 0xac, 0xbc, 0xb9}
 
 /* LED characteristic */
-#define BLINKY_UUID_CHAR {0x23, 0xD1, 0xBC, 0xEA, 0x5F, 0x78, 0x23, 0x15, \
-			  0xDE, 0xEF, 0x12, 0x12, 0x25, 0x15, 0x00, 0x00}
+#define BLINKY_UUID_CHAR                                                                           \
+	{0x5d, 0xda, 0x7d, 0x73, 0x0b, 0x5f, 0x52, 0x91,                                           \
+	 0x58, 0x43, 0xc7, 0x8f, 0x31, 0xac, 0xbc, 0xb9}
 
 static const uint8_t blinky_svc_uuid128[16] = BLINKY_UUID_SVC;
+static const uint16_t lbs_service_uuid16[8] = {0xda5b, 0x737d, 0x5f0b, 0x9152,
+					       0x4358, 0x8fc7, 0xac31, 0xb9bc};
 
 /* Attribute indices into the blinky GATT database */
 enum {
@@ -175,11 +181,6 @@ struct blinky_env {
 
 static struct blinky_env blinky;
 
-/* Set to true on the first write from the phone.
- * While true, combined_process() skips all LED blinking logic.
- */
-static bool blinky_active;
-
 /* GATT attribute table for the blinky service */
 static const gatt_att_desc_t blinky_att_db[BLINKY_IDX_NB] = {
 	[BLINKY_IDX_SVC] = { ATT_128_PRIMARY_SERVICE, ATT_UUID(16) | PROP(RD), 0 },
@@ -197,8 +198,8 @@ static gapm_config_t gapm_cfg = {
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
-	.private_identity.addr = {0xCA, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
-	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	.private_identity.addr = {0},
+	.irk.key = {0},
 	.gap_start_hdl = 0,
 	.gatt_start_hdl = 0,
 	.att_cfg = 0,
@@ -213,7 +214,6 @@ static gapm_config_t gapm_cfg = {
 };
 
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
-static const char device_name[] = DEVICE_NAME;
 
 /* Saved advertising activity index, used to restart advertising after disconnection */
 static uint8_t adv_actv_idx;
@@ -229,67 +229,15 @@ static uint16_t cs_evt_time;
 static uint32_t rsc_total_distance;
 static uint16_t rsc_current_value = 1;
 
-/* Advertising helper */
-static uint16_t start_le_adv(uint8_t actv_idx)
-{
-	uint16_t err;
-
-	gapm_le_adv_param_t adv_params = {
-		.duration = 0, /* Advertise indefinitely */
-	};
-
-	err = gapm_le_start_adv(actv_idx, &adv_params);
-	if (err) {
-		LOG_ERR("Failed to start LE advertising with error %u", err);
-	}
-	return err;
-}
-
 /* GAP connection callbacks */
-static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv_idx, uint8_t role,
-				 const gap_bdaddr_t *p_peer_addr,
-				 const gapc_le_con_param_t *p_con_params, uint8_t clk_accuracy)
+
+static void on_disconnection(uint8_t conidx, uint16_t reason)
 {
-	LOG_INF("Connection request on index %u", conidx);
-	gapc_le_connection_cfm(conidx, 0, NULL);
-
-	LOG_DBG("Connection parameters: interval %u, latency %u, supervision timeout %u",
-		p_con_params->interval, p_con_params->latency, p_con_params->sup_to);
-
-	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
-
-	ctrl.connected = true;
-
-	k_sem_give(&conn_sem);
-
-	LOG_DBG("Please enable notifications/indications on peer device..");
-}
-
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
-{
-	LOG_WRN("Unexpected key received on conidx %u", conidx);
-}
-
-static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
-{
-	uint16_t err;
-
-	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
-
-	/* Restart advertising so new connections can be made */
-	err = start_le_adv(adv_actv_idx);
-	if (err) {
-		LOG_ERR("Error restarting advertising: %u", err);
-	} else {
-		LOG_DBG("Restarting advertising");
-	}
-
 	/* Notify PRXP (triggers link loss alert if disconnection was not user-initiated) */
 	prxp_disc_notify(reason);
 
-	ctrl.connected = false;
-	blinky_active = false;
-	gpio_pin_set_dt(&led0, 0); /* Turn off BLE-controlled LED on disconnect */
+	/* Turn off BLE-controlled LED on disconnect */
+	ble_gpio_led_set(&led0, false);
 
 	/* Reset all service send gates - phone must re-enable CCCDs after reconnect */
 	hr_ready_to_send = false;
@@ -299,22 +247,6 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	gl_sent_once = false;
 	cs_ready_to_send = false;
 	rsc_ready_to_send = false;
-}
-
-static void on_name_get(uint8_t conidx, uint32_t metainfo, uint16_t token, uint16_t offset,
-			uint16_t max_len)
-{
-	const size_t device_name_len = sizeof(device_name) - 1;
-	const size_t short_len = (device_name_len > max_len ? max_len : device_name_len);
-
-	gapc_le_get_name_cfm(conidx, token, GAP_ERR_NO_ERROR, device_name_len, short_len,
-			     (const uint8_t *)device_name);
-}
-
-static void on_appearance_get(uint8_t conidx, uint32_t metainfo, uint16_t token)
-{
-	/* Send 'unknown' appearance */
-	gapc_le_get_appearance_cfm(conidx, token, GAP_ERR_NO_ERROR, 0);
 }
 
 /* HRPS callbacks */
@@ -595,43 +527,6 @@ static const rscps_cb_t rscps_cb = {
 	.cb_ctnl_pt_rsp_send_cmp = on_rsc_ctnl_pt_rsp_send_cmp,
 };
 
-/* GAP callback structs */
-
-static const gapc_connection_req_cb_t gapc_con_cbs = {
-	.le_connection_req = on_le_connection_req,
-};
-
-static const gapc_security_cb_t gapc_sec_cbs = {
-	.key_received = on_key_received,
-};
-
-static const gapc_connection_info_cb_t gapc_con_inf_cbs = {
-	.disconnected = on_disconnection,
-	.name_get = on_name_get,
-	.appearance_get = on_appearance_get,
-};
-
-/* All callbacks in this struct are optional - left empty */
-static const gapc_le_config_cb_t gapc_le_cfg_cbs;
-
-static void on_gapm_err(uint32_t metainfo, uint8_t code)
-{
-	LOG_ERR("gapm error %d", code);
-}
-
-static const gapm_cb_t gapm_err_cbs = {
-	.cb_hw_error = on_gapm_err,
-};
-
-static const gapm_callbacks_t gapm_cbs = {
-	.p_con_req_cbs = &gapc_con_cbs,
-	.p_sec_cbs = &gapc_sec_cbs,
-	.p_info_cbs = &gapc_con_inf_cbs,
-	.p_le_config_cbs = &gapc_le_cfg_cbs,
-	.p_bt_config_cbs = NULL,
-	.p_gapm_cbs = &gapm_err_cbs,
-};
-
 /* Profile callback structs */
 
 static const hrps_cb_t hrps_cb = {
@@ -648,132 +543,35 @@ static const blps_cb_t blps_cb = {
 /* Build the primary advertising packet with all standard 16-bit service UUIDs */
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
-	uint16_t err;
+	int ret;
+	uint16_t comp_id = CONFIG_BLE_COMPANY_ID;
+	uint16_t svc[] = {
+		GATT_SVC_HEART_RATE,
+		GATT_SVC_BLOOD_PRESSURE,
+		GATT_SVC_HEALTH_THERMOM,
+		GATT_SVC_GLUCOSE,
+		GATT_SVC_CYCLING_SPEED_CADENCE,
+		GATT_SVC_RUNNING_SPEED_CADENCE,
+		GATT_SVC_LINK_LOSS,
+		get_batt_id(),
+	};
 
-	uint16_t svc_hr   = GATT_SVC_HEART_RATE;
-	uint16_t svc_bp   = GATT_SVC_BLOOD_PRESSURE;
-	uint16_t svc_htp  = GATT_SVC_HEALTH_THERMOM;
-	uint16_t svc_gl   = GATT_SVC_GLUCOSE;
-	uint16_t svc_csc  = GATT_SVC_CYCLING_SPEED_CADENCE;
-	uint16_t svc_rsc  = GATT_SVC_RUNNING_SPEED_CADENCE;
-	uint16_t svc_lls  = GATT_SVC_LINK_LOSS;
-	uint16_t svc_batt = get_batt_id();
-
-	const uint8_t num_svc = 8;
-	const uint16_t adv_len = 1 + 1 + (num_svc * 2);
-
-	co_buf_t *p_buf;
-
-	err = co_buf_alloc(&p_buf, 0, adv_len, 0);
-	__ASSERT(err == 0, "ADV buffer alloc failed");
-
-	uint8_t *p = co_buf_data(p_buf);
-
-	*p++ = (num_svc * 2) + 1;
-	*p++ = GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID;
-
-	memcpy(p, &svc_hr,   2); p += 2;
-	memcpy(p, &svc_bp,   2); p += 2;
-	memcpy(p, &svc_htp,  2); p += 2;
-	memcpy(p, &svc_gl,   2); p += 2;
-	memcpy(p, &svc_csc,  2); p += 2;
-	memcpy(p, &svc_rsc,  2); p += 2;
-	memcpy(p, &svc_lls,  2); p += 2;
-	memcpy(p, &svc_batt, 2);
-
-	err = gapm_le_set_adv_data(actv_idx, p_buf);
-	co_buf_release(p_buf);
-	return err;
-}
-
-/* Build the scan response packet with the device name and the blinky 128-bit UUID.
- * Splitting across adv + scan response keeps both within the 31-byte BLE limit.
- */
-static uint16_t set_scan_data(uint8_t actv_idx)
-{
-	uint16_t err;
-	co_buf_t *p_buf;
-
-	const size_t name_len = sizeof(device_name) - 1;
-	const uint16_t scan_len =
-		1 + 1 + name_len +   /* length byte + type byte + device name */
-		1 + 1 + 16;          /* length byte + type byte + 128-bit UUID */
-
-	err = co_buf_alloc(&p_buf, 0, scan_len, 0);
-	__ASSERT(err == 0, "SCAN buffer alloc failed");
-
-	uint8_t *p = co_buf_data(p_buf);
-
-	/* Complete device name */
-	*p++ = name_len + 1;
-	*p++ = GAP_AD_TYPE_COMPLETE_NAME;
-	memcpy(p, device_name, name_len);
-	p += name_len;
-
-	/* 128-bit Blinky service UUID */
-	*p++ = GATT_UUID_128_LEN + 1;
-	*p++ = GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID;
-	memcpy(p, blinky_svc_uuid128, 16);
-
-	err = gapm_le_set_scan_response_data(actv_idx, p_buf);
-	co_buf_release(p_buf);
-	return err;
-}
-
-/* Advertising activity callbacks */
-
-static void on_adv_actv_stopped(uint32_t metainfo, uint8_t actv_idx, uint16_t reason)
-{
-	LOG_DBG("Advertising activity index %u stopped for reason %u", actv_idx, reason);
-}
-
-/* Advertising setup state machine: create -> set adv data -> set scan data -> start */
-static void on_adv_actv_proc_cmp(uint32_t metainfo, uint8_t proc_id, uint8_t actv_idx,
-				 uint16_t status)
-{
-	if (status) {
-		LOG_ERR("Advertising activity process completed with error %u", status);
-		return;
+	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID, svc, sizeof(svc));
+	if (ret) {
+		LOG_ERR("AD profile set fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	switch (proc_id) {
-	case GAPM_ACTV_CREATE_LE_ADV:
-		LOG_DBG("Advertising activity is created");
-		adv_actv_idx = actv_idx;
-		set_advertising_data(actv_idx);
-		break;
+	/* This sample write AD Name, Profile list and Company ID */
+	ret = bt_adv_data_set_manufacturer(comp_id, NULL, 0);
 
-	case GAPM_ACTV_SET_ADV_DATA:
-		LOG_DBG("Advertising data is set");
-		set_scan_data(actv_idx);
-		break;
-
-	case GAPM_ACTV_SET_SCAN_RSP_DATA:
-		LOG_DBG("Scan data is set");
-		start_le_adv(actv_idx);
-		break;
-
-	case GAPM_ACTV_START:
-		print_device_identity();
-		address_verification_log_advertising_address(actv_idx);
-		break;
-
-	default:
-		LOG_WRN("Unexpected GAPM activity complete, proc_id %u", proc_id);
-		break;
+	if (ret) {
+		LOG_ERR("AD manufacturer data fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
 	}
-}
 
-static void on_adv_created(uint32_t metainfo, uint8_t actv_idx, int8_t tx_pwr)
-{
-	LOG_DBG("Advertising activity created, index %u, selected tx power %d", actv_idx, tx_pwr);
+	return bt_gapm_advertiment_data_set(actv_idx);
 }
-
-static const gapm_le_adv_cb_actv_t le_adv_cbs = {
-	.hdr.actv.stopped = on_adv_actv_stopped,
-	.hdr.actv.proc_cmp = on_adv_actv_proc_cmp,
-	.created = on_adv_created,
-};
 
 /* Blinky GATT callbacks */
 
@@ -809,9 +607,9 @@ static void blinky_att_write(uint8_t conidx, uint8_t user_lid, uint16_t token,
 						 ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN);
 			return;
 		}
-		blinky_active = true; /* Hand LED control to the phone, stop blinking logic */
+		/* Hand LED control to the phone */
 		blinky.value = *co_buf_data(data);
-		gpio_pin_set_dt(&led0, blinky.value ? 1 : 0);
+		ble_gpio_led_set(&led0, blinky.value ? 1 : 0);
 
 	} else if (att_idx == BLINKY_IDX_CHAR_CCCD) {
 		memcpy(&blinky.cccd, co_buf_data(data), sizeof(uint16_t));
@@ -832,30 +630,48 @@ static const gatt_srv_cb_t blinky_gatt_cbs = {
 	.cb_event_sent   = blinky_evt_sent,
 };
 
+/* Build the scan response packet with the device name and the blinky 128-bit UUID.
+ * Splitting across adv + scan response keeps both within the 31-byte BLE limit.
+ */
+static uint16_t set_scan_data(uint8_t actv_idx)
+{
+	int ret;
+
+	ret = bt_scan_rsp_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID, lbs_service_uuid16,
+				  sizeof(lbs_service_uuid16));
+	if (ret) {
+		LOG_ERR("Scan response UUID set fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
+	}
+
+	ret = bt_scan_rsp_data_set_name_auto(DEVICE_NAME, strlen(DEVICE_NAME));
+
+	if (ret) {
+		LOG_ERR("Scan response device name data fail %d", ret);
+		return ATT_ERR_INSUFF_RESOURCE;
+	}
+
+	return bt_gapm_scan_response_set(actv_idx);
+}
+
 /* Advertising activity creation */
 static uint16_t create_advertising(void)
 {
-	uint16_t err;
-
 	gapm_le_adv_create_param_t adv_create_params = {
 		.prop = GAPM_ADV_PROP_UNDIR_CONN_MASK,
 		.disc_mode = GAPM_ADV_MODE_GEN_DISC,
 		.tx_pwr = 0,
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-			.adv_intv_min = 160, /* 100 ms */
-			.adv_intv_max = 800, /* 500 ms */
-			.ch_map = ADV_ALL_CHNLS_EN,
-			.phy = GAPM_PHY_TYPE_LE_1M,
-		},
+				.adv_intv_min = 160,
+				.adv_intv_max = 800,
+				.ch_map = ADV_ALL_CHNLS_EN,
+				.phy = GAPM_PHY_TYPE_LE_1M,
+			},
 	};
 
-	err = gapm_le_create_adv_legacy(0, adv_type, &adv_create_params, &le_adv_cbs);
-	if (err) {
-		LOG_ERR("Error %u creating advertising activity", err);
-	}
-
-	return err;
+	return bt_gapm_le_create_advertisement_service(adv_type, &adv_create_params, NULL,
+						       &adv_actv_idx);
 }
 
 /* Blinky service registration */
@@ -870,10 +686,8 @@ static uint16_t blinky_init(void)
 		return err;
 	}
 
-	static const uint8_t svc_uuid[] = BLINKY_UUID_SVC;
-
 	err = gatt_db_svc_add(blinky.user_lid, SVC_UUID(128),
-			      svc_uuid,
+			      blinky_svc_uuid128,
 			      BLINKY_IDX_NB,
 			      NULL,
 			      blinky_att_db,
@@ -967,18 +781,6 @@ static void bundle_server_configure(void)
 	if (err) {
 		LOG_ERR("Error %u adding RSCPS profile", err);
 	}
-}
-
-/* Called when gapm_configure() completes - unblocks main() to continue setup */
-void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
-{
-	if (status) {
-		LOG_ERR("gapm process completed with error %u", status);
-		return;
-	}
-
-	LOG_DBG("gapm process completed successfully");
-	k_sem_give(&init_sem);
 }
 
 /* Measurement send helpers */
@@ -1119,24 +921,30 @@ static void update_rsc_value(void)
 	}
 }
 
+void LedWorkerHandler(struct k_work *work)
+{
+	int res_schedule_time = 0;
+
+	if (ctrl.connected) {
+		ble_gpio_led_set(&led2, false);
+	} else {
+		ble_gpio_led_toggle(&led2);
+		res_schedule_time = 500;
+	}
+
+	if (res_schedule_time) {
+		k_work_reschedule(&ledWork, K_MSEC(res_schedule_time));
+	}
+}
+
 /* Main periodic processing (called every 1 second from main loop) */
 static void combined_process(void)
 {
-	static bool led2_state;
 
-	if (blinky_active) {
-		return;
-	}
-
-	/* Not connected: blink LED2 to indicate advertising */
 	if (!ctrl.connected) {
-		led2_state = !led2_state;
-		gpio_pin_set_dt(&led2, led2_state);
 		return;
 	}
 
-	/* Connected: keep LED2 steady off */
-	gpio_pin_set_dt(&led2, 0);
 	update_sensor_value();
 
 	/* HR gated by CCCD enable + send complete */
@@ -1177,46 +985,59 @@ static void combined_process(void)
 	}
 }
 
+void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
+				  uint16_t status)
+{
+	switch (con_event) {
+	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
+		ctrl.connected = true;
+		LOG_INF("Connection index %u connected to known device", con_idx);
+		break;
+	case GAPM_API_DEV_CONNECTED:
+		ctrl.connected = true;
+		LOG_INF("Connection index %u connected to new device", con_idx);
+		break;
+	case GAPM_API_DEV_DISCONNECTED:
+		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
+		ctrl.connected = false;
+		on_disconnection(con_idx, status); /* Notify PRXP and reset state */
+		break;
+	case GAPM_API_PAIRING_FAIL:
+		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		break;
+	}
+}
+
+static gapm_user_cb_t gapm_user_cb = {
+	.connection_status_update = app_connection_status_update,
+};
+
 int main(void)
 {
 	uint16_t err;
+	/* Configure LED0 (BLE controlled by blinky) & LED2 (connection status indicator) */
+	err = ble_gpio_led_init();
+	if (err) {
+		LOG_ERR("Led Init fail %u", err);
+		return -1;
+	}
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
 
-	if (address_verification(SAMPLE_ADDR_TYPE, &adv_type, &gapm_cfg)) {
+	/* Use static random address for advertising */
+	if (address_verification(ALIF_STATIC_RAND_ADDR, &adv_type, &gapm_cfg)) {
 		LOG_ERR("Address verification failed");
 		return -EADV;
 	}
 
-	/* Merge PRXP callbacks into the main GAP callback struct before configuring */
-	gapm_callbacks_t merged = gapm_cbs;
-
-	merged = prxp_append_cbs(&merged);
-
-	err = gapm_configure(0, &gapm_cfg, &merged, on_gapm_process_complete);
+	/* Configure Bluetooth Stack */
+	LOG_INF("Init gapm service");
+	err = bt_gapm_init(&gapm_cfg, &gapm_user_cb, DEVICE_NAME, strlen(DEVICE_NAME));
 	if (err) {
 		LOG_ERR("gapm_configure error %u", err);
 		return -1;
 	}
-
-	LOG_DBG("Waiting for init...");
-	k_sem_take(&init_sem, K_FOREVER);
-	LOG_DBG("Init complete!");
-
-	/* Configure LED0 (BLE controlled by blinky) */
-	if (!gpio_is_ready_dt(&led0)) {
-		LOG_ERR("LED0 not ready");
-		return 0;
-	}
-	gpio_pin_configure_dt(&led0, GPIO_OUTPUT_INACTIVE);
-
-	/* Configure LED2 (connection status indicator) */
-	if (!gpio_is_ready_dt(&led2)) {
-		LOG_ERR("LED2 not ready");
-		return 0;
-	}
-	gpio_pin_configure_dt(&led2, GPIO_OUTPUT_INACTIVE);
 
 	/* Share connection state with battery and other sub-services */
 	service_conn(&ctrl);
@@ -1229,7 +1050,32 @@ int main(void)
 	prxp_server_configure(); /* Registers LLSS only */
 
 	/* Create and start advertising */
-	create_advertising();
+	err = create_advertising();
+	if (err) {
+		LOG_ERR("Advertisement create fail %u", err);
+		return -1;
+	}
+
+	err = set_advertising_data(adv_actv_idx);
+	if (err) {
+		LOG_ERR("Advertising data set fail %u", err);
+		return -1;
+	}
+
+	err = set_scan_data(adv_actv_idx);
+	if (err) {
+		LOG_ERR("Scan data set fail %u", err);
+		return -1;
+	}
+
+	err = bt_gapm_advertisement_start(adv_actv_idx);
+	if (err) {
+		LOG_ERR("Advertisement start fail %u", err);
+		return -1;
+	}
+	print_device_identity();
+	/* Set a Led init state */
+	k_work_reschedule(&ledWork, K_MSEC(1));
 
 	/* Main loop: process measurements and battery every second */
 	while (1) {
