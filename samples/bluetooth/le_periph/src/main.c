@@ -27,7 +27,12 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
 /* Define advertising address type */
 #define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+
+#ifdef CONFIG_PM
+#define LED0_NODE DT_ALIAS(gpio_led)
+#else
 #define LED0_NODE DT_ALIAS(led0)
+#endif
 
 static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
