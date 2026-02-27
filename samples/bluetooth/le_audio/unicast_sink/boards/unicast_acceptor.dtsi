@@ -15,9 +15,6 @@
 #define I2S0_IRQ_NUM  141
 #define I2S0_IRQ_PRIO 3
 
-#define LPI2S_IRQ_NUM  48
-#define LPI2S_IRQ_PRIO 3
-
 / {
 	aliases {
 		/delete-property/ sw0;
