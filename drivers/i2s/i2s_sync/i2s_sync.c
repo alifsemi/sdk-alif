@@ -30,12 +30,23 @@ LOG_MODULE_REGISTER(i2s_sync, CONFIG_I2S_SYNC_LOG_LEVEL);
 #define I2S_CLK_DIVISOR_MAX 0x3FF
 #define I2S_CLK_DIVISOR_MIN 2
 
+/* Enable to use Event Router driver instead of manual configuration
+ * When enabled (1):
+ * - Event router is configured automatically by the driver via device tree
+ * - Manual event router configuration is disabled
+ * When disabled (0):
+ * - Manual event router configuration is used (legacy behavior)
+ */
+#define USE_EVENT_ROUTER_DRIVER   1
+
 #define DMA_I2S0_RX_GROUP 0x1
 #define DMA_I2S0_TX_GROUP 0x1
 
+#if !USE_EVENT_ROUTER_DRIVER
 #define EVTRTR2_DMA_CTRL_ENA        (1U << 4)
 #define EVTRTR2_DMA_CTRL_ACK_PERIPH (0x0 << 16)
 #define EVTRTR2_DMA_CTRL_ACK_ROUTER (0x1 << 16)
+#endif /* !USE_EVENT_ROUTER_DRIVER */
 
 #if CONFIG_ALIF_BLE_AUDIO_USE_RAMFUNC
 #define INT_RAMFUNC __ramfunc
@@ -103,6 +114,7 @@ static int i2s_register_cb(const struct device *dev, enum i2s_dir dir, i2s_sync_
 	return 0;
 }
 
+#if !USE_EVENT_ROUTER_DRIVER
 static int configure_dma_event_router(const uint32_t dma_group, const uint32_t dma_request)
 {
 	uint32_t regdata;
@@ -128,6 +140,7 @@ static int configure_dma_event_router(const uint32_t dma_group, const uint32_t d
 
 	return 0;
 }
+#endif /* !USE_EVENT_ROUTER_DRIVER */
 
 INT_RAMFUNC static void dma_tx_callback(const struct device *dma_dev, void *p_user_data,
 					uint32_t const channel, int const status)
@@ -646,20 +659,26 @@ static int i2s_sync_init(const struct device *dev)
 
 		/* Enable DMA handshake logic */
 		if (dev_cfg->dma_tx.enabled) {
+#if !USE_EVENT_ROUTER_DRIVER
+			/* Manual event router configuration */
 			ret = configure_dma_event_router(DMA_I2S0_TX_GROUP,
 							 dev_cfg->dma_tx.request);
 			if (ret) {
 				return ret;
 			}
+#endif
 			i2s_tx_dma_enable(i2s);
 			LOG_DBG("I2S:%s TX DMA enabled", dev->name);
 		}
 		if (dev_cfg->dma_rx.enabled) {
+#if !USE_EVENT_ROUTER_DRIVER
+			/* Manual event router configuration */
 			ret = configure_dma_event_router(DMA_I2S0_RX_GROUP,
 							 dev_cfg->dma_rx.request);
 			if (ret) {
 				return ret;
 			}
+#endif
 			i2s_rx_dma_enable(i2s);
 			LOG_DBG("I2S:%s RX DMA enabled", dev->name);
 		}
