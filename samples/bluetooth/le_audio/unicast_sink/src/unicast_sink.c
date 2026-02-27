@@ -145,7 +145,7 @@ static struct unicast_env unicast_env = {
 };
 
 /** Array providing string description of each ASE state */
-static const char *ase_state_name[BAP_UC_ASE_STATE_MAX] = {
+static const char *const ase_state_name[BAP_UC_ASE_STATE_MAX] = {
 	[BAP_UC_ASE_STATE_IDLE] = "Idle",
 	[BAP_UC_ASE_STATE_CODEC_CONFIGURED] = "Codec Configured",
 	[BAP_UC_ASE_STATE_QOS_CONFIGURED] = "QoS Configured",
@@ -155,7 +155,7 @@ static const char *ase_state_name[BAP_UC_ASE_STATE_MAX] = {
 	[BAP_UC_ASE_STATE_RELEASING] = "Releasing",
 };
 /** Array providing string description of each Sampling Frequency */
-static const char *sampling_freq_name[BAP_SAMPLING_FREQ_MAX + 1] = {
+static const char *const sampling_freq_name[BAP_SAMPLING_FREQ_MAX + 1] = {
 	[BAP_SAMPLING_FREQ_8000HZ] = "8kHz",       [BAP_SAMPLING_FREQ_11025HZ] = "11.025kHz",
 	[BAP_SAMPLING_FREQ_16000HZ] = "16kHz",     [BAP_SAMPLING_FREQ_22050HZ] = "22.050kHz",
 	[BAP_SAMPLING_FREQ_24000HZ] = "24kHz",     [BAP_SAMPLING_FREQ_32000HZ] = "32kHz",
@@ -165,12 +165,12 @@ static const char *sampling_freq_name[BAP_SAMPLING_FREQ_MAX + 1] = {
 	[BAP_SAMPLING_FREQ_384000HZ] = "384kHz",
 };
 /** Array providing string description of each Frame Duration */
-static const char *frame_dur_name[BAP_FRAME_DUR_MAX + 1] = {
+static const char *const frame_dur_name[BAP_FRAME_DUR_MAX + 1] = {
 	[BAP_FRAME_DUR_7_5MS] = "7.5ms",
 	[BAP_FRAME_DUR_10MS] = "10ms",
 };
 /** Array providing string description of each location */
-static const char *location_name[GAF_LOC_RIGHT_SURROUND_POS + 1] = {
+static const char *const location_name[GAF_LOC_RIGHT_SURROUND_POS + 1] = {
 	[GAF_LOC_FRONT_LEFT_POS] = "FRONT LEFT",
 	[GAF_LOC_FRONT_RIGHT_POS] = "FRONT RIGHT",
 	[GAF_LOC_FRONT_CENTER_POS] = "CENTER",
@@ -199,6 +199,12 @@ static const char *location_name[GAF_LOC_RIGHT_SURROUND_POS + 1] = {
 	[GAF_LOC_FRONT_RIGHT_WIDE_POS] = "FRONT RIGHT WIDE",
 	[GAF_LOC_LEFT_SURROUND_POS] = "LEFT SURROUND",
 	[GAF_LOC_RIGHT_SURROUND_POS] = "RIGHT SURROUND",
+};
+/** Array providing string description of each target latency */
+static const char *const target_latency_name[] = {
+	[BAP_UC_TGT_LATENCY_LOWER] = "Lower",
+	[BAP_UC_TGT_LATENCY_BALENCED] = "Balanced",
+	[BAP_UC_TGT_LATENCY_RELIABLE] = "Reliable",
 };
 
 /* ---------------------------------------------------------------------------------------- */
@@ -458,6 +464,44 @@ static void on_unicast_server_cb_cis_state(uint8_t const stream_lid, uint8_t con
 		p_cis_cfg->bn_m2s, p_cis_cfg->bn_s2m, p_cis_cfg->nse);
 }
 
+static uint32_t get_max_transmission_latency_ms(uint32_t const tgt_latency,
+						uint32_t const sampling_freq,
+						uint32_t const frame_dur, uint32_t const sdu_size)
+{
+	bool const is_10ms = frame_dur == BAP_FRAME_DUR_10MS;
+
+	if (tgt_latency == BAP_UC_TGT_LATENCY_LOWER) {
+		switch (sampling_freq) {
+		case BAP_SAMPLING_FREQ_8000HZ:
+		case BAP_SAMPLING_FREQ_16000HZ:
+		case BAP_SAMPLING_FREQ_24000HZ:
+		case BAP_SAMPLING_FREQ_32000HZ:
+			return is_10ms ? 10 : 8;
+		case BAP_SAMPLING_FREQ_48000HZ:
+			return is_10ms ? 20 : 15;
+		default:
+			break;
+		}
+		return 0;
+	}
+
+	switch (sampling_freq) {
+	case BAP_SAMPLING_FREQ_8000HZ:
+	case BAP_SAMPLING_FREQ_16000HZ:
+	case BAP_SAMPLING_FREQ_24000HZ:
+	case BAP_SAMPLING_FREQ_32000HZ:
+		return is_10ms ? 95 : 75;
+	case BAP_SAMPLING_FREQ_48000HZ:
+		if (is_10ms) {
+			return sdu_size > 100 ? 100 : 95;
+		}
+		return 75;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static void
 on_unicast_server_cb_configure_codec_req(uint8_t const conidx, uint8_t const ase_instance_idx,
 					 uint8_t const ase_lid, uint8_t const tgt_latency,
@@ -477,19 +521,30 @@ on_unicast_server_cb_configure_codec_req(uint8_t const conidx, uint8_t const ase
 		.pres_delay_max_us = CONFIG_MAXIMUM_PRESENTATION_DELAY_US,
 		.pref_pres_delay_min_us = CONFIG_MINIMUM_PRESENTATION_DELAY_US,
 		.pref_pres_delay_max_us = CONFIG_MAXIMUM_PRESENTATION_DELAY_US,
-#if MAX_TRANSPORT_LATENCY_MS
+#if defined(MAX_TRANSPORT_LATENCY_MS)
 		.trans_latency_max_ms = MAX_TRANSPORT_LATENCY_MS,
 #else
 		/* Transport latency maximum according to LE audio specification */
-		.trans_latency_max_ms = (tgt_latency == BAP_UC_TGT_LATENCY_LOWER) ? 20 : 100,
+		.trans_latency_max_ms = get_max_transmission_latency_ms(
+			tgt_latency, p_cfg->param.sampling_freq, p_cfg->param.frame_dur,
+			p_cfg->param.frame_octet),
 #endif
-		.framing = ISO_UNFRAMED_MODE,                    /** @ref enum iso_frame */
-		.phy_bf = (GAP_PHY_LE_1MBPS | GAP_PHY_LE_2MBPS), /** @ref enum gap_phy */
-#if RETX_NUMBER
+		/* TODO, FIXME: This is causing a weird audio quality issue. Use unframed mode now.
+		 * .framing =
+		 *    (tgt_latency == BAP_UC_TGT_LATENCY_LOWER) ? ISO_UNFRAMED_MODE
+		 *    : ISO_FRAMED_MODE,
+		 */
+		.framing = ISO_UNFRAMED_MODE,
+		.phy_bf = (GAP_PHY_LE_1MBPS | GAP_PHY_LE_2MBPS),
+#if defined(RETX_NUMBER)
 		.retx_nb = RETX_NUMBER,
 #else
 		/* Retransmission number according to LE audio specification */
-		.retx_nb = (tgt_latency == BAP_UC_TGT_LATENCY_LOWER) ? 5 : 13,
+		.retx_nb =
+			((tgt_latency == BAP_UC_TGT_LATENCY_LOWER)
+				 ? ((p_cfg->param.sampling_freq <= BAP_SAMPLING_FREQ_32000HZ) ? 2
+											      : 5)
+				 : 13),
 #endif
 	};
 	struct ase_instance *p_ase = get_ase_context_by_lid(ase_lid);
@@ -504,8 +559,9 @@ on_unicast_server_cb_configure_codec_req(uint8_t const conidx, uint8_t const ase
 	}
 
 	LOG_DBG("ASE %u Configure Codec requested (ASE inst_idx %u, lid %u, conidx %u). "
-		"tgt_latency: %u, tgt_phy: %u",
-		ase_lid_cfm, ase_instance_idx, ase_lid, conidx, tgt_latency, tgt_phy);
+		"tgt_latency: %s, tgt_phy: %u",
+		ase_lid_cfm, ase_instance_idx, ase_lid, conidx, target_latency_name[tgt_latency],
+		tgt_phy);
 
 	if (tgt_phy < BAP_UC_TGT_PHY_1M || tgt_phy > BAP_UC_TGT_PHY_2M) {
 		LOG_ERR("  Invalid PHY %u", tgt_phy);
@@ -514,6 +570,15 @@ on_unicast_server_cb_configure_codec_req(uint8_t const conidx, uint8_t const ase
 
 	if (p_codec_id->codec_id[0] != GAPI_CODEC_FORMAT_LC3) {
 		LOG_ERR("  Invalid codec %u", p_codec_id->codec_id[0]);
+		goto bap_codec_config_cfm;
+	}
+
+	if (!qos_req.trans_latency_max_ms) {
+		LOG_ERR("  Unsupported configuration: sampling frequency %s, frame duration %s,"
+			" SDU size %u, target latency %s",
+			sampling_freq_name[p_cfg->param.sampling_freq],
+			frame_dur_name[p_cfg->param.frame_dur], p_cfg->param.frame_octet,
+			target_latency_name[tgt_latency]);
 		goto bap_codec_config_cfm;
 	}
 

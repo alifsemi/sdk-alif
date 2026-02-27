@@ -56,8 +56,7 @@ LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
 
 #if CONFIG_LE_AUDIO_TARGET_LATENCY == LATENCY_TARGET_RELIABLE
 #define BAP_UC_LINK_TYPE         BAP_UC_TGT_LATENCY_RELIABLE
-#define MAX_TRANSPORT_LATENCY_MS 40 /* 40 = ok, 100 = nok */
-#define RETX_NUMBER              0  /* 13 */
+#define MAX_TRANSPORT_LATENCY_MS 40
 
 #elif CONFIG_LE_AUDIO_TARGET_LATENCY == LATENCY_TARGET_LOWER
 #define BAP_UC_LINK_TYPE         BAP_UC_TGT_LATENCY_LOWER
@@ -441,7 +440,7 @@ static void configure_qos(struct unicast_peer *p_unicast_env)
 
 		struct bap_uc_cli_qos_cfg qos_cfg = {
 			.phy = STREAM_PHY_TYPE,
-#if RETX_NUMBER
+#if defined(RETX_NUMBER)
 			.retx_nb = RETX_NUMBER,
 #else
 			.retx_nb = p_ase->retx_number,
@@ -490,7 +489,14 @@ static void *get_best_stream(struct pac_capa *p_pac_base, size_t count)
 	struct pac_capa *p_pac = NULL;
 	uint32_t sampling_freq_hz = 0;
 	while (count--) {
-#if PRIORITIZE_32KHZ_STREAM
+#if PRIORITIZE_16KHZ_STREAM
+		/* Use 16kHz 7.5ms frame duration if available */
+		if ((16000 == p_pac_base[count].sampling_freq_hz) &&
+		    p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) {
+			p_pac = &p_pac_base[count];
+			break;
+		}
+#elif PRIORITIZE_32KHZ_STREAM
 		/* Use 32kHz 7.5ms frame duration if available */
 		if ((32000 == p_pac_base[count].sampling_freq_hz) &&
 		    p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) {
