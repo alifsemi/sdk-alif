@@ -1,0 +1,69 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+#include <dt-bindings/pinctrl/balletto-pinctrl.h>
+
+/*
+ * This overlay file is used to enable LPI2S interface for audio
+ * and requires external jumpers to be connected to be able to
+ * communicate with the audio codec:
+ *     I2S SCK: P1.6 -> P4.5
+ *     I2S WS:  P1.7 -> P4.6
+ *     I2S SDI: P2.4 -> P4.3
+ *     I2S SDO: P2.5 -> P4.4
+ */
+
+#define LPI2S_IRQ_NUM  48
+#define LPI2S_IRQ_PRIO 3
+
+#ifndef PIN_P4_3__LPI2S0_SDI_B
+#define PIN_P4_3__LPI2S0_SDI_B PINMUX_PIN(PIN_P4_3, 2)
+#endif
+#ifndef PIN_P4_4__LPI2S0_SDO_B
+#define PIN_P4_4__LPI2S0_SDO_B PINMUX_PIN(PIN_P4_4, 2)
+#endif
+#ifndef PIN_P4_5__LPI2S0_SCLK_B
+#define PIN_P4_5__LPI2S0_SCLK_B PINMUX_PIN(PIN_P4_5, 3)
+#endif
+#ifndef PIN_P4_6__LPI2S0_WS_B
+#define PIN_P4_6__LPI2S0_WS_B PINMUX_PIN(PIN_P4_6, 3)
+#endif
+
+/ {
+	aliases {
+		i2s-bus = &i2s4;
+	};
+};
+
+&pinctrl_lpi2s {
+	group0 {
+		pinmux = <PIN_P4_3__LPI2S0_SDI_B>,
+			 <PIN_P4_4__LPI2S0_SDO_B>,
+			 <PIN_P4_5__LPI2S0_SCLK_B>,
+			 <PIN_P4_6__LPI2S0_WS_B>;
+		read-enable = <0x1>;
+	};
+};
+
+/* Enable LPI2S interface */
+&i2s4 {
+	/delete-property/ clock-frequency;
+	/delete-property/ driver-instance;
+	compatible = "alif,i2s-sync";
+	interrupts = <LPI2S_IRQ_NUM LPI2S_IRQ_PRIO>;
+	bit-depth = <16>;
+	sample-rate = <48000>;
+	status = "okay";
+};
+
+/* Disable default I2S interface */
+&i2s0 {
+	status = "disabled";
+};
