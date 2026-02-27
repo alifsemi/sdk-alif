@@ -46,18 +46,26 @@ static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
 #define ATT_128_CHARACTERISTIC   ATT_16_TO_128_ARRAY(GATT_DECL_CHARACTERISTIC)
 #define ATT_128_CLIENT_CHAR_CFG  ATT_16_TO_128_ARRAY(GATT_DESC_CLIENT_CHAR_CFG)
 /* LED-BUTTON SERVICE and attribute 128 bit UUIDs */
+/* Alif Blinky service UUID */
 #define LBS_UUID_128_SVC                                                                           \
-	{0x23, 0xd1, 0xbc, 0xea, 0x5f, 0x78, 0x23, 0x15,                                           \
-	 0xde, 0xef, 0x12, 0x12, 0x23, 0x15, 0x00, 0x00}
+	{0x5b, 0xda, 0x7d, 0x73, 0x0b, 0x5f, 0x52, 0x91,                                           \
+	 0x58, 0x43, 0xc7, 0x8f, 0x31, 0xac, 0xbc, 0xb9}
+/* Button */
 #define LBS_UUID_128_CHAR0                                                                         \
-	{0x23, 0xd1, 0xbc, 0xea, 0x5f, 0x78, 0x23, 0x15,                                           \
-	 0xde, 0xef, 0x12, 0x12, 0x24, 0x15, 0x00, 0x00}
+	{0x5c, 0xda, 0x7d, 0x73, 0x0b, 0x5f, 0x52, 0x91,                                           \
+	 0x58, 0x43, 0xc7, 0x8f, 0x31, 0xac, 0xbc, 0xb9}
+/* LED */
 #define LBS_UUID_128_CHAR1                                                                         \
-	{0x23, 0xd1, 0xbc, 0xea, 0x5f, 0x78, 0x23, 0x15,                                           \
-	 0xde, 0xef, 0x12, 0x12, 0x25, 0x15, 0x00, 0x00}
+	{0x5d, 0xda, 0x7d, 0x73, 0x0b, 0x5f, 0x52, 0x91,                                           \
+	 0x58, 0x43, 0xc7, 0x8f, 0x31, 0xac, 0xbc, 0xb9}
 #define LBS_METAINFO_CHAR0_NTF_SEND 0x1234
 #define ATT_16_TO_128_ARRAY(uuid)                                                                  \
 	{(uuid) & 0xFF, (uuid >> 8) & 0xFF, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+/* Service UUID to pass into gatt_db_svc_add */
+static const uint8_t lbs_service_uuid[] = LBS_UUID_128_SVC;
+static const uint16_t lbs_service_uuid16[8] = {0xda5b, 0x737d, 0x5f0b, 0x9152,
+					       0x4358, 0x8fc7, 0xac31, 0xb9bc};
 
 /* List of attributes in the service */
 enum service_att_list {
@@ -81,8 +89,6 @@ static struct service_env env;
 #define DEVICE_NAME      CONFIG_BLE_DEVICE_NAME
 #define SAMPLE_ADDR_TYPE ALIF_STATIC_RAND_ADDR /* Static random address */
 
-/* Service UUID to pass into gatt_db_svc_add */
-static const uint8_t lbs_service_uuid[] = LBS_UUID_128_SVC;
 
 /* GATT database for the service */
 static const gatt_att_desc_t lbs_att_db[LBS_IDX_NB] = {
@@ -151,10 +157,9 @@ static void UpdateMuteLedstate(void)
 static int set_advertising_data(uint8_t actv_idx)
 {
 	int ret;
-	/* gatt service identifier */
-	uint16_t svc[8] = {0xd123, 0xeabc, 0x785f, 0x1523, 0xefde, 0x1212, 0x1523, 0x0000};
 
-	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID, svc, sizeof(svc));
+	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_128_BIT_UUID, lbs_service_uuid16,
+				  sizeof(lbs_service_uuid16));
 	if (ret) {
 		LOG_ERR("AD profile set fail %d", ret);
 		return ATT_ERR_INSUFF_RESOURCE;
