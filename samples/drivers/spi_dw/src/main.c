@@ -16,6 +16,7 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
 #include <zephyr/devicetree.h>
 #include <string.h>
 #include <zephyr/drivers/spi.h>
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
 #include <soc_common.h>
 
 #define Mhz		1000000
@@ -36,6 +37,16 @@ LOG_MODULE_REGISTER(app, LOG_LEVEL_INF);
  * enable this to use as S/W controlled using gpio.
  */
 #define SPI_MASTER_SS_SW_CONTROLLED_GPIO   0
+
+/* Enable to use Event Router driver instead of manual configuration
+ * This should match the setting in the board overlay file.
+ * When enabled (1):
+ * - Manual event router configuration functions are disabled
+ * - Event router is configured automatically by the driver via device tree
+ * When disabled (0):
+ * - Manual event router configuration in main() is used
+ */
+#define USE_EVENT_ROUTER_DRIVER   1
 
 /* scheduling priority used by each thread,
  * as we are testing Loopback on the same board,
@@ -251,6 +262,82 @@ static void slave_spi(void *p1, void *p2, void *p3)
 
 #define HE_DMA_SEL_LPSPI_Pos           (4)
 #define HE_DMA_SEL_LPSPI_Msk           (0x3U << HE_DMA_SEL_LPSPI_Pos)
+
+#if USE_EVENT_ROUTER_DRIVER
+/**
+ * @brief Configure HE_DMA_SEL register for LPSPI
+ *
+ * @param dma_group DMA group value from DTS (extracted from ALIF_DMA_ENCODE)
+ * @param use_dma2 True if using DMA2, False if using DMA0
+ */
+static void configure_he_dma_sel_lpspi(uint8_t dma_group, bool use_dma2)
+{
+	uint32_t regdata;
+	uint32_t he_dma_sel_value;
+
+#if (IS_ENABLED(CONFIG_SOC_SERIES_E1C) || IS_ENABLED(CONFIG_SOC_SERIES_B1))
+	/* B1/E1C Series: LPSPI only supports DMA2
+	 * HE_DMA_SEL Register mapping:
+	 *   0x0: Select DMA2 group 1
+	 *   0x1, 0x2, 0x3: Select DMA2 group 2
+	 */
+	if (!use_dma2) {
+		LOG_ERR("LPSPI on B1/E1C only supports DMA2, but DMA0 configured in DTS");
+		return;
+	}
+
+	/* Map dma_group to HE_DMA_SEL value */
+	if (dma_group == 1) {
+		he_dma_sel_value = 0x0;  /* DMA2 group 1 */
+	} else if (dma_group >= 2) {
+		he_dma_sel_value = 0x1;  /* DMA2 group 2 (0x1, 0x2, or 0x3 all map to group 2) */
+	} else {
+		LOG_ERR("LPSPI on B1/E1C: invalid dma_group=%u (must be 1 or 2)", dma_group);
+		return;
+	}
+
+#else /* E7/E5/E3/E4/E6/E8/E1 Series */
+	/* E-Series: LPSPI supports both DMA2 and DMA0
+	 * HE_DMA_SEL Register mapping:
+	 *   0x0: Select DMA2
+	 *   0x1: Select DMA0 group 1
+	 *   0x2, 0x3: Select DMA0 group 2
+	 */
+
+	if (use_dma2) {
+		/* Using DMA2: HE_DMA_SEL=0x0 regardless of dma_group */
+		he_dma_sel_value = 0x0;
+	} else {
+		/* Using DMA0: HE_DMA_SEL depends on dma_group */
+		if (dma_group == 1) {
+			he_dma_sel_value = 0x1;  /* DMA0 group 1 */
+		} else if (dma_group >= 2) {
+			he_dma_sel_value = 0x2;  /* DMA0 group 2 (0x2 or 0x3) */
+		} else {
+			LOG_ERR("LPSPI on E-series DMA0: invalid dma_group=%u (must be 1 or 2)",
+				dma_group);
+			return;
+		}
+	}
+
+#endif /* SoC series check */
+
+	/* Program HE_DMA_SEL register */
+	regdata = sys_read32(M55HE_CFG_HE_DMA_SEL);
+	regdata &= ~HE_DMA_SEL_LPSPI_Msk;
+	regdata |= ((he_dma_sel_value << HE_DMA_SEL_LPSPI_Pos) & HE_DMA_SEL_LPSPI_Msk);
+	sys_write32(regdata, M55HE_CFG_HE_DMA_SEL);
+}
+#endif /* USE_EVENT_ROUTER_DRIVER */
+
+#if !USE_EVENT_ROUTER_DRIVER
+/*
+ * Manual Event Router Configuration Functions
+ * These functions are used when NOT using the event router driver.
+ * When USE_EVENT_ROUTER_DRIVER is 1, the event router is configured
+ * automatically by the driver via device tree, and these functions
+ * are not needed.
+ */
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
@@ -515,6 +602,8 @@ static void configure_lpspi_for_dma0(void)
 
 #endif /* LPSPI(SPI4) */
 
+#endif /* USE_EVENT_ROUTER_DRIVER */
+
 static void prepare_data(uint32_t *data, uint16_t def_mask)
 {
 	for (uint32_t cnt = 0; cnt < BUFF_SIZE; cnt++) {
@@ -524,6 +613,15 @@ static void prepare_data(uint32_t *data, uint16_t def_mask)
 
 int main(void)
 {
+
+#if !USE_EVENT_ROUTER_DRIVER
+	/*
+	 * Manual Event Router Configuration Section
+	 * When NOT using the event router driver, manually configure the event router
+	 * registers for each peripheral that uses DMA.
+	 * When USE_EVENT_ROUTER_DRIVER is 1, skip this section as the driver
+	 * handles event router configuration automatically via device tree.
+	 */
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay) /* dma2 */
 
@@ -567,6 +665,43 @@ int main(void)
 #endif
 
 #endif /* LPSPI(SPI4) */
+
+#else
+	/*
+	 * Event Router Driver Configuration Section
+	 * When using the event router driver, the event router registers are
+	 * configured automatically via device tree. However, we still need to
+	 * configure SoC-level mux registers like HE_DMA_SEL that select which
+	 * DMA controller is routed to RTSS-HE peripherals.
+	 */
+
+	/* Configure HE_DMA_SEL for LPSPI based on DTS configuration */
+#if DT_NODE_EXISTS(DT_NODELABEL(lpspi0)) && DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas)
+	/* B1/E1C: lpspi0 - always uses DMA2 via evtrtr2 */
+	{
+		/* Extract dma_group from encoded channel value */
+		uint8_t dma_group = ALIF_DMA_DECODE_GROUP(
+			DT_PHA_BY_IDX(DT_NODELABEL(lpspi0), dmas, 0, channel));
+		configure_he_dma_sel_lpspi(dma_group, true);
+	}
+#elif DT_NODE_EXISTS(DT_NODELABEL(spi4)) && DT_NODE_HAS_PROP(DT_NODELABEL(spi4), dmas)
+	/* E-series: spi4 (LPSPI) - check which event router is referenced
+	 * - &evtrtr2 → DMA2
+	 * - &evtrtr0 → DMA0
+	 */
+	{
+		/* Check which event router phandle is used */
+		bool use_dma2 = DT_SAME_NODE(
+			DT_PHANDLE_BY_IDX(DT_NODELABEL(spi4), dmas, 0),
+			DT_NODELABEL(evtrtr2));
+		/* Extract dma_group from encoded channel value */
+		uint8_t dma_group = ALIF_DMA_DECODE_GROUP(
+			DT_PHA_BY_IDX(DT_NODELABEL(spi4), dmas, 0, channel));
+		configure_he_dma_sel_lpspi(dma_group, use_dma2);
+	}
+#endif
+
+#endif /* !USE_EVENT_ROUTER_DRIVER */
 
 	prepare_data(master_txdata, 0xA5A5);
 	prepare_data(slave_txdata, 0x5A5A);
