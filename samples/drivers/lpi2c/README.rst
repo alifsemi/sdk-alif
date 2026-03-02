@@ -14,7 +14,12 @@ Building and Running
 ********************
 
 The application will build only for a target that has a devicetree entry with
-:dt compatible:`alif,lpi2c` as a compatible.
+:dt compatible:`alif,lpi2c` (lpi2c0) and `snps,designware-i2c` (i2c) as compatible strings.
+
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/lpi2c
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
 
 NOTE
 ============
@@ -24,18 +29,9 @@ to receive the 3 bytes sent by the slave.
 
 Sample Output
 =============
-Welcome to minicom 2.7.1
-
-OPTIONS: I18n
-Compiled on Dec 23 2019, 02:06:26.
-Port /dev/ttyACM1, 12:41:44
-
-Press CTRL-A Z for help on special keys
-
-*** Booting Zephyr OS build Zephyr-Alif-SDK-v0.5.0-17-g17b360353343 ***
-[00:00:00.000,000] <inf> ALIF_LPI2C: Start Master trasmit and Slave receive
-[00:00:00.001,000] <inf> ALIF_LPI2C: Master transmit and slave receive successful
-[00:00:00.002,000] <inf> ALIF_LPI2C: Start Slave transmit and Master receive
-[00:00:00.006,000] <inf> ALIF_LPI2C: Slave transmit and Master receive successful
-[00:00:00.006,000] <inf> ALIF_LPI2C: Transfer completed
-
+.. code-block:: console
+        [00:00:00.000,000] <inf> ALIF_LPI2C: Start Master trasmit and Slave receive
+        [00:00:00.001,000] <inf> ALIF_LPI2C: Master transmit and slave receive successful
+        [00:00:00.002,000] <inf> ALIF_LPI2C: Start Slave transmit and Master receive
+        [00:00:00.006,000] <inf> ALIF_LPI2C: Slave transmit and Master receive successful
+        [00:00:00.006,000] <inf> ALIF_LPI2C: Transfer completed
