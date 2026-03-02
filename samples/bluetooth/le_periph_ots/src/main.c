@@ -36,14 +36,18 @@ K_SEM_DEFINE(conn_sem, 0, 1);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
+#define OTS_OBJECT_NAME "Test Object"
+
 struct app_env {
 	bool connected;
 	uint8_t ots_trf_lid;
 	uint16_t ots_start_hdl;
+	uint8_t object_lid;
 };
 
 static struct app_env env = {
 	.connected = false,
+	.object_lid = OTP_INVALID_LID,
 };
 
 /**
@@ -51,7 +55,7 @@ static struct app_env env = {
  */
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_SEC_CON,
+	.pairing_mode = GAPM_PAIRING_LEGACY | GAPM_PAIRING_SEC_CON,
 	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
 	.renew_dur = 1500,
 	.private_identity.addr = {0},
@@ -75,6 +79,10 @@ static gapm_config_t gapm_cfg = {
 
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
+
+/* Forward declarations */
+static uint16_t add_default_object(void);
+static uint16_t expose_object_to_connection(uint8_t con_lid);
 
 /* OTS callbacks */
 void app_ots_cb_bond_data(uint8_t transfer_lid, uint8_t con_lid, uint8_t cli_cfg_bf)
@@ -106,6 +114,16 @@ void app_ots_cb_get_name(uint8_t con_lid, uint8_t transfer_lid, uint8_t object_l
 	LOG_DBG("Get name requested for con_lid %u, transfer_lid %u, object_lid %u, token %u, "
 		"offset %u, max_len %u",
 		con_lid, transfer_lid, object_lid, token, offset, max_len);
+
+	const uint8_t *name = (const uint8_t *)OTS_OBJECT_NAME;
+	uint8_t full_len = strlen(OTS_OBJECT_NAME);
+	uint8_t send_len = (full_len > offset) ? (full_len - offset) : 0;
+
+	if (send_len > max_len) {
+		send_len = max_len;
+	}
+
+	acc_ots_cfm_get_name(true, con_lid, token, send_len, name + offset);
 }
 
 void app_ots_cb_set_name(uint8_t con_lid, uint8_t transfer_lid, uint8_t object_lid, uint16_t token,
@@ -150,6 +168,14 @@ void app_ots_cb_object_control(uint8_t con_lid, uint8_t transfer_lid, uint8_t ob
 	LOG_DBG("Object control requested for con_lid %u, transfer_lid %u, object_lid %u, token "
 		"%u, opcode %u",
 		con_lid, transfer_lid, object_lid, token, opcode);
+
+	/* Check for invalid opcodes (valid are 0x01-0x07) and send error response */
+	if (opcode == 0x00 || opcode > 0x07) {
+		/* Invalid opcode - send Response Code indication with Op Code Not Supported */
+		acc_ots_cfm_object_control(OTP_OACP_RESULT_OPCODE_NOT_SUPP, con_lid, transfer_lid,
+					   token, 0);
+		LOG_INF("Sent OACP Response: opcode not supported for opcode 0x%02x", opcode);
+	}
 }
 
 void app_ots_cb_filter_get(uint8_t con_lid, uint8_t transfer_lid, uint8_t filter_lid,
@@ -262,18 +288,75 @@ static uint16_t create_advertising(void)
 }
 
 #define NUMBER_OF_OTS_INSTANCES 1
+
+static bool object_added;
+
+static uint16_t add_default_object(void)
+{
+	if (object_added) {
+		return 0;
+	}
+
+	ot_object_id_t obj_id = {.object_id = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}};
+	prf_date_time_t time = {.year = 2020, .month = 1, .day = 1, .hour = 0, .min = 0, .sec = 0};
+	uint32_t properties = OTP_PROP_READ_PERM_BIT;
+	uint16_t obj_type = 0x2ABF;
+
+	uint16_t ret = acc_ots_object_add(&obj_id, 100, 1024, &time, &time, properties,
+					  OTP_UUID_TYPE_16_BIT, &obj_type, &env.object_lid);
+	if (ret) {
+		LOG_ERR("OTS object add failed with error %u", ret);
+		return ret;
+	}
+
+	object_added = true;
+	LOG_INF("OTS object added: object_lid=%u", env.object_lid);
+	return 0;
+}
+
+static uint16_t expose_object_to_connection(uint8_t con_lid)
+{
+	if (!object_added || env.object_lid == OTP_INVALID_LID) {
+		LOG_WRN("Cannot expose object - not added yet");
+		return 1;
+	}
+
+	/* Expose object to the connection so CCC and characteristics are readable */
+	uint16_t ret = acc_ots_object_change(con_lid, env.ots_trf_lid, env.object_lid);
+
+	if (ret) {
+		LOG_WRN("OTS object change failed with error %u", ret);
+	} else {
+		LOG_INF("OTS object exposed to connection %u", con_lid);
+	}
+	return ret;
+}
+
 /* Add Object transfer profile to the stack */
 static uint16_t server_configure(void)
 {
 	uint16_t cfg_flags = OTS_ADD_CFG_ACCESS_CLOCK_BIT;
-	uint16_t ret = acc_ots_configure(NUMBER_OF_OTS_INSTANCES, &ots_callbacks);
+	uint32_t oacp_features = OTP_OACP_FEAT_READ_SUPP_BIT;
+	uint32_t olcp_features =
+		OTP_OLCP_FEAT_GOTO_SUPP_BIT | OTP_OLCP_FEAT_REQ_NUM_OBJECTS_SUPP_BIT;
+	uint16_t ret;
 
+	ret = acc_ots_configure(NUMBER_OF_OTS_INSTANCES, &ots_callbacks);
 	if (ret) {
 		LOG_ERR("OTS config failed with error %u", ret);
 		return ret;
 	}
 
-	return acc_ots_add(cfg_flags, GATT_INVALID_HDL, 0, 0, &env.ots_trf_lid, &env.ots_start_hdl);
+	ret = acc_ots_add(cfg_flags, GATT_INVALID_HDL, oacp_features, olcp_features,
+			  &env.ots_trf_lid, &env.ots_start_hdl);
+	if (ret) {
+		LOG_ERR("OTS add failed with error %u", ret);
+		return ret;
+	}
+
+	LOG_INF("OTS added: trf_lid=%u, start_hdl=0x%04x", env.ots_trf_lid, env.ots_start_hdl);
+
+	return 0;
 }
 
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
@@ -284,13 +367,31 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 		env.connected = true;
 		k_sem_give(&conn_sem);
 		LOG_INF("Connection index %u connected to known device", con_idx);
-		LOG_DBG("Please enable notifications on peer device..");
+		{
+			uint16_t ret =
+				acc_ots_restore_bond_data(con_idx, env.ots_trf_lid, 0, 0, 0, NULL);
+			if (ret) {
+				LOG_ERR("OTS restore bond data failed: %u", ret);
+			} else {
+				LOG_INF("OTS bond data restored for con %u", con_idx);
+			}
+		}
+		expose_object_to_connection(con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
 		env.connected = true;
 		k_sem_give(&conn_sem);
 		LOG_INF("Connection index %u connected to new device", con_idx);
-		LOG_DBG("Please enable notifications on peer device..");
+		{
+			uint16_t ret =
+				acc_ots_restore_bond_data(con_idx, env.ots_trf_lid, 0, 0, 0, NULL);
+			if (ret) {
+				LOG_ERR("OTS restore bond data failed: %u", ret);
+			} else {
+				LOG_INF("OTS bond data restored for con %u", con_idx);
+			}
+		}
+		expose_object_to_connection(con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
 		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
@@ -363,6 +464,12 @@ int main(void)
 	}
 
 	print_device_identity();
+
+	/* Add default object after stack is fully initialized */
+	err = add_default_object();
+	if (err) {
+		LOG_ERR("Failed to add default object %u", err);
+	}
 
 	while (1) {
 		k_sleep(K_SECONDS(1));
