@@ -7,6 +7,7 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+#include <inttypes.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 #include "alif_ble.h"
@@ -74,11 +75,13 @@ static void on_pairing_req(uint8_t conidx, uint32_t metainfo, uint8_t auth_level
 		.rkey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
 	};
 
-	if (auth_level & GAP_AUTH_BOND) {
+	if ((auth_level & GAP_AUTH_BOND) && (auth_level & GAP_AUTH_SEC_CON)) {
 		pairing_info.auth = GAP_AUTH_REQ_SEC_CON_BOND;
 		pairing_info.iocap = GAP_IO_CAP_DISPLAY_ONLY;
 	} else if (auth_level & GAP_AUTH_SEC_CON) {
 		pairing_info.auth = GAP_AUTH_SEC_CON;
+	} else if (auth_level & GAP_AUTH_BOND) {
+		pairing_info.auth = GAP_AUTH_REQ_NO_MITM_BOND;
 	}
 
 	LOG_INF("pairing req %u , level %u", conidx, auth_level);
@@ -170,6 +173,8 @@ void gapm_sec_bondata_update(uint8_t conidx, uint32_t metainfo,
 
 static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
 {
+	static const uint32_t tk_passkey;
+	static const uint32_t sc_passkey = 123456;
 	uint16_t err;
 
 	switch (exp_info) {
@@ -193,13 +198,30 @@ static void on_info_req(uint8_t conidx, uint32_t metainfo, uint8_t exp_info)
 		break;
 	}
 
+	case GAPC_INFO_TK_OOB:
+	case GAPC_INFO_TK_DISPLAYED:
+	case GAPC_INFO_TK_ENTERED: {
+		gap_sec_key_t tk = {0};
+
+		tk.key[0] = (uint8_t)(tk_passkey & 0xFF);
+		tk.key[1] = (uint8_t)((tk_passkey >> 8) & 0xFF);
+		tk.key[2] = (uint8_t)((tk_passkey >> 16) & 0xFF);
+		tk.key[3] = (uint8_t)((tk_passkey >> 24) & 0xFF);
+		err = gapc_le_pairing_provide_tk(conidx, true, &tk);
+		if (err) {
+			LOG_ERR("TK provide failed: 0x%02x", err);
+		} else {
+			LOG_INF("Secure ID: %06" PRIu32, tk_passkey);
+		}
+	} break;
+
 	case GAPC_INFO_BT_PASSKEY:
 	case GAPC_INFO_PASSKEY_DISPLAYED: {
-		err = gapc_pairing_provide_passkey(conidx, true, 123456);
+		err = gapc_pairing_provide_passkey(conidx, true, sc_passkey);
 		if (err) {
-			LOG_ERR("ERROR PROVIDING PASSKEY 0x%02x", err);
+			LOG_ERR("Passkey provide failed: 0x%02x", err);
 		} else {
-			LOG_INF("PASSKEY 123456");
+			LOG_INF("Secure ID: %06" PRIu32, sc_passkey);
 		}
 	} break;
 
