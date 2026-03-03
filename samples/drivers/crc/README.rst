@@ -15,6 +15,11 @@ Building and Running
 The application will build only for a target that has a devicetree entry with
 :dt compatible:`alif,alif-crc` as a compatible.
 
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/crc
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+
 console Output
 =============
         CRC output: 0xE9
