@@ -20,11 +20,11 @@
 #include "bluetooth/le_audio/audio_utils.h"
 
 #include "main.h"
-#include "unicast_source.h"
+#include "unicast_initiator.h"
 #include "storage.h"
 #include "audio_datapath.h"
 
-LOG_MODULE_REGISTER(unicast_source, CONFIG_UNICAST_SOURCE_LOG_LEVEL);
+LOG_MODULE_REGISTER(unicast_initiator, CONFIG_UNICAST_INITIATOR_LOG_LEVEL);
 
 #ifndef CONFIG_NUMBER_OF_CLIENTS
 #define CONFIG_NUMBER_OF_CLIENTS 2
@@ -187,7 +187,7 @@ struct unicast_peer {
 	arc_vcc_vcs_t volume_bond_data;
 };
 
-struct unicast_source_env {
+struct unicast_initiator_env {
 	struct audio_datapath_config datapath_config;
 	struct unicast_peer peers[CONFIG_NUMBER_OF_CLIENTS];
 #if !UC_GROUP_PER_PEER
@@ -196,7 +196,7 @@ struct unicast_source_env {
 #endif
 };
 
-static struct unicast_source_env unicast_env;
+static struct unicast_initiator_env unicast_env;
 
 #define WORKER_PRIORITY   6
 #define WORKER_STACK_SIZE 2048
@@ -1414,7 +1414,7 @@ int init_volume_control_service(void)
 
 /* ---------------------------------------------------------------------------------------- */
 
-int unicast_source_configure(void)
+int unicast_initiator_configure(void)
 {
 #if !UC_GROUP_PER_PEER
 	for (size_t iter = 0; iter < ARRAY_SIZE(unicast_env.group_lid); iter++) {
@@ -1490,7 +1490,7 @@ int unicast_source_configure(void)
 	return 0;
 }
 
-int unicast_source_discover(uint8_t const con_lid)
+int unicast_initiator_discover(uint8_t const con_lid)
 {
 	uint16_t err;
 

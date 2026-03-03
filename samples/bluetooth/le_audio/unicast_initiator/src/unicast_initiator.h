@@ -7,17 +7,17 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-#ifndef _UNICAST_SOURCE_H
-#define _UNICAST_SOURCE_H
+#ifndef _UNICAST_INITIATOR_H
+#define _UNICAST_INITIATOR_H
 
 #include <stdint.h>
 
 /**
- * @brief Configure the LE audio unicast source
+ * @brief Configure the LE audio unicast initiator
  *
  * @return 0 on success
  */
-int unicast_source_configure(void);
+int unicast_initiator_configure(void);
 
 /**
  * @brief Start the service discovery
@@ -26,10 +26,10 @@ int unicast_source_configure(void);
  *
  * @return 0 on success
  */
-int unicast_source_discover(uint8_t con_lid);
+int unicast_initiator_discover(uint8_t con_lid);
 
 /**
- * @brief Setup the streams for the LE audio unicast source
+ * @brief Setup the streams for the LE audio unicast initiator
  *
  * @param con_lid Connection index
  *
@@ -38,7 +38,7 @@ int unicast_source_discover(uint8_t con_lid);
 int unicast_setup_streams(uint8_t con_lid);
 
 /**
- * @brief Enable the streams for the LE audio unicast source
+ * @brief Enable the streams for the LE audio unicast initiator
  *
  * @param con_lid Connection index
  *
@@ -60,4 +60,4 @@ int unicast_volume_up_all(void);
  */
 int unicast_volume_down_all(void);
 
-#endif /* _UNICAST_SOURCE_H */
+#endif /* _UNICAST_INITIATOR_H */

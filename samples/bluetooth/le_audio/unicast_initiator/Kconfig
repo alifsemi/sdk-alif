@@ -6,19 +6,19 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-menu "Alif Bluetooth LE Audio Unicast Source"
+menu "Alif Bluetooth LE Audio Unicast Initiator"
 
 config BLE_DEVICE_NAME
 	string "BLE device name"
-	default "ALIF_CIS_SRC"
+	default "ALIF_CIS_CLI"
 	help
 	  Device name
 
 config PERIPHERAL_NAME
 	string "LE audio peripheral name"
-	default "ALIF_CIS_SINK"
+	default "ALIF_CIS_SRV"
 	help
-	  Audio sink peripheral to be connected to
+	  Audio acceptor to be connected to
 
 config LE_AUDIO_PRESENTATION_DELAY_MS
 	int "Presentation delay in ms"
@@ -78,8 +78,8 @@ module = UNICAST_SCAN
 module-str = unicast_scan
 source "subsys/logging/Kconfig.template.log_config"
 
-module = UNICAST_SOURCE
-module-str = unicast_source
+module = UNICAST_INITIATOR
+module-str = unicast_initiator
 source "subsys/logging/Kconfig.template.log_config"
 
 module = STORAGE
@@ -88,6 +88,6 @@ source "subsys/logging/Kconfig.template.log_config"
 
 endmenu # "Logging"
 
-endmenu # "Alif Bluetooth LE Audio Unicast Source"
+endmenu # "Alif Bluetooth LE Audio Unicast Initiator"
 
 source "Kconfig.zephyr"

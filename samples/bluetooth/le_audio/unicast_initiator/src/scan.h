@@ -7,30 +7,33 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-#ifndef _UNICAST_SINK_H
-#define _UNICAST_SINK_H
+ #ifndef _SCAN_H
+#define _SCAN_H
 
 /**
- * @brief Configure LE audio unicast sink functionality
+ * @brief Callback function type for scanning ready event.
+ */
+typedef void (*scanning_ready_callback_t)(void);
+
+/**
+ * @brief Configure scanning for LE audio devices
  *
  * @return 0 on success
  */
-int unicast_sink_init(void);
+int unicast_scan_configure(void);
 
 /**
- * @brief Start the LE audio unicast advertising
- *
- * @param p_address Pointer to the client device address for directed advertising
+ * @brief Start scanning for LE audio devices
  *
  * @return 0 on success
  */
-int unicast_sink_adv_start(void const * const p_address);
+int unicast_scan_start(scanning_ready_callback_t ready_cb);
 
 /**
- * @brief Stop the advertising
+ * @brief Stop scanning for LE audio devices
  *
  * @return 0 on success
  */
-int unicast_sink_adv_stop(void);
+int unicast_scan_stop(void);
 
-#endif /* _UNICAST_SINK_H */
+#endif /* _SCAN_H */
