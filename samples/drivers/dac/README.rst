@@ -14,6 +14,11 @@ Building and Running
 The application will build only for a target that has a devicetree entry with
 :dt compatible:`alif,dac` as a compatible.
 
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/dac
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+
 .. code-block:: console
 
     *** Booting Zephyr OS build ZAS-v1.0.0-rc1-47-g119112f8f92b ***
