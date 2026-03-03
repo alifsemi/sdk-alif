@@ -6,13 +6,13 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-menu "Alif Bluetooth LE Audio Unicast Sink"
+menu "Alif Bluetooth LE Audio Unicast Acceptor"
 
 config BLE_DEVICE_NAME
 	string "BLE device name"
-	default "ALIF_CIS_SINK_L" if UNICAST_LOCATION_LEFT
-	default "ALIF_CIS_SINK_R" if UNICAST_LOCATION_RIGHT
-	default "ALIF_CIS_SINK" if UNICAST_LOCATION_BOTH
+	default "ALIF_CIS_SRV_L" if UNICAST_LOCATION_LEFT
+	default "ALIF_CIS_SRV_R" if UNICAST_LOCATION_RIGHT
+	default "ALIF_CIS_SRV" if UNICAST_LOCATION_BOTH
 	help
 	  Device name to be included in advertising packets
 
@@ -96,8 +96,8 @@ module = MAIN
 module-str = main
 source "subsys/logging/Kconfig.template.log_config"
 
-module = UNICAST_SINK
-module-str = unicast_sink
+module = UNICAST_ACCEPTOR
+module-str = unicast_acceptor
 source "subsys/logging/Kconfig.template.log_config"
 
 module = STORAGE
@@ -106,6 +106,6 @@ source "subsys/logging/Kconfig.template.log_config"
 
 endmenu # "Logging"
 
-endmenu # "Alif Bluetooth LE Audio Unicast Sink"
+endmenu # "Alif Bluetooth LE Audio Unicast Acceptor"
 
 source "Kconfig.zephyr"

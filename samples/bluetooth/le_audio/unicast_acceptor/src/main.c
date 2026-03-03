@@ -23,7 +23,7 @@
 #include "gapc_sec.h"
 #include "power_mgr.h"
 
-#include "unicast_sink.h"
+#include "unicast_acceptor.h"
 #include "storage.h"
 
 #define APPEARANCE_EARBUDS 0x0941
@@ -387,7 +387,7 @@ static void on_disconnection(uint8_t const conidx, uint32_t const metainfo, uint
 
 	app_con_info.conidx = GAP_INVALID_CONIDX;
 	/* Restart advertising... */
-	unicast_sink_adv_start(APP_CON_ADDR);
+	unicast_acceptor_adv_start(APP_CON_ADDR);
 }
 
 static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
@@ -648,11 +648,11 @@ int main(void)
 		return -1;
 	}
 
-	if (unicast_sink_init()) {
+	if (unicast_acceptor_init()) {
 		return -1;
 	}
 
-	if (unicast_sink_adv_start(APP_CON_ADDR)) {
+	if (unicast_acceptor_adv_start(APP_CON_ADDR)) {
 		return -1;
 	}
 

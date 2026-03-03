@@ -22,11 +22,11 @@
 
 #include "bluetooth/le_audio/audio_utils.h"
 
-#include "unicast_sink.h"
+#include "unicast_acceptor.h"
 #include "audio_datapath.h"
 #include "storage.h"
 
-LOG_MODULE_REGISTER(unicast_sink, CONFIG_UNICAST_SINK_LOG_LEVEL);
+LOG_MODULE_REGISTER(unicast_acceptor, CONFIG_UNICAST_ACCEPTOR_LOG_LEVEL);
 
 /** Default location for sink. */
 #if CONFIG_UNICAST_LOCATION_BOTH
@@ -321,7 +321,7 @@ static void on_gaf_advertising_stopped(uint8_t const set_lid, uint8_t const reas
 
 	if (reason != GAF_ADV_STOP_REASON_CON_ESTABLISHED) {
 		/* Restart normal advertising */
-		unicast_sink_adv_start(NULL);
+		unicast_acceptor_adv_start(NULL);
 	}
 }
 
@@ -1231,17 +1231,17 @@ int init_volume_control_service(void)
 
 /* ---------------------------------------------------------------------------------------- */
 
-static int preinit_unicast_sink(void)
+static int preinit_unicast_acceptor(void)
 {
 	k_work_queue_start(&worker_queue, worker_task_stack,
 			   K_KERNEL_STACK_SIZEOF(worker_task_stack), WORKER_PRIORITY, NULL);
-	k_thread_name_set(&worker_queue.thread, "unicast_srv_workq");
+	k_thread_name_set(&worker_queue.thread, "unicast_acceptor_workq");
 
 	return 0;
 }
-SYS_INIT(preinit_unicast_sink, APPLICATION, 0);
+SYS_INIT(preinit_unicast_acceptor, APPLICATION, 0);
 
-int unicast_sink_init(void)
+int unicast_acceptor_init(void)
 {
 	size_t iter;
 	uint16_t err;
@@ -1319,7 +1319,7 @@ int unicast_sink_init(void)
 	return 0;
 }
 
-int unicast_sink_adv_start(void const *const p_address)
+int unicast_acceptor_adv_start(void const *const p_address)
 {
 	if (unicast_env.advertising_ongoing) {
 		LOG_DBG("...advertising already ongoing...");
@@ -1375,7 +1375,7 @@ int unicast_sink_adv_start(void const *const p_address)
 	return 0;
 }
 
-int unicast_sink_adv_stop(void)
+int unicast_acceptor_adv_stop(void)
 {
 	if (!unicast_env.advertising_ongoing) {
 		LOG_DBG("...advertising not ongoing...");

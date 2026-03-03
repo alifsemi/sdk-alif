@@ -25,7 +25,7 @@
 #include "gapc_sec.h"
 
 #include "main.h"
-#include "unicast_source.h"
+#include "unicast_initiator.h"
 #include "storage.h"
 #include "scan.h"
 
@@ -279,7 +279,7 @@ static void on_link_encryption(uint8_t const conidx, uint32_t const start_uc, ui
 	__ASSERT(status == GAP_ERR_NO_ERROR, "Peer %u link encryption failed! err:%u", conidx,
 		 status);
 	if (start_uc) {
-		unicast_source_discover(conidx);
+		unicast_initiator_discover(conidx);
 	}
 }
 
@@ -455,7 +455,7 @@ static void on_gapc_pairing_succeed(uint8_t const conidx, uint32_t const metainf
 	storage_store(SETTINGS_NAME_BOND_DATA, p_peer->env.storage_index, &p_peer->bond.bond_data,
 		      sizeof(p_peer->bond.bond_data));
 
-	unicast_source_discover(conidx);
+	unicast_initiator_discover(conidx);
 }
 
 static void on_gapc_pairing_failed(uint8_t const conidx, uint32_t const metainfo,
@@ -862,7 +862,7 @@ int peer_found(gap_bdaddr_t const *const p_addr)
 
 	if (sys_slist_is_empty(&free_client_contexts)) {
 		LOG_DBG("All peers found, stop scanning");
-		unicast_source_scan_stop();
+		unicast_scan_stop();
 	}
 
 	return 0;
@@ -1040,7 +1040,7 @@ void joystick_press(struct k_work *work)
 		return;
 	}
 
-	unicast_source_scan_start(scanning_ready_callback);
+	unicast_scan_start(scanning_ready_callback);
 }
 static K_WORK_DEFINE(joystick_press_work, joystick_press);
 
@@ -1212,12 +1212,12 @@ int main(void)
 		return -1;
 	}
 
-	ret = unicast_source_configure();
+	ret = unicast_initiator_configure();
 	if (ret) {
 		return ret;
 	}
 
-	ret = unicast_source_scan_configure();
+	ret = unicast_scan_configure();
 	if (ret) {
 		return ret;
 	}

@@ -205,7 +205,7 @@ static const struct gaf_scan_cb gaf_scan_callbacks = {
 	.cb_announcement = on_gaf_scanning_cb_announcement,
 };
 
-int unicast_source_scan_configure(void)
+int unicast_scan_configure(void)
 {
 	sys_slist_init(&scan_results);
 
@@ -220,7 +220,7 @@ int unicast_source_scan_configure(void)
 	return 0;
 }
 
-int unicast_source_scan_start(scanning_ready_callback_t const ready_cb)
+int unicast_scan_start(scanning_ready_callback_t const ready_cb)
 {
 	void *node = NULL;
 
@@ -247,7 +247,7 @@ int unicast_source_scan_start(scanning_ready_callback_t const ready_cb)
 	return 0;
 }
 
-int unicast_source_scan_stop(void)
+int unicast_scan_stop(void)
 {
 	if (!scan_ongoing) {
 		return 0;
