@@ -33,16 +33,17 @@
 #include <alif/bluetooth/bt_adv_data.h>
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
+#include "power_mgr.h"
 
 #define BODY_SENSOR_LOCATION_CHEST 0x01
 
 /* Define advertising address type */
-#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+#define SAMPLE_ADDR_TYPE ALIF_STATIC_RAND_ADDR
 
 /* Store and share advertising address type */
 static uint8_t adv_type;
 
-struct shared_control ctrl = { false, 0, 0 };
+struct shared_control ctrl = {false, 0, 0};
 
 enum hrps_feat_bf {
 	/* Body Sensor Location Feature Supported */
@@ -90,6 +91,14 @@ static gapm_config_t gapm_cfg = {
 	.class_of_device = 0,  /* BT Classic only */
 	.dflt_link_policy = 0, /* BT Classic only */
 };
+
+const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
+	.ce_len_min = 5,
+	.ce_len_max = 10,
+	.hdr.interval_min = 800,
+	.hdr.interval_max = 800,
+	.hdr.latency = 0,
+	.hdr.sup_to = 800};
 
 /* Load name from configuration file */
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
@@ -174,19 +183,19 @@ static uint16_t create_advertising(void)
 		.tx_pwr = 0,
 		.filter_pol = GAPM_ADV_ALLOW_SCAN_ANY_CON_ANY,
 		.prim_cfg = {
-				.adv_intv_min = 160, /* 100 ms */
-				.adv_intv_max = 800, /* 500 ms */
-				.ch_map = ADV_ALL_CHNLS_EN,
-				.phy = GAPM_PHY_TYPE_LE_1M,
-			},
+			.adv_intv_min = 160, /* 100 ms */
+			.adv_intv_max = 800, /* 500 ms */
+			.ch_map = ADV_ALL_CHNLS_EN,
+			.phy = GAPM_PHY_TYPE_LE_1M,
+		},
 	};
 
 	return bt_gapm_le_create_advertisement_service(adv_type, &adv_create_params, NULL,
-						      &adv_actv_idx);
+						       &adv_actv_idx);
 }
 
 /* Add heart rate profile to the stack */
-static uint16_t  hr_server_configure(void)
+static uint16_t hr_server_configure(void)
 {
 	uint16_t start_hdl = 0;
 	struct hrps_db_cfg hrps_cfg;
@@ -243,28 +252,52 @@ void service_process(void)
 	}
 }
 
-void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
-				  uint16_t status)
+static void on_gapc_proc_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
+				uint16_t const status)
+{
+	if (status) {
+		LOG_ERR("GAPC LE connection param update failed %u", status);
+		return;
+	}
+
+	ctrl.connected = true;
+	k_sem_give(&conn_sem);
+
+	LOG_INF("Connection params updated");
+	power_mgr_log_flush();
+}
+
+static void app_connected_handle(uint8_t const con_idx)
+{
+	uint16_t const ret = gapc_le_update_params(con_idx, 0, &preferred_connection_param,
+						   on_gapc_proc_cmp_cb);
+
+	if (ret) {
+		LOG_ERR("GAPC LE connection param update start failed %u", ret);
+	}
+
+	LOG_DBG("Please enable notifications on peer device..");
+	power_mgr_log_flush();
+}
+
+static void app_connection_status_update(enum gapm_connection_event const con_event,
+					 uint8_t const con_idx, uint16_t const status)
 {
 	switch (con_event) {
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
-		ctrl.connected = true;
-		k_sem_give(&conn_sem);
 		LOG_INF("Connection index %u connected to known device", con_idx);
-		LOG_DBG("Please enable notifications on peer device..");
+		app_connected_handle(con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
-		ctrl.connected = true;
-		k_sem_give(&conn_sem);
 		LOG_INF("Connection index %u connected to new device", con_idx);
-		LOG_DBG("Please enable notifications on peer device..");
+		app_connected_handle(con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
 		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
 		ctrl.connected = false;
 		break;
 	case GAPM_API_PAIRING_FAIL:
-		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		LOG_ERR("Connection pairing index %u fail for reason %u", con_idx, status);
 		break;
 	}
 }
@@ -284,6 +317,9 @@ int main(void)
 		LOG_ERR("Address verification failed");
 		return -EADV;
 	}
+
+	/* Set a preferred connections params  */
+	bt_gapm_preferred_connection_paras_set(&preferred_connection_param);
 
 	/* Configure Bluetooth Stack */
 	LOG_INF("Init gapm service");
