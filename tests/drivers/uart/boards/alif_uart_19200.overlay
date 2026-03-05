@@ -1,0 +1,19 @@
+/ {
+	chosen {
+		zephyr,devnode1 = &uart0;
+		zephyr,devnode2 = &uart1;
+		zephyr,devnode3 = &uart3;
+	};
+};
+&uart0 {
+	current-speed = <19200>;
+	status = "okay";
+};
+&uart1 {
+	current-speed = <19200>;
+	status = "okay";
+};
+&uart3 {
+	current-speed = <19200>;
+	status = "okay";
+};

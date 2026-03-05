@@ -1,0 +1,16 @@
+/ {
+	chosen {
+		zephyr,devnode1 = &lpuart;
+		zephyr,devnode2 = &uart5;
+	};
+};
+
+&lpuart {
+	current-speed = <19200>;
+	status = "okay";
+};
+
+&uart5 {
+	current-speed = <19200>;
+	status = "okay";
+};
