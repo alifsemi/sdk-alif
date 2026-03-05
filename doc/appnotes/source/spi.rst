@@ -113,9 +113,7 @@ SPI Output Logs for HP
 
 .. code-block:: text
 
-    configure spi0 for dma0
-
-    configure spi1 for dma0
+    *** Booting Zephyr OS build ***
     Slave Transceive Iter= 10
     Master Transceive Iter= 10
     Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004
@@ -204,9 +202,7 @@ SPI Output Logs for HE
 
 .. code-block:: text
 
-     configure spi0 for dma0
-
-     configure lpspi for dma2
+    *** Booting Zephyr OS build ***
     Slave Transceive Iter= 10
     Master Transceive Iter= 10
     Master wrote: a5a50000 a5a50001 a5a50002 a5a50003 a5a50004

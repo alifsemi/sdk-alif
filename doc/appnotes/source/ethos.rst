@@ -279,7 +279,7 @@ For a fresh project, follow these steps.
 
 .. code-block:: console
 
-   west init -m git@github.com:alifsemi/sdk-alif.git
+   west init -m https://github.com/alifsemi/sdk-alif --mr main
 
 
 4. Enable the Executorch module.
@@ -435,7 +435,7 @@ Building for Alif E7 DK (HE Core with U55-128)
 
 .. code-block:: console
 
-   west build -b alif_e7_dk/ae722f80f55d5hs0/rtss_he \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
        -S ethos-u55-enable \
        alif/samples/modules/executorch/kws_ethosu/ -- \
        -DET_PTE_FILE_PATH=./kws_u55_128.pte \

@@ -7,21 +7,23 @@ PSRAM
 Introduction
 =============
 
-Currently, **AP Memory RAM** support has been implemented exclusively on the customized **E8 AppKit**.
-The **OSPI0 SS0** instance is connected to the APS512XXN device, which operates using the **HyperBus protocol** and supports **only x8 mode** (x16 mode is not supported).
+The HexSPI0/OSPI0 SS0 instance is connected to the APS512XXN device. It operates on both x8 and x16 transfer mode. The ``x16-data-transfer-mode`` property must be available in the ``aps512xxn`` node to use x16 transfer mode. Currently, AP PSRAM support is only added for E8 Appkit board (``alif_e8_ak``).
+
+.. note::
+
+   DW OSPI controllers on ALIF boards support operation in either OctalSPI or HexSPI mode depending on the configuration. Hence, OSPI nodes can also be referred to as HexSPI (HSPI) nodes.
 
 Driver Description
--------------------
+==================
 
-The **APS512XXN** driver is fully functional within the **Zephyr** framework.
-The **spi_psram** component from the **ALIF sdk-alif** repository has been integrated with the APS512XXN MEMC driver and verified successfully.
+The APS512XXN driver is fully functional within the Zephyr framework. The ``spi_psram`` component from the ALIF sdk-alif repository has been integrated with the APS512XXN MEMC driver and verified successfully.
 
-The APS512XXN device is connected to the **OSPI0 SS0** instance of the **DW OSPI** peripheral.
-It currently supports operation up to **100 MHz**. If a higher or different frequency is required, the corresponding **OSPI and RAM parameters** must be tuned accordingly to ensure stable operation.
+The APS512XXN device is connected to the HexSPI0/OSPI0 SS0 instance of the DW OSPI (HexSPI) peripheral. It currently supports operation up to 100 MHz. If a different frequency is required, the corresponding HexSPI/OSPI and RAM parameters must be tuned accordingly to ensure stable operation.
 
 For debugging and console output:
-- **UART2** is used on the **M55 HP** core.
-- **UART4** is used on the **M55 HE** core.
+
+- UART2 is used on the M55 HP core.
+- UART4 is used on the M55 HE core.
 
 .. include:: prerequisites.rst
 
