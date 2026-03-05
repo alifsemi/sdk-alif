@@ -12,9 +12,9 @@ import shutil
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Application Notes for Zephyr Alif SDK'
-copyright = '2024-2025, Alif Semiconductor'
+copyright = '2025-2026, Alif Semiconductor'
 author = 'Alif Semiconductor'
-release = '2.1.0'
+release = '2.2.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

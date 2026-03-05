@@ -7,8 +7,15 @@ PSRAM
 Introduction
 =============
 
-Currently, **AP Memory RAM** support has been implemented exclusively on the customized **E8 AppKit**.
-The **OSPI0 SS0** instance is connected to the APS512XXN device, which operates using the **HyperBus protocol** and supports **only x8 mode** (x16 mode is not supported).
+Currently, **AP PSRAM** support is available only on the **E8 AppKit** board (``alif_e8_ak``).
+
+The **HexSPI0/OSPI0 SS0** instance is connected to the **APS512XXN** device and supports both **x8** and **x16** transfer modes.
+To enable the **x16 transfer mode**, the ``x16-data-transfer-mode`` property must be present in the ``aps512xxn`` node.
+
+.. note::
+
+   DW OSPI controllers on ALIF boards support operation in either **OctalSPI** or **HexSPI** mode depending on the configuration.
+   Therefore, OSPI nodes may also be referred to as **HexSPI (HSPI)** nodes.
 
 Driver Description
 -------------------
