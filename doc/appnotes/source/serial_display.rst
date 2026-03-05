@@ -127,6 +127,13 @@ Hardware Requirements
 
 - Alif Devkit
 
+.. note::
+
+   The following displays are supported:
+
+   - **MW405-ILI8906E** (2-lane serial): DevKit E7, DevKit E8
+   - **ILI9488** (1-lane serial): E1C, B1 A5/A6
+
 CDC200 Controller
 -----------------
 

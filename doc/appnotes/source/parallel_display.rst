@@ -104,6 +104,10 @@ Hardware Requirements
 
 - Alif Devkit
 
+.. note::
+
+   The Parallel Display interface is supported on DevKit E7, DevKit E8, E1C, and B1 A5/A6.
+
 CDC200 Controller
 -----------------
 
