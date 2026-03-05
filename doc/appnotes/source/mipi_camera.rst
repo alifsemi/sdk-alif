@@ -28,18 +28,28 @@ The MIPI camera is utilized for transmitting pixel data in a serial format. The 
 
    MIPI Block Diagram
 
-.. include:: prerequisites.rst
-
-
-Hardware Requirements and Setup
-===============================
+Prerequisites
+=============
 
 Hardware Requirements
 ---------------------
+- Alif Devkit
+- Debugger: JLink
+- ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
-- **Alif Ensemble DevKit (B0 Flat Board, E7)**
-- **ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)**
-- Support on E7 only.
+Software Requirements
+---------------------
+- **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
+- **West Tool**: For building Zephyr applications (refer to the `ZAS User Guide`_)
+- **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
+- **SE Tools**: For loading binaries (refer to the `ZAS User Guide`_)
+
+.. note::
+
+   The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on DevKit E7 and DevKit E8.
+
+Setup
+======
 
 CPI (Camera Parallel Interface)
 -------------------------------
@@ -90,16 +100,16 @@ The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and ener
    ARX3A0 Sensor
 
 .. figure:: _static/arx3a0_connections.png
-   :alt: ARX3A0 Sensor and Flat Board Connection
+   :alt: ARX3A0 Sensor and DevKit Board Connection
    :align: center
 
-   ARX3A0 Sensor and Flat Board Connection
+   ARX3A0 Sensor and DevKit Connection
 
 .. figure:: _static/flatboard_for_mipi_camera.png
    :alt: Flat Board
    :align: center
 
-   Flat Board
+   DevKit
 
 Required Configuration Features
 ===============================

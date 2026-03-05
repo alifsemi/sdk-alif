@@ -53,6 +53,18 @@ Hardware Requirements and Setup
 - MT9M114 Camera Sensor
 - Cypress Interconnect Board (CYUSB3ACC-004A)
 
+Camera Sensor Support
+-----------------------
+
+.. note::
+
+   The MT9M114 camera sensor uses the Parallel Camera Interface (CPI) and is supported on the following DevKits:
+
+   - DevKit E7
+   - DevKit E8
+   - E1C
+   - B1 A5/A6
+
 Features
 ----------
 
@@ -405,6 +417,10 @@ Serial Camera Control Bus (SCCB) interface.
 The image array is capable of operating at up to 15 frames per second (fps)
 in 5 megapixel resolution with complete user control over image quality,
 formatting and output data transfer.
+
+.. note::
+
+   The OV5640 camera sensor interfaces via the Parallel Camera Interface (CPI) and is validated on the E1C StartKit Board.
 
 Features
 ---------

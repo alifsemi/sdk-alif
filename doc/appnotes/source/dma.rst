@@ -91,44 +91,90 @@ DMA Configuration in prj.conf
     CONFIG_DMA_LOG_LEVEL_INF=n
 
 
-Select the DMA instance from the overlay file ``../alif/samples/drivers/spi_dw/boards/aalif_e7_dk/ae722f80f55d5xx/rtss_he.overlay``:
+Select the DMA instance from the overlay file ``../alif/samples/drivers/spi_dw/boards/alif_e7_dk/ae722f80f55d5xx/rtss_he.overlay``:
 
 DMA Instance Selection in Overlay File
 --------------------------------------
 
 .. code-block:: dts
 
-    /*
-     * License Agreement with this file. If not, please write to:
-     * contact@alifsemi.com, or visit: https://alifsemi.com/license
-     */
+   /* setting SPI4 as master and SPI0 instance as slave. */
 
-    /* setting SPI4 as master and SPI0 instance as slave. */
+   / {
+       aliases {
+           master-spi = &spi4;
+           slave-spi = &spi0;
+       };
+   };
 
-    / {
-        aliases {
-            master-spi = &spi4;
-            slave-spi  = &spi0;
-        };
-    };
+   &dma2 {
+       status = "okay";
+   };
 
-    &dma2 {
-        status = "okay";
-    };
+   &dma0 {
+       status = "okay";
+   };
 
-    &spi4 {
-        status = "okay";
-        dmas = <&dma2 0 13>, <&dma2 1 12>;
-        // dmas = <&dma0 0 25>, <&dma2 1 24>;
-        dma-names = "txdma", "rxdma";
-    };
+   #include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
 
-    &spi0 {
-        status = "okay";
-        serial-target;
-        // dmas = <&dma2 0 20>, <&dma0 3 16>;
-        dma-names = "txdma", "rxdma";
-    };
+   &evtrtr2 {
+       status = "okay";
+   };
+
+   &evtrtr0 {
+       status = "okay";
+   };
+
+   &spi4 {
+       status = "okay";
+       /*
+        * Cell 0: ALIF_DMA_ENCODE(channel, dma_group, handshake)
+        *   - channel: Physical DMA channel (0 for TX, 1 for RX)
+        *   - dma_group: Input source selection (0) - selects which peripheral input
+        *   - handshake: Enable hardware handshaking (1 for SPI)
+        * Cell 1: Peripheral request number (13 for TX, 12 for RX)
+        */
+       dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 0, 1) 13>,
+              <&evtrtr2 ALIF_DMA_ENCODE(1, 0, 1) 12>;
+
+       /* If user wants to use dma0 for master spi(spi4) with event router:
+        * dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 2, 1) 25>,
+        *        <&evtrtr0 ALIF_DMA_ENCODE(1, 2, 1) 24>;
+        */
+
+       dma-names = "txdma", "rxdma";
+
+   #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
+       cs-gpios = <&gpio7 7 GPIO_ACTIVE_LOW>;
+       /* as we are testing Loopback on the same board,
+        * make sure master interrupt priority is
+        * higher than slave interrupt priority.
+        */
+       interrupts = <46 0>;
+   #endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
+   };
+
+   &spi0 {
+       status = "okay";
+       serial-target;
+
+       /*
+        * Cell 0: ALIF_DMA_ENCODE(channel, dma_group, handshake)
+        *   - channel: Physical DMA channel (2 for TX, 3 for RX)
+        *   - dma_group: Input source selection (2) - selects which peripheral input
+        *   - handshake: Enable hardware handshaking (1 for SPI)
+        * Cell 1: Peripheral request number (20 for TX, 16 for RX)
+        */
+
+       dmas = <&evtrtr0 ALIF_DMA_ENCODE(2, 2, 1) 20>,
+              <&evtrtr0 ALIF_DMA_ENCODE(3, 2, 1) 16>;
+
+       dma-names = "txdma", "rxdma";
+
+   #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
+       interrupts = <137 1>;
+   #endif
+   };
 
 Executing Binary on the DevKit
 ==============================
