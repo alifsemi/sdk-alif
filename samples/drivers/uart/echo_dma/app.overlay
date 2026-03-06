@@ -1,0 +1,47 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+#define UART2_DMA_RX_REQ 10
+#define UART2_DMA_TX_REQ 18
+
+/* Note:
+ * The console UART cannot be used as a DMA UART in this sample. The UART
+ * instance used for the console is initialized before the DMA controller
+ * during system boot. Since the UART DMA configuration depends on the
+ * DMA controller device, using the console UART for DMA may cause a
+ * device initialization dependency violation during build.
+ *
+ * ERROR: Device initialization priority validation failed, the sequence
+ *  of initialization calls does not match the devicetree dependencies.
+ * ERROR: /soc/uart@XXXX <uart_ns16550_init> is initialized before its
+ *  dependency /soc/dmax@XXXX <dma_pl330_initialize>
+ *  (PRE_KERNEL_1 < POST_KERNEL)
+ */
+
+/ {
+	chosen {
+		/* Shell UART is used for DMA transfers. */
+		zephyr,shell-uart = &uart2;
+		zephyr,console = &uart4;
+	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&uart2 {
+	dmas = <&dma0 0 UART2_DMA_RX_REQ>, <&dma0 1 UART2_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
+
+&uart4 {
+	status = "okay";
+};
