@@ -27,33 +27,26 @@ receive messages on the dedicated sender and receiver channels.
 Confirmation of MHU messages sent or received are intimated through
 interrupts and registered callback functions are called for usage.
 
-This sample has been tested on :ref:`alif_e7_dk_rtss_hp`, using
-Alif DevKit Ensemble family board.
+Building and Running
+********************
 
-Supported Targets
-*****************
-* alif_e3_dk_rtss_hp
-* alif_e7_dk_rtss_hp
+This sample will build only for a target that has a devicetree entry
+with :dt compatible:`arm,mhuv2` as a compatible string.
+It does not work on QEMU.
+In this example below the :ref:`alif_e7_dk/ae722f80f55d5xx/rtss_hp` board is used.
 
-Building
-********
+1. Building SE services testcase.
 
-The code can be found in :zephyr_file:`samples/drivers/ipm/ipm_arm_mhuv2`.
-
-:ref:`alif_e7_dk_rtss_hp`
-
-To build the application:
-
-Building SE services testcase.
-
-.. code-block::
-
-   west build -b alif_e7_dk_rtss_hp samples/drivers/ipm/ipm_arm_mhuv2 -- -G"Unix Makefiles"
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/ipm/ipm_arm_mhuv2
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_hp
+   :goals: build
 
 Sample output
 *************
 
-.. code-block:: none
+.. code-block:: console
+    SE Service test on alif_e7_dk
     !!!Read board config using SE Services!!!
     Device part number is 46080
     Revision is SES B4 v1.102.0 Nov  8 2024 17:52:19
@@ -69,27 +62,21 @@ Sample output
     LCS = 1 (0x1)
     !!!Board config read successfully!!!
 
-:ref:`devkit_e7_rtss_hp`
-1. Building SE services testcase.
+2. Building MHU0 sample application to exchange messages
+   between two processors (RTSS_HE and RTSS_HP)
 
-.. code-block::
-
-   west build -b alif_e7_dk_rtss_hp samples/drivers/ipm/ipm_arm_mhuv2 -- -G"Unix Makefiles"
-
-2. Building testcase to exchange messages between two processors.
-
-.. code-block::
-   west build -b alif_e7_dk_rtss_hp samples/drivers/ipm/ipm_arm_mhuv2 -- -G"Unix Makefiles" -DAPSS_MHU0=ON
-   west build -b alif_e7_dk_rtss_hp samples/drivers/ipm/ipm_arm_mhuv2 -- -G"Unix Makefiles" -DAPSS_MHU1=ON
-   west build -b alif_e7_dk_rtss_hp samples/drivers/ipm/ipm_arm_mhuv2 -- -G"Unix Makefiles" -DRTSS_HE_MHU0=ON
-   west build -b alif_e7_dk_rtss_hp samples/drivers/ipm/ipm_arm_mhuv2 -- -G"Unix Makefiles" -DRTSS_HE_MHU1=ON
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/ipm/ipm_arm_mhuv2
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_hp
+   :goals: build
+   :gen-args: -DRTSS_HE_MHU0=ON
 
 Sample output
 *************
     sample MHU0 output between RTSS_HP and RTSS_HE
 
-.. code-block:: none
-    RTSS-HP RTSS-HE MHU 0 example on alif_e7_devkit
+.. code-block:: console
+    RTSS-HP RTSS-HE MHU 0 example on alif_e7_dk
     RTSS-HP: MSG sent on Ch:0 is 0x12345678
     RTSS-HP: MSG rcvd on ch:0 is 0xaddedace
     RTSS-HP: MSG sent on Ch:1 is 0xa5a5fafa
