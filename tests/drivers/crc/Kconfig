@@ -1,0 +1,62 @@
+# Copyright (C) 2024 Alif Semiconductor.
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Alif CRC Test Configuration"
+
+config TEST_CRC_8
+	bool "Test CRC 8-bit CCITT algorithm"
+	help
+	  This configuration enables comprehensive test cases for the 8-bit CRC
+	  CCITT algorithm implementation. The tests cover basic CRC computation,
+	  reflection modes, byte and bit swapping options, and output inversion
+	  capabilities to ensure robust functionality across various use cases.
+
+config TEST_CRC_16
+	bool "Test CRC 16-bit CCITT algorithm"
+	help
+	  This configuration enables comprehensive test cases for the 16-bit CRC
+	  CCITT algorithm implementation. The tests cover basic CRC computation,
+	  reflection modes, byte and bit swapping options, and output inversion
+	  capabilities to ensure robust functionality across various use cases.
+
+config TEST_CRC_32
+	bool "Test CRC 32-bit algorithm"
+	help
+	  This configuration enables comprehensive test cases for the 32-bit CRC
+	  algorithm implementation using the standard polynomial (0x04C11DB7).
+	  The tests validate basic CRC computation, reflection modes, byte and bit
+	  swapping options, output inversion, and compatibility with common
+	  CRC-32 applications.
+
+config TEST_CRC_32_CUSTOM_POLY
+	bool "Test CRC 32-bit custom polynomial algorithm"
+	help
+	  This configuration enables test cases for the 32-bit CRC algorithm with
+	  user-defined custom polynomials. It validates the ability to configure
+	  and use non-standard polynomials (such as 0x2CEEA6C8) while testing
+	  basic CRC computation, reflection modes, swapping options, and output
+	  inversion for custom applications.
+
+config TEST_CRC_32C
+	bool "Test CRC-32C (Castagnoli) algorithm"
+	help
+	  This configuration enables test cases for the CRC-32C (Castagnoli)
+	  algorithm implementation using polynomial 0x1EDC6F41. CRC-32C is widely
+	  used in networking protocols including iSCSI, SCTP, and filesystem
+	  integrity checks in ext4 and Btrfs. Tests cover standard operations,
+	  reflection, swapping, and inversion modes.
+
+config TEST_CRC_STRESS
+	bool "CRC stress and robustness tests"
+	help
+	  Enable stress tests that exercise driver resilience:
+	  repeatability, seed variation, back-to-back operations,
+	  boundary conditions, bit-flip sensitivity, parameter
+	  orthogonality, and large data handling.
+
+	  If combined with TEST_CRC_32_CUSTOM_POLY or TEST_CRC_32C,
+	  dedicated CRC32-family stress vectors are also enabled to
+	  validate custom polynomial setup, known-vector matching, and
+	  unaligned-tail handling.
+
+source "Kconfig.zephyr"

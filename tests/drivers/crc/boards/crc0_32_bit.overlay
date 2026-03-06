@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * Copyright (c) 2025 Alif Semiconductor.
+ */
+/ {
+	aliases {
+		crc = &crc0;
+	};
+};
+
+&crc0 {
+	crc_algo = "CRC_32_BIT_SIZE";
+	status = "okay";
+};
