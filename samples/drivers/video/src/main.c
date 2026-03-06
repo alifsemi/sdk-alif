@@ -20,13 +20,19 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+#define N_FRAMES		1
+#else
 #define N_FRAMES		10
+#endif
 #define N_VID_BUFF              MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
 
 #define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #define PIPELINE_FORMAT	VIDEO_PIX_FMT_BGGR8
+#elif CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+#define PIPELINE_FORMAT	VIDEO_PIX_FMT_RGB565
 #else
 #define PIPELINE_FORMAT	VIDEO_PIX_FMT_Y10P
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
@@ -175,6 +181,9 @@ int main(void)
 				if (IS_ENABLED(CONFIG_DT_HAS_HIMAX_HM0360_ENABLED)) {
 					fmt.width = 320;
 					fmt.height = 240;
+				} else if (IS_ENABLED(CONFIG_DT_HAS_OVTI_OV5640_ENABLED)) {
+					fmt.width = 160;
+					fmt.height = 120;
 				} else {
 					fmt.width = fcap->width_min;
 					fmt.height = fcap->height_min;
@@ -412,6 +421,12 @@ static int app_set_parameters(void)
 	 * controller.
 	 * sys_write32(0x140001, M55HE_CFG_HE_CAMERA_PIXCLK);
 	 */
+#if CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	const struct gpio_dt_spec cam_enbuf =
+		GPIO_DT_SPEC_GET(DT_NODELABEL(cam_enbuf), enbuf_gpios);
+
+	gpio_pin_configure_dt(&cam_enbuf, GPIO_OUTPUT_ACTIVE);
+#endif
 #endif
 	return 0;
 }
