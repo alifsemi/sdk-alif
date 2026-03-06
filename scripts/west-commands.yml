@@ -1,0 +1,14 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+west-commands:
+  - file: scripts/west_executorch_setup.py
+    commands:
+      - name: executorch-setup
+        class: ExecutorchSetup
+        help: Initialize executorch submodules and run setup scripts
