@@ -1,0 +1,11 @@
+common:
+  integration_platforms:
+    - mps2_an385
+
+tests:
+  drivers.uart:
+    tags: drivers
+    filter: CONFIG_UART_CONSOLE
+    harness: ztest
+    extra_configs:
+      - CONFIG_TEST_INTERNAL_LB=y
