@@ -194,7 +194,17 @@
 				 <PIN_P7_1__I2C0_SCL_C>;
 
 			read-enable = <0x1>;
-			driver-state-control = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
+	pinctrl_i2c0_sleep: pinctrl_i2c0_sleep {
+		group0 {
+			pinmux = <PIN_P3_5__GPIO>,
+				 <PIN_P3_4__GPIO>;
+
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
 		};
 	};
 
@@ -203,7 +213,17 @@
 			pinmux = <PIN_P7_2__I2C1_SDA_C>,
 				 <PIN_P7_3__I2C1_SCL_C>;
 			read-enable = <0x1>;
-			driver-state-control = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
+	pinctrl_i2c1_sleep: pinctrl_i2c1_sleep {
+		group0 {
+			pinmux = <PIN_P7_2__GPIO>,
+				 <PIN_P7_3__GPIO>;
+
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
 		};
 	};
 
