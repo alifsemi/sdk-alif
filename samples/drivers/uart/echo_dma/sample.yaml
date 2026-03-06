@@ -1,0 +1,15 @@
+sample:
+  name: UART driver DMA sample
+tests:
+  sample.drivers.uart:
+    integration_platforms:
+      - alif_e8_dk
+    tags:
+      - serial
+      - uart
+    filter: CONFIG_SERIAL and
+            CONFIG_UART_ASYNC_API and
+            CONFIG_DMA and
+            CONFIG_UART_INTERRUPT_DRIVEN and
+            dt_chosen_enabled("zephyr,shell-uart")
+    harness: keyboard
