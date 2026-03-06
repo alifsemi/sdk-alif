@@ -1,0 +1,141 @@
+# SPDX-License-Identifier: Apache-2.0
+
+common:
+  tags: drivers crc
+  depends_on: crc
+  harness: ztest
+  platform_allow:
+    - alif_e7_dk
+  integration_platforms:
+    - alif_e7_dk
+
+tests:
+  drivers.crc.crc0_8_bit:
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+    extra_dtc_overlay_files:
+      - boards/crc0_8_bit.overlay
+
+  drivers.crc.crc0_16_bit:
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+    extra_dtc_overlay_files:
+      - boards/crc0_16_bit.overlay
+
+  drivers.crc.crc0_32_bit:
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+    extra_dtc_overlay_files:
+      - boards/crc0_32_bit.overlay
+
+  drivers.crc.crc0_32_bit_custom_poly:
+    extra_configs:
+      - CONFIG_TEST_CRC_32_CUSTOM_POLY=y
+    extra_dtc_overlay_files:
+      - boards/crc0_32_bit.overlay
+
+  drivers.crc.crc1_8_bit:
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+    extra_dtc_overlay_files:
+      - boards/crc1_8_bit.overlay
+
+  drivers.crc.crc1_16_bit:
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+    extra_dtc_overlay_files:
+      - boards/crc1_16_bit.overlay
+
+  drivers.crc.crc1_32_bit:
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+    extra_dtc_overlay_files:
+      - boards/crc1_32_bit.overlay
+
+  drivers.crc.crc1_32_bit_custom_poly:
+    extra_configs:
+      - CONFIG_TEST_CRC_32_CUSTOM_POLY=y
+    extra_dtc_overlay_files:
+      - boards/crc1_32_bit.overlay
+
+  drivers.crc.crc0_32c:
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+    extra_dtc_overlay_files:
+      - boards/crc0_32_bit.overlay
+
+  drivers.crc.crc1_32c:
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+    extra_dtc_overlay_files:
+      - boards/crc1_32_bit.overlay
+
+  drivers.crc.crc0_8_bit_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0_8_bit.overlay
+
+  drivers.crc.crc0_16_bit_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0_16_bit.overlay
+
+  drivers.crc.crc0_32_bit_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0_32_bit.overlay
+
+  drivers.crc.crc1_8_bit_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1_8_bit.overlay
+
+  drivers.crc.crc1_16_bit_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1_16_bit.overlay
+
+  drivers.crc.crc1_32_bit_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1_32_bit.overlay
+
+  drivers.crc.crc0_32_bit_custom_poly_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_32_CUSTOM_POLY=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0_32_bit.overlay
+
+  drivers.crc.crc1_32_bit_custom_poly_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_32_CUSTOM_POLY=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1_32_bit.overlay
+
+  drivers.crc.crc0_32c_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0_32_bit.overlay
+
+  drivers.crc.crc1_32c_stress:
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1_32_bit.overlay
