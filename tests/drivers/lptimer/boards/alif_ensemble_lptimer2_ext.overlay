@@ -1,0 +1,31 @@
+/* Copyright (c) 2024 Alif Semiconductor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
+/ {
+	aliases {
+		gpioport = &timer_g1;
+	};
+
+	gpio {
+		compatible = "gpio-leds";
+		timer_g1: gpio_1 {
+			gpios = <&gpio6 2 0>;
+		};
+	};
+};
+/*
+ * Enabling lptimer & disabling rtc for this sample application
+ * 10Khz -->10000
+ */
+
+&timer2 {
+	clocks = <&clockctrl ALIF_LPTIMER2_LPTMR2_IO_PIN >;
+	status = "okay";
+};
+
+&rtc0 {
+	status = "disabled";
+};

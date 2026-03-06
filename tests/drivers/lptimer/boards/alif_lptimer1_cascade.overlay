@@ -1,0 +1,39 @@
+/* Copyright (c) 2024 Alif Semiconductor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * Enable cascade mode for LPTIMER testing
+ * LPTIMER1 and LPTIMER2 are concatenated to form a 64-bit timer
+ */
+
+/ {
+	aliases {
+		gpioport = &timer_g1;
+	};
+
+	gpio {
+		compatible = "gpio-leds";
+		timer_g1: gpio_1 {
+			gpios = <&gpio6 4 0>;
+		};
+	};
+};
+
+/*
+ * Enabling lptimer in cascade mode for this sample application
+ */
+
+&timer1 {
+	status = "okay";
+	cascade-timer = <&timer2>;
+};
+
+&timer0 {
+	status = "okay";
+};
+
+&timer2 {
+	status = "okay";
+};
