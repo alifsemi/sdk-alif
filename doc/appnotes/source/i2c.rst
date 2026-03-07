@@ -42,6 +42,18 @@ The following are important features of I2C:
 - Programmable SDA hold time
 - Bus clear feature
 
+Configuring 10-bit Address Mode
+-------------------------------
+
+The I2C driver supports configuring the device to operate in 10-bit address mode.
+Use the following APIs to configure and enable this mode.
+
+- Retrieve the current I2C configuration using the ``i2c_get_config()`` API (Master side).
+
+- Enable 10-bit address mode and apply the configuration using the ``i2c_configure()`` API (Master side).
+
+- On the slave side, register the device with a 10-bit address using the ``i2c_target_register()`` API.
+
 
 .. include:: prerequisites.rst
 

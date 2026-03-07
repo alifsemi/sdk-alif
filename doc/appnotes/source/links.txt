@@ -1,4 +1,10 @@
 .. ### This page lists links used in Alif docs.
 
-.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.1.0/user_guide.pdf
+.. _ZAS User Guide: https://github.com/alifsemi/sdk-alif/releases/download/v2.2.0/user_guide.pdf
+.. _ExecutorTorch Documentation: https://pytorch.org/executorch/
+.. _Arm Ethos-U NPU: https://developer.arm.com/ip-products/processors/machine-learning/arm-ethos-u
+.. _Vela Compiler: https://github.com/nxp-imx/ethos-u-vela
+.. _Alif Semiconductor: https://alifsemi.com
+.. _Google Speech Commands Dataset: https://arxiv.org/abs/1804.03209
+.. _DS-CNN Paper: https://arxiv.org/abs/1711.07128
 
