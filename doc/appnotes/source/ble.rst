@@ -52,11 +52,13 @@ Follow these steps to build the BLE application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the B1C DevKit.
    For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-1. Build commands for applications on the M55 HE core:
+2. Build commands for applications on the M55 HE core:
 
 .. code-block:: bash
 
-   west build -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he ../alif/samples/bluetooth/le_periph_hr/
+   west build \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/bluetooth/le_periph_hr/
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.

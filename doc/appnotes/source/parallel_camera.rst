@@ -142,9 +142,13 @@ Image Conversion from Bayer to RGB
 
 To convert a Bayer 10 image to RGB format for viewing, run the following command:
 
-.. code-block:: bash
+.. code-block:: console
 
-   bayer2rgb -i image_file.bin -o checking_rgb.tiff -w 648 -v 488 -b 8 -f GRBG -m SIMPLE -t
+   bayer2rgb -i image_file.bin \
+   -o checking_rgb.tiff \
+   -w 648 -v 488 \
+   -b 8 -f GRBG \
+   -m SIMPLE -t
 
 Building an Parallel Camera Application with Zephyr
 ====================================================
@@ -157,11 +161,28 @@ Follow these steps to build the parallel camera application using the Alif Zephy
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
-   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he ../alif/samples/drivers/video
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video \
+     -- \
+     -DDTC_OVERLAY_FILE=\
+     ${PWD}/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_he.overlay
+
+3. Build command for application on the M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video \
+     -- \
+     -DDTC_OVERLAY_FILE=\
+     ${PWD}/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_hp.overlay
+
 
 Executing Binary on the DevKit
 ==============================================

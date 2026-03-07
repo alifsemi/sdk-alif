@@ -38,22 +38,23 @@ Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
    The PSRAM feature is supported **only** on the **Alif E8 AppKit**.
    It is not applicable to other boards.
 
-2. Build commands for applications on the M55 HE core:
+2. Build command for application on the M55 HE core:
 
 .. code-block:: console
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-   ../alif/samples/drivers/spi_psram/ \
-   -DDTC_OVERLAY_FILE=$PWD/../alif/samples/drivers/spi_psram/boards/alif_aps512xxn_psram.overlay
-
-3. Build commands for applications on the M55 HP core:
+   west build -p always \
+   -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+   ../alif/samples/drivers/spi_psram/
 
 
-.. code-block:: bash
+3. Build command for application on the M55 HP core:
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-   ../alif/samples/drivers/spi_psram/ \
-   -DDTC_OVERLAY_FILE=$PWD/../alif/samples/drivers/spi_psram/boards/alif_aps512xxn_psram.overlay
+.. code-block:: console
+
+   west build -p always \
+   -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+   ../alif/samples/drivers/spi_psram/
+
 
 Executing Binary on the AppKit
 ===============================
