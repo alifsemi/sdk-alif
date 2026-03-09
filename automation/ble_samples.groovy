@@ -13,6 +13,7 @@ def initialize() {
         else
             git checkout main
             git reset --hard origin/main
+            git pull
         fi
         cd ..
         west update
@@ -34,6 +35,7 @@ def verify_checkpatch(){
         else
             git checkout main
             git reset --hard origin/main
+            git pull
         fi
         ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
             STATUS=\$?
