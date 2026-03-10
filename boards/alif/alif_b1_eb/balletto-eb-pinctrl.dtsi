@@ -245,6 +245,24 @@
 		};
 	};
 
+	pinctrl_can0: pinctrl_can0 {
+		group0 {
+			pinmux = <PIN_P8_2__CAN0_RXD_C>,
+				<PIN_P8_3__CAN0_TXD_C>,
+				<PIN_P8_4__CAN0_STBY_C>;
+			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_can1: pinctrl_can1 {
+		group0 {
+			pinmux = <PIN_P1_3__CAN1_RXD_A>,
+			<PIN_P1_4__CAN1_TXD_A>,
+			<PIN_P1_5__CAN1_STBY_A>;
+			read-enable = <0x1>;
+		};
+	};
+
 	pinctrl_adc0:pinctrl_adc0 {
 		group0 {
 			pinmux = <PIN_P0_0__ANA_S0>,

@@ -13,6 +13,7 @@ def initialize() {
         else
             git checkout main
             git reset --hard origin/main
+            git pull
         fi
         cd ..
         west update
@@ -31,16 +32,17 @@ def verify_checkpatch(){
             git branch -D pr-${CHANGE_ID} || true
             git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
             git checkout pr-${CHANGE_ID}
-        else
-            git checkout main
-            git reset --hard origin/main
-        fi
-        ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
+            ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
             STATUS=\$?
             if [ \$STATUS -ne 0 ]; then
                 exit \$STATUS
+            else
+                echo "Checkpatch passed successfully"
+            fi
         else
-            echo "Checkpatch passed successfully"
+            git checkout main
+            git reset --hard origin/main
+            git pull
         fi
         '''
 }

@@ -20,6 +20,12 @@ Building and Running
 
 The application will build only for a target that has a devicetree entry with :dt compatible:`snps,designware-spi` as a compatible.
 
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/spi_dw
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :gen-args: -S alif-dk
+
 Sample Output
 =============
 
