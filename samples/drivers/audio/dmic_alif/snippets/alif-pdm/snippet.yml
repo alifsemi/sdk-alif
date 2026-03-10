@@ -1,0 +1,13 @@
+name: alif-pdm
+boards:
+  /alif_(b1|e1c)_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: b1_e1c_rtss_he.overlay
+
+  /alif_(e3|e4|e7|e8)_(dk|ak)/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: ensemble_rtss_he.overlay
+
+  /alif_(e3|e4|e7|e8)_(dk|ak)/.*/rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: ensemble_rtss_hp.overlay
