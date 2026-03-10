@@ -408,7 +408,7 @@ static int app_set_parameters(void)
 	 * TODO: parse this clock from DTS and set on board from camera
 	 * controller driver.
 	 */
-	sys_write32(0x140001, EXPMST_CAMERA_PIXCLK_CTRL);
+	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
 #endif
 
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(lpcam), okay))
