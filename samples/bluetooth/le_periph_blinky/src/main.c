@@ -81,6 +81,15 @@ enum service_att_list {
 	LBS_IDX_NB,
 };
 
+const gapc_le_con_param_nego_with_ce_len_t app_preferred_connection_param = {
+	.ce_len_min = 5,
+	.ce_len_max = 10,
+	.hdr.interval_min = 400,
+	.hdr.interval_max = 400,
+	.hdr.latency = 0,
+	.hdr.sup_to = 800
+};
+
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 static uint8_t adv_actv_idx;
 static struct service_env env;
@@ -143,15 +152,15 @@ static uint16_t service_init(void);
 
 K_SEM_DEFINE(ntf_sem, 0, 1);
 
-void LedWorkerHandler(struct k_work *work);
+void led_worker_handler(struct k_work *work);
 
-static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
+static K_WORK_DELAYABLE_DEFINE(led_work, led_worker_handler);
 
 /* Functions */
 
-static void UpdateMuteLedstate(void)
+static void update_led_state(void)
 {
-	k_work_reschedule(&ledWork, K_MSEC(1));
+	k_work_reschedule(&led_work, K_MSEC(1));
 }
 
 static int set_advertising_data(uint8_t actv_idx)
@@ -399,7 +408,7 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 	return status;
 }
 
-void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
+void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
 	if (has_changed & 1) {
 		if (!(button_state & 1)) {
@@ -416,7 +425,7 @@ void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 	}
 }
 
-void LedWorkerHandler(struct k_work *work)
+void led_worker_handler(struct k_work *work)
 {
 	int res_schedule_time = 0;
 
@@ -428,8 +437,20 @@ void LedWorkerHandler(struct k_work *work)
 	}
 
 	if (res_schedule_time) {
-		k_work_reschedule(&ledWork, K_MSEC(res_schedule_time));
+		k_work_reschedule(&led_work, K_MSEC(res_schedule_time));
 	}
+}
+
+static void on_gapc_proc_cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status)
+{
+	LOG_INF("%s conn:%d status:%d\n", __func__, conidx, status);
+}
+
+static void status_connected_update(uint8_t conidx, uint16_t status)
+{
+	conn_status = BT_CONN_STATE_CONNECTED;
+	gapc_le_update_params(conidx, 0, &app_preferred_connection_param,
+				    on_gapc_proc_cmp_cb);
 }
 
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
@@ -437,11 +458,11 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 {
 	switch (con_event) {
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
-		conn_status = BT_CONN_STATE_CONNECTED;
+		status_connected_update(con_idx, status);
 		LOG_INF("Connection index %u connected to known device", con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
-		conn_status = BT_CONN_STATE_CONNECTED;
+		status_connected_update(con_idx, status);
 		LOG_INF("Connection index %u connected to new device", con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
@@ -454,7 +475,7 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 		break;
 	}
 
-	UpdateMuteLedstate();
+	update_led_state();
 }
 
 static gapm_user_cb_t gapm_user_cb = {
@@ -465,7 +486,7 @@ int main(void)
 {
 	uint16_t err;
 
-	err = ble_gpio_buttons_init(ButtonUpdateHandler);
+	err = ble_gpio_buttons_init(button_update_handler);
 	if (err) {
 		LOG_ERR("Button Init fail %u", err);
 		return -1;
@@ -522,7 +543,7 @@ int main(void)
 
 	print_device_identity();
 	/* Set a Led init state */
-	k_work_reschedule(&ledWork, K_MSEC(1));
+	k_work_reschedule(&led_work, K_MSEC(1));
 
 	while (1) {
 		k_sem_take(&ntf_sem, K_FOREVER);

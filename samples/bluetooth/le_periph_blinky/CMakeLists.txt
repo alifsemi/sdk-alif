@@ -7,6 +7,13 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
+
+# Include BLE Power Management snippet by default
+if(NOT pm-ble IN_LIST SNIPPET)
+  set(SNIPPET pm-ble ${SNIPPET} CACHE STRING "" FORCE)
+  set(EXTRA_DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/boards/lpgpio.overlay)
+endif()
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(le_periph_blinky)
 
