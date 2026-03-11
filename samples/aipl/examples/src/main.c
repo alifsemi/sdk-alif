@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -26,7 +26,11 @@
 #include "img_assets/assets.h"
 #include "dbuf_display/display.h"
 
+#include <soc_common.h>
+#include <se_service.h>
+
 #include <zephyr/kernel.h>
+#include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -414,3 +418,49 @@ int main(void)
 
 	return 0;
 }
+
+/*
+ * Do application configurations.
+ */
+static int app_set_parameters(void)
+{
+	run_profile_t runp;
+	int ret;
+
+#if (defined(CONFIG_ENSEMBLE_GEN2) && defined(CONFIG_MIPI_DSI))
+	const struct gpio_dt_spec cam_disp_mux_gpio =
+		GPIO_DT_SPEC_GET(DT_NODELABEL(mipi_dsi), cam_disp_mux_gpios);
+	gpio_pin_configure_dt(&cam_disp_mux_gpio, GPIO_OUTPUT_ACTIVE);
+#endif
+
+	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK;
+	runp.dcdc_voltage  = 825;
+	runp.dcdc_mode     = DCDC_MODE_PWM;
+	runp.aon_clk_src   = CLK_SRC_LFXO;
+	runp.run_clk_src   = CLK_SRC_PLL;
+	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+#if defined(CONFIG_RTSS_HP)
+	runp.cpu_clk_freq  = CLOCK_FREQUENCY_400MHZ;
+#else
+	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
+#endif
+
+	runp.memory_blocks = MRAM_MASK;
+#if DT_NODE_EXISTS(DT_NODELABEL(sram0))
+	runp.memory_blocks |= SRAM0_MASK;
+#endif
+#if DT_NODE_EXISTS(DT_NODELABEL(sram1))
+	runp.memory_blocks |= SRAM1_MASK;
+#endif
+
+	runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK |
+		MIPI_PLL_DPHY_MASK | LDO_PHY_MASK;
+	runp.ip_clock_gating = CDC200_MASK | MIPI_CSI_MASK | MIPI_DSI_MASK;
+
+	ret = se_service_set_run_cfg(&runp);
+	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
+
+	return ret;
+}
+
+SYS_INIT(app_set_parameters, PRE_KERNEL_1, 46);

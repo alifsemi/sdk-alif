@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -14,6 +14,13 @@
 	};
 
 	soc {
+		gpu2d: dave2d@49040000 {
+			compatible = "tes,dave2d";
+			reg = <0x49040000 0x1000>;
+			interrupts = <332 2>;
+			clocks = <&clockctrl ALIF_GPU_CLK>;
+		};
+
 		cdc200: cdc200@49031000 {
 			width = <480>;
 			height = <800>;
@@ -50,6 +57,18 @@
 			const-alpha-l2 = <0xff>;
 		};
 	};
+};
+
+&clk_38p4m {
+	status = "okay";
+};
+
+&clk_100m {
+	status = "okay";
+};
+
+&sram1 {
+	status = "okay";
 };
 
 &mipi_dsi {
