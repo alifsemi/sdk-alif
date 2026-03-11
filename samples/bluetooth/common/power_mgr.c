@@ -98,6 +98,14 @@ void power_mgr_log_flush(void)
 
 static int set_off_profile(enum off_state const mode)
 {
+	uint32_t ewic = EWIC_RTC_A;
+	uint32_t wakeup = WE_LPRTC;
+
+#if DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(lpgpio))
+	ewic |= EWIC_VBAT_GPIO;
+	wakeup |= WE_LPGPIO1;
+#endif
+
 	int ret;
 	off_profile_t offp = {
 		.power_domains = PD_VBAT_AON_MASK,
@@ -109,8 +117,8 @@ static int set_off_profile(enum off_state const mode)
 		.stby_clk_src = CLK_SRC_HFRC,
 		.ip_clock_gating = 0,
 		.phy_pwr_gating = 0,
-		.ewic_cfg = EWIC_RTC_A,
-		.wakeup_events = WE_LPRTC,
+		.ewic_cfg = ewic,
+		.wakeup_events = wakeup,
 		.vtor_address = SCB->VTOR,
 		.vtor_address_ns = SCB->VTOR,
 	};

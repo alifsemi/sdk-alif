@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -8,32 +8,42 @@
  */
 
 
-
 &{/} {
 	aliases {
-		led0 = &aled0;
-		led2 = &aled2;
+		led0 = &gpio_out;
+		led2 = &gpio_out;
 	};
 
 	leds {
 		compatible = "gpio-leds";
-		aled0: led_0 {
-			gpios = <&gpio4 5 0>;
-			label = "LED0_G";
+		gpio_out: gpio_15 {
+			gpios = <&lpgpio 0 0>;
 		};
+	};
 
-		aled2: led_2 {
-			gpios = <&gpio4 3 0>;
-			label = "LED0_B";
+	/delete-node/ buttons;
+
+	buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&lpgpio 1 GPIO_ACTIVE_LOW>;
 		};
 	};
 };
 
 
-/* for "buttons" node gpio5_7, enable software pull-up */
-&pinctrl_gpio5 {
+&pinctrl_lpgpio {
 	group0 {
-		pinmux = < PIN_P5_7__GPIO >;
+		pinmux = <PIN_P15_1__LPGPIO>;
 		driver-state-control = <1>;
 	};
+	group1 {
+		pinmux = <PIN_P15_0__LPGPIO>;
+	};
+};
+
+&lpgpio {
+	pinctrl-0 = < &pinctrl_lpgpio >;
+	pinctrl-names = "default";
+	status = "okay";
 };
