@@ -185,7 +185,7 @@ static int app_set_parameters(void)
 	/*
 	 * CPI Pixel clock - Generate XVCLK. Used by ARX3A0 & OV5675 sensors.
 	 */
-	sys_write32(0x140001, EXPMST_CAMERA_PIXCLK_CTRL);
+	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
 #endif
 
 	return 0;
