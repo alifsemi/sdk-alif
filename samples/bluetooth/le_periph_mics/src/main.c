@@ -71,18 +71,25 @@ struct service_env {
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
+static const gapc_le_con_param_nego_with_ce_len_t app_preferred_connection_param = {
+	.ce_len_min = 5,
+	.ce_len_max = 10,
+	.hdr.interval_min = 400,
+	.hdr.interval_max = 400,
+	.hdr.latency = 0,
+	.hdr.sup_to = 800};
+
 /* Load name from configuration file */
-#define DEVICE_NAME      CONFIG_BLE_DEVICE_NAME
+#define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
 
 static struct service_env env;
 
-void LedWorkerHandler(struct k_work *work);
+void led_work_handler(struct k_work *work);
 
-static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
+static K_WORK_DELAYABLE_DEFINE(led_work, led_work_handler);
 
-static const struct gpio_dt_spec activeLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledgreen), gpios);
-static const struct gpio_dt_spec muteLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledred), gpios);
-static const struct gpio_dt_spec bleLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledblue), gpios);
+static const struct gpio_dt_spec mute_led = GPIO_DT_SPEC_GET(DT_ALIAS(ledred), gpios);
+static const struct gpio_dt_spec ble_led = GPIO_DT_SPEC_GET(DT_ALIAS(ledblue), gpios);
 
 static struct connection_status app_con_info = {
 	.conidx = GAP_INVALID_CONIDX,
@@ -97,9 +104,9 @@ static uint16_t service_init(void);
 
 /* Functions */
 
-static void UpdateMuteLedstate(void)
+static void update_led_state(void)
 {
-	k_work_reschedule(&ledWork, K_MSEC(1));
+	k_work_reschedule(&led_work, K_MSEC(1));
 }
 
 static uint16_t create_advertising(void)
@@ -141,7 +148,7 @@ static void mics_cb_mute(uint8_t mute)
 {
 	if (env.mute != mute) {
 		env.mute = mute;
-		UpdateMuteLedstate();
+		update_led_state();
 	}
 }
 
@@ -169,8 +176,12 @@ static uint16_t service_init(void)
 	return status;
 }
 
-void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
+void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
+	if (conn_status != BT_CONN_STATE_CONNECTED) {
+		return;
+	}
+
 	if (has_changed & 1) {
 		/* Press Button Update toggle led when state goes to 0 */
 		if (!(button_state & 1)) {
@@ -193,41 +204,58 @@ void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 			arc_mics_set_mute(new_state);
 
 			env.mute = new_state;
-			UpdateMuteLedstate();
+			update_led_state();
 		}
 	}
 }
 
-void LedWorkerHandler(struct k_work *work)
+void led_work_handler(struct k_work *work)
 {
 	int res_schedule_time = 0;
 
-	if (conn_status == BT_CONN_STATE_CONNECTED) {
-		ble_gpio_led_set(&bleLed, false);
-	} else {
-		ble_gpio_led_toggle(&bleLed);
-		res_schedule_time = 500;
-	}
+	if (conn_status == BT_CONN_STATE_DISCONNECTED) {
+		if (ble_gpio_led_get(&ble_led) == 0) {
+			ble_gpio_led_set(&ble_led, true);
+			res_schedule_time = 200;
+		} else {
+			ble_gpio_led_set(&ble_led, false);
+			res_schedule_time = 800;
+		}
 
-	switch (env.mute) {
-	case MIC_MUTE_MUTED:
-		res_schedule_time = 500;
-		ble_gpio_led_set(&activeLed, false);
-		ble_gpio_led_toggle(&muteLed);
-		break;
-	case MIC_MUTE_DISABLED:
-		ble_gpio_led_set(&activeLed, false);
-		ble_gpio_led_set(&muteLed, true);
-		break;
-	default:
-		ble_gpio_led_set(&activeLed, true);
-		ble_gpio_led_set(&muteLed, false);
-		break;
+	} else {
+		switch (env.mute) {
+		case MIC_MUTE_MUTED:
+			res_schedule_time = 500;
+			ble_gpio_led_toggle(&mute_led);
+			break;
+		case MIC_MUTE_DISABLED:
+			ble_gpio_led_set(&mute_led, true);
+			break;
+		case MIC_MUTE_NOT_MUTED:
+			ble_gpio_led_set(&mute_led, false);
+			break;
+		default:
+			break;
+		}
 	}
 
 	if (res_schedule_time) {
-		k_work_reschedule(&ledWork, K_MSEC(res_schedule_time));
+		k_work_reschedule(&led_work, K_MSEC(res_schedule_time));
 	}
+}
+
+static void on_gapc_proc_cmp_cb(uint8_t conidx, uint32_t metainfo, uint16_t status)
+{
+	LOG_INF("%s conn:%d status:%d\n", __func__, conidx, status);
+}
+
+void set_connected_state(uint8_t conindx)
+{
+	app_con_info.conidx = conindx;
+	conn_status = BT_CONN_STATE_CONNECTED;
+	gapc_le_update_params(conindx, 0, &app_preferred_connection_param, on_gapc_proc_cmp_cb);
+
+	ble_gpio_led_set(&ble_led, false);
 }
 
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
@@ -235,11 +263,11 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 {
 	switch (con_event) {
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
-		conn_status = BT_CONN_STATE_CONNECTED;
+		set_connected_state(con_idx);
 		LOG_INF("Connection index %u connected to known device", con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
-		conn_status = BT_CONN_STATE_CONNECTED;
+		set_connected_state(con_idx);
 		LOG_INF("Connection index %u connected to new device", con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
@@ -251,7 +279,7 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 		break;
 	}
 
-	UpdateMuteLedstate();
+	update_led_state();
 }
 
 static gapm_user_cb_t gapm_user_cb = {
@@ -264,7 +292,7 @@ int main(void)
 
 	ble_storage_init();
 
-	err = ble_gpio_buttons_init(ButtonUpdateHandler);
+	err = ble_gpio_buttons_init(button_update_handler);
 	if (err) {
 		LOG_ERR("Button Init fail %u", err);
 		return -1;
@@ -309,6 +337,6 @@ int main(void)
 
 	print_device_identity();
 	/* Set a Led init state */
-	k_work_reschedule(&ledWork, K_MSEC(1));
+	k_work_reschedule(&led_work, K_MSEC(1));
 	return 0;
 }

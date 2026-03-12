@@ -193,3 +193,8 @@ void ble_gpio_led_toggle(const struct gpio_dt_spec *led_dev)
 {
 	gpio_pin_toggle_dt(led_dev);
 }
+
+int ble_gpio_led_get(const struct gpio_dt_spec *led_dev)
+{
+	return gpio_pin_get_dt(led_dev);
+}
