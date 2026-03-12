@@ -45,11 +45,28 @@ def verify_checkpatch(){
             git pull
         fi
         '''
+
 }
 
 def verify_gitlint (){
     sh '''#!/bin/bash -xe
         env
+        cd /root/alif
+        west forall -c "git clean -fdx"
+        cd /root/alif/alif/
+        git status
+        git fetch origin -pu
+        if [[ -v CHANGE_ID ]]; then
+            git branch -D pr-${CHANGE_ID} || true
+            git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
+            git checkout pr-${CHANGE_ID}
+        else
+            git checkout main
+            git reset --hard origin/main
+            git pull
+        fi
+        cd ..
+        west update
         cd /root/alif/alif/
         pip install gitlint
         git log -$(git rev-list --count origin/main..HEAD) --pretty=%B | gitlint

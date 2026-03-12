@@ -1,10 +1,10 @@
 def common_funcs
-def samples1 = ['le_periph_blps', 'le_periph_cgms','le_periph_cpps','le_periph_cscps']
-def samples2 = ['le_central_batt','le_periph','le_periph_batt','le_periph_blinky']
-def samples3 = ['le_periph_glps', 'le_periph_hello','le_periph_hr','le_periph_htpt']
-def samples4 = [ 'le_periph_past','le_periph_plxp','le_periph_pm','le_periph_prxp','le_throughput']
-def samples5 = ['le_periph_rscps','le_periph_ws','mesh_light_bulb','smp_svr']
-def samples6 = ['auracast','broadcast_mode_switch','unicast_sink','unicast_source']
+def samples1 = ['le_periph_blps', 'le_periph_cgms','le_periph_cpps','le_periph_cscps','le_periph_mics','le_periph_vcp']
+def samples2 = ['le_central_batt','le_periph','le_periph_batt','le_periph_blinky','le_multiprofile','le_periph_ots']
+def samples3 = ['le_periph_glps', 'le_periph_hello','le_periph_hr','le_periph_htpt','le_periph_anps','le_periph_pacs']
+def samples4 = [ 'le_periph_past','le_periph_plxp','le_periph_pm','le_periph_prxp','le_throughput','le_periph_ccp']
+def samples5 = ['le_periph_rscps','le_periph_ws','mesh_light_bulb','smp_svr', 'le_periph_haps','le_periph_tips']
+def samples6 = ['auracast','broadcast_mode_switch','unicast_acceptor','unicast_initiator']
 def samples7 =['testapp']
 
 pipeline {
@@ -18,15 +18,6 @@ pipeline {
                 checkout scm
                 script {
                     common_funcs = load 'automation/ble_samples.groovy'
-                }
-            }
-        }
-        stage('initialize') {
-            agent { label 'zas20' }
-            options { skipDefaultCheckout() }
-            steps {
-                script {
-                    common_funcs.initialize()
                 }
             }
         }
@@ -55,6 +46,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples1.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
@@ -76,6 +68,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples2.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
@@ -97,6 +90,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples3.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
@@ -118,6 +112,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples4.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
@@ -139,6 +134,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples5.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
@@ -160,6 +156,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples6.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
@@ -181,6 +178,7 @@ pipeline {
                     options { skipDefaultCheckout() }
                     steps {
                         script {
+                            common_funcs.initialize()
                             samples7.each { sample ->
                                 echo "Building sample: ${sample}"
                                 common_funcs.build_ble(
