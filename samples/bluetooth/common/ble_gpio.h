@@ -30,4 +30,7 @@ void ble_gpio_led_set(const struct gpio_dt_spec *led_dev, bool enable);
 /* Toggle led state */
 void ble_gpio_led_toggle(const struct gpio_dt_spec *led_dev);
 
+/* Get led state */
+int ble_gpio_led_get(const struct gpio_dt_spec *led_dev);
+
 #endif /* BLE_GPIO_H */
