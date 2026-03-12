@@ -7,6 +7,9 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+/*
+ * OSPI1 Test with Flash
+ */
 /{
 	aliases {
 		spi-flash0 = &ospi_flash;
@@ -14,43 +17,32 @@
 };
 
 &pinctrl {
-	//Flash connected with "P2_1_OSPI0_SS1_B" CS line
 	pinctrl_flash:pinctrl_flash {
 		group0 {
-			pinmux = <PIN_P4_2__OSPI0_SCLK_A>,
-				 <PIN_P2_1__OSPI0_SS1_B>;
+			pinmux = <PIN_P5_5__OSPI1_SCLK_C>,
+				 <PIN_P5_7__OSPI1_SS0_C>;
 			read-enable = <0x0>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
 		};
 		group1 {
-			pinmux = <PIN_P4_1__OSPI0_RXDS_A>,
-				 <PIN_P3_0__OSPI0_D0_A>,
-				 <PIN_P3_1__OSPI0_D1_A>,
-				 <PIN_P3_2__OSPI0_D2_A>,
-				 <PIN_P3_3__OSPI0_D3_A>,
-				 <PIN_P3_4__OSPI0_D4_A>,
-				 <PIN_P3_5__OSPI0_D5_A>,
-				 <PIN_P3_6__OSPI0_D6_A>,
-				 <PIN_P3_7__OSPI0_D7_A>;
+			pinmux = <PIN_P9_5__OSPI1_D0_C>,
+				 <PIN_P9_6__OSPI1_D1_C>,
+				 <PIN_P9_7__OSPI1_D2_C>,
+				 <PIN_P10_0__OSPI1_D3_C>,
+				 <PIN_P10_1__OSPI1_D4_C>,
+				 <PIN_P10_2__OSPI1_D5_C>,
+				 <PIN_P10_3__OSPI1_D6_C>,
+				 <PIN_P10_4__OSPI1_D7_C>,
+				 <PIN_P10_7__OSPI1_RXDS0_C>;
 			read-enable = <0x1>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
 		};
 	};
-
-	//Default AHI Trace pins affects OSPI-Flash pins.
-	pinctrl_ahi_trace: pinctrl_ahi_trace {
-		group0 {
-			pinmux = <PIN_P8_7__EXT_TX_B>,
-				 <PIN_P8_3__EXT_RTS_B>,
-				 <PIN_P8_5__EXT_TRACE_B>;
-			read-enable = < 0x0 >;
-		};
-	};
 };
 
-&ospi0 {
+&ospi1 {
 	pinctrl-0 = <&pinctrl_flash>;
 	status = "okay";
 };

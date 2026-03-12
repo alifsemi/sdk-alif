@@ -6,7 +6,11 @@ boards:
       EXTRA_DTC_OVERLAY_FILE: b1_ospi0.overlay
   /alif_e1c.*/:
     append:
-      EXTRA_DTC_OVERLAY_FILE: ospi0.overlay
-  /alif_(e3|e4|e7|e8).*/:
+      EXTRA_DTC_OVERLAY_FILE: e1c_ospi0.overlay
+  /alif_(e3|e5|e7).*/:
     append:
-      EXTRA_DTC_OVERLAY_FILE: ospi1.overlay
+      EXTRA_DTC_OVERLAY_FILE: e7_ospi1.overlay
+  /alif_(e4|e6|e8).*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e8_ospi1.overlay
+

@@ -7,6 +7,9 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+/*
+ * OSPI0 Test with Flash
+ */
 /{
 	aliases {
 		spi-flash0 = &ospi_flash;
@@ -14,7 +17,6 @@
 };
 
 &pinctrl {
-	//Flash connected with "P2_1_OSPI0_SS1_B" CS line
 	pinctrl_flash:pinctrl_flash {
 		group0 {
 			pinmux = <PIN_P4_2__OSPI0_SCLK_A>,
@@ -36,16 +38,6 @@
 			read-enable = <0x1>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
-		};
-	};
-
-	//Default AHI Trace pins affects OSPI-Flash pins.
-	pinctrl_ahi_trace: pinctrl_ahi_trace {
-		group0 {
-			pinmux = <PIN_P8_7__EXT_TX_B>,
-				 <PIN_P8_3__EXT_RTS_B>,
-				 <PIN_P8_5__EXT_TRACE_B>;
-			read-enable = < 0x0 >;
 		};
 	};
 };
