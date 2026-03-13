@@ -424,8 +424,8 @@ int main(void)
  */
 static int app_set_parameters(void)
 {
-	run_profile_t runp;
 	int ret;
+	run_profile_t runp = (run_profile_t){0};
 
 #if (defined(CONFIG_ENSEMBLE_GEN2) && defined(CONFIG_MIPI_DSI))
 	const struct gpio_dt_spec cam_disp_mux_gpio =
@@ -455,7 +455,8 @@ static int app_set_parameters(void)
 
 	runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK |
 		MIPI_PLL_DPHY_MASK | LDO_PHY_MASK;
-	runp.ip_clock_gating = CDC200_MASK | MIPI_CSI_MASK | MIPI_DSI_MASK;
+	runp.ip_clock_gating = CDC200_MASK | MIPI_CSI_MASK | MIPI_DSI_MASK |
+		GPU_MASK;
 
 	ret = se_service_set_run_cfg(&runp);
 	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
