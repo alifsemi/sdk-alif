@@ -37,6 +37,7 @@ void set_green_led(bool state);
  * @brief Indicate that a peer is found.
  *
  * @param p_addr The address of the peer device.
+ *
  * @return int 0 on success, negative error code on failure.
  */
 int peer_found(gap_bdaddr_t const *const p_addr);
@@ -45,8 +46,18 @@ int peer_found(gap_bdaddr_t const *const p_addr);
  * @brief Indicate that a peer is ready.
  *
  * @param conidx The connection index of the peer.
+ *
  * @return int 0 on success, negative error code on failure.
  */
 int peer_ready(uint32_t conidx);
+
+/**
+ * @brief Terminate a connection.
+ *
+ * @param conidx The connection index to terminate.
+ *
+ * @return int 0 on success, negative error code on failure.
+ */
+int terminate_connection(uint32_t conidx);
 
 #endif /* _MAIN_H */

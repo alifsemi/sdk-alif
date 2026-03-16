@@ -15,7 +15,7 @@
 #include "scan.h"
 #include "main.h"
 
-#define SCAN_DURATION_SEC 10
+#define SCAN_DURATION_SEC 2
 /** See enum gaf_scan_cfg_bf for more information */
 #define SCAN_CONFIG_BITS  (GAF_SCAN_CFG_ASCS_REQ_BIT /*| GAF_SCAN_CFG_TMAS_REQ_BIT*/)
 
@@ -32,6 +32,8 @@ struct peripheral {
 	atc_csis_rsi_t rsi;
 	/** Info flag bits */
 	uint8_t info_flags;
+	/** When peer name is matching */
+	bool exact_match;
 };
 
 static sys_slist_t scan_results;
@@ -40,7 +42,7 @@ static scanning_ready_callback_t scanning_ready_cb;
 
 const char peripheral_name[] = CONFIG_PERIPHERAL_NAME;
 
-const char *bdaddr_str(const gap_bdaddr_t * const p_addr)
+const char *bdaddr_str(const gap_bdaddr_t *const p_addr)
 {
 	static char addr_str[32];
 
@@ -86,8 +88,10 @@ static void on_gaf_scanning_cb_cmp_evt(uint8_t const cmd_type, uint16_t const st
 			scanning_ready_cb = NULL;
 		}
 	} else if (cmd_type == GAF_SCAN_CMD_TYPE_START) {
-		LOG_INF("Scan started. Scanning for %u seconds", SCAN_DURATION_SEC);
-		set_blue_led(true);
+		static bool led_state;
+
+		led_state ^= 1;
+		set_blue_led(led_state);
 	} else {
 		LOG_ERR("Unexpected GAF scanning command complete event: %u", cmd_type);
 	}
@@ -119,9 +123,7 @@ static void on_gaf_scanning_cb_stopped(uint8_t const reason)
 		return;
 	}
 
-	LOG_INF("restarting scan...");
-	/* TODO / FIXME: Assert after 12 scan rounds! */
-	uint16_t status = gaf_scan_start(SCAN_CONFIG_BITS, SCAN_DURATION_SEC, GAP_PHY_1MBPS);
+	const uint16_t status = gaf_scan_start(SCAN_CONFIG_BITS, SCAN_DURATION_SEC, GAP_PHY_1MBPS);
 
 	if (status != GAF_ERR_NO_ERROR) {
 		__ASSERT(0, "Error %u starting scan", status);
@@ -173,6 +175,7 @@ static void on_gaf_scanning_cb_report(const gap_bdaddr_t *p_addr, uint8_t const 
 	peripheral->device_name[name_length] = 0;
 	peripheral->addr = *p_addr;
 	peripheral->info_flags = info_bf;
+	peripheral->exact_match = name_length == (sizeof(peripheral_name) - 1);
 
 	if (info_bf & GAF_SCAN_REPORT_INFO_RSI_BIT) {
 		memcpy(&peripheral->rsi, p_rsi, sizeof(peripheral->rsi));
@@ -196,6 +199,10 @@ static void on_gaf_scanning_cb_announcement(const gap_bdaddr_t *const p_addr, ui
 
 	LOG_INF("Announcement received for peripheral %s", peripheral->device_name);
 	peer_found(p_addr);
+
+	if (peripheral->exact_match) {
+		gaf_scan_stop();
+	}
 }
 
 static const struct gaf_scan_cb gaf_scan_callbacks = {
@@ -241,6 +248,8 @@ int unicast_scan_start(scanning_ready_callback_t const ready_cb)
 		LOG_ERR("GAF scanning start error: %u", err);
 		return -ENOEXEC;
 	}
+
+	LOG_INF("Scan started");
 
 	scan_ongoing = true;
 
