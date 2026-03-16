@@ -8,9 +8,8 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-# Include BLE Power Management snippet by default
-if(NOT pm-ble IN_LIST SNIPPET)
-  set(SNIPPET pm-ble ${SNIPPET} CACHE STRING "" FORCE)
+if(pm-ble IN_LIST SNIPPET)
+  message(FATAL_ERROR "pm-ble snippet is not supported in this sample. Functionality is enabled by default.")
 endif()
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
