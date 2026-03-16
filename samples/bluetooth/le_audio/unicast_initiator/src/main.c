@@ -42,35 +42,11 @@ LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 K_SEM_DEFINE(wait_procedure_sem, 0, 1);
 K_SEM_DEFINE(wait_connection_sem, 0, 1);
 
-/* This is a workaround to multiple scan triggers.
- * Should be removed when scanning error is fixed.
- */
-static bool is_connected;
-
-struct app_env {
-	uint8_t actv_idx;
-	uint8_t conidx;
-	gap_bdaddr_t peer_addr;
-	uint8_t storage_index;
-};
-
-struct app_con_bond_data {
-	gapc_pairing_keys_t keys;
-	gapc_bond_data_t bond_data;
-};
-
-struct client_data {
-	sys_snode_t node;
-	struct app_env env;
-	struct app_con_bond_data bond;
-};
-
-static sys_slist_t free_client_contexts;
-static sys_slist_t used_client_contexts;
+static sys_slist_t found_peers_contexts;
+static sys_slist_t connected_peers_contexts;
+static sys_slist_t bond_data_contexts;
 
 K_QUEUE_DEFINE(discovery_list);
-
-static struct client_data clients[CONFIG_NUMBER_OF_CLIENTS];
 
 /* Load names from configuration file */
 const char device_name[] = CONFIG_BLE_DEVICE_NAME;
@@ -152,6 +128,43 @@ void set_green_led(bool const state)
 
 /* ---------------------------------------------------------------------------------------- */
 
+static uint32_t get_next_free_index(void)
+{
+	struct peer_data *p_peer;
+	sys_snode_t *node = NULL;
+	uint32_t index = 0;
+
+	SYS_SLIST_ITERATE_FROM_NODE(&bond_data_contexts, node)
+	{
+		p_peer = (struct peer_data *)node;
+		if (index <= p_peer->storage_index) {
+			index = p_peer->storage_index + 1;
+		}
+	}
+
+	return index;
+}
+
+static void *get_peer_by_irk(const gap_sec_key_t *const p_irk)
+{
+	if (!p_irk) {
+		return NULL;
+	}
+
+	struct peer_data *p_peer;
+	sys_snode_t *node = NULL;
+
+	SYS_SLIST_ITERATE_FROM_NODE(&bond_data_contexts, node)
+	{
+		p_peer = (struct peer_data *)node;
+		if (!memcmp(&((gapc_pairing_keys_t *)p_peer->keys.data)->irk.key, p_irk->key,
+			    sizeof(p_irk->key))) {
+			return p_peer;
+		}
+	}
+	return NULL;
+}
+
 static bool is_bdaddr_valid(gap_bdaddr_t const *const p_addr)
 {
 	return (!!p_addr && p_addr->addr_type <= GAP_ADDR_RAND);
@@ -163,54 +176,67 @@ static void *get_peer_by_bdaddr(gap_bdaddr_t const *const p_addr)
 		return NULL;
 	}
 
-	struct client_data *p_peer;
+	struct peer_data *p_peer;
 	sys_snode_t *node = NULL;
 
-	SYS_SLIST_ITERATE_FROM_NODE(&used_client_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(&bond_data_contexts, node)
 	{
-		p_peer = (struct client_data *)node;
-		if (!memcmp(p_peer->env.peer_addr.addr, p_addr->addr, sizeof(p_addr->addr))) {
+		p_peer = (struct peer_data *)node;
+		if (!memcmp(((gapc_pairing_keys_t *)p_peer->keys.data)->irk.identity.addr,
+			    p_addr->addr, sizeof(p_addr->addr))) {
 			return p_peer;
 		}
 	}
+
+	SYS_SLIST_ITERATE_FROM_NODE(&found_peers_contexts, node)
+	{
+		p_peer = (struct peer_data *)node;
+		if (!memcmp(((gapc_pairing_keys_t *)p_peer->keys.data)->irk.identity.addr,
+			    p_addr->addr, sizeof(p_addr->addr))) {
+			return p_peer;
+		}
+	}
+
 	return NULL;
 }
 
 static void *get_peer_by_activity_index(uint32_t const actv_idx)
 {
-	struct client_data *p_peer;
+	struct peer_data *p_peer;
 	sys_snode_t *node = NULL;
 
-	SYS_SLIST_ITERATE_FROM_NODE(&used_client_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(&found_peers_contexts, node)
 	{
-		p_peer = (struct client_data *)node;
-		if (p_peer->env.actv_idx == actv_idx) {
+		p_peer = (struct peer_data *)node;
+		if (p_peer->actv_idx == actv_idx) {
 			return p_peer;
 		}
 	}
+
 	LOG_ERR("Peer not found by activity index %u", actv_idx);
 	return NULL;
 }
 
 static void *get_peer_by_connection_index(uint32_t const conidx)
 {
-	struct client_data *p_peer;
+	struct peer_data *p_peer;
 	sys_snode_t *node = NULL;
 
-	SYS_SLIST_ITERATE_FROM_NODE(&used_client_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(&found_peers_contexts, node)
 	{
-		p_peer = (struct client_data *)node;
-		if (p_peer->env.conidx == conidx) {
+		p_peer = (struct peer_data *)node;
+		if (p_peer->conidx == conidx) {
 			return p_peer;
 		}
 	}
+
 	LOG_ERR("Peer not found by connection index %u", conidx);
 	return NULL;
 }
 
 static void *get_peer_by_connection_index_or_meta(uint32_t const conidx, uint32_t const metainfo)
 {
-	struct client_data *p_peer = (struct client_data *)metainfo;
+	struct peer_data *p_peer = (struct peer_data *)metainfo;
 
 	if (p_peer) {
 		return p_peer;
@@ -219,21 +245,158 @@ static void *get_peer_by_connection_index_or_meta(uint32_t const conidx, uint32_
 	return get_peer_by_connection_index(conidx);
 }
 
-static void return_peer_to_free_list(struct client_data *p_peer)
+static void *get_connected_peer_by_connection_index_or_meta(uint32_t const conidx,
+							    uint32_t const metainfo)
+{
+	struct peer_data *p_peer = (struct peer_data *)metainfo;
+
+	if (p_peer) {
+		return p_peer;
+	}
+
+	sys_snode_t *node = NULL;
+
+	SYS_SLIST_ITERATE_FROM_NODE(&connected_peers_contexts, node)
+	{
+		p_peer = (struct peer_data *)node;
+		if (p_peer->conidx == conidx) {
+			return p_peer;
+		}
+	}
+
+	LOG_ERR("Peer %u not on the connected list", conidx);
+	return NULL;
+}
+
+static void cleanup_disconnected_peer(struct peer_data *p_peer)
 {
 	if (!p_peer) {
 		return;
 	}
 
-	p_peer->env.conidx = GAP_INVALID_CONIDX;
-	memset(p_peer->env.peer_addr.addr, 0, sizeof(p_peer->env.peer_addr.addr));
+	gapc_pairing_keys_t *p_pairing_keys = p_peer->keys.data;
 
-	sys_slist_find_and_remove(&used_client_contexts, &p_peer->node);
-	sys_slist_append(&free_client_contexts, &p_peer->node);
+	p_peer->conidx = GAP_INVALID_CONIDX;
+
+	if (p_pairing_keys) {
+		memset(&p_pairing_keys->irk.identity, 0, sizeof(p_pairing_keys->irk.identity));
+		p_pairing_keys->irk.identity.addr_type = 0xFF;
+	}
+
+	sys_slist_find_and_remove(&found_peers_contexts, &p_peer->node);
+	sys_slist_find_and_remove(&connected_peers_contexts, &p_peer->node);
+}
+
+static int handle_found_peer(gap_bdaddr_t const *const p_addr)
+{
+	struct peer_data *p_peer = calloc(1, sizeof(*p_peer));
+
+	if (!p_peer) {
+		LOG_ERR("Failed to allocate memory for a new peer data");
+		return -ENOMEM;
+	}
+
+	gapc_pairing_keys_t *p_keys = calloc(1, sizeof(*p_keys));
+
+	if (!p_keys) {
+		LOG_ERR("Failed to allocate memory for pairing keys");
+		free(p_peer);
+		return -ENOMEM;
+	}
+
+	gapc_bond_data_t *p_bond_data = calloc(1, sizeof(*p_bond_data));
+
+	if (!p_bond_data) {
+		LOG_ERR("Failed to allocate memory for bond data keys");
+		free(p_bond_data);
+		free(p_peer);
+		return -ENOMEM;
+	}
+
+	p_peer->storage_index = get_next_free_index();
+	p_peer->actv_idx = GAP_INVALID_ACTV_IDX;
+	p_peer->conidx = GAP_INVALID_CONIDX;
+	p_peer->keys.data = p_keys;
+	p_peer->keys.size = sizeof(*p_keys);
+	p_peer->connection.data = p_bond_data;
+	p_peer->connection.size = sizeof(*p_bond_data);
+
+	memcpy(&p_keys->irk.identity, p_addr, sizeof(p_keys->irk.identity));
+
+	sys_slist_append(&found_peers_contexts, &p_peer->node);
+
+	return 0;
 }
 
 /* ---------------------------------------------------------------------------------------- */
 /* Bluetooth GAPM callbacks */
+
+static size_t num_of_resolves_ongoing;
+
+static void on_address_resolved_cb(const uint16_t status, const gap_addr_t *const p_addr,
+				   const gap_sec_key_t *const p_irk)
+{
+	struct peer_data *p_peer = get_peer_by_irk(p_irk);
+	bool const known = (status == GAP_ERR_NO_ERROR && p_peer);
+	gap_bdaddr_t address = {
+		.addr_type = GAP_ADDR_RAND,
+	};
+	memcpy(&address.addr, p_addr->addr, sizeof(address.addr));
+
+	LOG_INF("Peer %02X:%02X:%02X:%02X:%02X:%02X is %s device", address.addr[5], address.addr[4],
+		address.addr[3], address.addr[2], address.addr[1], address.addr[0],
+		known ? "KNOWN" : "UNKNOWN");
+
+	if (!p_peer) {
+		handle_found_peer(&address);
+		num_of_resolves_ongoing--;
+		return;
+	}
+
+	/* Update address for a connection */
+	((gapc_pairing_keys_t *)p_peer->keys.data)->irk.identity = address;
+
+	sys_slist_append(&found_peers_contexts, &p_peer->node);
+
+	num_of_resolves_ongoing--;
+}
+
+static gap_sec_key_t *sec_key_list;
+static uint8_t sec_key_list_size;
+
+static int resolve_peer_address(const gap_bdaddr_t *const p_peer_addr)
+{
+	if (!sec_key_list_size || !sec_key_list) {
+		return -ENOEXEC;
+	}
+
+	if (!p_peer_addr || p_peer_addr->addr_type == GAP_ADDR_PUBLIC) {
+		return -EINVAL;
+	}
+
+	uint32_t const add_type =
+		(p_peer_addr->addr[GAP_BD_ADDR_LEN - 1] & BD_ADDR_RND_ADDR_TYPE_MSK);
+
+	LOG_INF("Peer address type: %u (%s)", add_type,
+		(add_type == BD_ADDR_RSLV) ? "RESOLVABLE" : "NON-RESOLVABLE");
+
+	if (add_type != BD_ADDR_RSLV) {
+		return -EINVAL;
+	}
+
+	uint16_t const status =
+		gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, sec_key_list_size,
+					sec_key_list, on_address_resolved_cb);
+
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Unable to start resolve address! err:%u", status);
+		return -status;
+	}
+
+	num_of_resolves_ongoing++;
+
+	return 0;
+}
 
 static int request_pairing_and_bonding(uint8_t const conidx)
 {
@@ -264,9 +427,51 @@ static int request_pairing_and_bonding(uint8_t const conidx)
 	return 0;
 }
 
-static void on_link_encryption(uint8_t const conidx, uint32_t const start_uc, uint16_t const status)
+static void on_get_peer_version_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
+				       uint16_t status, const gapc_version_t *const p_version)
 {
-	LOG_INF("Peer %u link encryption! start_uc:%u status:%u", conidx, start_uc, status);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u get peer version failed, status:%u. Restart pairing", conidx,
+			status);
+		request_pairing_and_bonding(conidx);
+		return;
+	}
+
+	LOG_INF("Peer %u company_id:%u, lmp_subversion:%u, lmp_version:%u", conidx,
+		p_version->company_id, p_version->lmp_subversion, p_version->lmp_version);
+
+	struct peer_data *p_peer = get_connected_peer_by_connection_index_or_meta(conidx, metainfo);
+
+	if (!p_peer) {
+		return;
+	}
+
+	unicast_initiator_discover(conidx, p_peer->storage_index);
+}
+
+static void on_peer_features_cmp_cb(uint8_t const conidx, uint32_t const metainfo, uint16_t status,
+				    const uint8_t *const p_features)
+{
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u get peer features failed, status:%u. Restart pairing", conidx,
+			status);
+		request_pairing_and_bonding(conidx);
+		return;
+	}
+
+	LOG_DBG("Peer %u features: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", conidx, p_features[0],
+		p_features[1], p_features[2], p_features[3], p_features[4], p_features[5],
+		p_features[6], p_features[7]);
+
+	status = gapc_get_peer_version(conidx, metainfo, on_get_peer_version_cmp_cb);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u unable to get peer version! err:%u", conidx, status);
+	}
+}
+
+static void on_link_encryption(uint8_t const conidx, uint32_t const metainfo, uint16_t status)
+{
+	LOG_DBG("Peer %u link encryption! metainfo:%u status:%u", conidx, metainfo, status);
 
 	if (status == SMP_ERR_ENC_KEY_MISSING) {
 		LOG_ERR("Peer %u bond data was incorrect! Restart pairing", conidx);
@@ -276,29 +481,51 @@ static void on_link_encryption(uint8_t const conidx, uint32_t const start_uc, ui
 		}
 	}
 
-	__ASSERT(status == GAP_ERR_NO_ERROR, "Peer %u link encryption failed! err:%u", conidx,
-		 status);
-	if (start_uc) {
-		unicast_initiator_discover(conidx);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u link encryption failed! err:%u. Please, reset the app!", conidx,
+			status);
+		return;
+	}
+
+	struct peer_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+
+	if (!p_peer) {
+		LOG_ERR("Something went wrong. Please reset and try again.");
+		return;
+	}
+
+	sys_slist_append(&connected_peers_contexts, &p_peer->node);
+
+	status = gapc_le_get_peer_features(conidx, metainfo, on_peer_features_cmp_cb);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u unable to get peer features! err:%u", conidx, status);
 	}
 }
 
-static void on_get_peer_version_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
-				       uint16_t status, const gapc_version_t *const p_version)
+static void connection_confirmation(struct peer_data *p_peer)
 {
-	struct client_data *p_peer = (struct client_data *)metainfo;
+	uint_fast16_t status;
+	uint_fast8_t const conidx = p_peer->conidx;
+	bool const bonded = (((gapc_bond_data_t *)p_peer->connection.data)->pairing_lvl &
+			     GAP_PAIRING_BOND_PRESENT_BIT)
+				    ? true
+				    : false;
 
-	__ASSERT(status == GAP_ERR_NO_ERROR, "Peer %u get peer version failed! status:%u", conidx,
-		 status);
+	LOG_INF("Peer %u confirm %s!", conidx, bonded ? "BONDED" : "NOT BONDED");
 
-	LOG_INF("Peer %u company_id:%u, lmp_subversion:%u, lmp_version:%u", conidx,
-		p_version->company_id, p_version->lmp_subversion, p_version->lmp_version);
+	status = gapc_le_connection_cfm(conidx, (uint32_t)p_peer,
+					bonded ? p_peer->connection.data : NULL);
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u connection confirmation failed! err:%u", conidx, status);
+	}
 
-	if (p_peer->bond.bond_data.pairing_lvl & GAP_PAIRING_BOND_PRESENT_BIT) {
+	if (bonded) {
 		LOG_INF("Peer %u already bonded, try to encrypt link", conidx);
 
-		if (p_peer->bond.keys.valid_key_bf & GAP_KDIST_ENCKEY) {
-			status = gapc_le_encrypt(conidx, true, &p_peer->bond.keys.ltk,
+		gapc_pairing_keys_t *p_keys = p_peer->keys.data;
+
+		if (p_keys->valid_key_bf & GAP_KDIST_ENCKEY) {
+			status = gapc_le_encrypt(conidx, (uint32_t)p_peer, &p_keys->ltk,
 						 on_link_encryption);
 			if (status != GAP_ERR_NO_ERROR) {
 				LOG_ERR("Peer %u unable to start encryption! err:%u", conidx,
@@ -312,103 +539,22 @@ static void on_get_peer_version_cmp_cb(uint8_t const conidx, uint32_t const meta
 	request_pairing_and_bonding(conidx);
 }
 
-static void on_peer_features_cmp_cb(uint8_t const conidx, uint32_t const metainfo, uint16_t status,
-				    const uint8_t *const p_features)
-{
-	__ASSERT(status == GAP_ERR_NO_ERROR, "Peer %u get peer features failed! status:%u", conidx,
-		 status);
-
-	LOG_DBG("Peer %u features: %02X:%02X:%02X:%02X:%02X:%02X:%02X:%02X", conidx, p_features[0],
-		p_features[1], p_features[2], p_features[3], p_features[4], p_features[5],
-		p_features[6], p_features[7]);
-
-	status = gapc_get_peer_version(conidx, metainfo, on_get_peer_version_cmp_cb);
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Peer %u unable to get peer version! err:%u", conidx, status);
-	}
-}
-
-static void connection_confirmation(uint_fast8_t const conidx, struct client_data *p_peer)
-{
-	uint_fast16_t status;
-	bool bonded =
-		(p_peer->bond.bond_data.pairing_lvl & GAP_PAIRING_BOND_PRESENT_BIT) ? true : false;
-
-	LOG_INF("Peer %u confirm %s!", conidx, bonded ? "BONDED" : "NOT BONDED");
-
-	status = gapc_le_connection_cfm(conidx, (uint32_t)p_peer,
-					bonded ? &p_peer->bond.bond_data : NULL);
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Peer %u connection confirmation failed! err:%u", conidx, status);
-	}
-	status = gapc_le_get_peer_features(conidx, (uint32_t)p_peer, on_peer_features_cmp_cb);
-	if (status != GAP_ERR_NO_ERROR) {
-		LOG_ERR("Peer %u unable to get peer features! err:%u", conidx, status);
-	}
-}
-
-static uint_fast8_t resolve_conidx;
-
-static void on_address_resolved_cb(uint16_t status, const gap_addr_t *const p_addr,
-				   const gap_sec_key_t *const pirk)
-{
-	struct client_data *p_peer;
-	uint_fast8_t const conidx = resolve_conidx;
-
-	/* Check whether the peer device is bonded */
-	bool const resolved = (status == GAP_ERR_NO_ERROR);
-
-	LOG_INF("Peer %u Address resolve ready! status:%u, %s peer device", conidx, status,
-		resolved ? "KNOWN" : "UNKNOWN");
-
-	p_peer = get_peer_by_connection_index(conidx);
-	if (!p_peer) {
-		return;
-	}
-	connection_confirmation(conidx, p_peer);
-}
-
 static void on_le_connection_req(uint8_t const conidx, uint32_t const metainfo,
 				 uint8_t const actv_idx, uint8_t const role,
 				 const gap_bdaddr_t *const p_peer_addr,
 				 const gapc_le_con_param_t *const p_con_params,
 				 uint8_t const clk_accuracy)
 {
-	struct client_data *p_peer;
+	struct peer_data *p_peer = get_peer_by_activity_index(actv_idx);
 
-	p_peer = get_peer_by_activity_index(actv_idx);
 	if (!p_peer) {
 		LOG_ERR("Peer not found by activity index %u", actv_idx);
 		return;
 	}
 
-	p_peer->env.conidx = conidx;
-	resolve_conidx = conidx;
+	p_peer->conidx = conidx;
 
-	uint32_t const add_type =
-		(p_peer_addr->addr[GAP_BD_ADDR_LEN - 1] & BD_ADDR_RND_ADDR_TYPE_MSK);
-
-	if (add_type != BD_ADDR_RSLV) {
-		/* Number of IRKs */
-		uint8_t nb_irk = 1;
-		/* Resolve Address */
-		uint16_t const status =
-			gapm_le_resolve_address((gap_addr_t *)p_peer_addr->addr, nb_irk,
-						&p_peer->bond.keys.irk.key, on_address_resolved_cb);
-
-		if (status == GAP_ERR_INVALID_PARAM) {
-			LOG_INF("Peer %u Address not resolvable", conidx);
-			/* Address not resolvable, just confirm the connection */
-			connection_confirmation(conidx, p_peer);
-		} else if (status != GAP_ERR_NO_ERROR) {
-			LOG_ERR("Peer %u Unable to start resolve address! err:%u", conidx, status);
-			/* TODO: restart scanning when connection failed */
-		}
-	} else {
-		connection_confirmation(conidx, p_peer);
-	}
-
-	LOG_INF("---- PEER PTR %X -----", (uint32_t)p_peer);
+	connection_confirmation(p_peer);
 
 	LOG_INF("Connection request. conidx:%u (actv_idx:%u), role %s", conidx, actv_idx,
 		role ? "PERIPH" : "CENTRAL");
@@ -440,22 +586,42 @@ static void on_gapc_pairing_succeed(uint8_t const conidx, uint32_t const metainf
 				    uint8_t const key_type)
 {
 	bool const bonded = gapc_is_bonded(conidx);
-	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+	struct peer_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
 
 	if (!p_peer) {
 		return;
 	}
 
+	gapc_bond_data_t *p_bond_data = p_peer->connection.data;
+
+	if (!p_bond_data) {
+		p_bond_data = malloc(sizeof(*p_bond_data));
+		if (!p_bond_data) {
+			LOG_ERR("Failed to allocate memory for bond data");
+			return;
+		}
+		p_peer->connection.data = p_bond_data;
+		p_peer->connection.size = sizeof(*p_bond_data);
+	}
+
 	LOG_INF("Peer %u Pairing SUCCEED. pairing_level:%u, bonded:%s, enc_key_present:%d", conidx,
 		pairing_level, bonded ? "TRUE" : "FALSE", enc_key_present);
 
-	p_peer->bond.bond_data.pairing_lvl = pairing_level;
-	p_peer->bond.bond_data.enc_key_present = enc_key_present;
+	p_bond_data->pairing_lvl = pairing_level;
+	p_bond_data->enc_key_present = enc_key_present;
 
-	storage_store(SETTINGS_NAME_BOND_DATA, p_peer->env.storage_index, &p_peer->bond.bond_data,
-		      sizeof(p_peer->bond.bond_data));
+	storage_store(SETTINGS_NAME_CONNECTION, p_peer->storage_index, p_bond_data,
+		      sizeof(*p_bond_data));
 
-	unicast_initiator_discover(conidx);
+	uint16_t const status =
+		gapc_le_get_peer_features(conidx, (uint32_t)p_peer, on_peer_features_cmp_cb);
+
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_ERR("Peer %u unable to get peer features! err:%u", conidx, status);
+		unicast_initiator_discover(conidx, p_peer->storage_index);
+	}
+
+	sys_slist_append(&connected_peers_contexts, &p_peer->node);
 }
 
 static void on_gapc_pairing_failed(uint8_t const conidx, uint32_t const metainfo,
@@ -463,16 +629,16 @@ static void on_gapc_pairing_failed(uint8_t const conidx, uint32_t const metainfo
 {
 	LOG_ERR("Peer %u pairing FAILED! Reason %u", conidx, reason);
 
-	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+	struct peer_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
 
-	return_peer_to_free_list(p_peer);
+	cleanup_disconnected_peer(p_peer);
 	k_sem_give(&wait_connection_sem);
 }
 
 static void on_gapc_info_req(uint8_t const conidx, uint32_t const metainfo, uint8_t const exp_info)
 {
 	uint16_t err;
-	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+	struct peer_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
 
 	if (!p_peer) {
 		return;
@@ -489,7 +655,8 @@ static void on_gapc_info_req(uint8_t const conidx, uint32_t const metainfo, uint
 		break;
 	}
 	case GAPC_INFO_CSRK: {
-		err = gapc_pairing_provide_csrk(conidx, &p_peer->bond.bond_data.local_csrk);
+		err = gapc_pairing_provide_csrk(
+			conidx, &((gapc_bond_data_t *)p_peer->connection.data)->local_csrk);
 		if (err != GAP_ERR_NO_ERROR) {
 			LOG_ERR("Peer %u CSRK provide failed", conidx);
 			break;
@@ -521,18 +688,30 @@ static void on_gapc_sec_numeric_compare_req(uint8_t const conidx, uint32_t const
 	gapc_pairing_numeric_compare_rsp(conidx, true);
 }
 
-static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairing_keys_t *p_keys)
+static void on_key_received(uint8_t const conidx, uint32_t const metainfo,
+			    const gapc_pairing_keys_t *const p_keys)
 {
 	LOG_DBG("Peer %u key received. key_bf:%u, level:%u", conidx, p_keys->valid_key_bf,
 		p_keys->pairing_lvl);
 
-	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+	struct peer_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
 
 	if (!p_peer) {
 		return;
 	}
 
-	gapc_pairing_keys_t *const p_appkeys = &p_peer->bond.keys;
+	gapc_pairing_keys_t *p_appkeys = p_peer->keys.data;
+
+	if (!p_appkeys) {
+		p_appkeys = malloc(sizeof(*p_appkeys));
+		if (!p_appkeys) {
+			LOG_ERR("Failed to allocate memory for pairing keys");
+			return;
+		}
+		p_peer->keys.data = p_appkeys;
+		p_peer->keys.size = sizeof(*p_appkeys);
+	}
+
 	uint8_t key_bits = GAP_KDIST_NONE;
 	uint8_t const valid_key_bf = p_keys->valid_key_bf;
 
@@ -554,7 +733,7 @@ static void on_key_received(uint8_t conidx, uint32_t metainfo, const gapc_pairin
 	p_appkeys->pairing_lvl = p_keys->pairing_lvl;
 	p_appkeys->valid_key_bf = key_bits;
 
-	storage_store(SETTINGS_NAME_KEYS, p_peer->env.storage_index, p_appkeys, sizeof(*p_appkeys));
+	storage_store(SETTINGS_NAME_KEYS, p_peer->storage_index, p_appkeys, sizeof(*p_appkeys));
 }
 
 static const gapc_security_cb_t gapc_sec_cbs = {
@@ -571,10 +750,10 @@ static void on_disconnection(uint8_t const conidx, uint32_t const metainfo, uint
 {
 	LOG_INF("Peer %u disconnected for reason %u", conidx, reason);
 
-	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+	struct peer_data *p_peer = get_connected_peer_by_connection_index_or_meta(conidx, metainfo);
 
 	/* Should this cause a new connection attempt? */
-	return_peer_to_free_list(p_peer);
+	cleanup_disconnected_peer(p_peer);
 }
 
 static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
@@ -585,23 +764,40 @@ static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
 		conidx, p_data->gatt_start_hdl, p_data->gatt_end_hdl, p_data->svc_chg_hdl,
 		p_data->cli_info, p_data->cli_feat, p_data->srv_feat);
 
-	struct client_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
+	struct peer_data *p_peer = get_connected_peer_by_connection_index_or_meta(conidx, metainfo);
 
 	if (!p_peer) {
 		return;
 	}
 
-	p_peer->bond.bond_data.local_sign_counter = p_data->local_sign_counter;
-	p_peer->bond.bond_data.remote_sign_counter = p_data->peer_sign_counter;
-	p_peer->bond.bond_data.gatt_start_hdl = p_data->gatt_start_hdl;
-	p_peer->bond.bond_data.gatt_end_hdl = p_data->gatt_end_hdl;
-	p_peer->bond.bond_data.svc_chg_hdl = p_data->svc_chg_hdl;
-	p_peer->bond.bond_data.cli_info = p_data->cli_info;
-	p_peer->bond.bond_data.cli_feat = p_data->cli_feat;
-	p_peer->bond.bond_data.srv_feat = p_data->srv_feat;
+	gapc_bond_data_t *p_bond_data = p_peer->connection.data;
 
-	storage_store(SETTINGS_NAME_BOND_DATA, p_peer->env.storage_index, &p_peer->bond.bond_data,
-		      sizeof(p_peer->bond.bond_data));
+	if (!p_bond_data) {
+		p_bond_data = malloc(sizeof(*p_bond_data));
+		if (!p_bond_data) {
+			LOG_ERR("Failed to allocate memory for bond data");
+			return;
+		}
+		p_peer->connection.data = p_bond_data;
+		p_peer->connection.size = sizeof(*p_bond_data);
+	}
+
+	p_bond_data->local_sign_counter = p_data->local_sign_counter;
+	p_bond_data->remote_sign_counter = p_data->peer_sign_counter;
+	p_bond_data->gatt_start_hdl = p_data->gatt_start_hdl;
+	p_bond_data->gatt_end_hdl = p_data->gatt_end_hdl;
+	p_bond_data->svc_chg_hdl = p_data->svc_chg_hdl;
+	p_bond_data->cli_info = p_data->cli_info;
+	p_bond_data->cli_feat = p_data->cli_feat;
+	p_bond_data->srv_feat = p_data->srv_feat;
+
+	storage_store(SETTINGS_NAME_CONNECTION, p_peer->storage_index, p_bond_data,
+		      sizeof(*p_bond_data));
+
+	if (!sys_slist_find(&bond_data_contexts, &p_peer->node, NULL)) {
+		/* Add to bond data contexts */
+		sys_slist_append(&bond_data_contexts, &p_peer->node);
+	}
 }
 
 static void on_name_get(uint8_t const conidx, uint32_t const metainfo, uint16_t const token,
@@ -653,8 +849,6 @@ static const gapm_callbacks_t gapm_cbs = {
 static void on_gapm_le_init_proc_cmp(uint32_t const metainfo, uint8_t const proc_id,
 				     uint8_t const actv_idx, uint16_t const status)
 {
-	ASSERT_INFO(status == GAP_ERR_NO_ERROR, status, 0);
-
 	switch (proc_id) {
 	case GAPM_ACTV_START:
 	case GAPM_ACTV_DELETE: {
@@ -667,6 +861,7 @@ static void on_gapm_le_init_proc_cmp(uint32_t const metainfo, uint8_t const proc
 		break;
 	}
 	}
+	ASSERT_INFO(status == GAP_ERR_NO_ERROR, status, 0);
 }
 
 static void on_gapm_le_init_stopped(uint32_t const metainfo, uint8_t const actv_idx,
@@ -678,11 +873,20 @@ static void on_gapm_le_init_stopped(uint32_t const metainfo, uint8_t const actv_
 
 	/* Activity context is not needed anymore */
 	gapm_delete_activity(actv_idx);
-	if (metainfo) {
-		struct client_data *p_peer = (struct client_data *)metainfo;
 
-		p_peer->env.actv_idx = GAP_INVALID_ACTV_IDX;
+	if (metainfo) {
+		struct peer_data *p_peer = (struct peer_data *)metainfo;
+
+		p_peer->actv_idx = GAP_INVALID_ACTV_IDX;
 	}
+}
+
+static void on_addr_updated(uint32_t const metainfo, uint8_t const actv_idx,
+			    const gap_addr_t *p_addr)
+{
+	LOG_INF("idx %u (meta:%u) Address updated: %02X:%02X:%02X:%02X:%02X:%02X", actv_idx,
+		metainfo, p_addr->addr[5], p_addr->addr[4], p_addr->addr[3], p_addr->addr[2],
+		p_addr->addr[1], p_addr->addr[0]);
 }
 
 static void on_peer_name_received(uint32_t const metainfo, uint8_t const actv_idx,
@@ -695,11 +899,11 @@ static void on_peer_name_received(uint32_t const metainfo, uint8_t const actv_id
 static const gapm_le_init_cb_actv_t cbs_gapm_le_init = {
 	.hdr.actv.stopped = on_gapm_le_init_stopped,
 	.hdr.actv.proc_cmp = on_gapm_le_init_proc_cmp,
-	.hdr.addr_updated = NULL,
+	.hdr.addr_updated = on_addr_updated,
 	.peer_name = on_peer_name_received,
 };
 
-static int connect_to_device(struct client_data *p_peer)
+static int connect_to_device(struct peer_data *p_peer)
 {
 #define CONN_INTERVAL_MIN 24                      /* 24 * 1.25 ms = 30ms */
 #define CONN_INTERVAL_MAX (CONN_INTERVAL_MIN + 8) /* 32 * 1.25 ms = 40ms */
@@ -707,7 +911,9 @@ static int connect_to_device(struct client_data *p_peer)
 #define CE_LEN_MAX        3
 #define SUPERVISION_MS    5000
 
-	if (!is_bdaddr_valid(&p_peer->env.peer_addr)) {
+	gapc_pairing_keys_t *p_appkeys = p_peer->keys.data;
+
+	if (!p_appkeys || !is_bdaddr_valid(&p_appkeys->irk.identity)) {
 		LOG_ERR("Invalid peer address");
 		return -EINVAL;
 	}
@@ -745,23 +951,23 @@ static int connect_to_device(struct client_data *p_peer)
 			.ce_len_min = CE_LEN_MIN,
 			.ce_len_max = CE_LEN_MAX,
 		},
-		.peer_addr = p_peer->env.peer_addr,
+		.peer_addr = p_appkeys->irk.identity,
 	};
 
 	/* clang-format on */
 
 	uint16_t err;
 
-	if (p_peer->env.actv_idx == GAP_INVALID_ACTV_IDX) {
+	if (p_peer->actv_idx == GAP_INVALID_ACTV_IDX) {
 		err = gapm_le_create_init((uint32_t)p_peer, GAPM_STATIC_ADDR, &cbs_gapm_le_init,
-					  &p_peer->env.actv_idx);
+					  &p_peer->actv_idx);
 		if (err != GAP_ERR_NO_ERROR) {
 			LOG_ERR("gapm_le_create_init error %u", err);
 			return -1;
 		}
 	}
 
-	err = gapm_le_start_direct_connection(p_peer->env.actv_idx, &init_params);
+	err = gapm_le_start_direct_connection(p_peer->actv_idx, &init_params);
 	if (err != GAP_ERR_NO_ERROR) {
 		LOG_ERR("gapm_le_start_direct_connection error %u", err);
 		return -1;
@@ -778,24 +984,24 @@ static void start_streaming(struct k_work *work)
 {
 	ARG_UNUSED(work);
 
-	struct client_data *p_peer;
+	struct peer_data *p_peer;
 	sys_snode_t *node = NULL;
 
 	/* Setup streams */
-	SYS_SLIST_ITERATE_FROM_NODE(&used_client_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(&connected_peers_contexts, node)
 	{
-		p_peer = (struct client_data *)node;
-		if (p_peer && p_peer->env.conidx != GAP_INVALID_CONIDX) {
-			unicast_setup_streams(p_peer->env.conidx);
+		p_peer = (struct peer_data *)node;
+		if (p_peer && p_peer->conidx != GAP_INVALID_CONIDX) {
+			unicast_setup_streams(p_peer->conidx);
 		}
 	}
 
 	/* Enable streams */
-	SYS_SLIST_ITERATE_FROM_NODE(&used_client_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(&connected_peers_contexts, node)
 	{
-		p_peer = (struct client_data *)node;
-		if (p_peer && p_peer->env.conidx != GAP_INVALID_CONIDX) {
-			unicast_enable_streams(p_peer->env.conidx);
+		p_peer = (struct peer_data *)node;
+		if (p_peer && p_peer->conidx != GAP_INVALID_CONIDX) {
+			unicast_enable_streams(p_peer->conidx);
 		}
 	}
 }
@@ -805,21 +1011,26 @@ static K_WORK_DEFINE(start_streaming_work, start_streaming);
 static void connect_to_peers(struct k_work *work)
 {
 	ARG_UNUSED(work);
+
+	while (num_of_resolves_ongoing) {
+		k_sleep(K_MSEC(500));
+	}
+
 	LOG_INF("Request connect to peers...");
 
-	is_connected = true;
-
-	struct client_data *p_peer;
+	struct peer_data *p_peer;
 	sys_snode_t *node = NULL;
 
-	SYS_SLIST_ITERATE_FROM_NODE(&used_client_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(&found_peers_contexts, node)
 	{
-		p_peer = (struct client_data *)node;
-		if (p_peer && p_peer->env.conidx == GAP_INVALID_CONIDX) {
+		p_peer = (struct peer_data *)node;
+		if (p_peer && p_peer->conidx == GAP_INVALID_CONIDX) {
 			connect_to_device(p_peer);
 			k_sem_take(&wait_connection_sem, K_FOREVER);
 		}
 	}
+
+	LOG_DBG("All peers connected, starting streaming...");
 
 	k_work_submit(&start_streaming_work);
 }
@@ -838,40 +1049,69 @@ int peer_found(gap_bdaddr_t const *const p_addr)
 		return -EINVAL;
 	}
 
-	struct client_data *p_peer = get_peer_by_bdaddr(p_addr);
+	struct peer_data *p_peer = get_peer_by_bdaddr(p_addr);
 
 	if (p_peer) {
-		if (p_peer->env.conidx == GAP_INVALID_CONIDX) {
-			/* Just update address */
-			memcpy(&p_peer->env.peer_addr, p_addr, sizeof(p_peer->env.peer_addr));
-		}
 		return -EALREADY;
 	}
 
-	p_peer = (struct client_data *)sys_slist_get(&free_client_contexts);
-	if (!p_peer) {
-		LOG_WRN("No more free client context available");
-		return -ENOMEM;
+	if (!resolve_peer_address(p_addr)) {
+		/* rest is handled in on_address_resolved_cb */
+		return 0;
 	}
 
-	p_peer->env.actv_idx = GAP_INVALID_ACTV_IDX;
-	p_peer->env.conidx = GAP_INVALID_CONIDX;
-	memcpy(&p_peer->env.peer_addr, p_addr, sizeof(p_peer->env.peer_addr));
-
-	sys_slist_append(&used_client_contexts, &p_peer->node);
-
-	if (sys_slist_is_empty(&free_client_contexts)) {
-		LOG_DBG("All peers found, stop scanning");
-		unicast_scan_stop();
-	}
-
-	return 0;
+	return handle_found_peer(p_addr);
 }
 
 int peer_ready(uint32_t const conidx)
 {
+	ARG_UNUSED(conidx);
+
 	k_sem_give(&wait_connection_sem);
 	return 0;
+}
+
+void on_disconnect_cmp(uint8_t const conidx, uint32_t const metainfo, uint16_t const status)
+{
+	struct peer_data *p_peer = get_connected_peer_by_connection_index_or_meta(conidx, metainfo);
+
+	if (p_peer) {
+		p_peer->conidx = GAP_INVALID_CONIDX;
+
+		gapc_bond_data_t *p_bond_data = p_peer->connection.data;
+		gapc_pairing_keys_t *p_appkeys = p_peer->keys.data;
+
+		if (p_bond_data) {
+			memset(p_bond_data, 0, sizeof(*p_bond_data));
+			storage_store(SETTINGS_NAME_CONNECTION, p_peer->storage_index, &p_bond_data,
+				      sizeof(*p_bond_data));
+		}
+
+		if (p_appkeys) {
+			memset(p_appkeys, 0, sizeof(*p_appkeys));
+			p_appkeys->irk.identity.addr_type = 0xFF;
+			storage_store(SETTINGS_NAME_KEYS, p_peer->storage_index, &p_appkeys,
+				      sizeof(*p_appkeys));
+		}
+
+		cleanup_disconnected_peer(p_peer);
+	}
+
+	LOG_WRN("Disconnect completed. Please reset the application and try again.");
+}
+
+int terminate_connection(uint32_t const conidx)
+{
+	struct client_data *p_peer = get_connected_peer_by_connection_index_or_meta(conidx, 0);
+
+	if (!p_peer) {
+		return -EINVAL;
+	}
+
+	uint32_t const status = gapc_disconnect(conidx, (uint32_t)p_peer,
+						LL_ERR_REMOTE_USER_TERM_CON, on_disconnect_cmp);
+
+	return (status == GAP_ERR_NO_ERROR) ? 0 : -ENOEXEC;
 }
 
 /* ---------------------------------------------------------------------------------------- */
@@ -1035,14 +1275,16 @@ void joystick_press(struct k_work *work)
 {
 	ARG_UNUSED(work);
 
-	if (is_connected) {
+	if (sys_slist_len(&connected_peers_contexts)) {
 		/* Just ignore to avoid scan while connected to peers */
 		return;
 	}
 
 	unicast_scan_start(scanning_ready_callback);
 }
+#if !CONFIG_AUTO_START_SCAN
 static K_WORK_DEFINE(joystick_press_work, joystick_press);
+#endif
 
 void joystick_up(struct k_work *work)
 {
@@ -1144,12 +1386,14 @@ static int configure_button(struct gpio_data *p_button)
 }
 
 static struct gpio_data joystick_conf[] = {
-	[0] = {.spec = GPIO_DT_SPEC_GET_OR(BUTTON_NODELABEL, gpios, {0}),
-	       .execute_func = &joystick_press_work},
-	[1] = {.spec = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(button_up), gpios, {0}),
-	       .execute_func = &joystick_up_work},
-	[2] = {.spec = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(button_down), gpios, {0}),
-	       .execute_func = &joystick_down_work},
+#if !CONFIG_AUTO_START_SCAN
+	{.spec = GPIO_DT_SPEC_GET_OR(BUTTON_NODELABEL, gpios, {0}),
+	 .execute_func = &joystick_press_work},
+#endif
+	{.spec = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(button_up), gpios, {0}),
+	 .execute_func = &joystick_up_work},
+	{.spec = GPIO_DT_SPEC_GET_OR(DT_NODELABEL(button_down), gpios, {0}),
+	 .execute_func = &joystick_down_work},
 };
 
 /* ---------------------------------------------------------------------------------------- */
@@ -1160,13 +1404,33 @@ static int storage_load_bond_data(void)
 		return -1;
 	}
 
-	for (size_t iter = 0; iter < ARRAY_SIZE(clients); iter++) {
-		struct client_data *p_client = &clients[iter];
+	storage_load_all(&bond_data_contexts);
 
-		storage_load(SETTINGS_NAME_KEYS, p_client->env.storage_index, &p_client->bond.keys,
-			     sizeof(p_client->bond.keys));
-		storage_load(SETTINGS_NAME_BOND_DATA, p_client->env.storage_index,
-			     &p_client->bond.bond_data, sizeof(p_client->bond.bond_data));
+	/* Build known peers list */
+	sec_key_list_size = sys_slist_len(&bond_data_contexts);
+	sec_key_list = calloc(sec_key_list_size, sizeof(*sec_key_list));
+
+	if (!sec_key_list) {
+		LOG_ERR("Unable to reserve memory for SEC key list!");
+		return -ENOMEM;
+	}
+
+	struct peer_data *p_peer;
+	gap_sec_key_t *p_sec_key;
+	gapc_pairing_keys_t *p_pairing_keys;
+	sys_snode_t *node = NULL;
+	size_t index = 0;
+
+	SYS_SLIST_ITERATE_FROM_NODE(&bond_data_contexts, node)
+	{
+		p_peer = (struct peer_data *)node;
+		p_pairing_keys = p_peer->keys.data;
+		p_sec_key = &sec_key_list[index++];
+		memcpy(p_sec_key->key, p_pairing_keys->irk.key.key, sizeof(p_sec_key->key));
+
+		p_peer->actv_idx = GAP_INVALID_ACTV_IDX;
+		p_peer->conidx = GAP_INVALID_CONIDX;
+		p_pairing_keys->irk.identity.addr_type = 0xFF;
 	}
 
 	LOG_INF("Settings loaded successfully");
@@ -1180,21 +1444,9 @@ int main(void)
 {
 	int ret;
 
-	sys_slist_init(&free_client_contexts);
-	sys_slist_init(&used_client_contexts);
-
-	for (size_t iter = 0; iter < ARRAY_SIZE(clients); iter++) {
-		clients[iter].env.actv_idx = GAP_INVALID_ACTV_IDX;
-		clients[iter].env.conidx = GAP_INVALID_CONIDX;
-		clients[iter].env.storage_index = iter;
-		clients[iter].bond.keys.irk.identity.addr_type = 0xFF;
-		clients[iter].bond.bond_data = (gapc_bond_data_t){
-			.local_csrk.key = {0xbb, 0x2c, 0xdf, 0x2a, 0x37, 0x3b, 0x6b, 0x65 + iter,
-					   0x9, 0xb4, 0x7c, 0xcd, 0x28, 0xa2, 0x54, 0xa3 + iter},
-		};
-
-		sys_slist_append(&free_client_contexts, &clients[iter].node);
-	}
+	sys_slist_init(&found_peers_contexts);
+	sys_slist_init(&connected_peers_contexts);
+	sys_slist_init(&bond_data_contexts);
 
 	if (storage_load_bond_data() < 0) {
 		return -1;
@@ -1241,9 +1493,10 @@ int main(void)
 	LOG_INF("   Press button to start scan");
 	LOG_INF("-----------------------------------");
 
-	while (true) {
-		k_sleep(K_SECONDS(5));
-	}
+#if CONFIG_AUTO_START_SCAN
+	/* auto start */
+	joystick_press(NULL);
+#endif
 
 	return 0;
 }

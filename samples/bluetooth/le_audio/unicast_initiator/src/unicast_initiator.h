@@ -23,10 +23,11 @@ int unicast_initiator_configure(void);
  * @brief Start the service discovery
  *
  * @param con_lid Connection index
+ * @param storage_id Storage identifier to be able to load bond data
  *
  * @return 0 on success
  */
-int unicast_initiator_discover(uint8_t con_lid);
+int unicast_initiator_discover(uint32_t con_lid, uint32_t storage_id);
 
 /**
  * @brief Setup the streams for the LE audio unicast initiator

@@ -68,6 +68,10 @@ config NUMBER_OF_CLIENTS
 	help
 	  Number of clients to be connected
 
+config AUTO_START_SCAN
+	bool "Start scanning after configuration"
+	default n
+
 menu "Logging"
 
 module = MAIN

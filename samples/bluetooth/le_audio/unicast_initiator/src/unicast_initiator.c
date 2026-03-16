@@ -1169,7 +1169,11 @@ static void on_bap_capa_client_cb_cmp_evt(uint8_t const cmd_type, uint16_t statu
 		cmd_type < ARRAY_SIZE(cmd_str) ? cmd_str[cmd_type] : "??", status, con_lid,
 		pac_lid);
 
-	__ASSERT(status == GAF_ERR_NO_ERROR, "BAP Capa Client cmd failed!");
+	if (status != GAF_ERR_NO_ERROR) {
+		LOG_ERR("BAP Capa Client cmd failed!");
+		terminate_connection(con_lid);
+		return;
+	}
 
 	if (BAP_CAPA_CLI_CMD_TYPE_DISCOVER == cmd_type) {
 		status = bap_uc_cli_discover(con_lid, GATT_MIN_HDL, GATT_MAX_HDL);
@@ -1490,9 +1494,12 @@ int unicast_initiator_configure(void)
 	return 0;
 }
 
-int unicast_initiator_discover(uint8_t const con_lid)
+int unicast_initiator_discover(uint32_t const con_lid, uint32_t const storage_id)
 {
 	uint16_t err;
+
+	/* TODO: Check whether the NVS has bond data stored for this connection */
+	ARG_UNUSED(storage_id);
 
 	LOG_DBG("Discovering PACS and ACSC for connection:%u", con_lid);
 
