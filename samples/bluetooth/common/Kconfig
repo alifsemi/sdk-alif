@@ -1,0 +1,27 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+config ALIF_BLUETOOTH_COMMON
+	bool "Alif Bluetooth Common"
+	depends on SOC_FAMILY_BALLETTO
+	depends on BT
+	depends on BT_CUSTOM
+	help
+	  Enable Alif Bluetooth Common features.
+
+menu "Alif Bluetooth Common Configuration"
+	depends on ALIF_BLUETOOTH_COMMON
+
+config ALIF_BLUETOOTH_COMMON_ACLK_DIVIDER_VALUE
+	int "Alif Bluetooth Common ACLK Divider Value"
+	default 0
+	range 0 31
+	help
+	  Alif Bluetooth Common ACLK Divider Value
+
+endmenu
