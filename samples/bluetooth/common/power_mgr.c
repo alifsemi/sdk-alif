@@ -176,6 +176,16 @@ static int set_run_params(void)
 		return -ENOEXEC;
 	}
 
+	/* Default value is 0 so ignore it */
+#if CONFIG_ALIF_BLUETOOTH_COMMON_ACLK_DIVIDER_VALUE
+	se_service_status = se_service_clock_set_divider(
+		DIVIDER_ACLK, CONFIG_ALIF_BLUETOOTH_COMMON_ACLK_DIVIDER_VALUE);
+
+	if (se_service_status) {
+		return -ENOEXEC;
+	}
+#endif
+
 	return 0;
 }
 
