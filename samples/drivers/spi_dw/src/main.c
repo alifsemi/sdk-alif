@@ -264,6 +264,7 @@ static void slave_spi(void *p1, void *p2, void *p3)
 #define HE_DMA_SEL_LPSPI_Msk           (0x3U << HE_DMA_SEL_LPSPI_Pos)
 
 #if USE_EVENT_ROUTER_DRIVER
+#if defined(CONFIG_RTSS_HE)
 /**
  * @brief Configure HE_DMA_SEL register for LPSPI
  *
@@ -328,6 +329,7 @@ static void configure_he_dma_sel_lpspi(uint8_t dma_group, bool use_dma2)
 	regdata |= ((he_dma_sel_value << HE_DMA_SEL_LPSPI_Pos) & HE_DMA_SEL_LPSPI_Msk);
 	sys_write32(regdata, M55HE_CFG_HE_DMA_SEL);
 }
+#endif /* CONFIG_RTSS_HE */
 #endif /* USE_EVENT_ROUTER_DRIVER */
 
 #if !USE_EVENT_ROUTER_DRIVER
