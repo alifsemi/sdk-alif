@@ -41,6 +41,7 @@
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
 #include "ble_storage.h"
+#include "ble_gpio.h"
 
 /* Device definitions */
 /* Load name from configuration file */
@@ -130,17 +131,6 @@ static uint16_t create_advertising(void)
 						      &adv_actv_idx);
 }
 
-uint16_t read_sensor_value(uint16_t current_value)
-{
-	/* Generating dummy values between 70 and 130 */
-	if (current_value >= 130) {
-		current_value = 70;
-	} else {
-		current_value++;
-	}
-	return current_value;
-}
-
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
 				  uint16_t status)
 {
@@ -169,10 +159,31 @@ static gapm_user_cb_t gapm_user_cb = {
 	.connection_status_update = app_connection_status_update,
 };
 
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+K_SEM_DEFINE(store_update_sem, 0, 1);
+void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
+{
+	if (has_changed & 1) {
+		if (!(button_state & 1)) {
+			k_sem_give(&store_update_sem);
+		}
+	}
+}
+
+#endif
+
 int main(void)
 {
 	uint16_t err;
-	uint16_t current_value = 70;
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+	int ret;
+
+	ret = ble_gpio_buttons_init(ButtonUpdateHandler);
+	if (err) {
+		LOG_ERR("Button Init fail %u", ret);
+		return ret;
+	}
+#endif
 
 	ble_storage_init();
 
@@ -226,11 +237,14 @@ int main(void)
 
 	while (1) {
 		/* Execute process every 1 second */
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+		if (k_sem_take(&store_update_sem, K_NO_WAIT) == 0) {
+			cgms_record_store_size_update();
+		}
+#endif
 		k_sleep(K_SECONDS(1));
 
-		current_value = read_sensor_value(current_value);
-
-		cgms_process(current_value);
+		cgms_process();
 		battery_process();
 	}
 	return -ENOTSUP;
