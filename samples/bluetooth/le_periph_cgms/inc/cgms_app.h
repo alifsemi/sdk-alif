@@ -15,7 +15,8 @@ void disc_notify(uint16_t reason);
 
 /* Service specific functions */
 void service_conn_cgms(struct shared_control *ctrl);
-void cgms_process(uint16_t current_value);
+void cgms_process(void);
 void addr_res_done(void);
+void cgms_record_store_size_update(void);
 
 #endif /* CGMS_APP_H */
