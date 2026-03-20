@@ -170,7 +170,7 @@ static bool is_bdaddr_valid(gap_bdaddr_t const *const p_addr)
 	return (!!p_addr && p_addr->addr_type <= GAP_ADDR_RAND);
 }
 
-static void *get_peer_by_bdaddr(gap_bdaddr_t const *const p_addr)
+static void *get_peer_by_bdaddr(sys_slist_t *const peers_contexts, gap_bdaddr_t const *const p_addr)
 {
 	if (!is_bdaddr_valid(p_addr)) {
 		return NULL;
@@ -179,16 +179,7 @@ static void *get_peer_by_bdaddr(gap_bdaddr_t const *const p_addr)
 	struct peer_data *p_peer;
 	sys_snode_t *node = NULL;
 
-	SYS_SLIST_ITERATE_FROM_NODE(&bond_data_contexts, node)
-	{
-		p_peer = (struct peer_data *)node;
-		if (!memcmp(((gapc_pairing_keys_t *)p_peer->keys.data)->irk.identity.addr,
-			    p_addr->addr, sizeof(p_addr->addr))) {
-			return p_peer;
-		}
-	}
-
-	SYS_SLIST_ITERATE_FROM_NODE(&found_peers_contexts, node)
+	SYS_SLIST_ITERATE_FROM_NODE(peers_contexts, node)
 	{
 		p_peer = (struct peer_data *)node;
 		if (!memcmp(((gapc_pairing_keys_t *)p_peer->keys.data)->irk.identity.addr,
@@ -198,6 +189,16 @@ static void *get_peer_by_bdaddr(gap_bdaddr_t const *const p_addr)
 	}
 
 	return NULL;
+}
+
+static void *get_found_peer_by_bdaddr(gap_bdaddr_t const *const p_addr)
+{
+	return get_peer_by_bdaddr(&found_peers_contexts, p_addr);
+}
+
+static void *get_bonded_peer_by_bdaddr(gap_bdaddr_t const *const p_addr)
+{
+	return get_peer_by_bdaddr(&bond_data_contexts, p_addr);
 }
 
 static void *get_peer_by_activity_index(uint32_t const actv_idx)
@@ -268,7 +269,7 @@ static void *get_connected_peer_by_connection_index_or_meta(uint32_t const conid
 	return NULL;
 }
 
-static void cleanup_disconnected_peer(struct peer_data *p_peer)
+static void handle_disconnected_peer(struct peer_data *p_peer, bool const cleanup)
 {
 	if (!p_peer) {
 		return;
@@ -276,12 +277,12 @@ static void cleanup_disconnected_peer(struct peer_data *p_peer)
 
 	gapc_pairing_keys_t *p_pairing_keys = p_peer->keys.data;
 
-	p_peer->conidx = GAP_INVALID_CONIDX;
-
-	if (p_pairing_keys) {
+	if (cleanup && p_pairing_keys) {
 		memset(&p_pairing_keys->irk.identity, 0, sizeof(p_pairing_keys->irk.identity));
 		p_pairing_keys->irk.identity.addr_type = 0xFF;
 	}
+
+	p_peer->conidx = GAP_INVALID_CONIDX;
 
 	sys_slist_find_and_remove(&found_peers_contexts, &p_peer->node);
 	sys_slist_find_and_remove(&connected_peers_contexts, &p_peer->node);
@@ -631,7 +632,7 @@ static void on_gapc_pairing_failed(uint8_t const conidx, uint32_t const metainfo
 
 	struct peer_data *p_peer = get_peer_by_connection_index_or_meta(conidx, metainfo);
 
-	cleanup_disconnected_peer(p_peer);
+	handle_disconnected_peer(p_peer, true);
 	k_sem_give(&wait_connection_sem);
 }
 
@@ -752,8 +753,7 @@ static void on_disconnection(uint8_t const conidx, uint32_t const metainfo, uint
 
 	struct peer_data *p_peer = get_connected_peer_by_connection_index_or_meta(conidx, metainfo);
 
-	/* Should this cause a new connection attempt? */
-	cleanup_disconnected_peer(p_peer);
+	handle_disconnected_peer(p_peer, false);
 }
 
 static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
@@ -1016,6 +1016,11 @@ static void connect_to_peers(struct k_work *work)
 		k_sleep(K_MSEC(500));
 	}
 
+	if (!sys_slist_len(&found_peers_contexts)) {
+		LOG_ERR("No peers to connect. Restart the device to try again...");
+		return;
+	}
+
 	LOG_INF("Request connect to peers...");
 
 	struct peer_data *p_peer;
@@ -1049,7 +1054,7 @@ int peer_found(gap_bdaddr_t const *const p_addr)
 		return -EINVAL;
 	}
 
-	struct peer_data *p_peer = get_peer_by_bdaddr(p_addr);
+	struct peer_data *p_peer = get_found_peer_by_bdaddr(p_addr);
 
 	if (p_peer) {
 		return -EALREADY;
@@ -1057,6 +1062,13 @@ int peer_found(gap_bdaddr_t const *const p_addr)
 
 	if (!resolve_peer_address(p_addr)) {
 		/* rest is handled in on_address_resolved_cb */
+		return 0;
+	}
+
+	p_peer = get_bonded_peer_by_bdaddr(p_addr);
+	if (p_peer) {
+		/* Don't create a new context. Just add to found peer list */
+		sys_slist_append(&found_peers_contexts, &p_peer->node);
 		return 0;
 	}
 
@@ -1094,7 +1106,7 @@ void on_disconnect_cmp(uint8_t const conidx, uint32_t const metainfo, uint16_t c
 				      sizeof(*p_appkeys));
 		}
 
-		cleanup_disconnected_peer(p_peer);
+		handle_disconnected_peer(p_peer, false);
 	}
 
 	LOG_WRN("Disconnect completed. Please reset the application and try again.");
@@ -1430,7 +1442,6 @@ static int storage_load_bond_data(void)
 
 		p_peer->actv_idx = GAP_INVALID_ACTV_IDX;
 		p_peer->conidx = GAP_INVALID_CONIDX;
-		p_pairing_keys->irk.identity.addr_type = 0xFF;
 	}
 
 	LOG_INF("Settings loaded successfully");
