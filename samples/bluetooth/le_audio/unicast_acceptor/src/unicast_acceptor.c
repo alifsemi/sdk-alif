@@ -10,6 +10,7 @@
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
+#include "alif_ble.h"
 #include "gaf_adv.h"
 #include "bap_capa_srv.h"
 #include "bap_uc_srv.h"
@@ -223,9 +224,13 @@ static void enable_streaming(struct k_work *const p_job)
 	struct ase_instance const *const p_ase = CONTAINER_OF(p_job, struct ase_instance, work);
 
 	if (p_ase->dir == ASE_DIR_SINK) {
-		audio_datapath_channel_start_sink(p_ase->stream_lid);
+		if (!audio_datapath_channel_start_sink(p_ase->stream_lid)) {
+			LOG_INF("Sink stream %u active", p_ase->stream_lid);
+		}
 	} else if (p_ase->dir == ASE_DIR_SOURCE) {
-		audio_datapath_channel_start_source(p_ase->stream_lid);
+		if (audio_datapath_channel_start_source(p_ase->stream_lid)) {
+			LOG_INF("Source stream %u active", p_ase->stream_lid);
+		}
 	}
 }
 
@@ -378,7 +383,7 @@ static void on_unicast_server_cb_bond_data(uint8_t const conidx, uint8_t const c
 static void on_unicast_server_cb_ase_state(uint8_t const ase_lid, uint8_t const conidx,
 					   uint8_t const state, bap_qos_cfg_t *const p_qos_cfg)
 {
-	LOG_DBG("ASE %d - %s", ase_lid, ase_state_name[state]);
+	LOG_INF("ASE %d - %s", ase_lid, ase_state_name[state]);
 
 	switch (state) {
 	case BAP_UC_ASE_STATE_IDLE: {
