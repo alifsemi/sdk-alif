@@ -136,7 +136,7 @@ namespace app {
 
 	    k_thread_name_set(&lvgl_thread, "lvgl");
 
-        if (image_init() != 0) {
+        if (image_init(MIMAGE_X, MIMAGE_Y) != 0) {
             return false;
         }
 
@@ -177,7 +177,7 @@ namespace app {
                 results);
 
         uint8_t* image_data = nullptr;
-        if(get_image_data(nCols, nRows, &image_data) < 0) {
+        if(get_image_data(&image_data) < 0) {
             LOG_ERR("Couldn't get image data");
             return false;
         }
