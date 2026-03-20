@@ -1,6 +1,11 @@
-/*
- * SPDX-FileCopyrightText: Copyright Alif Semiconductor
- * SPDX-License-Identifier: Apache-2.0
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
  */
 
 #include "image_processing.h"
@@ -8,12 +13,12 @@
 #include <assert.h>
 
 /*
- * Define USE_MVE_RAW10_CONVERSION to 1 to use MVE-optimized version,
+ * Define USE_MVE_INTRINSICS to 1 to use MVE-optimized version,
  * or 0 to use portable C version
  */
-#define USE_MVE_RAW10_CONVERSION 1
+#define USE_MVE_INTRINSICS 1
 
-#if USE_MVE_RAW10_CONVERSION
+#if USE_MVE_INTRINSICS
 #include <arm_mve.h>
 #endif
 #include <math.h>
@@ -121,7 +126,7 @@ void crop_bayer8_inplace_topleft(
  *   out8 = (v10*K + 2^15) >> 16
  */
 
-#if USE_MVE_RAW10_CONVERSION
+#if USE_MVE_INTRINSICS
 
 void raw10_gray16le_bytes_to_raw8_inplace_mve(uint8_t *buf, size_t n_pixels)
 {
@@ -269,7 +274,7 @@ void raw10_gray16le_bytes_to_raw8_inplace_mve(uint8_t *buf, size_t n_pixels)
 #endif
 }
 
-#else /* !USE_MVE_RAW10_CONVERSION */
+#else /* !USE_MVE_INTRINSICS */
 
 void raw10_gray16le_bytes_to_raw8_inplace_mve(uint8_t *buf, size_t n_pixels)
 {
@@ -329,7 +334,89 @@ void raw10_gray16le_bytes_to_raw8_inplace_mve(uint8_t *buf, size_t n_pixels)
 #endif
 }
 
-#endif /* USE_MVE_RAW10_CONVERSION */
+#endif /* USE_MVE_INTRINSICS */
+
+/*
+ * Convert RGB888 planar (R plane, G plane, B plane) to packed RGB888 (RGBRGB...).
+ *
+ * src layout:  [R0 R1 R2 ... Rn] [G0 G1 G2 ... Gn] [B0 B1 B2 ... Bn]
+ * dst layout:  [R0 G0 B0] [R1 G1 B1] [R2 G2 B2] ...
+ *
+ * where n = width * height - 1
+ */
+
+#if USE_MVE_INTRINSICS
+
+void rgb888_planar_to_packed(const uint8_t *src, uint8_t *dst,
+			     uint32_t width, uint32_t height)
+{
+	const uint32_t plane_size = width * height;
+	const uint8_t *r_plane = src;
+	const uint8_t *g_plane = src + plane_size;
+	const uint8_t *b_plane = src + 2 * plane_size;
+	uint32_t i = 0;
+
+	/*
+	 * MVE scatter-store approach: load 16 pixels from each plane,
+	 * then scatter-store each channel at stride-3 offsets.
+	 *
+	 * For 16 pixels starting at index i, the output offsets are:
+	 *   R: 0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45
+	 *   G: 1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46
+	 *   B: 2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47
+	 */
+	static const uint8_t r_offsets[16] = {
+		0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45
+	};
+	static const uint8_t g_offsets[16] = {
+		1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34, 37, 40, 43, 46
+	};
+	static const uint8_t b_offsets[16] = {
+		2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35, 38, 41, 44, 47
+	};
+
+	uint8x16_t r_off = vld1q_u8(r_offsets);
+	uint8x16_t g_off = vld1q_u8(g_offsets);
+	uint8x16_t b_off = vld1q_u8(b_offsets);
+
+	for (; i + 16 <= plane_size; i += 16) {
+		uint8x16_t r = vld1q_u8(&r_plane[i]);
+		uint8x16_t g = vld1q_u8(&g_plane[i]);
+		uint8x16_t b = vld1q_u8(&b_plane[i]);
+
+		uint8_t *p = dst + i * 3;
+
+		vstrbq_scatter_offset_u8(p, r_off, r);
+		vstrbq_scatter_offset_u8(p, g_off, g);
+		vstrbq_scatter_offset_u8(p, b_off, b);
+	}
+
+	/* Scalar tail */
+	for (; i < plane_size; i++) {
+		dst[i * 3 + 0] = r_plane[i];
+		dst[i * 3 + 1] = g_plane[i];
+		dst[i * 3 + 2] = b_plane[i];
+	}
+}
+
+#else /* !USE_MVE_INTRINSICS */
+
+void rgb888_planar_to_packed(const uint8_t *src, uint8_t *dst,
+			     uint32_t width, uint32_t height)
+{
+	const uint32_t plane_size = width * height;
+	const uint8_t *r_plane = src;
+	const uint8_t *g_plane = src + plane_size;
+	const uint8_t *b_plane = src + 2 * plane_size;
+
+	for (uint32_t i = 0; i < plane_size; i++) {
+		dst[i * 3 + 0] = r_plane[i];
+		dst[i * 3 + 1] = g_plane[i];
+		dst[i * 3 + 2] = b_plane[i];
+	}
+}
+
+#endif /* USE_MVE_INTRINSICS */
 
 /* Exposure analysis counters */
 uint32_t exposure_over_count, exposure_high_count, exposure_low_count, exposure_under_count;

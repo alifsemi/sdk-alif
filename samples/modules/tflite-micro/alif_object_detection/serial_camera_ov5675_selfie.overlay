@@ -1,0 +1,105 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	/*
+	 * For Standard  speed LCNT=0 and HCNT=0
+	 * For Fast      speed LCNT=50 and HCNT=30
+	 * For Fast Plus speed LCNT=35 and HCNT=5
+	 */
+	hcnt-offset = <30>;
+	lcnt-offset = <50>;
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+/{
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@0 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+			/* 10 for compact version, 36 for legacy version */
+			ov5675_selfie: ov5675_selfie@10 {
+				compatible = "ovti,ov5675";
+				reg = <0x10>;
+
+				reset-gpios = <&gpio14 4 GPIO_ACTIVE_HIGH>;
+				power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+				status = "okay";
+
+				port {
+					ov5675_csi2_ep_out0: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = < 400000000 >;
+						data-lanes = <1 2>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in1";
+					};
+				};
+			};
+		};
+	};
+};
+
+&csi {
+	status = "okay";
+
+	/* Selfie camera D-PHY */
+	phy-if = <&dphy 0>;
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csi2_ep_in1: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "ov5675_csi2_ep_out0";
+			};
+		};
+		port@2 {
+			reg = <2>;
+			csi2_ep_out: endpoint {
+				remote-endpoint-label = "cam_csi2_ep_in";
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+			};
+		};
+	};
+};
