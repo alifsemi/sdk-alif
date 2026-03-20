@@ -1,6 +1,11 @@
-/*
- * SPDX-FileCopyrightText: Copyright Alif Semiconductor
- * SPDX-License-Identifier: Apache-2.0
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
  */
 
 #include <zephyr/drivers/video/video_alif.h>
@@ -31,10 +36,17 @@
 
 LOG_MODULE_REGISTER(image_ensemble, LOG_LEVEL_INF);
 
-#define VIDEO_CTRL_CLASS_CAMERA	0x00010000	/* Camera class controls */
+#define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
+#if ISP_ENABLED
+#define OUTPUT_FORMAT	VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE
+#endif
 
 #if defined(CONFIG_SOC_SERIES_E8)
+#if ISP_ENABLED
+#define VIDEO_BUFFER_COUNT CONFIG_VIDEO_BUFFER_POOL_NUM_MAX
+#else
 #define VIDEO_BUFFER_COUNT 1
+#endif
 #else /* for E7 & ARX3A0 2 buffers are needed, otherwise image pipeline will stall */
 #if DT_HAS_COMPAT_STATUS_OKAY(onnn_arx3a0)
 #define VIDEO_BUFFER_COUNT 2
@@ -45,6 +57,10 @@ LOG_MODULE_REGISTER(image_ensemble, LOG_LEVEL_INF);
 
 static const struct device *video_dev;
 struct video_buffer *buffers[VIDEO_BUFFER_COUNT], *vbuf;
+
+/* Output dimensions, set during image_init() */
+static int output_width;
+static int output_height;
 
 /*
  * Camera fills the raw_image buffer.
@@ -126,7 +142,7 @@ static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 	return pitch;
 }
 
-int image_init(void)
+int image_init(int req_output_width, int req_output_height)
 {
 	struct video_format fmt = { 0 };
 	struct video_caps caps;
@@ -134,7 +150,17 @@ int image_init(void)
 	int i = 0;
 	int ret;
 
+	output_width = req_output_width;
+	output_height = req_output_height;
+
+	enum video_endpoint_id ep = VIDEO_EP_OUT;
+
+	#if ISP_ENABLED
+	video_dev = DEVICE_DT_GET_ONE(vsi_isp_pico);
+	ep = VIDEO_EP_IN;
+	#else
 	video_dev = DEVICE_DT_GET_ONE(alif_cam);
+	#endif
 	if (!device_is_ready(video_dev)) {
 		LOG_ERR("%s: device not ready.", video_dev->name);
 		return -1;
@@ -142,7 +168,7 @@ int image_init(void)
 	LOG_INF("- Device name: %s\n", video_dev->name);
 
 	/* Get capabilities */
-	if (video_get_caps(video_dev, VIDEO_EP_OUT, &caps)) {
+	if (video_get_caps(video_dev, ep, &caps)) {
 		LOG_ERR("Unable to retrieve video capabilities");
 		return -1;
 	}
@@ -175,17 +201,40 @@ int image_init(void)
 
     fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
 
-	ret = video_set_format(video_dev, VIDEO_EP_OUT, &fmt);
+	ret = video_set_format(video_dev, ep, &fmt);
 	if (ret) {
 		LOG_ERR("Failed to set video format. ret - %d", ret);
 		return -1;
 	}
 
-	LOG_INF("- format: %c%c%c%c %ux%u\n", (char)fmt.pixelformat,
+	LOG_INF("- pipeline format: %c%c%c%c %ux%u\n", (char)fmt.pixelformat,
 	       (char)(fmt.pixelformat >> 8),
 	       (char)(fmt.pixelformat >> 16),
 	       (char)(fmt.pixelformat >> 24),
 	       fmt.width, fmt.height);
+
+	#if (ISP_ENABLED)
+		/*
+		 * Set Output Endpoint format. ISP scales from sensor
+		 * resolution to the requested capture size.
+		 */
+		fmt.width = output_width;
+		fmt.height = output_height;
+		fmt.pixelformat = OUTPUT_FORMAT;
+		fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
+
+		LOG_INF("- output format: %c%c%c%c %ux%u\n", (char)fmt.pixelformat,
+		(char)(fmt.pixelformat >> 8),
+		(char)(fmt.pixelformat >> 16),
+		(char)(fmt.pixelformat >> 24),
+		fmt.width, fmt.height);
+
+		ret = video_set_format(video_dev, VIDEO_EP_OUT, &fmt);
+		if (ret) {
+			LOG_ERR("Failed to set video output format. ret - %d", ret);
+			return -1;
+		}
+	#endif
 
 	/* Size to allocate for each buffer */
 	bsize = fmt.pitch * fmt.height;
@@ -221,7 +270,7 @@ int image_init(void)
 	return 0;
 }
 
-int get_image_data(int ml_width, int ml_height, uint8_t **output_image_data)
+int get_image_data(uint8_t **output_image_data)
 {
 	int ret;
 	aipl_error_t aipl_ret;
@@ -232,10 +281,21 @@ int get_image_data(int ml_width, int ml_height, uint8_t **output_image_data)
 		return -1;
 	}
 
+	/*
+	 * Drain any stale frames that accumulated while the previous frame was
+	 * being processed (inference + display).  Re-enqueue them immediately so
+	 * the ISP has empty buffers to write into and does not stall.  Keep only
+	 * the newest (last) dequeued buffer for actual processing.
+	 */
+	struct video_buffer *newer;
+	while (video_dequeue(video_dev, VIDEO_EP_OUT, &newer, K_NO_WAIT) == 0) {
+		video_enqueue(video_dev, VIDEO_EP_OUT, vbuf);
+		vbuf = newer;
+	}
+
 	uint8_t *raw_image = vbuf->buffer;
 
-	SCB_CleanInvalidateDCache();
-
+	#if !ISP_ENABLED
 	/* in place conversion of RAW10 to RAW8 (scaling) */
 	/* When CIMAGE_EXPOSURE_CALC is enabled, exposure statistics are computed during conversion */
 	raw10_gray16le_bytes_to_raw8_inplace_mve(raw_image, (CIMAGE_X * CIMAGE_Y));
@@ -269,9 +329,16 @@ int get_image_data(int ml_width, int ml_height, uint8_t **output_image_data)
 		LOG_ERR("Demosaic failed with error code %d", aipl_ret);
 		return -1;
 	}
+	#else
+	/* Planar RGB888 to packed RGB888 conversion.
+	 * ISP outputs R, G, B as separate planes: [R plane][G plane][B plane]
+	 * ML model expects packed: RGBRGBRGB...
+	 */
+	rgb888_planar_to_packed(raw_image, image_data,
+				output_width, output_height);
+	#endif
 
 	ret = video_enqueue(video_dev, VIDEO_EP_OUT, vbuf);
-
 	if (ret) {
 		LOG_ERR("Unable to requeue video buf");
 		return -1;
@@ -283,16 +350,18 @@ int get_image_data(int ml_width, int ml_height, uint8_t **output_image_data)
 		return -1;
 	}
 
-	/* Image resizing */
-	if (ml_width > CIMAGE_RGB_WIDTH_MAX || ml_height > CIMAGE_RGB_HEIGHT_MAX) {
+#if !ISP_ENABLED
+	/* Image resizing from sensor resolution to requested output size */
+	if (output_width > CIMAGE_RGB_WIDTH_MAX ||
+	    output_height > CIMAGE_RGB_HEIGHT_MAX) {
 		LOG_ERR("Requested image can't be processed in place");
 		return -1;
 	}
 
 	aipl_ret = aipl_resize(image_data, image_data,
 			       CIMAGE_RGB_WIDTH_MAX, CIMAGE_RGB_WIDTH_MAX,
-				   CIMAGE_RGB_HEIGHT_MAX, AIPL_COLOR_RGB888,
-				   ml_width, ml_height, true);
+			       CIMAGE_RGB_HEIGHT_MAX, AIPL_COLOR_RGB888,
+			       output_width, output_height, true);
 	if (aipl_ret != AIPL_ERR_OK) {
 		LOG_ERR("Resize failed with error code %d", aipl_ret);
 		return -1;
@@ -301,7 +370,8 @@ int get_image_data(int ml_width, int ml_height, uint8_t **output_image_data)
 #if CIMAGE_COLOR_CORRECTION
 	/* Color correction */
 	aipl_ret = aipl_color_correction_rgb(image_data, image_data,
-					     ml_width, ml_width, ml_height,
+					     output_width, output_width,
+					     output_height,
 					     AIPL_COLOR_RGB888,
 					     camera_get_color_correction_matrix());
 	if (aipl_ret != AIPL_ERR_OK) {
@@ -311,12 +381,14 @@ int get_image_data(int ml_width, int ml_height, uint8_t **output_image_data)
 
 	/* LUT transform (gamma correction) */
 	aipl_ret = aipl_lut_transform_rgb(image_data, image_data,
-					  ml_width, ml_width, ml_height,
+					  output_width, output_width,
+					  output_height,
 					  AIPL_COLOR_RGB888, camera_get_gamma_lut());
 	if (aipl_ret != AIPL_ERR_OK) {
 		LOG_ERR("LUT transform failed with error code %d", aipl_ret);
 		return -1;
 	}
+#endif
 #endif
 
 	*output_image_data = image_data;

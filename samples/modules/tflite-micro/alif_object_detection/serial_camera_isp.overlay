@@ -1,0 +1,49 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+&isp {
+	status = "okay";
+
+	port {
+		isp_ep_in: endpoint {
+			remote-endpoint-label = "cam_isp_ep_out";
+		};
+	};
+};
+
+&cam {
+	status = "okay";
+
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+
+	data-mode = "16-bit";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* MIPI CSI-2 bus endpoint. */
+		port@0 {
+			reg = <0>;
+			cam_csi2_ep_in: endpoint {
+				remote-endpoint-label = "csi2_ep_out";
+			};
+		};
+
+		/* ISP Interface. */
+		port@2 {
+			reg = <2>;
+			cam_isp_ep_out: endpoint {
+				remote-endpoint-label = "isp_ep_in";
+			};
+		};
+	};
+};
