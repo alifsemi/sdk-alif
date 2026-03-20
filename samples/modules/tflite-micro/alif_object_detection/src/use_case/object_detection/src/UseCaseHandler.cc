@@ -32,6 +32,7 @@
 #include <cinttypes>
 #include <cstring>
 #include <cmath>
+#include <algorithm>
 
 #include <lvgl.h>
 #include "lv_paint_utils.h"
@@ -86,6 +87,11 @@ static void lvgl_worker_thread(void*, void*, void*)
 namespace {
 lv_style_t boxStyle;
 lv_color_t  lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section("SRAM1.lcd_image_buf")));                      // 192x192x3 = 110,592 bytes
+
+/* Pre-allocated pool of detection box objects to avoid per-frame alloc/free */
+static constexpr int MAX_DETECTION_BOXES = 10;
+static lv_obj_t *boxPool[MAX_DETECTION_BOXES] = {};
+static int boxPoolSize = 0;
 };
 
 namespace alif {
@@ -139,7 +145,7 @@ namespace app {
 
 	    k_thread_name_set(&lvgl_thread, "lvgl");
 
-        if (image_init() != 0) {
+        if (image_init(LIMAGE_X, LIMAGE_Y) != 0) {
             return false;
         }
 
@@ -187,7 +193,7 @@ namespace app {
             DetectorPostProcess(outputTensor0, outputTensor1, results, postProcessParams);
 
         uint8_t* imageDataPtr = nullptr;
-        if(get_image_data(LIMAGE_X, LIMAGE_Y, &imageDataPtr ) < 0) {
+        if(get_image_data(&imageDataPtr) < 0) {
             LOG_ERR("Couldn't get image data");
             return false;
         }
@@ -262,22 +268,14 @@ namespace app {
         return true;
     }
 
-    static void DeleteBoxes(lv_obj_t *frame)
+    static void InitBoxPool(lv_obj_t *frame)
     {
-        // Assume that child 0 of the frame is the image itself
-        int children = lv_obj_get_child_cnt(frame);
-        while (children > 1) {
-            lv_obj_del(lv_obj_get_child(frame, 1));
-            children--;
+        for (int i = 0; i < MAX_DETECTION_BOXES; i++) {
+            boxPool[i] = lv_obj_create(frame);
+            lv_obj_add_style(boxPool[i], &boxStyle, LV_PART_MAIN);
+            lv_obj_add_flag(boxPool[i], LV_OBJ_FLAG_HIDDEN);
         }
-    }
-
-    static void CreateBox(lv_obj_t *frame, int x0, int y0, int w, int h)
-    {
-        lv_obj_t *box = lv_obj_create(frame);
-        lv_obj_set_size(box, w, h);
-        lv_obj_add_style(box, &boxStyle, LV_PART_MAIN);
-        lv_obj_set_pos(box, x0, y0);
+        boxPoolSize = MAX_DETECTION_BOXES;
     }
 
     static void DrawDetectionBoxes(const std::vector<object_detection::DetectionResult>& results,
@@ -287,14 +285,27 @@ namespace app {
         float xScale = (float) lv_obj_get_content_width(frame) / imgInputCols;
         float yScale = (float) lv_obj_get_content_height(frame) / imgInputRows;
 
-        DeleteBoxes(frame);
+        /* Lazily create the pool on first use */
+        if (boxPoolSize == 0) {
+            InitBoxPool(frame);
+        }
 
-        for (const auto& result: results) {
-            CreateBox(frame,
-                      floor(result.m_x0 * xScale),
-                      floor(result.m_y0 * yScale),
-                      ceil(result.m_w * xScale),
-                      ceil(result.m_h * yScale));
+        int numResults = std::min((int)results.size(), MAX_DETECTION_BOXES);
+
+        /* Update active boxes */
+        for (int i = 0; i < numResults; i++) {
+            lv_obj_set_size(boxPool[i],
+                            (int)ceil(results[i].m_w * xScale),
+                            (int)ceil(results[i].m_h * yScale));
+            lv_obj_set_pos(boxPool[i],
+                           (int)floor(results[i].m_x0 * xScale),
+                           (int)floor(results[i].m_y0 * yScale));
+            lv_obj_clear_flag(boxPool[i], LV_OBJ_FLAG_HIDDEN);
+        }
+
+        /* Hide unused boxes */
+        for (int i = numResults; i < MAX_DETECTION_BOXES; i++) {
+            lv_obj_add_flag(boxPool[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
 
