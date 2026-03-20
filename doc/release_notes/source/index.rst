@@ -34,4 +34,4 @@ Document History
     * - 2.1
       - Updated the document to include MIPI-CSI, CMP, ISP, USB-device, Ethernet.
     * - 2.2
-      - Updated the document to include OV5640 camera, TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), Executorch, EVTRTR, Basic Power Management (I2S, SPI, I2C, RTC, UART), and Deep Sleep IWIC support.
+      - Updated the document to include OV5640 camera sensor, TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), ExecuTorch, EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), and Deep Sleep IWIC support.

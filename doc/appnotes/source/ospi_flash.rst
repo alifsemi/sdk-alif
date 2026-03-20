@@ -15,6 +15,12 @@ The Alif DevKit features a 32MB ISSI Flash (IS25WX256) connected to the Octal SP
 
    Block Diagram of OSPI1 Connected to Flash
 
+.. note::
+
+   Current Alif DevKit variants support two types of OSPI flash devices:
+
+   1. **ISSI OSPI Flash (IS25WX256)**
+   2. **Macronix Flash (MX66UW)** – This flash device is supported only on the **E8 AppKit**, while the remaining DevKit variants use **ISSI flash**.
 
 Application Description
 =======================

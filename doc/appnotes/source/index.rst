@@ -15,6 +15,8 @@ Application Notes for the Zephyr Alif SDK
    clock_control.rst
    cmp.rst
    crc.rst
+   can.rst
+   ch201_ToF.rst
    dac.rst
    dma.rst
    entropy.rst
@@ -73,4 +75,5 @@ Document History
      - Release with Zephyr v4.1.0. Added driver support for UART, SPI, I2C, LPI2C,I3C, LP-UART, LP-SPI, MIPI-DSI, CDC-200, LP-Timer, I2S, LPI2S, PDM, LPPDM, GPIO, MHU, HWSEM, RTC, WDT, Clk-Ctrl, PinMUX, Touch Screen, System Power, Management (suspend to ram), LP-GPIO, PWM, QDEC, UTimer Counter, MRAM, OSPI Flash, SD, CRC, Entropy, DAC 12, ADC 12/24, CPI, LP-CPI, Ethos.
    * - 2.1
      - Added support for MIPI-CSI, CMP, ISP, USB-device, Ethernet.
-
+   * - 2.2
+     - Updated the document to include OV5640 camera sensor, TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), ExecuTorch, EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), and Deep Sleep IWIC support.

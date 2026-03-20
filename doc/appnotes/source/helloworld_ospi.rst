@@ -24,18 +24,27 @@ Hardware Connections and Setup
 No additional hardware connections are required beyond the standard Alif DevKit setup. Ensure the OSPI1 NOR flash is accessible and properly configured in the system firmware.
 
 Building Binary Executable from OSPI Region
-===========================================================
+==============================================
 
 Below are the required configurations for two different setups: RTSS-HE and RTSS-HP.
 
 Required Configuration Settings
 -------------------------------
 
-Add the following line to disable the ARM MPU (Memory Protection Unit) for both configurations:
+To disable the MPU, perform the following changes:
 
-.. code-block:: text
+- Remove the MPU-related configurations from the SoC Kconfig file.
 
-   CONFIG_ARM_MPU=n
+  Example: ``soc/alif/ensemble/Kconfig``
+
+  - ``CPU_HAS_ARM_MPU``
+  - ``ARM_MPU``
+
+- In the following file, comment out the MPU disable call:
+
+  ``modules/hal/alif/common/src/system.c``
+
+  - ``ARM_MPU_Disable()``
 
 Additional Defines for RTSS-HE
 ------------------------------

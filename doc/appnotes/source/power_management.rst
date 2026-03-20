@@ -49,9 +49,11 @@ The Power Management demo application shipped with ZAS uses RTSS_HE to enter the
 ZAS Power Management Application
 ==================================
 
-This sample illustrates the following power management states:
+This sample demonstrates the following power states:
 
 * **PM_STATE_RUNTIME_IDLE**: Light sleep state with quick wakeup.
+
+* **PM_STATE_SUSPEND_TO_IDLE**: CPU Clock Off with IWIC (Internal WIC), devices remain active (no device PM overhead). Only interrupts 0-63 can wake CPU from this mode.
 * **PM_STATE_SUSPEND_TO_RAM (S2RAM)**: Deep sleep with retention (HE core only).
     * Substate 0 (STANDBY): Medium power savings.
     * Substate 1 (STOP): Higher power savings.
@@ -63,11 +65,11 @@ HE Core
 =======
 
 * When booting from TCM (VTOR = 0x0, with retention support):
-    * Demonstrates ``RUNTIME_IDLE``, ``S2RAM STANDBY``, ``S2RAM STOP``
+    * Demonstrates ``RUNTIME_IDLE``, ``SUSPEND_TO_IDLE``, ``S2RAM STANDBY``, ``S2RAM STOP``
     * Skips ``SOFT_OFF`` (uses retention instead)
     * Resumes execution after each state.
 * When booting from MRAM (VTOR >= 0x80000000) (CONFIG_PM_S2RAM=n):
-    * Demonstrates ``RUNTIME_IDLE``, ``SOFT_OFF``
+    * Demonstrates ``RUNTIME_IDLE``, ``SUSPEND_TO_IDLE``, ``SOFT_OFF``
     * System resets and restarts from ``main()`` after ``SOFT_OFF``.
 
 HP Core (no retention support)
@@ -188,30 +190,54 @@ To execute binaries on the DevKit, follow these steps:
    ./app-write-mram
 
 Console Output
-================
-
-After the cores boot following a reset, the following prints will be displayed on the console:
+==============
 
 .. code-block:: text
 
-   [00:00:00.004,000] <inf> pm_system_off: alif_e7_dk RTSS_HE (TCM boot): PM states demo (RUNTIME_IDLE, S2RAM)
-   [00:00:00.015,000] <inf> pm_system_off: POWER STATE SEQUENCE:
-   [00:00:00.021,000] <inf> pm_system_off: 1. PM_STATE_RUNTIME_IDLE
-   [00:00:00.027,000] <inf> pm_system_off: 2. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
-   [00:00:00.036,000] <inf> pm_system_off: 3. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
-   [00:00:00.044,000] <inf> pm_system_off: 4. (SOFT_OFF skipped - TCM boot, using retention)
-   [00:00:00.053,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
-   [00:00:18.063,000] <inf> pm_system_off: Exited from RUNTIME_IDLE sleep
-   [00:00:18.069,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (20000000 microseconds)
-   [00:00:38.081,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
-   [00:00:38.090,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 38090
-   [00:00:40.100,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 40100
-   [00:00:42.109,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 42109
-   [00:00:44.118,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (22000000 microseconds)
-   [00:01:06.129,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
-   [00:01:06.138,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 66138
-   [00:01:08.148,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 68148
-   [00:01:10.157,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 70157
-   [00:01:12.166,000] <inf> pm_system_off: Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)
-   [00:01:12.175,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===
+    *** Booting Zephyr OS build ***
 
+    [00:00:00.004,000] <inf> pm_system_off: alif_e7_dk RTSS_HE (TCM boot): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)
+
+    [00:00:00.016,000] <inf> pm_system_off: POWER STATE SEQUENCE:
+
+    [00:00:00.022,000] <inf> pm_system_off: 1. PM_STATE_RUNTIME_IDLE
+
+    [00:00:00.029,000] <inf> pm_system_off: 2. PM_STATE_SUSPEND_TO_IDLE
+
+    [00:00:00.036,000] <inf> pm_system_off: 3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+
+    [00:00:00.044,000] <inf> pm_system_off: 4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+
+    [00:00:00.053,000] <inf> pm_system_off: 5. (SOFT_OFF skipped - TCM boot, using retention)
+
+    [00:00:00.062,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+
+    [00:00:18.071,000] <inf> pm_system_off: Exited from RUNTIME_IDLE sleep
+
+    [00:00:18.077,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_IDLE for (4000 microseconds)
+
+    [00:00:18.092,000] <inf> pm_system_off: Exited from PM_STATE_SUSPEND_TO_IDLE
+
+    [00:00:18.099,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (20000000 microseconds)
+
+    [00:00:38.115,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+
+    [00:00:38.125,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 38125
+
+    [00:00:40.135,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 40135
+
+    [00:00:42.145,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 42145
+
+    [00:00:44.154,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (22000000 microseconds)
+
+    [00:01:06.169,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+
+    [00:01:06.178,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 66178
+
+    [00:01:08.188,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 68188
+
+    [00:01:10.198,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 70198
+
+    [00:01:12.207,000] <inf> pm_system_off: Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)
+
+    [00:01:12.217,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===

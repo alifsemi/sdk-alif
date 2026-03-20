@@ -311,14 +311,27 @@ Breaking Changes
 - **BLE ROM Version Configuration**:
   BLE ROM version is now hardware-specific and defined in device tree. Support for BLE ROM v1.0 has been removed. Only BLE ROM v1.2 is supported. The ROM version is automatically detected from hardware and cannot be manually configured by users.
 
+- The CRC driver DTS property `crc_algo` has been corrected to `crc-algo`, and the `crc-algo` enum   values were changed to lowercase to align with Zephyr coding style.
+
+- Corrected the SRAM1 mapping for Eagle SoC from `0x08000000` to `0x02400000`.
+
 Planned Deprecations
 --------------------
 
 The following items are planned for deprecation in the next release:
 
-- **CGU Clock Initialization**
+- **clock-control**
 
-  CGU clock initialization will be performed using clock device tree nodes and the clock driver. Hard-coded initialization currently implemented in ``soc_common.c`` or in sample source files will be deprecated.
+  Enabling CGU clocks has been simplified. CGU clocks are now automatically
+  enabled during clock-control initialization based on the status of the
+  corresponding ``clocks`` devicetree nodes.
+
+  Direct access to the CGU Clock Enable Register (``CGU_CLK_ENA``) is
+  deprecated and will be removed in a future release.
+
+  Applications and drivers should rely on the clock-control framework and
+  devicetree ``clocks`` configuration instead of manually enabling clocks
+  through the register.
 
 - **E3-DK and E4-DK Board Support**
 
