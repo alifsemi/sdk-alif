@@ -1,0 +1,33 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+#include <zephyr/dt-bindings/clock/alif_ensemble_clocks.h>
+/ {
+	aliases {
+		gpioport = &timer_g1;
+	};
+
+	gpio {
+		compatible = "gpio-leds";
+		timer_g1: gpio_1 {
+			gpios = <&gpio6 4 0>;
+		};
+	};
+};
+/*
+ * Enabling lptimer & disabling rtc for this sample application
+ */
+
+&timer3 {
+	clocks = <&clockctrl ALIF_LPTIMER3_128K_CLK>;
+	status = "okay";
+};
+
+&rtc0 {
+	status = "disabled";
+};

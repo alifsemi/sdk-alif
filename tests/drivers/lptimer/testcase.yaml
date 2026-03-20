@@ -1,0 +1,34 @@
+tests:
+  drivers.counter.basic_api:
+    tags: drivers counter
+    depends_on: counter
+    min_ram: 16
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_ensemble/ae722f80f55d5as0/rtss_he
+      - alif_ensemble/ae722f80f55d5as0/rtss_hp
+      - alif_spark/ae722f80f55d5as0/rtss_he
+      - alif_spark/ae722f80f55d5as0/rtss_hp
+    timeout: 600
+    harness: ztest
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+  drivers.counter.basic_api.zli:
+    tags: drivers counter
+    depends_on: counter
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    timeout: 400
+    harness: ztest
+    extra_args: OVERLAY_CONFIG="zli.conf"

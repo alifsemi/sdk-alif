@@ -1,0 +1,30 @@
+# Config for counter alarm sample
+
+# Copyright (c) 2019 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+config LP_EXT
+	bool "To Test LP-EXT"
+	default n
+
+config LP_CAS
+	bool "To Test LP-CAS"
+	default n
+
+config LP_128K
+	bool "To Test LP-128K"
+	default n
+
+config LPTIMER0_CLOCK_SOURCE_CASCADE
+	bool "Enable cascade mode for LPTIMER0 (LPTIMER0+LPTIMER1)"
+	default n
+
+config LPTIMER1_CLOCK_SOURCE_CASCADE
+	bool "Enable cascade mode for LPTIMER1 (LPTIMER1+LPTIMER2)"
+	default n
+
+config LPTIMER3_CLOCK_SOURCE_CASCADE
+	bool "Enable cascade mode for LPTIMER3 (LPTIMER3+LPTIMER4)"
+	default n
+
+source "Kconfig.zephyr"
