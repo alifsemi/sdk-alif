@@ -1,7 +1,7 @@
 /* This file was ported to work on Alif Semiconductor devices. */
 
 /*
- * SPDX-FileCopyrightText: Copyright Alif Semiconductor 
+ * SPDX-FileCopyrightText: Copyright Alif Semiconductor
  */
 
 /*
@@ -127,8 +127,8 @@ int main()
 static int app_set_parameters(void)
 {
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay))
-	run_profile_t runp;
 	int ret;
+	run_profile_t runp = (run_profile_t){0};
 
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_select), okay))
 	const struct gpio_dt_spec sel =
@@ -143,13 +143,6 @@ static int app_set_parameters(void)
 		GPIO_DT_SPEC_GET(DT_NODELABEL(mipi_dsi), cam_disp_mux_gpios);
 	gpio_pin_configure_dt(&cam_disp_mux_gpio, GPIO_OUTPUT_ACTIVE);
 #endif
-
-	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
-#if defined(CONFIG_SOC_SERIES_E8)
-	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(7));
-#else
-	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(21));
-#endif /* defined (CONFIG_SOC_SERIES_E7) */
 
 	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK;
 	runp.dcdc_voltage  = 825;
@@ -168,10 +161,6 @@ static int app_set_parameters(void)
 	runp.memory_blocks |= SRAM0_MASK;
 #endif
 #if DT_NODE_EXISTS(DT_NODELABEL(sram1))
-#if defined(CONFIG_SOC_SERIES_E8)
-	/* Enable access to SRAM1 - required for video buffers allocation in SRAM1 */
-	sys_write32(0, 0x1A60503C);
-#endif
 	runp.memory_blocks |= SRAM1_MASK;
 #endif
 
