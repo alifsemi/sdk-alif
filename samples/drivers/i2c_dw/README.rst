@@ -30,12 +30,14 @@ The overlay used in the snippet configures i2c master and slave instances.
 Sample Output
 =============
 .. code-block:: console
-        Received a byte in slave : 0xaa
-        Received a byte in slave : 0xab
-        Received a byte in slave : 0xac
-        Received a byte in slave : 0xad
-        Master wrote 0xaa 0xab 0xac 0xad to slave
-        Read requested from Master and send 0x60 from slave
-        Read processed_cb called
-        Master received Data 0x60 From Slave
-        <repeats endlessly>
+   Received a byte in slave : 0xaa
+   Received a byte in slave : 0xab
+   Received a byte in slave : 0xac
+   Received a byte in slave : 0xad
+   Master wrote 0xaa 0xab 0xac 0xad to slave
+   Read requested from Master and send 0x50 from slave
+   Read processed from Master and send 0x51 from slave
+   Read processed from Master and send 0x52 from slave
+   Read processed from Master and send 0x53 from slave
+   Master received following data from the Slave:0x50 0x51 0x52 0x53
+   ...continues, with the slave TX bytes incrementing on subsequent iterations
