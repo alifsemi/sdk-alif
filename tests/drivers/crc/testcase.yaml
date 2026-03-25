@@ -1,0 +1,346 @@
+common:
+  tags: drivers crc
+  depends_on: crc
+  harness: ztest
+
+tests:
+  drivers.crc.crc0_8_bit:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc0_16_bit:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc0_16_bit_alt:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_16_ALT=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc0_32_bit:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc1_8_bit:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc1_16_bit:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc1_16_bit_alt:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_16_ALT=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc1_32_bit:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc0_32c:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc1_32c:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc0_8_bit_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc0_16_bit_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc0_16_bit_alt_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_16_ALT=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc0_32_bit_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc1_8_bit_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc1_16_bit_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_16=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc1_32_bit_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_32=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc1_16_bit_alt_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_16_ALT=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc0_32c_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc1_32c_stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_32C=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
+  drivers.crc.crc0_all:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+      - CONFIG_TEST_CRC_16=y
+      - CONFIG_TEST_CRC_16_ALT=y
+      - CONFIG_TEST_CRC_32=y
+      - CONFIG_TEST_CRC_32C=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc0.overlay
+
+  drivers.crc.crc1_all:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_configs:
+      - CONFIG_TEST_CRC_8=y
+      - CONFIG_TEST_CRC_16=y
+      - CONFIG_TEST_CRC_16_ALT=y
+      - CONFIG_TEST_CRC_32=y
+      - CONFIG_TEST_CRC_32C=y
+      - CONFIG_TEST_CRC_STRESS=y
+    extra_dtc_overlay_files:
+      - boards/crc1.overlay
+
