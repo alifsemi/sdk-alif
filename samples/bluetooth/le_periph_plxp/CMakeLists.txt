@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -8,8 +8,19 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
+# Define dummy default value for skip tester
+if(NOT DEFINED CONFIG_IUT_TESTER_ENABLED)
+  set(CONFIG_IUT_TESTER_ENABLED false)
+endif(NOT DEFINED CONFIG_IUT_TESTER_ENABLED)
+
+# Enable button interface for PTS testing
+if (CONFIG_IUT_TESTER_ENABLED)
+  set(EXTRA_DTC_OVERLAY_FILE "test_button.overlay")
+endif()
+
+
 # Include BLE Power Management snippet by default
-if(NOT pm-ble IN_LIST SNIPPET)
+if(NOT CONFIG_IUT_TESTER_ENABLED AND NOT pm-ble IN_LIST SNIPPET)
   set(SNIPPET pm-ble ${SNIPPET} CACHE STRING "" FORCE)
 endif()
 
