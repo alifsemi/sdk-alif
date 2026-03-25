@@ -283,6 +283,29 @@ AI Acceleration
        integrated into Alif’s microcontroller platforms that leverages Arm
        Ethos microNPUs to boost machine learning inference performance
        for CNN and transformer models.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - **Component**
+     - **Description**
+   * - InferenceRunner
+     - A reusable C++ header-only template (``alif/include/ethosu/InferenceRunner.h``) that
+       encapsulates a complete ML inference pipeline in a dedicated Zephyr thread. It composes
+       three user-supplied policy types — ``Model`` (init, pre/post-process, run), ``Input``
+       (data source), and ``OutputHandler`` (result consumer) — along with configurable stack
+       size and thread priority.
+       Used by the ``alif_inference`` sample as a generic inference loop for keyword spotting.
+   * - TFLite Micro
+     - TensorFlow Lite Micro (TFLM) inference framework integrated with Arm Ethos-U NPU acceleration. Supports CNN and transformer models optimized with the Vela compiler for Ethos-U55 and Ethos-U85 NPUs across Ensemble and Balletto device families. The following samples are provided:
+
+       * **tflm_ethosu** — Keyword spotting CNN model with Vela optimization. Supports Ethos-U55 (128/256 MACs) and Ethos-U85 (256 MACs) across B1-DK, E1C-DK, E3-DK, E4-DK, E7-DK, and E8-DK.
+       * **tflm_transformer** — BERT-Tiny transformer inference on Ethos-U85 (E8-DK only). INT8 quantized model (869KB) with multi-threaded pipeline on RTSS_HP (700KB tensor arena) and RTSS_HE (128KB tensor arena).
+       * **alif_kws** — Zephyr port of the Alif ML Embedded Evaluation Kit KWS use case. MicroNet KWS model with MFCC feature extraction. Supports E1C-DK, E3-DK, E7-DK, and B1-DK.
+       * **alif_inference** — Generic inference runner for keyword spotting with live microphone input and MFCC processing. Supports E1C-DK, E3-DK, E7-DK, and B1-DK.
+       * **alif_img_class** — Image classification using MobileNet v2 (INT8, ImageNet) with camera input (ARX3A0 or OV5675) and LVGL display output on MW-405. Image pipeline uses Helium acceleration via AIPL. Supports E7-DK and E8-DK HP cores.
+       * **alif_object_detection** — Face detection using YOLO Fastest model with camera input and bounding box rendering via LVGL on MW-405. Supports E7-DK and E8-DK HP cores.
    * - Executorch
      - ML inference application using the PyTorch ExecutorTorch runtime with Arm Ethos-U NPU acceleration. Demonstrates keyword spotting using a quantized DS-CNN model with optimized inference performance.
 
