@@ -35,7 +35,9 @@ Sample Output
         Received a byte in slave : 0xac
         Received a byte in slave : 0xad
         Master wrote 0xaa 0xab 0xac 0xad to slave
-        Read requested from Master and send 0x60 from slave
-        Read processed_cb called
-        Master received Data 0x60 From Slave
+        Read requested from Master and send 0x50 from slave
+        Read processed from Master and send 0x51 from slave
+        Read processed from Master and send 0x52 from slave
+        Read processed from Master and send 0x53 from slave
+        Master received following data from the Slave:0x50 0x51 0x52 0x53
         <repeats endlessly>
