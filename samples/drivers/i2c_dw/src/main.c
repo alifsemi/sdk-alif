@@ -87,9 +87,12 @@ int i2c_target_write_requested_cb(struct i2c_target_config *config)
 {
 	return 0;
 }
+
+static volatile uint8_t slv_tx_data = 0x50;
+
 int i2c_target_read_requested_cb(struct i2c_target_config *config, uint8_t *val)
 {
-	*val = 0x60;
+	*val = slv_tx_data++;
 	printk("Read requested from Master and send 0x%x from slave\n", *val);
 	return 0;
 }
@@ -100,7 +103,8 @@ int i2c_target_write_received_cb(struct i2c_target_config *config, uint8_t val)
 }
 int i2c_target_read_processed_cb(struct i2c_target_config *config, uint8_t *val)
 {
-	printk("Read processed_cb called\n");
+	*val = slv_tx_data++;
+	printk("Read processed from Master and send 0x%x from slave\n", *val);
 	return 0;
 }
 
