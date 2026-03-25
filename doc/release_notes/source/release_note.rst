@@ -15,7 +15,7 @@ Supported Development Kits
 
 **Balletto Series** - Wireless-enabled MCUs with AI/ML acceleration:
 
-- **DK-B1**: Features Bluetooth Low Energy 5.3, 802.15.4 Thread support, Ethos-U55 microNPU, and Cortex-M55 core
+- **DK-B1**: Features Bluetooth Low Energy 5.3, Ethos-U55 microNPU, and Cortex-M55 core
 
 Installing the SDK and Building the Application
 -----------------------------------------------
@@ -351,28 +351,45 @@ Camera Sensors Support
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
 
-**Bluetooth LE 5.3** (*Balletto B1 only*)
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
 
-Two host stack options:
+   * - **Peripheral**
+     - **Description**
+   * - Bluetooth LE
+     - BLE 5.3 support for Balletto B1 devices.
 
-* **Alif BLE (ROM-based)**: Power-optimized with BLE ROM v1.2, reduced flash/RAM footprint
-* **Zephyr BLE**: Standard Zephyr Bluetooth implementation for portability
+       **Host stack options**
 
-Comprehensive BLE samples included:
+       - **Alif BLE (ROM-based)** — Power-optimized stack using BLE ROM v1.2 for reduced flash/RAM footprint.
+       - **Zephyr BLE** — Standard Zephyr Bluetooth implementation for portability.
 
-* **LE Audio**: Auracast broadcast/sink, unicast audio source/sink
-* **Profiles**: BAS, BLPS, CPPS, CSCPS, GLPS, HR, HTPT, PRXP, RSCPS, WS
-* **Advanced**: Throughput testing, mesh light switch/bulb, SMP server
-* **Power Management**: Low-power peripheral optimization
+       **New in this release (Alif BLE stack)**
 
-Breaking Changes
-----------------
+       - Power management enabled by default across ROM-based BLE peripheral samples
+       - BLE PM snippet and LPGPIO wakeup support for Alif low-power modes
+       - PM support for LE Audio Auracast and unicast acceptor samples
+       - Legacy pairing workflow added to Alif BLE common libraries
+       - Common settings storage support shared by Alif BLE samples
 
-- **Balletto B1 Hardware Support**:
-  This release supports only Balletto B1 revA6 or newer. Earlier revisions are not supported.
+Bug Fixes
+---------
 
-- **BLE ROM Version Configuration**:
-  BLE ROM version is now hardware-specific and defined in device tree. Support for BLE ROM v1.0 has been removed. Only BLE ROM v1.2 is supported. The ROM version is automatically detected from hardware and cannot be manually configured by users.
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - **Component**
+     - **Fix**
+   * - Alif BLE Audio
+     - Fixed unicast initiator bonding handling on the ROM-based stack
+   * - Alif BLE Audio
+     - Fixed bonded device reconnection in unicast audio
+   * - Alif BLE Audio
+     - Fixed Auracast delegator to work with encrypted streams
+   * - Alif BLE PM
+     - Fixed ROM-based BLE PM build issues
 
 - The CRC driver DTS property `crc_algo` has been corrected to `crc-algo`, and the `crc-algo` enum   values were changed to lowercase to align with Zephyr coding style.
 
@@ -407,10 +424,7 @@ The following items are planned for deprecation in the next release:
 Known Issues
 ------------
 
-- **BLE** le_periph_pm application has a RTC related issue which causes M55 RTC alarms to stop working randomly
-- **BLE** audio Unicast initiator fails to open 2nd channel when using Ceva host stack
-- **BLE** Auracast sink does not receive an encryption key sent by Auracast assistant when using Ceva host stack
-- **BLE** Connection param update does not work with Ceva host stack, works fine with Zephyr host stack.
+- **BLE (Alif ROM stack)** audio Unicast initiator fails to open 2nd channel when using the host stack
 - **SPI1** DMA operations exhibit inconsistent behavior.
 - **Touch Screen** events are intermittently dropped.
 - **OSPI** boot has not been verified.
