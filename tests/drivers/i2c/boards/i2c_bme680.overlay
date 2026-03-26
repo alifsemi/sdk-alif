@@ -1,0 +1,21 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* BME680 sensor integration for I2C validation
+ * Adds BME680 sensor to i2c0 instance at address 0x76
+ * Used for sensor integration testing and validation
+ */
+
+&i2c0 {
+	status = "okay";
+	bme680@76 {
+		compatible = "bosch,bme680";
+		reg = <0x76>;
+	};
+};

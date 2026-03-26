@@ -1,0 +1,340 @@
+tests:
+  # Base functional tests
+  drivers.i2c.api:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c
+    harness: ztest
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+
+  # Comprehensive all tests
+  drivers.i2c.all:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c comprehensive
+    harness: ztest
+    timeout: 600
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_ALL_TESTS=y
+
+  # Comprehensive validation tests
+  drivers.i2c.comprehensive:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c comprehensive validation
+    harness: ztest
+    timeout: 600
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_COMPREHENSIVE_VALIDATION=y
+
+  # Performance tests
+  drivers.i2c.performance:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c performance
+    harness: ztest
+    timeout: 180
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_PERFORMANCE_TESTS=y
+
+  # Basic stress tests
+  drivers.i2c.stress.basic:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c stress validation
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_STRESS_TESTS=y
+
+  # Enhanced stress tests
+  drivers.i2c.stress:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c stress validation
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_ENHANCED_STRESS=y
+
+  # Buffer mode stress tests
+  drivers.i2c.stress.buffer:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c stress buffer
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+      - CONFIG_I2C_STRESS_TESTS=y
+
+  # Restart condition integrity tests (DW driver bug detection)
+  drivers.i2c.stress.restart:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c stress restart validation
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_STRESS_TESTS=y
+    testcases:
+      - i2c_stress.test_wr_restart_integrity
+
+  # Restart condition integrity tests in target buffer mode
+  drivers.i2c.stress.restart.buffer:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c stress restart buffer validation
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+      - CONFIG_I2C_STRESS_TESTS=y
+    testcases:
+      - i2c_stress.test_wr_restart_integrity
+
+  # Boundary condition tests
+  drivers.i2c.boundary:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c boundary validation
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_BOUNDARY_TESTS=y
+
+  # Fault injection tests
+  drivers.i2c.fault:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c fault validation
+    harness: ztest
+    timeout: 300
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_FAULT_INJECTION_TESTS=y
+
+  # Hardware-aware tests
+  drivers.i2c.hardware:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c
+    tags: drivers i2c hardware validation
+    harness: ztest
+    timeout: 400
+    filter: dt_alias_exists("master_i2c") and \
+            dt_alias_exists("slave_i2c")
+    extra_args: -DDTC_OVERLAY_FILE="boards/i2c.overlay"
+    extra_configs:
+      - CONFIG_I2C_HARDWARE_AWARE_TESTS=y
+
+  # BME680 sensor integration tests
+  drivers.i2c.bme680:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e3_dk/ae302f80f55d5xx/rtss_hp
+      - alif_e3_dk/ae302f80f55d5xx/rtss_he
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_hp
+      - alif_e4_dk/ae402fa0e5597xx0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    depends_on: i2c sensor
+    tags: drivers i2c sensor
+    harness: ztest
+    filter: dt_alias_exists("master_i2c")
+    extra_dtc_overlay_files:
+      - boards/i2c.overlay
+      - boards/i2c_bme680.overlay
+    extra_args: -DBME680=ON
