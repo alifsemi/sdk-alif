@@ -145,7 +145,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -154,7 +154,7 @@ Console Output
 
 Upon reviewing the output logs, the I2C functionality has been successfully validated.
 
-.. code-block:: none
+.. code-block:: text
 
    Received a byte in slave : 0xaa
    Received a byte in slave : 0xab

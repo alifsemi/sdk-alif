@@ -79,13 +79,13 @@ Use ``main`` for the latest state, or specify a commit SHA or tag.
 
 **Syntax:**
 
-.. code-block:: bash
+.. code-block:: console
 
    west init -m <URL> --mr <REVISION>
 
 **Example:**
 
-.. code-block:: bash
+.. code-block:: console
 
    west init -m https://github.com/alifsemi/sdk-alif --mr v2.2.0-zas-branch
 

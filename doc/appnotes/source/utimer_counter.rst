@@ -55,7 +55,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -74,7 +74,7 @@ When running the emulator-based counter application:
 Console Output
 ===============
 
-::
+.. code-block:: text
 
    Counter alarm sample
 

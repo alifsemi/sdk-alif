@@ -374,7 +374,7 @@ Wireless Connectivity
        - Common settings storage support shared by Alif BLE samples
 
 Bug Fixes
----------
+----------
 
 .. list-table::
    :header-rows: 1
@@ -390,10 +390,12 @@ Bug Fixes
      - Fixed Auracast delegator to work with encrypted streams
    * - Alif BLE PM
      - Fixed ROM-based BLE PM build issues
-
-- The CRC driver DTS property `crc_algo` has been corrected to `crc-algo`, and the `crc-algo` enum   values were changed to lowercase to align with Zephyr coding style.
-
-- Corrected the SRAM1 mapping for Eagle SoC from `0x08000000` to `0x02400000`.
+   * - CRC Driver
+     - Corrected DTS property ``crc_algo`` to ``crc-algo`` and updated enum values to lowercase
+   * - Eagle SoC SRAM
+     - Corrected SRAM1 mapping from ``0x08000000`` to ``0x02400000``
+   * - Touchscreen
+     - Fixed issue where touch screen events were intermittently dropped
 
 Planned Deprecations
 --------------------
@@ -422,15 +424,18 @@ The following items are planned for deprecation in the next release:
   Referring to DMA nodes directly in device driver nodes will be deprecated. All drivers using DMA must reference DMA resources through **EVTRTR** nodes.
 
 Known Issues
-------------
+-------------
 
-- **BLE (Alif ROM stack)** audio Unicast initiator fails to open 2nd channel when using the host stack
-- **SPI1** DMA operations exhibit inconsistent behavior.
-- **Touch Screen** events are intermittently dropped.
-- **OSPI** boot has not been verified.
-- When run from HE-MRAM, the **PM** demo application throws an error message.
-- **LPCMP** sample is broken on all families.
-- **LP Camera** node in overlay file needs to be updated to I2C1 for B1-DK.
+- BLE (Alif ROM stack) audio unicast initiator fails to open a second channel when using the host stack.
+- SPI1 DMA operations exhibit inconsistent behavior.
+- OSPI boot has not been verified.
+- When running from HE-MRAM, the PM demo application throws an error message on spark-A6.
+- LPCMP sample is not functional on all families.
+- LP Camera node in the overlay file needs to be updated to I2C1 for B1-DK.
+- Executorch is not supported on E1C.
+- CMP is not functional on Balletto.
+- ADC is not tested or not functional on A1.
+- PM sample application is not functional on B1.
 
 External References
 -------------------

@@ -15,6 +15,4 @@
 
 .. _`DS-CNN Paper`: https://arxiv.org/abs/1711.07128
 
-.. _`RTSS HE MRAM JSON`:
-
-.. _`RTSS HP MRAM JSON`:
+.. _boards_arm_directory: https://github.com/alifsemi/sdk-alif/tree/v2.2.0/boards/arm

@@ -216,7 +216,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -225,7 +225,7 @@ CMP Console Output
 
 The following log is observed during execution of the Analog Comparator (CMP) application:
 
-.. code-block:: console
+.. code-block:: text
 
     [00:00:02.000,000] <inf> ALIF_CMP: start comparing
     [00:00:02.050,000] <inf> ALIF_CMP: positive input voltage is greater than negative input voltage
