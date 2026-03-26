@@ -5,6 +5,7 @@ common:
   tags: executorch ml npu ethos-u kws
   depends_on: executorch arm_ethos_u
 tests:
+  # Ensemble boards with SRAM0 (E7/E8) - 1.5MB pools in SRAM
   sample.executorch.kws_ethosu.e8_hp:
     build_only: true
     platform_allow: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
@@ -13,7 +14,14 @@ tests:
     platform_allow: alif_e8_dk/ae822fa0e5597xx0/rtss_he
   sample.executorch.kws_ethosu.e7_hp:
     build_only: true
-    platform_allow: alif_e7_dk/ae722f80f55d5xx0/rtss_hp
+    platform_allow: alif_e7_dk/ae722f80f55d5xx/rtss_hp
   sample.executorch.kws_ethosu.e7_he:
     build_only: true
-    platform_allow: alif_e7_dk/ae722f80f55d5as0/rtss_he
+    platform_allow: alif_e7_dk/ae722f80f55d5xx/rtss_he
+  # Boards without SRAM0 (E1C, B1) - 64KB pools in DTCM
+  sample.executorch.kws_ethosu.e1c_he:
+    build_only: true
+    platform_allow: alif_e1c_dk/ae1c1f4051920hh/rtss_he
+  sample.executorch.kws_ethosu.b1_he:
+    build_only: true
+    platform_allow: alif_b1_dk/ab1c1f4m51820ph0/rtss_he

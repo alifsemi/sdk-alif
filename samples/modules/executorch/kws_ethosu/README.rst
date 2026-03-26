@@ -53,6 +53,10 @@ Supported Boards
 +-------+--------+---------+-------------------------+
 | Board | U55    | U85     | Status                  |
 +=======+========+=========+=========================+
+| B1    | Yes    | No      | **Tested**              |
++-------+--------+---------+-------------------------+
+| E1C   | Yes    | No      | **Tested**              |
++-------+--------+---------+-------------------------+
 | E7    | Yes    | No      | **Tested**              |
 +-------+--------+---------+-------------------------+
 | E8    | Yes    | Yes     | **Tested**              |
@@ -63,10 +67,6 @@ Supported Boards
 +-------+--------+---------+-------------------------+
 | Board | U55    | U85     | Notes                   |
 +=======+========+=========+=========================+
-| B1    | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
-| E1C   | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
 | E3    | Yes    | No      | U55 only                |
 +-------+--------+---------+-------------------------+
 | E4    | Yes    | Yes     | Dual NPU                |
@@ -244,7 +244,31 @@ Building for Alif E7 DK (HE Core with U55-128)
 
 .. code-block:: console
 
-   west build -b alif_e7_dk/ae722f80f55d5as0/rtss_he \
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+       -S ethos-u55-enable \
+       alif/samples/modules/executorch/kws_ethosu/ -- \
+       -DET_PTE_FILE_PATH=./kws_u55_128.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif E1C DK (HE Core with U55-128)
+===============================================
+
+.. code-block:: console
+
+   west build -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+       -S ethos-u55-enable \
+       alif/samples/modules/executorch/kws_ethosu/ -- \
+       -DET_PTE_FILE_PATH=./kws_u55_128.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif B1 DK (HE Core with U55-128)
+==============================================
+
+.. code-block:: console
+
+   west build -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
        -S ethos-u55-enable \
        alif/samples/modules/executorch/kws_ethosu/ -- \
        -DET_PTE_FILE_PATH=./kws_u55_128.pte \
