@@ -1,0 +1,7 @@
+sample:
+  name: DMA Scatter-Gather Sample
+tests:
+  sample.drivers.dma.scatter_gather:
+    tags: drivers dma
+    platform_allow: ensemble
+    depends_on: dma
