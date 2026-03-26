@@ -35,8 +35,8 @@ UART2 and UART4 are directly available on the board. With only the power cable a
 
 .. include:: note.rst
 
-Build an UART Application with Zephyr
-=========================================
+Build a UART Application with Zephyr
+=====================================
 
 Follow these steps to build the UART application using the Alif Zephyr SDK:
 
@@ -44,7 +44,7 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section *Setting Up and Building Zephyr Applications*.
 
 2. Build command for UART application on the M55 HP core (default output on UART2):
 
@@ -54,7 +54,6 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      samples/drivers/uart/echo_bot
 
-
 3. Build command for UART application on the M55 HE core (default output on UART4):
 
 .. code-block:: console
@@ -62,7 +61,6 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      samples/drivers/uart/echo_bot
-
 
 4. Build commands for LPUART application on the M55 HE core:
 
@@ -73,9 +71,17 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
      samples/drivers/uart/echo_bot \
      -- -DDTC_OVERLAY_FILE=$PWD/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
 
+**UART RTS/CTS Support**
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Users can enable UART RTS/CTS hardware flow control using the following overlay files:
 
+- ``alif_b1_dk_rtss_he_UART0_RTS_CTS.overlay``
+- ``alif_e7_dk_rtss_he_hp_UART0_RTS_CTS.overlay`` (also applicable for Alif E8 DevKit)
+
+By default, software pull-ups are enabled on the RTS/CTS lines. However, on some development kits, these lines may not be driven high due to pin multiplexing conflicts with other peripherals.
+In such cases, it is recommended to use external pull-up resistors on the RTS/CTS lines to ensure proper operation.
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 =================================
