@@ -1,0 +1,30 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* LPI2C controller validation overlay
+ * Configures LPI2C1 as controller and I2C0 as target
+ * Used for LPI2C-specific validation and testing
+ */
+
+/ {
+	aliases {
+		i2c-controller = &lpi2c1;
+		i2c-target = &i2c0;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	/* target for LPI2C validation */
+};
+
+&lpi2c1 {
+	status = "okay";
+	/* LPI2C controller */
+};

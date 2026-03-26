@@ -1,0 +1,30 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Base I2C validation overlay with default 100kHz clock
+ * Configures dual I2C controllers for controller/target validation
+ * Supports restart condition testing and comprehensive stress validation
+ */
+
+/ {
+	aliases {
+		i2c-controller = &i2c0;
+		i2c-target = &i2c1;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	/* controller for condition validation */
+};
+
+&i2c1 {
+	status = "okay";
+	/* target for target mode callback validation */
+};

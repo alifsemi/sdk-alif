@@ -1,0 +1,169 @@
+#Copyright Alif Semiconductor - All Rights Reserved.
+#Use, distribution and modification of this code is permitted under the
+#terms stated in the Alif Semiconductor Software License Agreement
+#
+#You should have received a copy of the Alif Semiconductor Software
+#License Agreement with this file.If not, please write to:
+#contact @alifsemi.com, or visit : https: // alifsemi.com/license
+
+menu "Alif I2C test options"
+
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+#Comprehensive test selection
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+config I2C_ALL_TESTS
+	bool "Enable all I2C test suites"
+	select I2C_BOUNDARY_TESTS
+	select I2C_HARDWARE_AWARE_TESTS
+	select I2C_FAULT_INJECTION_TESTS
+	select I2C_STRESS_TESTS
+	help
+		Enable all available I2C test suites for comprehensive validation.
+		When enabled, this automatically selects all individual test configs
+		including boundary tests, hardware-aware tests, fault injection tests,
+		and stress tests. This is useful for complete validation coverage
+		when testing I2C driver functionality and robustness.
+
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+#Frequency selection for multi-frequency test execution
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+config I2C_TEST_FREQ_STANDARD
+	bool "Enable Standard speed (100kHz) tests"
+	default y
+	help
+		Enable Standard mode (100 kHz) I2C frequency testing.
+
+		When enabled, this includes Standard mode in multi-frequency test
+		loops, allowing transfer-bearing tests to execute at this speed.
+		Standard mode is the most widely supported I2C speed and
+		should be enabled for comprehensive compatibility testing.
+
+config I2C_TEST_FREQ_FAST
+	bool "Enable Fast speed (400kHz) tests"
+	default y
+	help
+		Enable Fast mode (400 kHz) I2C frequency testing.
+
+		When enabled, this includes Fast mode in multi-frequency test
+		loops, allowing transfer-bearing tests to execute at this speed.
+		Fast mode provides higher throughput than Standard mode and is
+		commonly used in applications requiring faster data transfer.
+
+config I2C_TEST_FREQ_FAST_PLUS
+	bool "Enable Fast Plus speed (1MHz) tests"
+	default n
+	help
+		Include Fast Plus mode (1 MHz) in multi-frequency test loops.
+		When enabled, transfer-bearing tests will execute at this speed.
+		Boards/drivers can disable this if the hardware does not support
+		1 MHz operation.
+
+config I2C_TEST_FREQ_HIGH
+	bool "Enable High speed (3.4MHz) tests"
+	default n
+	help
+		Include High Speed mode (3.4 MHz) in multi-frequency test loops.
+		When enabled, transfer-bearing tests will execute at this speed.
+		Most hardware does not support 3.4 MHz; disable via extra_configs
+		or board configuration if unsupported.
+
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+#Stress testing options
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+config I2C_STRESS_TESTS
+	bool "Enable stress testing suite"
+	help
+		Enable basic stress testing with restart condition validation
+		and callback integrity checks. This provides comprehensive stress
+		validation without automatic error injection or enhanced timing
+		validation. For complete stress testing with bug detection,
+		enable I2C_ENHANCED_STRESS instead.
+
+config I2C_ENHANCED_STRESS
+	bool "Enable enhanced stress testing with bug detection"
+	select I2C_ERROR_INJECTION
+	help
+		Enable configurable stress testing with timing validation,
+		error injection, and comprehensive bug detection metrics.
+		When enabled, this runs the enhanced stress test suite with
+		automatic error injection enabled for robust validation.
+
+config I2C_ERROR_INJECTION
+	bool "Enable error injection during enhanced stress tests"
+	default n
+	help
+		Enable deliberate timing perturbations during the enhanced
+		stress suite. This symbol is auto-selected by
+		CONFIG_I2C_ENHANCED_STRESS to preserve the current test
+		behavior while removing Kconfig warnings for an undefined
+		symbol.
+
+config I2C_STRESS_LOOPS
+	int "Number of stress test iterations"
+	depends on I2C_ENHANCED_STRESS
+	default 1000
+	help
+		Number of iterations for stress tests. Higher values provide
+		more thorough validation but increase test duration.
+
+config I2C_STRESS_TIMEOUT
+	int "Stress test timeout in milliseconds"
+	depends on I2C_ENHANCED_STRESS
+	default 300
+	help
+		Maximum time allowed for stress test completion. Tests will
+		fail if they exceed this timeout.
+
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+#Individual test suite selection
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+config I2C_PERFORMANCE_TESTS
+	bool "Enable performance testing suite"
+	default n
+	help
+		Enable performance tests that validate I2C throughput and
+		latency at different bus speeds (standard, fast, fast-plus, high).
+		When enabled, this runs the complete performance test suite with
+		all speed configurations.
+
+config I2C_BOUNDARY_TESTS
+	bool "Enable boundary condition testing"
+	default n
+	help
+		Enable boundary condition tests that validate edge cases,
+		maximum sizes, and critical data patterns. When enabled,
+		this runs FIFO, register configuration, timing, and data pattern
+		boundary tests.
+
+config I2C_HARDWARE_AWARE_TESTS
+	bool "Enable hardware-specific testing"
+	default n
+	help
+		Enable hardware-aware tests that validate platform-specific
+		behavior and timing characteristics. When enabled, this runs
+		interrupt handling, clock stretching, signal integrity, and DMA
+		interaction tests.
+
+config I2C_FAULT_INJECTION_TESTS
+	bool "Enable fault injection testing"
+	default n
+	help
+		Enable fault injection tests that validate error handling
+		and recovery mechanisms under various failure conditions.
+		When enabled, this runs the fault injection test suite.
+
+		Note: This is independent from I2C_ENHANCED_STRESS.
+		I2C_FAULT_INJECTION_TESTS focuses on specific fault scenarios,
+		while I2C_ENHANCED_STRESS provides comprehensive stress testing.
+
+config I2C_BME680_TESTS
+	bool "Enable BME680 sensor integration tests"
+	default n
+	help
+		Enable BME680 sensor integration tests. These tests validate
+		communication with an actual BME680 environmental sensor over I2C.
+		Requires the BME680 sensor to be connected to the test board.
+
+endmenu
+
+source "Kconfig.zephyr"
