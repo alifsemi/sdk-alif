@@ -22,43 +22,26 @@ The testcases,
  * hwsem_test_all.c - Tries to lock and unlock all 16 HWSEMs. If a specific
    HWSEM is already locked it return -EBUSY or negative value on error.
 
-Requirements
-************
+Building and Running
+********************
 
-This sample has been tested on :ref:`alif_e7_dk_rtss_he`, using
-Alif DevKit Ensemble family boards.
-
-Building
-********
-
-The code can be found in :zephyr_file:`samples/drivers/ipm/ipm_alif_hwsem`.
-
-To build the application:
+The application will build only for a target that has a devicetree entry
+with :dt compatible:`alif,hwsem` as a compatible.
+It does not work on QEMU.
+In this example below the :ref:`alif_e7_dk/ae722f80f55d5xx/rtss_he` board is used.
 
 1. Building HWSEM0 testcase.
 
-.. code-block::
-
-   For RTSS-HE:
-   west build -b alif_e7_dk_rtss_he samples/drivers/ipm/ipm_alif_hwsem -- -G"Unix Makefiles"
-
-   For APSS:
-   west build -b devkit_e7_apss samples/drivers/ipm/ipm_alif_hwsem -- -G"Unix Makefiles"
-
-2. Building testcase to test all 16 HWSEMs.
-
-.. code-block::
-   For RTSS-HE:
-   west build -b alif_e7_dk_rtss_he samples/drivers/ipm/ipm_alif_hwsem -- -G"Unix Makefiles" -DHWSEM_ALL=ON
-
-   For APSS:
-   west build -b alif_e7_dk_apss samples/drivers/ipm/ipm_alif_hwsem -- -G"Unix Makefiles" -DHWSEM_ALL=ON
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/ipm/ipm_alif_hwsem
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
 
 Sample output
 *************
 
-.. code-block:: none
-   I: Hardware Semaphore (HWSEM) example on devkit_e7_devboard
+.. code-block:: console
+   I: Hardware Semaphore (HWSEM) example on alif_e7_dk
 
    I: Locked HWSEM0!
 
@@ -72,8 +55,19 @@ Sample output
 
    I: Unlocked HWSEM0!
 
-.. code-block:: none
-   I: Test all 16 Hardware Semaphores(HWSEM) on devkit_e7_devboard
+2. Building testcase to test all 16 HWSEMs.
+
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/ipm/ipm_alif_hwsem
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :gen-args: -DHWSEM_ALL=ON
+
+Sample output
+*************
+
+.. code-block:: console
+   I: Test all 16 Hardware Semaphores(HWSEM) on alif_e7_dk
 
    I: Locked HWSEM0!
 
