@@ -216,18 +216,18 @@ add_custom_command(
 add_custom_target(gen_model_header DEPENDS ${_model_pte_header})
 add_dependencies(app gen_model_header)
 
-if(DEFINED CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE)
-  target_compile_definitions(
-    app PRIVATE
-    ET_ARM_METHOD_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE}
-  )
-endif()
-if(DEFINED CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE)
-  target_compile_definitions(
-    app PRIVATE
-    ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE}
-  )
-endif()
+# Memory pool sizes — Kconfig is the single source of truth.
+# Board-specific defaults (SRAM0 vs DTCM) are handled by Kconfig defaults
+# (see SOC_FAMILY_BALLETTO / SOC_SERIES_E1C guards in Kconfig).
+# Section placement is handled by DT_NODE_HAS_STATUS in main.cpp.
+target_compile_definitions(
+  app PRIVATE
+  ET_ARM_METHOD_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE}
+  ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE}
+)
+
+message(STATUS "ExecutorTorch: Method pool: ${CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE} bytes")
+message(STATUS "ExecutorTorch: Temp pool:   ${CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE} bytes")
 
 target_link_libraries(app PRIVATE libexecutorch)
 if(EXECUTORCH_OPS_LIB)
