@@ -18,6 +18,7 @@ LOG_MODULE_REGISTER(disp, LOG_LEVEL_INF);
 #ifdef CONFIG_MIPI_DSI
 #include <zephyr/drivers/mipi_dsi/dsi_dw.h>
 #endif /* CONFIG_MIPI_DSI */
+#include <zephyr/cache.h>
 #include "alif_logo.h"
 
 #include <soc_common.h>
@@ -287,6 +288,7 @@ int main(void)
 		cdc200_get_framebuffer(display_dev, 1, &fb_l2);
 		memset((uint8_t *) fb_l2.fb_addr, 0, fb_l2.fb_size);
 		memcpy((uint8_t *) fb_l2.fb_addr, logo, sizeof(logo));
+		sys_cache_data_flush_range((void *)fb_l2.fb_addr, sizeof(logo));
 	}
 
 	if (capabilities.layer[0].layer_en) {
