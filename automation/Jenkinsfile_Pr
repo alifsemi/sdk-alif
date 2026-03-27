@@ -232,4 +232,13 @@ pipeline {
             }
         }
     }
+    post {
+        always{
+            recordIssues(
+            tools: [gcc()],
+            qualityGates: [[threshold: 1, type: 'NEW', failure: true]],
+            enabledForFailure: true
+            )
+        }
+    }
 }
