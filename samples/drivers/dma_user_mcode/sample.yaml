@@ -1,0 +1,7 @@
+sample:
+  name: PL330 DMA User Microcode Sample
+tests:
+  sample.drivers.dma.user_mcode:
+    tags: drivers dma
+    platform_allow: ensemble balletto
+    extra_args: SNIPPET=alif-dma-mcode
