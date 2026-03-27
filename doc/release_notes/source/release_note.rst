@@ -65,9 +65,31 @@ The following are the software components used in the latest release.
    * -  Alif Secure Enclave (SE)
      - v1.109
      - `Alif Security Toolkit Quick Start Guide`_
+   * -  SE Host Services
+     - v0.50.9
+     - `Alif SE Host Services`_
 
 .. note::
    This release requires Secure Enclave software version v1.109 or later for proper operation.
+
+New Features
+------------
+
+SE Host Services
+~~~~~~~~~~~~~~~~
+
+This release adds two new APIs to the SE Host Services component:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - **API**
+     - **Description**
+   * - process_toc_entry
+     - Request to process a TOC entry.
+   * - read_otp
+     - Read an OTP word specified by offset.
 
 Supported Peripheral Drivers and Features
 ------------------------------------------
