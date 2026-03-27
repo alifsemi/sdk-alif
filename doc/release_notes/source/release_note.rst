@@ -195,6 +195,10 @@ System Resources
      - Power management framework supporting deep sleep states including Suspend-to-RAM (S2RAM), where SRAM is retained, enabling fast resume and ultra-low power idle operation.
    * -  LP-GPIO
      - Low-power GPIO controller that maintains state and wake-up capability during system sleep modes, allowing external events to trigger resume from low-power states.
+   * - DMA
+     - ARM PL330 DMA controller supporting memory-to-memory and
+       memory-to-peripheral transfers, including user-supplied microcode
+       programs for custom transfer patterns.
    * - EVTRTR
      - The Event Router (EVTRTR) is a module that can associate an event originated by one peripheral with an action executed by another.
 
