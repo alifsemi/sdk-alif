@@ -22,15 +22,6 @@
 
 #define AUDIO_DMA_ENABLED 1
 
-/* Enable to use Event Router driver instead of manual configuration
- * When enabled:
- * - DMA routing goes through event router driver
- * - Manual event router configuration is disabled
- * When disabled:
- * - Direct DMA approach with manual event router programming
- */
-#define USE_EVENT_ROUTER_DRIVER   0
-
 / {
 	aliases {
 		audio-codec = &wm8904;
@@ -61,8 +52,6 @@
 	};
 };
 
-#if USE_EVENT_ROUTER_DRIVER
-/* Event Router driver approach: route through event router */
 #include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
 
 &evtrtr2 {
@@ -90,31 +79,6 @@
 	dma-names = "rxdma", "txdma";
 #endif
 };
-
-#else
-/* Direct DMA approach: manual event router configuration */
-
-&i2s0 {
-	/delete-property/ clock-frequency;
-	/delete-property/ driver-instance;
-	compatible = "alif,i2s-sync";
-	interrupts = <I2S0_IRQ_NUM I2S0_IRQ_PRIO>;
-	bit-depth = <16>;
-	sample-rate = <48000>;
-	status = "okay";
-#if AUDIO_DMA_ENABLED
-	/* Direct PL330 DMA specifier format:
-	 * Cell 0: PL330 physical channel (2 for RX, 3 for TX)
-	 * Cell 1: PL330 peripheral request (24 for RX, 28 for TX)
-	 * Note: Event router must be manually configured
-	 */
-	dmas = <&dma2 I2S0_DMA_RX_CH I2S0_DMA_RX_REQ>,
-	       <&dma2 I2S0_DMA_TX_CH I2S0_DMA_TX_REQ>;
-	dma-names = "rxdma", "txdma";
-#endif
-};
-
-#endif /* USE_EVENT_ROUTER_DRIVER */
 
 &pinctrl_i2c1 {
 	group0 {

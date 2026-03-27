@@ -26,14 +26,6 @@
  */
 #define SPI_MASTER_SS_SW_CONTROLLED_GPIO   0
 
-/* Enable to use Event Router driver instead of manual configuration
- * When enabled:
- * - DMA routing goes through event router driver
- * - Manual event router configuration in main.c is disabled
- * When disabled:
- * - Direct DMA approach with manual event router programming
- */
-#define USE_EVENT_ROUTER_DRIVER   1
 
 /* setting SPI4(LPSPI) as master and SPI1 instance as slave. */
 / {
@@ -51,8 +43,6 @@
 	status = "okay";
 };
 
-#if USE_EVENT_ROUTER_DRIVER
-/* Event Router driver approach: route through event router */
 #include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
 
 &evtrtr2 {
@@ -108,51 +98,6 @@
 	interrupts = <138 1>;
 #endif
 };
-
-#else
-/* Direct DMA approach: manual event router configuration in main.c */
-
-&spi4 { /* LPSPI */
-	status = "okay";
-	/* Direct PL330 DMA specifier format:
-	 * Cell 0: PL330 physical channel (0 for TX, 1 for RX)
-	 * Cell 1: PL330 peripheral request (13 for TX, 12 for RX)
-	 * Note: Event router is manually configured in main.c
-	 */
-	dmas = <&dma2 0 13>, <&dma2 1 12>;
-/* If user want to use dma0 for master spi(spi4),
- * add below dmas property:
- * dmas = <&dma0 0 25>, <&dma0 1 24>;
- */
-	dma-names = "txdma", "rxdma";
-
-#if SPI_MASTER_SS_SW_CONTROLLED_GPIO
-	cs-gpios = <&gpio11 7 GPIO_ACTIVE_LOW>;
-	/* as we are testing Loopback on the same board,
-	 * make sure master interrupt priority is
-	 * higher than slave interrupt priority.
-	 */
-	interrupts = <46 0>;
-#endif /* SPI_MASTER_SS_SW_CONTROLLED_GPIO */
-};
-
-&spi1 { /* SPI1 */
-	status = "okay";
-	serial-target;
-	/* Direct PL330 DMA specifier format:
-	 * Cell 0: PL330 physical channel (2 for TX, 3 for RX)
-	 * Cell 1: PL330 peripheral request (21 for TX, 17 for RX)
-	 * Note: Event router is manually configured in main.c
-	 */
-	dmas = <&dma0 2 21>, <&dma0 3 17>;
-	dma-names = "txdma", "rxdma";
-
-#if SPI_MASTER_SS_SW_CONTROLLED_GPIO
-	interrupts = <138 1>;
-#endif
-};
-
-#endif /* USE_EVENT_ROUTER_DRIVER */
 
 #if SPI_MASTER_SS_SW_CONTROLLED_GPIO
 /* use SPI master SS pinmux as gpio. */
