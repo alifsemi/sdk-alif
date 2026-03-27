@@ -1,15 +1,5 @@
-/* Enable to use Event Router driver instead of manual configuration
- * When enabled:
- * - DMA routing goes through event router driver
- * - Manual event router configuration is disabled
- * When disabled:
- * - Direct DMA approach with manual event router programming
- */
-#define USE_EVENT_ROUTER_DRIVER   1
 
-#if USE_EVENT_ROUTER_DRIVER
 #include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
-#endif
 
 #include <dt-bindings/pinctrl/balletto-pinctrl.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -93,9 +83,6 @@
 	status = "okay";
 };
 
-#if USE_EVENT_ROUTER_DRIVER
-/* Event Router driver approach: route through event router */
-
 &evtrtr2 {
 	status = "okay";
 };
@@ -131,39 +118,6 @@
 	dma-names = "rx", "tx";
 	status = "okay";
 };
-
-#else
-/* Direct DMA approach: manual event router configuration */
-
-&uart_hci {
-	clock-frequency = <160000000>;
-	/* Direct PL330 DMA specifier format:
-	 * Cell 0: PL330 physical channel (0 for RX, 1 for TX)
-	 * Cell 1: PL330 peripheral request (26 for RX, 27 for TX)
-	 * Note: Event router must be manually configured
-	 */
-	dmas = <&dma2 HCI_UART_DMA_RX_CH HCI_UART_DMA_RX_REQ>,
-	       <&dma2 HCI_UART_DMA_TX_CH HCI_UART_DMA_TX_REQ>;
-	dma-names = "rx", "tx";
-	status = "okay";
-};
-
-&uart_ahi {
-	clock-frequency = <160000000>;
-	pinctrl-0 = <&pinctrl_ahi_trace>;
-	pinctrl-names = "default";
-	/* Direct PL330 DMA specifier format:
-	 * Cell 0: PL330 physical channel (2 for RX, 3 for TX)
-	 * Cell 1: PL330 peripheral request (2 for RX, 3 for TX)
-	 * Note: Event router must be manually configured
-	 */
-	dmas = <&dma2 AHI_UART_DMA_RX_CH AHI_UART_DMA_RX_REQ>,
-	       <&dma2 AHI_UART_DMA_TX_CH AHI_UART_DMA_TX_REQ>;
-	dma-names = "rx", "tx";
-	status = "okay";
-};
-
-#endif /* USE_EVENT_ROUTER_DRIVER */
 
 &dma2 {
 	status = "okay";
