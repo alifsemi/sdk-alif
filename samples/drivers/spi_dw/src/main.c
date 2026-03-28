@@ -247,80 +247,6 @@ static void slave_spi(void *p1, void *p2, void *p3)
 	printk("Slave Transfer Successfully Completed\n");
 }
 
-/* DMA configurations */
-#define DMA_CTRL_ACK_TYPE_Pos          (16U)
-#define DMA_CTRL_ENA                   (1U << 4)
-
-#define HE_DMA_SEL_LPSPI_Pos           (4)
-#define HE_DMA_SEL_LPSPI_Msk           (0x3U << HE_DMA_SEL_LPSPI_Pos)
-
-#if defined(CONFIG_RTSS_HE)
-/**
- * @brief Configure HE_DMA_SEL register for LPSPI
- *
- * @param dma_group DMA group value from DTS (extracted from ALIF_DMA_ENCODE)
- * @param use_dma2 True if using DMA2, False if using DMA0
- */
-static void configure_he_dma_sel_lpspi(uint8_t dma_group, bool use_dma2)
-{
-	uint32_t regdata;
-	uint32_t he_dma_sel_value;
-
-#if (IS_ENABLED(CONFIG_SOC_SERIES_E1C) || IS_ENABLED(CONFIG_SOC_SERIES_B1))
-	/* B1/E1C Series: LPSPI only supports DMA2
-	 * HE_DMA_SEL Register mapping:
-	 *   0x0: Select DMA2 group 1
-	 *   0x1, 0x2, 0x3: Select DMA2 group 2
-	 */
-	if (!use_dma2) {
-		LOG_ERR("LPSPI on B1/E1C only supports DMA2, but DMA0 configured in DTS");
-		return;
-	}
-
-	/* Map dma_group to HE_DMA_SEL value */
-	if (dma_group == 1) {
-		he_dma_sel_value = 0x0;  /* DMA2 group 1 */
-	} else if (dma_group >= 2) {
-		he_dma_sel_value = 0x1;  /* DMA2 group 2 (0x1, 0x2, or 0x3 all map to group 2) */
-	} else {
-		LOG_ERR("LPSPI on B1/E1C: invalid dma_group=%u (must be 1 or 2)", dma_group);
-		return;
-	}
-
-#else /* E7/E5/E3/E4/E6/E8/E1 Series */
-	/* E-Series: LPSPI supports both DMA2 and DMA0
-	 * HE_DMA_SEL Register mapping:
-	 *   0x0: Select DMA2
-	 *   0x1: Select DMA0 group 1
-	 *   0x2, 0x3: Select DMA0 group 2
-	 */
-
-	if (use_dma2) {
-		/* Using DMA2: HE_DMA_SEL=0x0 regardless of dma_group */
-		he_dma_sel_value = 0x0;
-	} else {
-		/* Using DMA0: HE_DMA_SEL depends on dma_group */
-		if (dma_group == 1) {
-			he_dma_sel_value = 0x1;  /* DMA0 group 1 */
-		} else if (dma_group >= 2) {
-			he_dma_sel_value = 0x2;  /* DMA0 group 2 (0x2 or 0x3) */
-		} else {
-			LOG_ERR("LPSPI on E-series DMA0: invalid dma_group=%u (must be 1 or 2)",
-				dma_group);
-			return;
-		}
-	}
-
-#endif /* SoC series check */
-
-	/* Program HE_DMA_SEL register */
-	regdata = sys_read32(M55HE_CFG_HE_DMA_SEL);
-	regdata &= ~HE_DMA_SEL_LPSPI_Msk;
-	regdata |= ((he_dma_sel_value << HE_DMA_SEL_LPSPI_Pos) & HE_DMA_SEL_LPSPI_Msk);
-	sys_write32(regdata, M55HE_CFG_HE_DMA_SEL);
-}
-#endif /* CONFIG_RTSS_HE */
-
 static void prepare_data(uint32_t *data, uint16_t def_mask)
 {
 	for (uint32_t cnt = 0; cnt < BUFF_SIZE; cnt++) {
@@ -330,40 +256,6 @@ static void prepare_data(uint32_t *data, uint16_t def_mask)
 
 int main(void)
 {
-
-	/*
-	 * Event Router Driver Configuration Section
-	 * When using the event router driver, the event router registers are
-	 * configured automatically via device tree. However, we still need to
-	 * configure SoC-level mux registers like HE_DMA_SEL that select which
-	 * DMA controller is routed to RTSS-HE peripherals.
-	 */
-
-	/* Configure HE_DMA_SEL for LPSPI based on DTS configuration */
-#if DT_NODE_EXISTS(DT_NODELABEL(lpspi0)) && DT_NODE_HAS_PROP(DT_NODELABEL(lpspi0), dmas)
-	/* B1/E1C: lpspi0 - always uses DMA2 via evtrtr2 */
-	{
-		/* Extract dma_group from encoded channel value */
-		uint8_t dma_group = ALIF_DMA_DECODE_GROUP(
-			DT_PHA_BY_IDX(DT_NODELABEL(lpspi0), dmas, 0, channel));
-		configure_he_dma_sel_lpspi(dma_group, true);
-	}
-#elif DT_NODE_EXISTS(DT_NODELABEL(spi4)) && DT_NODE_HAS_PROP(DT_NODELABEL(spi4), dmas)
-	/* E-series: spi4 (LPSPI) - check which event router is referenced
-	 * - &evtrtr2 → DMA2
-	 * - &evtrtr0 → DMA0
-	 */
-	{
-		/* Check which event router phandle is used */
-		bool use_dma2 = DT_SAME_NODE(
-			DT_PHANDLE_BY_IDX(DT_NODELABEL(spi4), dmas, 0),
-			DT_NODELABEL(evtrtr2));
-		/* Extract dma_group from encoded channel value */
-		uint8_t dma_group = ALIF_DMA_DECODE_GROUP(
-			DT_PHA_BY_IDX(DT_NODELABEL(spi4), dmas, 0, channel));
-		configure_he_dma_sel_lpspi(dma_group, use_dma2);
-	}
-#endif
 
 	prepare_data(master_txdata, 0xA5A5);
 	prepare_data(slave_txdata, 0x5A5A);
