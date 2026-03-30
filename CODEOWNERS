@@ -2,14 +2,15 @@
 #
 
 /.git*                             @RupeshKumar-AlifSemi
+/applications/                     @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
 /applications/testapp/             @mikter @jheiskan81
 /automation/                       @rajranjan-alifsemi @layl1984
 /.checkpatch.conf                  @RupeshKumar-AlifSemi
-/drivers/                          @RupeshKumar-AlifSemi
+/doc/                              @Anilkumar-Alifsemi @RupeshKumar-AlifSemi
+/drivers/                          @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
 Jenkinsfile                        @rajranjan-alifsemi @layl1984
-/samples/                          @RupeshKumar-AlifSemi
+/samples/                          @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
 /samples/bluetooth/                @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi
-/samples/lc3/                      @AnttiKauppila-AlifSemi
 /samples/drivers/adc/              @Prabhakar-Alifsemi
 /samples/drivers/audio/dmic_alif/  @Nisarga-AlifSemi
 /samples/drivers/cmp/              @Prabhakar-Alifsemi
@@ -23,7 +24,9 @@ Jenkinsfile                        @rajranjan-alifsemi @layl1984
 /samples/matter/                   @jheiskan81
 /samples/modules/tflite-micro/     @rajranjan-alifsemi @SrinivasRagolu-AlifSemi
 /samples/sensor/bme680/            @Prabhakar-Alifsemi
-/subsys/                           @AnttiKauppila-AlifSemi
-/subsys/bluetooth/                 @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi
+/subsys/                           @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
+/subsys/bluetooth/                 @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi @jheiskan81
 /subsys/ieee802154/                @mikter @jheiskan81
 /subsys/matter/                    @jheiskan81
+/tests/                            @RupeshKumar-AlifSemi @VeeraAlif
+*.rst                              @Anilkumar-Alifsemi
