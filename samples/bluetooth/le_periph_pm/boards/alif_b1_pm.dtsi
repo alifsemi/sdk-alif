@@ -13,6 +13,15 @@
 	status = "okay";
 };
 
+&pinctrl_uart2 {
+	group0 {
+		pinmux = <PIN_P5_2__UART2_RX_B>,
+			 <PIN_P5_3__UART2_TX_B>;
+		read-enable = <0x1>;
+		driver-state-control = <1>; /* pull-up: initialize RX active-high */
+	};
+};
+
 &uart2 {
 	status = "okay";
 };
