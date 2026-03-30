@@ -51,22 +51,26 @@ CONFIG_LPGPIO_WAKEUP_SOURCE to 0 or 1 respectively.
 LPGPIO wake up can be enabled by using a build configuration snippet:
 
 .. code-block:: console
-  west build -Slpgpio-wakeup -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
+
+    west build -Slpgpio-wakeup -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
 
 .. code-block:: console
-  west build -Slpgpio-wakeup -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/ -- -DCONFIG_LPGPIO_WAKEUP_SOURCE=0
+
+    west build -Slpgpio-wakeup -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/ -- -DCONFIG_LPGPIO_WAKEUP_SOURCE=0
 
 BLE can be shutdown while the HE core is sleeping.
 This is useful especially when the LPGPIO is used to trigger wakeups.
 
 .. code-block:: console
-  west build -Sble-disable -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
+
+    west build -Sble-disable -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
 
 Both of these features can be used together.
 BLE is advertising and is connectable while the system is awake.
 
 .. code-block:: console
-  west build -Slpgpio-wakeup -Sble-disable -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
+
+    west build -Slpgpio-wakeup -Sble-disable -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/bluetooth/le_periph_pm/
 
 Setting up the measurement device
 *********************************
@@ -120,5 +124,3 @@ After subscription the Application starts to send maximum payload data to the Ce
 * **Measurement point 4** Find an BLE wakeup with Transmission to Measure single large data transmission.
 
 * **Measurement point 5** When BLE receives ACK for the successful transmissions it wakes the ES1 to inform the transmission so you can find a BLE reception with immediate ES1 wakeup and processing
-
-
