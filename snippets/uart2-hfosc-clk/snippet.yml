@@ -1,0 +1,3 @@
+name: uart2-hfosc-clk
+append:
+  EXTRA_DTC_OVERLAY_FILE: uart2_clocksel_hfosc_clk_38p4m.overlay
