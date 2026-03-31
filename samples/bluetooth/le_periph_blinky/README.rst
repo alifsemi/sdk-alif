@@ -13,7 +13,7 @@ When Power Management (PM) is enabled, the sample uses LPGPIO pins instead of st
 * **LED output**: LPGPIO pin 0
 * **Button input**: LPGPIO pin 1
 
-On the Alif Balletto Development Kit, these correspond to J11 pin 30 (LED) and pin 32 (button).
+On the Alif Balletto Development Kit, these correspond to J11 pin 28 (LED) and pin 30 (button).
 
 .. note::
    Power Management (PM) is enabled by default in this sample. This is configured in ``CMakeLists.txt`` with the following line::
