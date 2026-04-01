@@ -1,0 +1,26 @@
+/*
+ * SPDX-FileCopyrightText: Copyright Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * I2S_0 : Tested in E7 devkit pls short following pins:
+ *	J11.34 with J11.33  (loopback SDI with SDO)
+ */
+
+&pinctrl {
+	pinctrl_i2s0_B:pinctrl_i2s0_B {
+		group0 {
+			pinmux = < PIN_P4_1__I2S0_SDI_B >,
+				 < PIN_P4_2__I2S0_SDO_B >,
+				 < PIN_P4_3__I2S0_SCLK_B >,
+				 < PIN_P4_4__I2S0_WS_B >;
+			read-enable = <0x1>;
+		};
+	};
+};
+
+i2s_rxtx: &i2s0 {
+	pinctrl-0 = <&pinctrl_i2s0_B>;
+	status = "okay";
+};
