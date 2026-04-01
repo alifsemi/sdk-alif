@@ -1,0 +1,9 @@
+name: i2s-duplex
+boards:
+  /alif_b1_dk/.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: b1_rtss.overlay
+
+  /alif_(e3|e7)_dk/.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e3_e7_rtss.overlay
