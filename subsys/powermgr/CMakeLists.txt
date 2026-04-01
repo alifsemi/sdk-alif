@@ -8,4 +8,3 @@
 
 
 add_subdirectory_ifdef(CONFIG_ALIF_POWER_MGR_SHELL shell/)
-add_subdirectory_ifdef(CONFIG_ALIF_POWER_MGR_LIB pm/)
