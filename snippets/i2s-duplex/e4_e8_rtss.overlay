@@ -1,0 +1,13 @@
+/*
+ * SPDX-FileCopyrightText: Copyright Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/*
+ * I2S_3 : Tested in E8 devkit please short following pins:
+ *	J9.0 with J9.3  (loopback SDI with SDO)
+ */
+
+i2s_rxtx: &i2s3 {
+	status = "okay";
+};
