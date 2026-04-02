@@ -73,6 +73,8 @@ LOG_MODULE_REGISTER(unicast_initiator, CONFIG_UNICAST_INITIATOR_LOG_LEVEL);
 #error "Invalid latency target"
 #endif
 
+#define DEFAULT_VOLUME 250
+
 /* FIXME: A single group cannot be used for bidirection and multiple acceptors */
 #define UC_GROUP_PER_PEER (CONFIG_LE_AUDIO_BIDIRECTIONAL && (CONFIG_NUMBER_OF_CLIENTS > 1))
 
@@ -456,6 +458,7 @@ static void configure_qos(struct unicast_peer *p_unicast_env)
 
 		if (p_ase->dir == ASE_DIR_SOURCE) {
 			audio_datapath_create_sink(&unicast_env.datapath_config);
+			audio_datapath_channel_volume_sink((DEFAULT_VOLUME >> 1), false);
 		} else if (p_ase->dir == ASE_DIR_SINK) {
 			audio_datapath_create_source(&unicast_env.datapath_config);
 		} else {
@@ -489,10 +492,10 @@ static void *get_best_stream(struct pac_capa *p_pac_base, size_t count)
 	struct pac_capa *p_pac = NULL;
 	uint32_t sampling_freq_hz = 0;
 	while (count--) {
-#if PRIORITIZE_16KHZ_STREAM
+#if PRIORITIZE_16KHZ_STREAM || 1
 		/* Use 16kHz 7.5ms frame duration if available */
 		if ((16000 == p_pac_base[count].sampling_freq_hz) &&
-		    p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_7_5MS_BIT) {
+		    p_pac_base[count].frame_duration_bf & BAP_FRAME_DUR_10MS_BIT) {
 			p_pac = &p_pac_base[count];
 			break;
 		}
@@ -636,13 +639,13 @@ static int configure_codec(struct unicast_peer *const p_unicast_env)
 		struct unicast_client_ase *const p_ase = &p_unicast_env->ase[iter];
 
 		if (p_ase->ase_lid != GAF_INVALID_LID || p_ase->dir == ASE_DIR_UNKNOWN) {
-			LOG_DBG("ASE %u is invalid - skip", iter);
+			LOG_DBG("ASE %u is invalid - skip %d %d", iter, p_ase->ase_lid, p_ase->dir);
 			continue;
 		}
 
 		/* TODO read positions from PAC */
 		struct bap_cfg *p_config = bap_config_alloc_and_init(
-			frame_dur, p_pac, CO_BIT(GAF_LOC_FRONT_LEFT_POS + iter));
+			frame_dur, p_pac, CO_BIT(GAF_LOC_FRONT_LEFT_POS/* + iter*/));
 
 		if (!p_config) {
 			LOG_ERR("Failed to allocate memory for codec config");
@@ -671,7 +674,7 @@ static int configure_codec(struct unicast_peer *const p_unicast_env)
 			continue;
 		}
 
-		LOG_DBG("Codec %s setup: conidx %u, ase_instance_idx %u, ase_lid %u, "
+		LOG_INF("Codec %s setup: conidx %u, ase_instance_idx %u, ase_lid %u, "
 			"octets %uB",
 			ase_type[p_ase->dir], conidx, p_ase->ase_instance_idx, p_ase->ase_lid,
 			p_config->param.frame_octet);

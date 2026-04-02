@@ -48,11 +48,6 @@ config APP_PRINT_STATS_INTERVAL
 	  count, e.g. 1024 means to print the statistics every 512 SDUs (per channel). With a 10 ms
 	  SDU interval this is around 10 seconds.
 
-config MICROPHONE_GAIN
-	int "Microphone gain"
-	default 20
-	range 1 256
-
 config INPUT_VOLUME_LEVEL
 	int "Input volume level in percentage when MIC input is active"
 	default 33

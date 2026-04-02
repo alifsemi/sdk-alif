@@ -181,6 +181,11 @@ config ALIF_BLE_AUDIO_USE_RAMFUNC
 	bool "Run some critical functions in RAM"
 	default n
 
+config ALIF_BLE_AUDIO_PDM_MICROPHONE_GAIN
+	int "Microphone gain"
+	default 20
+	range 1 256
+
 rsource "Kconfig.lc3"
 rsource "Kconfig.presentation_compensation"
 

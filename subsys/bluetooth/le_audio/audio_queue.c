@@ -55,7 +55,8 @@ struct audio_queue *audio_queue_create(size_t const item_count, size_t const sam
 		return NULL;
 	}
 
-	k_msgq_init(&hdr->msgq, hdr->buf + (item_count * padded_size), sizeof(void *), item_count);
+	k_msgq_init(&hdr->msgq, (char *)(hdr->buf + (item_count * padded_size)), sizeof(void *),
+		    item_count);
 
 	hdr->audio_block_samples = block_samples;
 	hdr->frame_duration_us = frame_duration_us;
@@ -68,10 +69,6 @@ struct audio_queue *audio_queue_create(size_t const item_count, size_t const sam
 
 int audio_queue_delete(struct audio_queue *queue)
 {
-	if (queue == NULL) {
-		return -EINVAL;
-	}
-
 	free(queue);
 	return 0;
 }

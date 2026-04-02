@@ -20,6 +20,7 @@
 #include "gapi_isooshm.h"
 
 #include "bluetooth/le_audio/audio_source_i2s.h"
+#include "bluetooth/le_audio/audio_source_pdm.h"
 #include "bluetooth/le_audio/iso_datapath_htoc.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 
@@ -100,6 +101,12 @@ static int audio_encoder_init(void)
 }
 SYS_INIT(audio_encoder_init, APPLICATION, 0);
 
+enum audio_source_type {
+	AUDIO_SOURCE_NONE,
+	AUDIO_SOURCE_I2S,
+	AUDIO_SOURCE_PDM,
+};
+
 struct cb_list {
 	audio_encoder_sdu_cb_t cb;
 	void *context;
@@ -127,6 +134,8 @@ struct audio_encoder {
 	/* Encoder thread */
 	struct k_thread thread;
 	k_tid_t tid;
+	/* Audio source type */
+	enum audio_source_type source_type;
 };
 
 K_THREAD_STACK_DEFINE(encoder_stack, CONFIG_LC3_ENCODER_STACK_SIZE);
@@ -252,6 +261,7 @@ INT_RAMFUNC static void audio_encoder_thread_func(void *p1, void *p2, void *p3)
 				LOG_ERR("Failed to put SDU to msgq, err %d", ret);
 				continue;
 			}
+
 			/* Notify datapath that SDUs are completed. This also triggers next read
 			 * if last one was failed for some reason.
 			 */
@@ -326,9 +336,27 @@ struct audio_encoder *audio_encoder_create(struct audio_encoder_params const *pa
 		return NULL;
 	}
 
-	ret = audio_source_i2s_configure(params->i2s_dev, enc->audio_queue);
+	/* Check from params->i2s_dev if it is PDM or I2S */
+	if (params->pdm_dev) {
+#if CONFIG_AUDIO_DMIC
+		ret = audio_source_pdm_configure(params->pdm_dev, enc->audio_queue);
+#else
+		LOG_ERR("PDM audio source is not supported");
+		audio_encoder_delete(enc);
+		return NULL;
+#endif
+		enc->source_type = AUDIO_SOURCE_PDM;
+	} else if (params->i2s_dev) {
+		ret = audio_source_i2s_configure(params->i2s_dev, enc->audio_queue);
+		enc->source_type = AUDIO_SOURCE_I2S;
+	} else {
+		LOG_ERR("No audio source device provided");
+		audio_encoder_delete(enc);
+		return NULL;
+	}
+
 	if (ret != 0) {
-		LOG_ERR("Failed to configure audio source I2S, err %d", ret);
+		LOG_ERR("Failed to configure audio source, err %d", ret);
 		audio_encoder_delete(enc);
 		return NULL;
 	}
@@ -463,7 +491,17 @@ int audio_encoder_start_channel(struct audio_encoder *const encoder, uint32_t co
 
 	encoder->channel[ch_index].enabled = true;
 
-	audio_source_i2s_start();
+	/* Start the appropriate audio source */
+	if (encoder->source_type == AUDIO_SOURCE_PDM) {
+#if CONFIG_AUDIO_DMIC
+		audio_source_pdm_start();
+#else
+		LOG_ERR("PDM audio source is not supported");
+		return -ENOTSUP;
+#endif
+	} else if (encoder->source_type == AUDIO_SOURCE_I2S) {
+		audio_source_i2s_start();
+	}
 
 	return 0;
 }
@@ -487,7 +525,14 @@ int audio_encoder_stop_channel(struct audio_encoder *const encoder, uint32_t con
 
 	iso_datapath_htoc_unbind(encoder->channel[ch_index].iso_dp);
 
-	audio_source_i2s_stop();
+	/* Stop the appropriate audio source */
+	if (encoder->source_type == AUDIO_SOURCE_PDM) {
+#if CONFIG_AUDIO_DMIC
+		audio_source_pdm_stop();
+#endif
+	} else if (encoder->source_type == AUDIO_SOURCE_I2S) {
+		audio_source_i2s_stop();
+	}
 
 	return 0;
 }

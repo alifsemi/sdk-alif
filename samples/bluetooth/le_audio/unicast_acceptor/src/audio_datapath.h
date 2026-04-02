@@ -12,10 +12,6 @@
 
 #include <zephyr/types.h>
 
-#define CODEC_CFG_NODE DT_ALIAS(audio_codec)
-#define CODEC_I2S_NODE DT_ALIAS(i2s_bus)
-#define I2S_MIC_NODE   DT_ALIAS(i2s_mic)
-
 struct audio_datapath_config {
 	uint32_t pres_delay_us;
 	uint32_t sampling_rate_hz;
