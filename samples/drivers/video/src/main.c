@@ -28,6 +28,14 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #define N_VID_BUFF              MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
 
 #define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
+#define CAM_AXI_EP_ENABLED DT_NODE_EXISTS(DT_NODELABEL(cam_mem_ep_out))
+#define DUAL_EP (ISP_ENABLED && CAM_AXI_EP_ENABLED)
+
+#if DUAL_EP
+#define N_RAW_BUFF 1
+#undef N_VID_BUFF
+#define N_VID_BUFF MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX - N_RAW_BUFF, N_FRAMES)
+#endif
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #define PIPELINE_FORMAT	VIDEO_PIX_FMT_BGGR8
@@ -127,6 +135,12 @@ int main(void)
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	int loop_ctr;
 
+#if DUAL_EP
+	const struct device *cam_dev;
+	struct video_buffer *raw_buffers[N_RAW_BUFF], *raw_vbuf;
+	struct video_format raw_fmt = { 0 };
+	size_t raw_bsize;
+#endif
 	uint32_t last_timestamp = 0;
 	uint32_t frame_time = 0;
 
@@ -141,6 +155,13 @@ int main(void)
 		return -1;
 	}
 	LOG_INF("- Device name: %s", video->name);
+#if DUAL_EP
+	cam_dev = DEVICE_DT_GET_ONE(alif_cam);
+	if (!device_is_ready(cam_dev)) {
+		LOG_ERR("%s: device not ready.", cam_dev->name);
+		return -1;
+	}
+#endif
 
 	for (loop_ctr = NUM_CAMS - 1; loop_ctr >= 0; loop_ctr--) {
 #if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
@@ -217,6 +238,10 @@ int main(void)
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	}
 
+#if DUAL_EP
+	raw_fmt = fmt;
+#endif
+
 #if (ISP_ENABLED)
 		/*
 		 * Set Output Endpoint format. Ensure that ISP EP-out
@@ -281,6 +306,26 @@ int main(void)
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
 
+#if DUAL_EP
+	raw_bsize = raw_fmt.pitch * raw_fmt.height;
+	LOG_INF("Raw (AXI) buffer size: %d", raw_bsize);
+	for (i = 0; i < ARRAY_SIZE(raw_buffers); i++) {
+		raw_buffers[i] = video_buffer_alloc(raw_bsize, K_NO_WAIT);
+		if (raw_buffers[i] == NULL) {
+			LOG_ERR("Unable to alloc raw video buffer");
+			return -1;
+		}
+		memset(raw_buffers[i]->buffer, 0, raw_bsize);
+		ret = video_enqueue(cam_dev, VIDEO_EP_OUT, raw_buffers[i]);
+		if (ret) {
+			LOG_ERR("Unable to enqueue raw video buffer");
+			return -1;
+		}
+		LOG_INF("raw buffer[%d]: addr 0x%08x size %d",
+			i, (uint32_t)raw_buffers[i]->buffer, raw_bsize);
+	}
+#endif
+
 	/*
 	 * TODO: Need to fix this delay.
 	 * As per our observation, if we are not giving this much delay
@@ -325,6 +370,15 @@ int main(void)
 			last_timestamp = vbuf->timestamp;
 			LOG_INF("FPS: %f", 1000.0/frame_time);
 		}
+
+#if DUAL_EP
+		ret = video_dequeue(cam_dev, VIDEO_EP_OUT, &raw_vbuf, K_FOREVER);
+		if (!ret) {
+			LOG_INF("Got raw frame %u! size: %u; timestamp %u ms",
+				frame - 1, raw_vbuf->bytesused, raw_vbuf->timestamp);
+		}
+		break;
+#endif
 
 		if (i < N_FRAMES - N_VID_BUFF) {
 			ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
