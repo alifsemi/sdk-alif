@@ -55,34 +55,63 @@ extern "C" executorch::runtime::Error
 executorch_delegate_EthosUBackend_registered(void);
 #endif
 
-#if !defined(ET_ARM_METHOD_ALLOCATOR_POOL_SIZE)
-#define ET_ARM_METHOD_ALLOCATOR_POOL_SIZE (1572864)
-#endif
-const size_t method_allocation_pool_size = ET_ARM_METHOD_ALLOCATOR_POOL_SIZE;
-unsigned char __attribute__((
-    section(".alif_sram0.tensor_arena"),
-    aligned(16))) method_allocation_pool[method_allocation_pool_size];
+/*
+ * Memory section configuration for Alif boards:
+ *
+ * Boards WITH sram0 (E3/E4/E7/E8):
+ *   - Use .alif_sram0 sections for tensor arena (fast, 4MB SRAM)
+ *   - Pool sizes: 1.5MB each
+ *
+ * Boards WITHOUT sram0 (E1C, B1):
+ *   - Use default BSS placement in DTCM
+ *   - Pool sizes: 64KB each (limited DTCM ~1.5MB total)
+ *
+ * Detection uses Zephyr's DT_NODE_HAS_STATUS macro to check sram0 availability.
+ * This matches the linker script behavior in sram.ld.
+ */
+#include <zephyr/devicetree.h>
 
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(sram0), okay)
+/* Boards with SRAM0 (E3/E4/E7/E8): Use dedicated SRAM sections */
+#define ET_TENSOR_ARENA_ATTR __attribute__((section(".alif_sram0.tensor_arena"), aligned(16)))
+#define ET_ETHOSU_SCRATCH_ATTR __attribute__((section(".alif_sram0.ethosu_scratch"), aligned(16)))
+#if !defined(ET_ARM_METHOD_ALLOCATOR_POOL_SIZE)
+#define ET_ARM_METHOD_ALLOCATOR_POOL_SIZE (1572864)  /* 1.5MB for boards with SRAM */
+#endif
 #if !defined(ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
-#define ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE (1572864)
+#define ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE (1572864)  /* 1.5MB */
+#endif
+#else
+/* Boards without SRAM0 (E1C, B1): Use DTCM with smaller pools */
+#define ET_TENSOR_ARENA_ATTR __attribute__((aligned(16)))
+#define ET_ETHOSU_SCRATCH_ATTR __attribute__((aligned(16)))
+#if !defined(ET_ARM_METHOD_ALLOCATOR_POOL_SIZE)
+#define ET_ARM_METHOD_ALLOCATOR_POOL_SIZE (65536)  /* 64KB for DTCM-only boards */
+#endif
+#if !defined(ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
+#define ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE (65536)  /* 64KB */
+#endif
 #endif
 
 #if !defined(ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
 #define ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE 0x600
 #endif
 
+const size_t method_allocation_pool_size = ET_ARM_METHOD_ALLOCATOR_POOL_SIZE;
+ET_TENSOR_ARENA_ATTR
+unsigned char method_allocation_pool[ET_ARM_METHOD_ALLOCATOR_POOL_SIZE];
+
 const size_t temp_allocation_pool_size =
     ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE;
-unsigned char __attribute__((
-    section(".alif_sram0.tensor_arena"),
-    aligned(16))) temp_allocation_pool[temp_allocation_pool_size];
+ET_TENSOR_ARENA_ATTR
+unsigned char temp_allocation_pool[ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
 
 #if defined(ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
 extern "C" {
 size_t ethosu_fast_scratch_size =
     ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE;
-unsigned char __attribute__((section(".alif_sram0.ethosu_scratch"), aligned(16)))
-dedicated_sram[ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
+ET_ETHOSU_SCRATCH_ATTR
+unsigned char dedicated_sram[ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
 unsigned char* ethosu_fast_scratch = dedicated_sram;
 }
 #endif
