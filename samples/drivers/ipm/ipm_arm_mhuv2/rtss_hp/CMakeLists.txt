@@ -12,7 +12,7 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(mhuv2)
 
 option(SE_SERVICES "Build SE services test case" ON)
-if("${BOARD}" STREQUAL "alif_e7_dk_rtss_hp")
+if("${BOARD}" STREQUAL "alif_e7_dk/ae722f80f55d5xx/rtss_hp")
 	option(APSS_MHU0 "Build APSS (A32) MHU0 test case" OFF)
 	option(APSS_MHU1 "Build APSS (A32) MHU1 test case" OFF)
 endif()
