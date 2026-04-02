@@ -95,12 +95,11 @@ static int audio_decoder_init(void)
 		return ret;
 	}
 
-#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE) || DT_NODE_EXISTS(GPIO_TEST1_NODE)
 	init_test_pin(&test_pin0);
-#endif
-#if DT_NODE_EXISTS(GPIO_TEST1_NODE)
 	init_test_pin(&test_pin1);
 #endif
+
 	return 0;
 }
 SYS_INIT(audio_decoder_init, APPLICATION, 0);
@@ -271,7 +270,7 @@ get_next_sdus:
 				continue;
 			}
 
-			if (bec_detect || bad_frame) {
+			if (bec_detect || bad_frame || !p_sdu->sdu_len) {
 				/* Keep for debugging. Don't enable by default to avoid timing
 				 * issue. LOG_WRN("Corrupted input frame is detected [%u]", iter);
 				 */

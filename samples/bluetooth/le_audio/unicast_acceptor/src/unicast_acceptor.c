@@ -74,26 +74,6 @@ LOG_MODULE_REGISTER(unicast_acceptor, CONFIG_UNICAST_ACCEPTOR_LOG_LEVEL);
 #define ADV_MAX_TX_PWR        -20
 #define ADV_MAX_SKIP          1
 
-#define I2S_SINK_SAMPLE_RATE DT_PROP(CODEC_I2S_NODE, sample_rate)
-
-#if I2S_SINK_SAMPLE_RATE != 16000 && I2S_SINK_SAMPLE_RATE != 24000 &&                              \
-	I2S_SINK_SAMPLE_RATE != 32000 && I2S_SINK_SAMPLE_RATE != 48000
-#error "Invalid sample rate"
-#endif
-
-#if DT_NODE_EXISTS(I2S_MIC_NODE)
-#define I2S_SOURCE_SAMPLE_RATE DT_PROP(I2S_MIC_NODE, sample_rate)
-
-#if I2S_SOURCE_SAMPLE_RATE != 16000 && I2S_SOURCE_SAMPLE_RATE != 24000 &&                          \
-	I2S_SOURCE_SAMPLE_RATE != 32000 && I2S_SOURCE_SAMPLE_RATE != 48000
-#error "Invalid microphone sample rate"
-#endif
-
-#else
-/* Use sink sample rate as default if microphone node is not defined */
-#define I2S_SOURCE_SAMPLE_RATE I2S_SINK_SAMPLE_RATE
-#endif
-
 struct volume {
 	uint8_t volume;
 	bool mute;
@@ -228,7 +208,7 @@ static void enable_streaming(struct k_work *const p_job)
 			LOG_INF("Sink stream %u active", p_ase->stream_lid);
 		}
 	} else if (p_ase->dir == ASE_DIR_SOURCE) {
-		if (audio_datapath_channel_start_source(p_ase->stream_lid)) {
+		if (!audio_datapath_channel_start_source(p_ase->stream_lid)) {
 			LOG_INF("Source stream %u active", p_ase->stream_lid);
 		}
 	}
@@ -987,15 +967,10 @@ static uint32_t get_records_sink(void)
 
 	uint32_t nb_record_bits = CAPA_TYPE_16_10MS_BIT + CAPA_TYPE_16_7_5MS_BIT;
 
-#if 24000 <= I2S_SINK_SAMPLE_RATE
 	nb_record_bits += CAPA_TYPE_24_10MS_BIT + CAPA_TYPE_24_7_5MS_BIT;
-#endif
-#if 32000 <= I2S_SINK_SAMPLE_RATE
 	nb_record_bits += CAPA_TYPE_32_10MS_BIT + CAPA_TYPE_32_7_5MS_BIT;
-#endif
-#if 48000 <= I2S_SINK_SAMPLE_RATE
 	nb_record_bits += CAPA_TYPE_48_10MS_1_BIT + CAPA_TYPE_48_7_5MS_BIT;
-#endif
+
 	return nb_record_bits;
 #endif
 }
@@ -1038,17 +1013,11 @@ static uint32_t get_records_source(void)
 
 	uint32_t nb_record_bits = CAPA_TYPE_16_10MS_BIT + CAPA_TYPE_16_7_5MS_BIT;
 
-#if 24000 <= I2S_SOURCE_SAMPLE_RATE
 	nb_record_bits += CAPA_TYPE_24_10MS_BIT + CAPA_TYPE_24_7_5MS_BIT;
-#endif
-#if 32000 <= I2S_SOURCE_SAMPLE_RATE
 	nb_record_bits += CAPA_TYPE_32_10MS_BIT + CAPA_TYPE_32_7_5MS_BIT;
-#endif
-#if 48000 <= I2S_SOURCE_SAMPLE_RATE
 	nb_record_bits += CAPA_TYPE_48_10MS_2_BIT;
-#endif
-	return nb_record_bits;
 
+	return nb_record_bits;
 #endif
 }
 

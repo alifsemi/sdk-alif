@@ -21,3 +21,4 @@ zephyr_library_sources(
     iso_datapath_ctoh.c
     presentation_compensation.c
 )
+zephyr_library_sources_ifdef(CONFIG_AUDIO_DMIC audio_source_pdm.c)

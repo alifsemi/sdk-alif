@@ -27,10 +27,13 @@ LOG_MODULE_REGISTER(iso_datapath_ctoh, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
 #define GPIO_TEST0_NODE DT_ALIAS(ctoh_test0)
 #define GPIO_TEST1_NODE DT_ALIAS(ctoh_test1)
+#define GPIO_TEST2_NODE DT_ALIAS(ctoh_test2)
 
-#if DT_NODE_EXISTS(GPIO_TEST0_NODE) || DT_NODE_EXISTS(GPIO_TEST1_NODE)
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE) || DT_NODE_EXISTS(GPIO_TEST1_NODE) ||                          \
+	DT_NODE_EXISTS(GPIO_TEST2_NODE)
 static const struct gpio_dt_spec test_pin0 = GPIO_DT_SPEC_GET_OR(GPIO_TEST0_NODE, gpios, {0});
 static const struct gpio_dt_spec test_pin1 = GPIO_DT_SPEC_GET_OR(GPIO_TEST1_NODE, gpios, {0});
+static const struct gpio_dt_spec test_pin2 = GPIO_DT_SPEC_GET_OR(GPIO_TEST2_NODE, gpios, {0});
 
 static int init_test_pin(const struct gpio_dt_spec *const p_pin)
 {
@@ -67,13 +70,14 @@ static inline void set_test_pin(const struct gpio_dt_spec *const p_pin, int cons
 }
 
 /* Initialisation to perform pre-main */
-static int iso_datapath_ctoh_init(void)
+static int iso_datapath_ctoh_test_gpio_init(void)
 {
 	init_test_pin(&test_pin0);
 	init_test_pin(&test_pin1);
+	init_test_pin(&test_pin2);
 	return 0;
 }
-SYS_INIT(iso_datapath_ctoh_init, APPLICATION, 0);
+SYS_INIT(iso_datapath_ctoh_test_gpio_init, APPLICATION, 0);
 #endif
 
 #define ISOSHM_INVALID_STATUS (GAPI_ISOOSHM_SDU_STATUS_LOST + 1)
@@ -319,11 +323,18 @@ int iso_datapath_ctoh_start(struct iso_datapath_ctoh *const datapath)
 		return -EINVAL;
 	}
 
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin2, 1);
+#endif
+
 	datapath->stop = false;
 	datapath->awaiting_buffer = false;
 
 	if (iso_datapath_ctoh_bind(datapath)) {
 		LOG_ERR("Failed to bind datapath (stream_lid %u)", datapath->stream_id);
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+		set_test_pin(&test_pin2, 0);
+#endif
 		return -ENOEXEC;
 	}
 
@@ -332,6 +343,10 @@ int iso_datapath_ctoh_start(struct iso_datapath_ctoh *const datapath)
 	/* TODO: handle start timestamp
 	 * datapath->start_timestamp_us = gapi_isooshm_dp_get_local_time();
 	 */
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin2, 0);
+#endif
 
 	return err;
 }
@@ -354,14 +369,25 @@ INT_RAMFUNC void iso_datapath_ctoh_notify_sdu_done(void *p_datapath, uint32_t co
 	ARG_UNUSED(timestamp);
 	ARG_UNUSED(sdu_seq);
 
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin2, 1);
+#endif
+
 	struct iso_datapath_ctoh *const datapath = p_datapath;
 
 	if (!datapath || datapath->stop || !datapath->awaiting_buffer) {
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+		set_test_pin(&test_pin2, 0);
+#endif
 		return;
 	}
 
 	datapath->awaiting_buffer = false;
 	recv_next_sdu(datapath, true);
+
+#if DT_NODE_EXISTS(GPIO_TEST0_NODE)
+	set_test_pin(&test_pin2, 0);
+#endif
 }
 
 int iso_datapath_ctoh_delete(struct iso_datapath_ctoh *const datapath)

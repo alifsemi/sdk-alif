@@ -17,6 +17,7 @@
 
 struct audio_encoder_params {
 	const struct device *i2s_dev;
+	const struct device *pdm_dev;
 	uint32_t audio_buffer_len_us;
 	uint32_t frame_duration_us;
 	uint32_t sampling_rate_hz;

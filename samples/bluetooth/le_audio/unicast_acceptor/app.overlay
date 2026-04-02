@@ -21,7 +21,7 @@
 
 		audio-codec = &wm8904;
 		i2s-bus = &i2s0;
-		/*i2s-mic = &i2s2;*/
+		pdm-mic = &lppdm;
 	};
 
 	/delete-node/ buttons;
@@ -61,11 +61,11 @@
 	status = "okay";
 };
 
-/* Source (input) use onboard I2S microphones (T5848)
- *
- * Balletto A5 DevKit does not have I2S mics anymore.
- * TODO: Need to be replaced by the PDM mics.
- */
+&lppdm {
+	status = "okay";
+};
+
+/* Source (input) use onboard PDM microphones in LPPDM interface. */
 
 &pinctrl_i2c1 {
 	group0 {
@@ -80,6 +80,17 @@
 			 <PIN_P2_5__I2S0_SDO_B>,
 			 <PIN_P1_7__I2S0_WS_A>,
 			 <PIN_P1_6__I2S0_SCLK_A>;
+	};
+};
+
+&pinctrl_lppdm {
+	group0 {
+		pinmux = < PIN_P7_4__LPPDM_C2_C >;
+		read-enable = < 0x0 >;
+	};
+	group1 {
+		pinmux = < PIN_P7_5__LPPDM_D2_C >;
+		read-enable = < 0x1 >;
 	};
 };
 
