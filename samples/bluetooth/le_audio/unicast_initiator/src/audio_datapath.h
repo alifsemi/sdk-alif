@@ -145,6 +145,17 @@ int audio_datapath_channel_start_sink(uint8_t stream_lid);
 int audio_datapath_channel_stop_sink(uint8_t stream_lid);
 
 /**
+ * @brief Set the volume of an audio sink channel
+ *
+ * @param volume New volume value
+ * @param mute New mute state (true or false)
+ *
+ * @retval 0 if successful
+ * @retval Negative error code on failure
+ */
+int audio_datapath_channel_volume_sink(uint8_t volume, bool mute);
+
+/**
  * @brief Clean up the audio sink datapath
  *
  * This stops the audio sink datapath and cleans up all elements created by

@@ -26,10 +26,10 @@ target_include_directories(app PRIVATE
 target_sources(app PRIVATE
     src/main.c
     src/audio_datapath.c
-    src/mic_source.c
     src/auracast_shell.c
     ${COMMON_DIR}/power_mgr.c
 )
+target_sources_ifdef(CONFIG_AUDIO_DMIC app PRIVATE src/mic_source.c)
 
 add_subdirectory(auracast_source/)
 add_subdirectory(auracast_sink/)
