@@ -26,7 +26,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 
 2. Build command for application on the hwsem0_test M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -46,7 +46,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 
 4. Build command for application on the hwsem0_test M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
@@ -71,7 +71,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit, follow the command:
 
-.. code-block:: bash
+.. code-block:: console
 
     west flash
 
@@ -83,7 +83,7 @@ This section provides the console outputs for both single HWSEM and all HWSEM te
 Single HWSEM Test Output
 --------------------------
 
-.. code-block:: console
+.. code-block:: text
 
     I: Hardware Semaphore (HWSEM) example on alif_e7_dk
     I: hwsem_lock: HWSEM locked!
@@ -100,7 +100,7 @@ Single HWSEM Test Output
 All HWSEM Output Log
 ---------------------
 
-.. code-block:: console
+.. code-block:: text
 
     I: Test all 16 Hardware Semaphores(HWSEM) on alif_e7_dk
     I: hwsem_trylock: HWSEM locked!

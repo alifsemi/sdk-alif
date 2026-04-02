@@ -172,7 +172,7 @@ Follow these steps to build the Ethernet DHCP Client application using the Alif 
 
 2. Build command for application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -182,7 +182,7 @@ Follow these steps to build the Ethernet DHCP Client application using the Alif 
 
 3. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
@@ -197,7 +197,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit, follow the command:
 
-.. code-block:: bash
+.. code-block:: console
 
     west flash
 

@@ -184,7 +184,7 @@ To execute binaries on the DevKit, follow these steps:
    b. Copy the JSON configuration file into ``<SE tool folder>/build/config``
    c. Run the following commands in ``<SE tool folder>``:
 
-.. code-block:: bash
+.. code-block:: console
 
    ./app-gen-toc --filename build/config/<your_config_name>.json
    ./app-write-mram

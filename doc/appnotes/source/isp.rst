@@ -219,7 +219,7 @@ Executing Binary on the DevKit
 
 To execute the binary on the DevKit, run:
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -228,7 +228,7 @@ Console Output
 
 The following output is observed in the console during execution of the ISP application:
 
-.. code-block:: console
+.. code-block:: text
 
    [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
    *** Booting Zephyr OS build ef2a2e33086f ***

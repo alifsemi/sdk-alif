@@ -54,7 +54,7 @@ Follow these steps to build the BLE application using the Alif Zephyr SDK:
 
 2. Build command for application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
@@ -68,7 +68,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -80,7 +80,7 @@ To test the BLE application, you'll need a mobile app that can scan BLE devices.
 Console Output
 ===============
 
-::
+.. code-block:: text
 
   [00:00:00.000,000] <inf> dma_pl330: Device dma2@400c0000 initialized
 

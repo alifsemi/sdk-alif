@@ -56,7 +56,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
 1. Fetch the Alif Zephyr SDK source from the main branch at `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 
-.. code-block:: bash
+.. code-block:: console
 
     mkdir /home/$USER/sdk-alif
 
@@ -70,19 +70,19 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
 2. Navigate to the Zephyr directory
 
-.. code-block:: bash
+.. code-block:: console
 
     cd zephyr
 
 3. Remove the existing build directory, if any:
 
-.. code-block:: bash
+.. code-block:: console
 
       rm -rf build
 
 4. Build command for application on the Ethos-U85-256 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
@@ -94,7 +94,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
 5. Build command for application on the Ethos-U85-256 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
@@ -107,7 +107,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
 6. Build command for the application on the Ethos-U55-128 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
@@ -120,7 +120,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
 7. Build command for the application on the Ethos-U55-256 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
@@ -131,83 +131,14 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
 
-How to Use the TFLM Application
---------------------------------
+Executing Binary on the DevKit
+================================
 
-This sample application can be used for basic inference on the Ethos subsystem using a TFLite model on the M55 core of the Alif Ensemble DevKit. It uses the Ethos-U55 to accelerate supported network operators and the M55 core for unsupported operators using the appropriate reference kernels.
+To execute binaries on the DevKit follow the command
 
-Limitations/Known Issues
--------------------------
+.. code-block:: console
 
-- Compilation of the Ethos-U application has not been tried with the ArmClang and open-source clang compilers.
-
-Sample JSON Configuration Files
----------------------------------
-
-Sample JSON configuration files to use while flashing the binary into TCM or MRAM:
-
-**For RTSS-HE (TCM):**
-
-.. code-block:: json
-
-   {
-       "Zephyr-RTSS-HE": {
-           "binary": "zephyr_e7_rtsshe_ethosu.bin",
-           "version": "1.0.0",
-           "cpu_id": "M55_HE",
-           "loadAddress": "0x58000000",
-           "flags": ["load", "boot"],
-           "signed": false
-       }
-   }
-
-**For RTSS-HP (TCM):**
-
-.. code-block:: json
-
-   {
-       "Zephyr-RTSS-HP": {
-           "binary": "zephyr_e7_rtsshp_ethosu.bin",
-           "version": "1.0.0",
-           "cpu_id": "M55_HP",
-           "loadAddress": "0x50000000",
-           "flags": ["load", "boot"],
-           "signed": false
-       }
-   }
-
-**For RTSS-HE (E1C, TCM):**
-
-.. code-block:: json
-
-   {
-       "ZRTSS-E1C-HE": {
-           "binary": "zephyr_e1c_rtsshe_ethosu.bin",
-           "version": "1.0.0",
-           "cpu_id": "M55_HE",
-           "loadAddress": "0x58000000",
-           "flags": ["load", "boot"],
-           "signed": false
-       }
-   }
-
-**For RTSS-HE (MRAM):**
-
-Refer to the JSON configuration file at: `RTSS HE MRAM JSON`_
-
-**For RTSS-HP (MRAM):**
-
-Refer to the JSON configuration file at: `RTSS HP MRAM JSON`_
-
-Loading the Binary on the Alif Ensemble Devkit
-=================================================
-
-To flash and execute the binary on the DevKit using the SE tool:
-
-1. Copy the generated binary (e.g., `zephyr_e7_rtsshe_ethosu.bin` or `zephyr_e7_rtsshp_ethosu.bin`) and the corresponding JSON configuration file to the SE tool directory.
-2. Use the SE tool to flash the binary to MRAM or TCM. Execute the flashing commands as per the Alif documentation (e.g., similar to `python3 app-gen-toc.py` and `python3 app-write-mram.py`).
-3. Ensure the debugger is disconnected to allow the core to enter the OFF state.
-4. Reset the DevKit to boot the cores and run the application.
+   west flash
 
 Console Output
 ===============
@@ -443,10 +374,10 @@ Building for Alif E7 DK (HE Core with U55-128)
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
 
 
-Flashing
-========
+Executing Binary on the DevKit
+================================
 
-Flash the application to the board.
+To execute binaries on the DevKit follow the command
 
 .. code-block:: console
 

@@ -63,7 +63,7 @@ Executing Binary on the AppKit
 
 To execute binaries on the AppKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -72,7 +72,7 @@ Expected Logs
 
 Below is an example of the expected console output:
 
-.. code-block:: console
+.. code-block:: text
 
    PSRAM XIP mode demo app started
    Writing data to the XIP region:
