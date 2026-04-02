@@ -171,12 +171,14 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 #endif
 
 	if (cfg->mic_dev) {
+#if DT_NODE_EXISTS(I2S_MIC_NODE)
 		int ret = mic_configure(cfg->mic_dev, I2S_SOURCE_DEV, env.encoder);
 
 		if (ret != 0) {
 			LOG_ERR("Failed to configure mic input, err %d", ret);
 			return ret;
 		}
+#endif
 	}
 
 	LOG_DBG("Source audio datapath created");

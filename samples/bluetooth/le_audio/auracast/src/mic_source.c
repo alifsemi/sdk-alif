@@ -38,7 +38,7 @@ static struct mic_source_env mic_source;
 #define INT_RAMFUNC
 #endif
 
-#define INPUT_LEVEL_CALC(_s)   (((int)(_s)*CONFIG_INPUT_VOLUME_LEVEL) / 100)
+#define INPUT_LEVEL_CALC(_s)   (((int)(_s) * CONFIG_INPUT_VOLUME_LEVEL) / 100)
 #define NUMBER_OF_MIC_CHANNELS 2
 
 LOG_MODULE_DECLARE(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
@@ -178,12 +178,14 @@ static int configure_pdm_source(const struct device *pdm_dev, struct audio_queue
 
 	/* Configure left channel */
 	pdm_set_ch_phase(pdm_dev, CONFIG_AUDIO_L_CHANNEL, CONFIG_AUDIO_PDM_PHASE);
-	pdm_set_ch_gain(pdm_dev, CONFIG_AUDIO_L_CHANNEL, (CONFIG_MICROPHONE_GAIN << 4));
+	pdm_set_ch_gain(pdm_dev, CONFIG_AUDIO_L_CHANNEL,
+			(CONFIG_ALIF_BLE_AUDIO_PDM_MICROPHONE_GAIN << 4));
 	pdm_coef_reg.ch_num = CONFIG_AUDIO_L_CHANNEL;
 	pdm_channel_config(pdm_dev, &pdm_coef_reg);
 
 	/* Configure right channel */
-	pdm_set_ch_gain(pdm_dev, CONFIG_AUDIO_R_CHANNEL, (CONFIG_MICROPHONE_GAIN << 4));
+	pdm_set_ch_gain(pdm_dev, CONFIG_AUDIO_R_CHANNEL,
+			(CONFIG_ALIF_BLE_AUDIO_PDM_MICROPHONE_GAIN << 4));
 	pdm_set_ch_phase(pdm_dev, CONFIG_AUDIO_R_CHANNEL, CONFIG_AUDIO_PDM_PHASE);
 	pdm_coef_reg.ch_num = CONFIG_AUDIO_R_CHANNEL;
 	pdm_channel_config(pdm_dev, &pdm_coef_reg);

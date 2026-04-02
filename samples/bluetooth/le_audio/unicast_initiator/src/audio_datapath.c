@@ -25,7 +25,6 @@
 LOG_MODULE_REGISTER(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
 
 struct audio_datapath {
-	const struct device *i2s_dev;
 	struct audio_encoder *encoder;
 	struct audio_decoder *decoder;
 };
@@ -255,6 +254,31 @@ int audio_datapath_channel_stop_sink(uint8_t const stream_lid)
 
 	if (ret) {
 		LOG_ERR("Failed to stop stream %u, err %d", stream_lid, ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+int audio_datapath_channel_volume_sink(uint8_t const volume, bool const mute)
+{
+	int ret;
+	audio_property_value_t property_value;
+	const struct device *dev = DEVICE_DT_GET(CODEC_NODE);
+
+	property_value.vol = volume;
+	ret = audio_codec_set_property(dev, AUDIO_PROPERTY_OUTPUT_VOLUME, AUDIO_CHANNEL_ALL,
+				       property_value);
+	if (ret) {
+		LOG_ERR("Failed to set volume, err %d", ret);
+		return ret;
+	}
+
+	property_value.mute = mute;
+	ret = audio_codec_set_property(dev, AUDIO_PROPERTY_OUTPUT_MUTE, AUDIO_CHANNEL_ALL,
+				       property_value);
+	if (ret) {
+		LOG_ERR("Failed to set mute, err %d", ret);
 		return ret;
 	}
 
