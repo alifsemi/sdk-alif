@@ -14,5 +14,6 @@ rsource "powermgr/Kconfig"
 rsource "modules/ethosu/Kconfig"
 rsource "dbuf_display/Kconfig"
 rsource "img_assets/Kconfig"
+rsource "modules/testcommands/Kconfig"
 
 endmenu

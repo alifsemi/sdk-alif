@@ -7,3 +7,4 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 add_subdirectory(ethosu)
+add_subdirectory(testcommands)
