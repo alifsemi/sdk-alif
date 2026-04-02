@@ -1,0 +1,17 @@
+config TEST_INTERNAL_LB
+	bool "Enable internal loopback test suite"
+	default n
+
+config TEST_EXTERNAL_LB
+	bool "Enable external loopback test suite"
+	default n
+
+config TEST_UART_RTSCTS
+	bool "Enable RTS/CTS flow control test suite"
+	default n
+
+config TEST_LPUART
+	bool "Enable LP-UART test suite"
+	default n
+
+source "Kconfig.zephyr"
