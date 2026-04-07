@@ -24,13 +24,7 @@
 #define INT_RAMFUNC
 #endif
 
-#define I2S_SINK_DEV DEVICE_DT_GET(CODEC_I2S_NODE)
-
-#if DT_NODE_EXISTS(I2S_MIC_NODE)
-#define I2S_SOURCE_DEV DEVICE_DT_GET(I2S_MIC_NODE)
-#else
-#define I2S_SOURCE_DEV I2S_SINK_DEV
-#endif
+#define CODEC_I2S_DEV DEVICE_DT_GET(CODEC_I2S_NODE)
 
 BUILD_ASSERT(!DT_PROP(CODEC_I2S_NODE, mono_mode), "I2S must be configured in stereo mode");
 
@@ -55,15 +49,9 @@ static int unicast_audio_path_init(void)
 		return -1;
 	}
 
-	ret = device_is_ready(I2S_SINK_DEV);
+	ret = device_is_ready(CODEC_I2S_DEV);
 	if (!ret) {
 		LOG_ERR("I2S is not ready");
-		return -1;
-	}
-
-	ret = device_is_ready(I2S_SOURCE_DEV);
-	if (!ret) {
-		LOG_ERR("I2S mic is not ready");
 		return -1;
 	}
 
@@ -144,7 +132,7 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 	}
 
 	struct audio_encoder_params const enc_params = {
-		.i2s_dev = I2S_SOURCE_DEV,
+		.i2s_dev = CODEC_I2S_DEV,
 		.frame_duration_us = cfg->frame_duration_is_10ms ? 10000 : 7500,
 		.sampling_rate_hz = cfg->sampling_rate_hz,
 		.audio_buffer_len_us = cfg->pres_delay_us,
@@ -171,14 +159,12 @@ int audio_datapath_create_source(struct audio_datapath_config const *const cfg)
 #endif
 
 	if (cfg->mic_dev) {
-#if DT_NODE_EXISTS(I2S_MIC_NODE)
-		int ret = mic_configure(cfg->mic_dev, I2S_SOURCE_DEV, env.encoder);
+		int ret = mic_configure(cfg->mic_dev, CODEC_I2S_DEV, env.encoder);
 
 		if (ret != 0) {
 			LOG_ERR("Failed to configure mic input, err %d", ret);
 			return ret;
 		}
-#endif
 	}
 
 	LOG_DBG("Source audio datapath created");
@@ -241,7 +227,7 @@ int audio_datapath_create_sink(struct audio_datapath_config const *const cfg)
 	}
 
 	struct audio_decoder_params const dec_params = {
-		.i2s_dev = I2S_SINK_DEV,
+		.i2s_dev = CODEC_I2S_DEV,
 		.frame_duration_us = cfg->frame_duration_is_10ms ? 10000 : 7500,
 		.sampling_rate_hz = cfg->sampling_rate_hz,
 		.pres_delay_us = cfg->pres_delay_us,

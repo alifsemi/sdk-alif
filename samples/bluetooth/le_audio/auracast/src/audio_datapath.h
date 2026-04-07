@@ -14,7 +14,6 @@
 
 #define CODEC_CFG_NODE DT_ALIAS(audio_codec)
 #define CODEC_I2S_NODE DT_ALIAS(i2s_bus)
-#define I2S_MIC_NODE   DT_ALIAS(i2s_mic)
 /* #define MCLK_GEN_NODE DT_ALIAS(mclk_gen) */
 
 struct audio_datapath_config {

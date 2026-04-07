@@ -11,7 +11,9 @@
 #define MIC_SOURCE_H
 
 #include "bluetooth/le_audio/audio_encoder.h"
+#include <zephyr/toolchain.h>
 
+#if CONFIG_AUDIO_DMIC
 /**
  * @brief Configure microphone source
  *
@@ -23,7 +25,7 @@
  * @retval Negative error code on failure
  */
 int mic_configure(const struct device *mic_dev, const struct device *i2s_dev,
-		      struct audio_encoder *audio_encoder);
+		  struct audio_encoder *audio_encoder);
 
 /**
  * @brief Start the microphone source stream
@@ -41,5 +43,26 @@ void mic_stop(void);
  * @param start true to start, false to stop
  */
 void mic_control(bool const start);
+
+#else
+static inline int mic_configure(const struct device *mic_dev, const struct device *i2s_dev,
+				struct audio_encoder *audio_encoder)
+{
+	return 0;
+}
+
+static inline void mic_start(void)
+{
+}
+
+static inline void mic_stop(void)
+{
+}
+
+static inline void mic_control(bool const start)
+{
+	ARG_UNUSED(start);
+}
+#endif
 
 #endif /* MIC_SOURCE_H */

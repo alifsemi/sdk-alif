@@ -28,7 +28,8 @@ LOG_MODULE_REGISTER(auracast_source, CONFIG_AURACAST_SOURCE_LOG_LEVEL);
 
 #define MIC_NODE DT_ALIAS(pdm_mic)
 
-#define MIC_ENABLED (DT_NODE_EXISTS(MIC_NODE) && DT_NODE_EXISTS(DT_ALIAS(sw0)))
+#define MIC_ENABLED                                                                                \
+	(IS_ENABLED(CONFIG_AUDIO_DMIC) && DT_NODE_EXISTS(MIC_NODE) && DT_NODE_EXISTS(DT_ALIAS(sw0)))
 
 #define PRESENTATION_DELAY_US (CONFIG_LE_AUDIO_PRESENTATION_DELAY_MS * 1000)
 #define SUBGROUP_ID           0
@@ -545,6 +546,11 @@ static int configure_led(void)
 /* Initialisation to perform pre-main */
 static int auracast_source_init(void)
 {
+	if (!device_is_ready(DEVICE_DT_GET(MIC_NODE))) {
+		LOG_ERR("mic device is not ready");
+		return -1;
+	}
+
 	if (configure_button()) {
 		return -1;
 	}
