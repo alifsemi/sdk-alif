@@ -69,7 +69,7 @@ def verify_gitlint (){
         west update
         cd /root/alif/alif/
         pip install gitlint
-        git log -$(git rev-list --count origin/main..HEAD) --pretty=%B | gitlint
+        git rev-list origin/main..HEAD | xargs -n1 gitlint --commit
         exit $?
         '''
 }
