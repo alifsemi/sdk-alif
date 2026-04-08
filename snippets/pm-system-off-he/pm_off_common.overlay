@@ -44,6 +44,23 @@
 	status = "okay";
 };
 
+&aipm_off {
+	vtor-address = <0x00000000>;
+	status = "okay";
+};
+
+&off_profile_standby {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+&off_profile_stop {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
 / {
 	chosen {
 		zephyr,cortex-m-idle-timer = &rtc0;

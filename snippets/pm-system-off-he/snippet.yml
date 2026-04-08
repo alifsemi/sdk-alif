@@ -1,4 +1,13 @@
 name: pm-system-off-he
 append:
-  EXTRA_DTC_OVERLAY_FILE: snippet.overlay
   EXTRA_CONF_FILE: prj.conf
+boards:
+  /alif_e1c.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_off_e1c_b1.overlay
+  /alif_b.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_off_e1c_b1.overlay
+  /alif_(e3|e4|e5|e6|e7|e8).*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_off_ensemble.overlay
