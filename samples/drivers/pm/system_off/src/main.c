@@ -25,6 +25,7 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 
+#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE) || !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 /**
  * As per the application requirements, it can remove the memory blocks which are not in use.
  */
@@ -37,18 +38,26 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK
 	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
 #endif
+#endif /* CONFIG_ALIF_SE_DTS_RUN_PROFILE || CONFIG_ALIF_SE_DTS_OFF_PROFILE */
 
+#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
-	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
 	#define SE_OFFP_EWIC_CFG EWIC_RTC_A
 	#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
-	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
 	#define SE_OFFP_EWIC_CFG EWIC_VBAT_TIMER
 	#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
+#endif
+#endif /* CONFIG_ALIF_SE_DTS_OFF_PROFILE */
+
+#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
+#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
 #else
 #error "Wakeup Device not enabled in the dts"
 #endif
+
 
 /* Sleep duration for PM_STATE_RUNTIME_IDLE */
 #define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
@@ -108,6 +117,7 @@ BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
 	"SOFT_OFF sleep duration should be greater than STOP sleep duration");
 #endif
 
+#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE)
 /**
  * Set the RUN profile parameters for this application.
  */
@@ -149,7 +159,9 @@ static int app_set_run_params(void)
  * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
  */
 SYS_INIT(app_set_run_params, PRE_KERNEL_1, 46);
+#endif /* CONFIG_ALIF_SE_DTS_RUN_PROFILE */
 
+#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 static int app_set_off_params(enum pm_state state, uint8_t substate_id)
 {
 	int ret;
@@ -235,7 +247,9 @@ static void pm_notify_state_entry(enum pm_state state)
 		break;
 	}
 }
+#endif /* CONFIG_ALIF_SE_DTS_OFF_PROFILE */
 
+#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE)
 /**
  * PM Notifier callback called BEFORE devices are resumed
  *
@@ -263,14 +277,21 @@ static void pm_notify_pre_device_resume(enum pm_state state)
 		break;
 	}
 }
+#endif
 
+#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE) || !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 /**
  * PM Notifier structure
  */
 static struct pm_notifier app_pm_notifier = {
+#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 	.state_entry = pm_notify_state_entry,
+#endif
+#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE)
 	.pre_device_resume = pm_notify_pre_device_resume,
+#endif
 };
+#endif
 
 /**
  * Helper function to lock/unlock deeper power states
@@ -346,8 +367,10 @@ static int app_pre_kernel_init(void)
 	/* Lock deeper power states to allow only RUNTIME_IDLE */
 	app_pm_lock_deeper_states(true);
 
+#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE) || !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 	/* Register PM notifier callbacks */
 	pm_notifier_register(&app_pm_notifier);
+#endif
 
 	return 0;
 }
@@ -526,7 +549,9 @@ int main(void)
 	}
 
 	/* Configure OFF profile for wakeup capability */
+#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
 	app_set_off_params(PM_STATE_SOFT_OFF, 0);
+#endif
 
 	LOG_INF("Calling sys_poweroff() - system will power off permanently");
 	sys_poweroff();

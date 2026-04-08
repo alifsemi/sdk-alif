@@ -33,6 +33,17 @@
 	status = "okay";
 };
 
+&aipm_off {
+	status = "okay";
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	memory-blocks      = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+	wakeup-events      = <ALIF_WE_LPTIMER0>;
+	ewic-cfg           = <ALIF_EWIC_VBAT_TIMER>;
+};
+
 / {
 	chosen {
 		zephyr,console = &uart2;
