@@ -1,0 +1,127 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+&gpio7 {
+	status = "okay";
+};
+
+/ {
+	csi_cam_power: regulator-v1.2-v1.8v {
+		compatible = "regulator-fixed";
+
+		regulator-name = "MIPI supply";
+
+		enable-gpios = < &gpio7 5 GPIO_ACTIVE_HIGH >;
+
+		regulator-boot-on;
+		regulator-always-on;
+		status = "okay";
+	};
+};
+
+&gpio9 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	/*
+	 * For Standard  speed LCNT=0 and HCNT=0
+	 * For Fast      speed LCNT=50 and HCNT=30
+	 * For Fast Plus speed LCNT=35 and HCNT=5
+	 */
+	hcnt-offset = <30>;
+	lcnt-offset = <50>;
+
+	mt9m114: mt9m114@5d {
+		compatible = "aptina,mt9m114";
+		reg = <0x5d>;
+
+		reset-gpios = <&gpio9 1 GPIO_ACTIVE_LOW>;
+		status = "okay";
+
+		port {
+			mt9m114_csi2_ep_out: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = < 384000000 >;
+				data-lanes = <0x1>;
+				clock-lane = <0>;
+				remote-endpoint-label = "csi2_ep_in";
+			};
+		};
+	};
+};
+
+&cam {
+	status = "okay";
+
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* MIPI CSI-2 bus endpoint. */
+		port@0 {
+			reg = <0>;
+			cam_csi2_ep_in: endpoint {
+				remote-endpoint-label = "csi2_ep_out";
+			};
+		};
+
+		/* Video buffer output endpoint. */
+		port@1 {
+			reg = <1>;
+			cam_mem_ep_out: endpoint {
+				remote-endpoint-label = "application";
+			};
+		};
+	};
+};
+
+&csi {
+	status = "okay";
+
+	/* RX-DPHY */
+	phy-if = <&dphy 0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csi2_ep_in: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = <384000000>;
+				data-lanes = <1>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "mt9m114_csi2_ep_out";
+			};
+		};
+		port@2 {
+			reg = <2>;
+			csi2_ep_out: endpoint {
+				remote-endpoint-label = "cam_csi2_ep_in";
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+			};
+		};
+	};
+};
+&mipi_dsi {
+	status = "okay";
+};

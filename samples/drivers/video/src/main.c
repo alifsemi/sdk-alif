@@ -217,6 +217,7 @@ int main(void)
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	}
 
+
 #if (ISP_ENABLED)
 		/*
 		 * Set Output Endpoint format. Ensure that ISP EP-out
@@ -267,10 +268,11 @@ int main(void)
 		}
 
 		/* Allocated Buffer Information */
-		LOG_INF("- addr - 0x%x, size - %d, bytesused - %d",
+		LOG_INF("- addr - 0x%x, size - %d, bytesused - %d, resolution - %ux%u",
 			(uint32_t)buffers[i]->buffer,
 			bsize,
-			buffers[i]->bytesused);
+			buffers[i]->bytesused,
+			fmt.width, fmt.height);
 
 		memset(buffers[i]->buffer, 0, sizeof(char) * bsize);
 		video_enqueue(video, VIDEO_EP_OUT, buffers[i]);
@@ -280,6 +282,7 @@ int main(void)
 			i, i, (uint32_t)buffers[i]->buffer,
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
+
 
 	/*
 	 * TODO: Need to fix this delay.
@@ -325,6 +328,7 @@ int main(void)
 			last_timestamp = vbuf->timestamp;
 			LOG_INF("FPS: %f", 1000.0/frame_time);
 		}
+
 
 		if (i < N_FRAMES - N_VID_BUFF) {
 			ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
