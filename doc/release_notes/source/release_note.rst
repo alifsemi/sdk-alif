@@ -215,6 +215,11 @@ System Resources
      - Pin multiplexer controlling GPIO pin function selection and routing of peripheral signals to physical pins, enabling flexible I/O configuration.
    * - System Power Management (suspend to ram)
      - Power management framework supporting deep sleep states including Suspend-to-RAM (S2RAM), where SRAM is retained, enabling fast resume and ultra-low power idle operation.
+   * - SE Run/Off Profile (DTS-driven)
+     - Devicetree-configurable Secure Enclave power profiles applied
+       automatically at boot/resume (run profile) and on PM state entry
+       (off profile). Board overlays select per-state settings for wakeup
+       events, memory retention, clock sources, and power domains.
    * -  LP-GPIO
      - Low-power GPIO controller that maintains state and wake-up capability during system sleep modes, allowing external events to trigger resume from low-power states.
    * - DMA
