@@ -1,0 +1,17 @@
+name: sdmmc-test
+boards:
+  /alif_e1c_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: sdmmc_e1c.overlay
+
+  /alif_b1_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: sdmmc_b1.overlay
+
+  /alif_(e3|e7)_(dk|ak)/.*/rtss_(he|hp)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: sdmmc_e3_e7.overlay
+
+  /alif_(e4|e8)_(dk|ak)/.*/rtss_(he|hp)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: sdmmc_e4_e8.overlay
