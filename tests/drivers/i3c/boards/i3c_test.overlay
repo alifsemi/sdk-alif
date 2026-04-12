@@ -1,0 +1,46 @@
+/*
+ * Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/ {
+	aliases {
+		/*
+		 * Add aliases here for each I3C target device.
+		 * Uncomment to enable, comment to disable.
+		 */
+		bmi323 = &bmi323;
+	};
+
+};
+
+&i3c0 {
+	status = "okay";
+	od-thigh-min-ns = <41>;
+	od-tlow-min-ns = <200>;
+
+	/*
+	 * BMI323 I3C sensor
+	 * PID: 0x077010431000 (manufacturer part-specific)
+	 * reg format: <static_addr pid_high pid_low>
+	 * - static_addr: 0x69 (7-bit I2C legacy address)
+	 * - pid_high: 0x0770 (MSB of 48-bit PID)
+	 * - pid_low: 0x10431000 (LSB of 48-bit PID)
+	 */
+	bmi323: bmi323@690000077010431000 {
+		compatible = "bosch,bmi323";
+		reg = <0x69 0x0770 0x10431000>;
+		assigned-address = <0x09>;
+		int-gpios = <&gpio8 4 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
+&gpio8 {
+	status = "okay";
+};
