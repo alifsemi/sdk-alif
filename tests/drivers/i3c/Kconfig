@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# Copyright Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+menu "I3C test options"
+
+config I3C_ALL_TESTS
+	bool "Enable all I3C test suites"
+	select I3C_DISCOVERY_TESTS
+	select I3C_CCC_TESTS
+	select I3C_IBI_TESTS
+	select I3C_NEGATIVE_TESTS
+	select I3C_STRESS_TESTS
+	help
+	  This option enables all standard I3C test suites including
+	  discovery tests, Common Command Code (CCC) tests, In-Band
+	  Interrupt (IBI) tests, negative tests, and stress tests.
+	  This is a convenience option for running comprehensive I3C
+	  controller validation. Note that I3C_SENSOR_TESTS is not
+	  included as it requires specific sensor hardware.
+
+config I3C_DISCOVERY_TESTS
+	bool "Enable I3C discovery test suite"
+	help
+	  This option enables the I3C discovery test suite which validates
+	  the Dynamic Address Assignment (DAA) process, Provisional ID (PID)
+	  retrieval, target enumeration, RSTDAA broadcast commands, and
+	  various discovery-related CCCs. These tests verify that the I3C
+	  controller can properly discover and configure devices on the bus.
+
+config I3C_CCC_TESTS
+	bool "Enable I3C CCC test suite"
+	help
+	  This option enables the Common Command Code (CCC) test suite
+	  which tests mandatory and optional CCCs including GETPID,
+	  GETBCR, GETDCR, GETSTATUS, GETMRL, SETMWL, GETMWL, ENEC,
+	  DISEC, RSTACT, and GETCAPS. These tests verify that the I3C
+	  controller can properly send and receive CCC commands to targets.
+
+config I3C_IBI_TESTS
+	bool "Enable I3C IBI test suite"
+	help
+	  This option enables the In-Band Interrupt (IBI) test suite which
+	  validates IBI capability detection via BCR register, ENEC and
+	  DISEC commands for enabling/disabling interrupts, and transfer
+	  operations with IBI enabled. These tests verify that the I3C
+	  controller can handle in-band interrupt requests from targets.
+
+config I3C_NEGATIVE_TESTS
+	bool "Enable I3C negative test suite"
+	help
+	  This option enables the negative test suite which validates
+	  error handling for invalid dynamic addresses, null buffer
+	  transfers, zero-length transfers, oversized transfers, and
+	  CCC commands to invalid targets. These tests verify that the
+	  I3C controller properly handles and reports error conditions.
+
+config I3C_STRESS_TESTS
+	bool "Enable I3C stress test suite"
+	help
+	  This option enables the stress test suite which performs
+	  repeated operations including GETPID calls, read endurance
+	  tests, multi-message endurance tests, and CCC transfer
+	  interleave tests. These tests verify controller stability
+	  and reliability under sustained load across multiple targets.
+
+config I3C_SENSOR_TESTS
+	bool "Enable I3C sensor test suite"
+	help
+	  This option enables the sensor test suite which validates
+	  real I3C sensor devices including the BMI323 accelerometer
+	  and gyroscope, and the ICM42670 motion sensor. These tests
+	  require the actual sensor hardware to be connected and
+	  configured in the device tree. Enable this only when testing
+	  with physical sensor devices present on the I3C bus.
+
+endmenu
+
+source "Kconfig.zephyr"

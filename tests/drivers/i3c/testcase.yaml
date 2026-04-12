@@ -1,0 +1,84 @@
+common:
+  tags:
+    - drivers
+    - i3c
+  extra_conf_files:
+    - prj.conf
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+
+tests:
+  # =====================================================================
+  # All I3C tests combined
+  # =====================================================================
+  drivers.i3c.all:
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_ALL_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  # =====================================================================
+  # Individual test suites
+  # =====================================================================
+  drivers.i3c.discovery:
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_DISCOVERY_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.i3c.ccc:
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_CCC_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.i3c.ibi:
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_IBI_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.i3c.negative:
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_NEGATIVE_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.i3c.stress:
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_STRESS_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.i3c.sensor:
+    tags:
+      - drivers
+      - i3c
+      - sensor
+    depends_on:
+      - i3c
+      - sensor
+    extra_dtc_overlay_files:
+      - boards/i3c_test.overlay
+    extra_configs:
+      - CONFIG_I3C_SENSOR_TESTS=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
