@@ -1,0 +1,122 @@
+sample:
+  name: USB Mass Storage (Alif)
+tests:
+  # Multi-partition: RAM + OSPI flash (FAT) + SD card (FAT) — 3 LUNs
+  # Uses the default prj.conf which enables all three back-ends.
+  sample.usb.alif_mass_multi_partition:
+    min_ram: 128
+    modules:
+      - fatfs
+    depends_on: usbd
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - SNIPPET="alif-msc-ramdisk-ospi-sd"
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+    tags:
+      - msd
+      - usb
+    harness: console
+    harness_config:
+      type: multi_line
+      ordered: true
+      regex:
+        - "End of files"
+        - "The device is put in USB mass storage mode."
+
+  # Single partition: OSPI flash with FAT file system — 1 LUN
+  sample.usb.alif_mass_flash_fatfs:
+    min_ram: 32
+    modules:
+      - fatfs
+    depends_on: usbd
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - SNIPPET="alif-msc-ramdisk-ospi-sd"
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+      - CONFIG_APP_MSC_STORAGE_FLASH_FATFS=y
+      - CONFIG_USBD_MSC_LUNS_PER_INSTANCE=1
+      - CONFIG_APP_MSC_STORAGE_SDCARD=n
+    tags:
+      - msd
+      - usb
+    harness: console
+    harness_config:
+      type: multi_line
+      ordered: true
+      regex:
+        - "End of files"
+        - "The device is put in USB mass storage mode."
+
+  # Single partition: SD card with FAT file system — 1 LUN
+  sample.usb.alif_mass_sdhc_fatfs:
+    min_ram: 32
+    modules:
+      - fatfs
+    depends_on: usbd
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - SNIPPET="alif-msc-ramdisk-ospi-sd"
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+      - CONFIG_APP_MSC_STORAGE_SDCARD=y
+      - CONFIG_USBD_MSC_LUNS_PER_INSTANCE=1
+      - CONFIG_APP_MSC_STORAGE_FLASH_FATFS=n
+    tags:
+      - msd
+      - usb
+    harness: console
+    harness_config:
+      fixture: fixture_sdcard
+      type: multi_line
+      ordered: true
+      regex:
+        - "End of files"
+        - "The device is put in USB mass storage mode."
+
+  # Single partition: RAM disk with FAT file system — 1 LUN
+  sample.usb.alif_mass_ram_fat:
+    min_ram: 128
+    modules:
+      - fatfs
+    depends_on: usbd
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - SNIPPET="alif-msc-ramdisk-ospi-sd"
+    extra_configs:
+      - CONFIG_LOG_DEFAULT_LEVEL=3
+      - CONFIG_APP_MSC_STORAGE_RAM=y
+      - CONFIG_USBD_MSC_LUNS_PER_INSTANCE=1
+      - CONFIG_APP_MSC_STORAGE_FLASH_FATFS=n
+      - CONFIG_APP_MSC_STORAGE_SDCARD=n
+    tags:
+      - msd
+      - usb
+    harness: console
+    harness_config:
+      type: multi_line
+      ordered: true
+      regex:
+        - "End of files"
+        - "The device is put in USB mass storage mode."
