@@ -145,7 +145,7 @@ struct m55he_cfg_t { /*!< (@ 0x43007000) M55HE_CFG Structure                    
  * IRQ callback. This allows HE core to sleep a bit longer
  * between interrupts.
  */
-#define I2S_FIFO_TRG_LEVEL_OFFSET 4
+#define I2S_FIFO_TRG_LEVEL_OFFSET 8
 #define I2S_FIFO_TRG_LEVEL_RX     (I2S_FIFO_DEPTH - I2S_FIFO_TRG_LEVEL_OFFSET)
 #define I2S_FIFO_TRG_LEVEL_TX     (I2S_FIFO_TRG_LEVEL_OFFSET)
 
