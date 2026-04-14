@@ -24,11 +24,9 @@ common:
 tests:
   sample.pm.system_off:
     platform_allow:
-      - alif_e3_dk_rtss_he
       - alif_e7_dk_rtss_he
       - alif_e1c_dk_rtss_he
       - alif_b1_dk_rtss_he
-      - alif_e4_dk_rtss_he
       - alif_e8_dk_rtss_he
     integration_platforms:
       - alif_e7_dk_rtss_he

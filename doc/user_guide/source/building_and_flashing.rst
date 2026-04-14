@@ -108,10 +108,6 @@ Building an Application
 Supported Board Targets as per new hardware model v2 (Zephyr v4.1.0 and onwards):
 <board name[@revision][/board qualifiers]>
 
-- alif_e3_dk/ae302f80f55d5xx/rtss_he
-- alif_e3_dk/ae302f80f55d5xx/rtss_hp
-- alif_e4_dk/ae402fa0e5597xx0/rtss_he
-- alif_e4_dk/ae402fa0e5597xx0/rtss_hp
 - alif_e7_dk/ae722f80f55d5xx/rtss_he
 - alif_e7_dk/ae722f80f55d5xx/rtss_hp
 - alif_e8_dk/ae822fa0e5597xx0/rtss_he
