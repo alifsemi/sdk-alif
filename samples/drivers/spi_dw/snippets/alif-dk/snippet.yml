@@ -17,18 +17,18 @@ boards:
     append:
       EXTRA_DTC_OVERLAY_FILE: alif_e1c_dk_rtss_he.overlay
 
-  /alif_(e3|e5|e7)_(dk|ak)/.*/rtss_hp/:
+  /alif_(e5|e7)_(dk|ak)/.*/rtss_hp/:
     append:
       EXTRA_DTC_OVERLAY_FILE: alif_e3_e5_e7_dk_rtss_hp.overlay
 
-  /alif_(e3|e5|e7)_(dk|ak)/.*/rtss_he/:
+  /alif_(e5|e7)_(dk|ak)/.*/rtss_he/:
     append:
       EXTRA_DTC_OVERLAY_FILE: alif_e3_e5_e7_dk_rtss_he.overlay
 
-  /alif_(e4|e6|e8)_(dk|ak)/.*/rtss_hp/:
+  /alif_(e6|e8)_(dk|ak)/.*/rtss_hp/:
     append:
       EXTRA_DTC_OVERLAY_FILE: alif_e4_e6_e8_dk_rtss_hp.overlay
 
-  /alif_(e4|e6|e8)_(dk|ak)/.*/rtss_he/:
+  /alif_(e6|e8)_(dk|ak)/.*/rtss_he/:
     append:
       EXTRA_DTC_OVERLAY_FILE: alif_e4_e6_e8_dk_rtss_he.overlay
