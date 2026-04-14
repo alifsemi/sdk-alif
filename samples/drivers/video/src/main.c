@@ -20,14 +20,21 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
+#define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
+#define JPEG_ENABLED (ISP_ENABLED && DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(jpeg0)))
+
 #ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
 #define N_FRAMES		1
 #else
 #define N_FRAMES		10
 #endif
+#if JPEG_ENABLED
+/* Jpeg output buffer needs one buffer. So allocate 1 less here */
+#define N_VID_BUFF              MIN((CONFIG_VIDEO_BUFFER_POOL_NUM_MAX - 1), N_FRAMES)
+#else
 #define N_VID_BUFF              MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
+#endif /* JPEG_ENABLED */
 
-#define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #define PIPELINE_FORMAT	VIDEO_PIX_FMT_BGGR8
@@ -38,7 +45,11 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
 #if ISP_ENABLED
+#if JPEG_ENABLED
+#define OUTPUT_FORMAT	VIDEO_PIX_FMT_NV12
+#else
 #define OUTPUT_FORMAT	VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE
+#endif /* JPEG_ENABLED */
 #endif
 
 #if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
@@ -46,6 +57,16 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #else
 #define NUM_CAMS 1
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
+#if JPEG_ENABLED
+#define JPEG_DEVICE_NODE DT_NODELABEL(jpeg0)
+#define JPEG_COMPRESS_QUALITY    50
+#define JPEG_HEADER_SIZE         CONFIG_VIDEO_JPEG_HANTRO_VC9000E_HEADER_SIZE
+/* Jpeg output buffer */
+static struct video_buffer *jpeg_op_buf;
+const struct device *jpeg_dev;
+struct video_caps jpeg_fmt_caps;
+#endif /* JPEG_ENABLED */
 
 static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 {
@@ -105,6 +126,103 @@ static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 
 	return pitch;
 }
+
+#if JPEG_ENABLED
+/**
+ * @brief Test basic JPEG compression.
+ *
+ * Compress the full test image at the configured quality and saves
+ * the output to the filesystem.
+ *
+ * @param jpeg_dev      Pointer to the JPEG encoder device.
+ * @param fmt           Jpeg frame format.
+ * @param input_buf     Pointer to input buffer.
+ * @param input_buf_idx Input buffer indec.
+ * @param output_buf    Pointer to output buffer.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int jpeg_compress_img(const struct device *jpeg_dev,
+			struct video_format fmt,
+			struct video_buffer *input_buf,
+			uint8_t input_buf_idx,
+			struct video_buffer *output_buf)
+{
+	struct video_buffer *dequeued_buf = NULL;
+	int ret;
+
+	LOG_INF("Starting JPEG encoding...");
+
+	/* The pitch is 16-bytes aligned */
+	fmt.pitch = ROUND_UP(fmt.width, 16);
+
+	/* Set video format */
+	ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &fmt);
+	if (ret < 0) {
+		LOG_ERR("Jpeg: Failed to set format: %d", ret);
+		return ret;
+	}
+
+	LOG_INF("Jpeg: Format set: %ux%u, format: NV12", fmt.width, fmt.height);
+
+	/* Set JPEG quality */
+	uint8_t quality = JPEG_COMPRESS_QUALITY;
+
+	ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_COMPRESSION_QUALITY, &quality);
+	if (ret < 0) {
+		LOG_ERR("JPEG: Failed to set quality: %d", ret);
+		return ret;
+	}
+
+	/* Set input buffer address */
+	ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_INPUT_BUFFER, input_buf->buffer);
+	if (ret < 0) {
+		LOG_ERR("Jpeg: Failed to set input buffer: %d", ret);
+		return ret;
+	}
+
+	output_buf->bytesused = fmt.width * fmt.height;
+
+	/* Enqueue output buffer */
+	ret = video_enqueue(jpeg_dev, VIDEO_EP_OUT, output_buf);
+	if (ret < 0) {
+		LOG_ERR("Jpeg: Failed to enqueue buffer: %d", ret);
+		return ret;
+	}
+
+
+	ret = video_stream_start(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Jpeg: Failed to start stream: %d", ret);
+		return ret;
+	}
+
+	/* Dequeue encoded buffer */
+	ret = video_dequeue(jpeg_dev, VIDEO_EP_OUT, &dequeued_buf, K_SECONDS(5));
+	if (ret < 0) {
+		LOG_ERR("Jpeg: Failed to dequeue buffer: %d", ret);
+		video_stream_stop(jpeg_dev);
+		return ret;
+	}
+
+	/* Stop streaming */
+	ret = video_stream_stop(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Jpeg: Failed to stop stream: %d", ret);
+		return ret;
+	}
+
+	/* Print results */
+	LOG_INF("=== JPEG Encoding Success===");
+	LOG_INF("Jpeg: Capture Image: dump memory "
+		"\"/home/$USER/capture_cp_%d.jpg\" 0x%08x 0x%08x\n",
+		input_buf_idx, (uint32_t)output_buf->buffer,
+		(uint32_t)output_buf->buffer + dequeued_buf->bytesused);
+
+	return 0;
+
+}
+#endif /* JPEG_ENABLED */
 
 int main(void)
 {
@@ -258,6 +376,46 @@ int main(void)
 		}
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
+#if JPEG_ENABLED
+	/* Get JPEG device */
+	jpeg_dev = DEVICE_DT_GET(JPEG_DEVICE_NODE);
+	if (!device_is_ready(jpeg_dev)) {
+		LOG_ERR("JPEG: device not ready");
+		return -1;
+	}
+
+	LOG_INF("JPEG: device ready: %s", jpeg_dev->name);
+
+	/* Get capabilities */
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &jpeg_fmt_caps);
+	if (ret != 0) {
+		LOG_ERR("Jpeg: Failed to fetch Jpeg capabilities");
+		return -1;
+	}
+
+	LOG_INF("JPEG: Encoder Capabilities:");
+	for (int i = 0; jpeg_fmt_caps.format_caps[i].pixelformat != 0; i++) {
+		LOG_INF("  Format: 0x%08x, Size: %ux%u to %ux%u",
+			jpeg_fmt_caps.format_caps[i].pixelformat,
+			jpeg_fmt_caps.format_caps[i].width_min,
+			jpeg_fmt_caps.format_caps[i].height_min,
+			jpeg_fmt_caps.format_caps[i].width_max,
+			jpeg_fmt_caps.format_caps[i].height_max);
+	}
+
+	uint32_t jpeg_op_bsize = (fmt.width * fmt.height) + JPEG_HEADER_SIZE;
+
+	/* Allocate output buffer from video buffer pool */
+	jpeg_op_buf = video_buffer_alloc(jpeg_op_bsize, K_NO_WAIT);
+	if (jpeg_op_buf == NULL) {
+		LOG_ERR("Jpeg: Failed to allocate Jpeg output buffer");
+		return -1;
+	}
+	LOG_INF("Jpeg: Outbuf allocated at 0x%08x with %u bytes\n",
+			(uint32_t)jpeg_op_buf->buffer, jpeg_op_bsize);
+	memset(jpeg_op_buf->buffer, 0, jpeg_op_bsize);
+#endif /* JPEG_ENABLED */
+
 	/* Alloc video buffers and enqueue for capture */
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
 		buffers[i] = video_buffer_alloc(bsize, K_NO_WAIT);
@@ -326,6 +484,14 @@ int main(void)
 			LOG_INF("FPS: %f", 1000.0/frame_time);
 		}
 
+#if JPEG_ENABLED
+		ret = jpeg_compress_img(jpeg_dev, fmt, vbuf, i, jpeg_op_buf);
+		if (ret != 0) {
+			LOG_ERR("Jpeg compression failed");
+			goto release_jpeg_op_buf;
+		}
+#endif /* JPEG_ENABLED */
+
 		if (i < N_FRAMES - N_VID_BUFF) {
 			ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
 			if (ret) {
@@ -341,6 +507,14 @@ int main(void)
 			}
 		}
 	}
+
+#if JPEG_ENABLED
+release_jpeg_op_buf:
+	/* Free allocated buffers */
+	video_buffer_release(jpeg_op_buf);
+
+	LOG_INF("Jpeg: Output Buffer released");
+#endif /* JPEG_ENABLED */
 
 	LOG_INF("Calling video flush.");
 	video_flush(video, VIDEO_EP_OUT, false);
