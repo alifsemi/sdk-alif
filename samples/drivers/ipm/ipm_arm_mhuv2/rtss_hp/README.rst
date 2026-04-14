@@ -32,7 +32,6 @@ Alif DevKit Ensemble family board.
 
 Supported Targets
 *****************
-* alif_e3_dk_rtss_hp
 * alif_e7_dk_rtss_hp
 
 Building

@@ -49,15 +49,11 @@ Requirements
 Supported Boards
 ****************
 
-* alif_e3_dk_rtss_he
 * alif_e7_dk_rtss_he
 * alif_e1c_dk_rtss_he
 * alif_b1_dk_rtss_he
-* alif_e4_dk_rtss_he
 * alif_e8_dk_rtss_he
-* alif_e3_dk_rtss_hp (HP core)
 * alif_e7_dk_rtss_hp (HP core)
-* alif_e4_dk_rtss_hp (HP core)
 * alif_e8_dk_rtss_hp (HP core)
 
 Building and Running

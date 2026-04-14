@@ -13,8 +13,6 @@ Supported Targets
 *****************
 * alif_e7_dk_rtss_hp
 * alif_e7_dk_rtss_he
-* alif_e3_dk_rtss_hp
-* alif_e3_dk_rtss_he
 * alif_e1c_dk_rtss_he
 * alif_b1_dk_rtss_he
 

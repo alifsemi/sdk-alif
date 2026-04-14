@@ -14,13 +14,12 @@
  * This overlay enables the Ethos-U85 NPU (ethosu1) for boards that support it.
  *
  * Applicable Boards (have both U55 and U85):
- *   - E4 (alif_e4_dk) - has U55 + U85
  *   - E8 (alif_e8_dk) - has U55 + U85
  *
  * NOT applicable to:
- *   - B1, E1C, E3, E7 (have U55 only, no U85)
+ *   - B1, E1C, E7 (have U55 only, no U85)
  *
- * Note: E4, E8 boards have BOTH ethosu0 (U55) and ethosu1 (U85).
+ * Note: E8 board has BOTH ethosu0 (U55) and ethosu1 (U85).
  *       Use this overlay to enable the U85 NPU on these boards.
  *
  * Usage:

@@ -30,10 +30,6 @@ In this example below the :ref:`alif_e7_dk/ae722f80f55d5xx/rtss_he` board is use
 
 Supported Tagets for cmp and lpcmp
 **********************************
-* alif_e3_dk_rtss_hp
-* alif_e3_dk_rtss_he
-* alif_e4_dk_rtss_hp
-* alif_e4_dk_rtss_he
 * alif_e7_dk_rtss_he
 * alif_e7_dk_rtss_he
 * alif_e8_dk_rtss_hp

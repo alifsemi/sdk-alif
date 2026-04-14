@@ -77,29 +77,6 @@ Building for Alif E1C DK
        -p always -- \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
 
-Building for Alif E3 DK
------------------------
-
-**HP Core with U55-256:**
-
-.. code-block:: console
-
-   west build -b alif_e3_dk/ae302f80f55d5xx/rtss_hp \
-       -S ethos-u55-enable \
-       samples/modules/tflite-micro/tflm_ethosu \
-       -p always -- \
-       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
-
-**HE Core with U55-128:**
-
-.. code-block:: console
-
-   west build -b alif_e3_dk/ae302f80f55d5xx/rtss_he \
-       -S ethos-u55-enable \
-       samples/modules/tflite-micro/tflm_ethosu \
-       -p always -- \
-       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
-
 Building for Alif E7 DK
 -----------------------
 
