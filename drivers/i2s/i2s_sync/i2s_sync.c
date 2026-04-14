@@ -37,7 +37,7 @@ LOG_MODULE_REGISTER(i2s_sync, CONFIG_I2S_SYNC_LOG_LEVEL);
  * When disabled (0):
  * - Manual event router configuration is used (legacy behavior)
  */
-#define USE_EVENT_ROUTER_DRIVER   1
+#define USE_EVENT_ROUTER_DRIVER   0
 
 #define DMA_I2S0_RX_GROUP 0x1
 #define DMA_I2S0_TX_GROUP 0x1
@@ -170,8 +170,6 @@ INT_RAMFUNC static int i2s_transmitter_start_dma(const struct device *const dev,
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	struct i2s_sync_data *dev_data = dev->data;
-	/* DMA Burst size is shifter so 1 means 2 bytes, 2 means 4 bytes. */
-	const size_t data_size = bytes_per_sample - 1;
 	int ret = 0;
 
 #if CONFIG_DCACHE
@@ -189,10 +187,10 @@ INT_RAMFUNC static int i2s_transmitter_start_dma(const struct device *const dev,
 	struct dma_config dma_cfg = {
 		.dma_slot = dev_cfg->dma_tx.request,
 		.channel_direction = MEMORY_TO_PERIPHERAL,
-		.source_data_size = data_size,
-		.dest_data_size = data_size,
-		.source_burst_length = I2S_FIFO_TRG_LEVEL_TX - 1,
-		.dest_burst_length = I2S_FIFO_TRG_LEVEL_TX - 1,
+		.source_data_size = bytes_per_sample,
+		.dest_data_size = bytes_per_sample,
+		.source_burst_length = I2S_FIFO_TRG_LEVEL_TX,
+		.dest_burst_length = I2S_FIFO_TRG_LEVEL_TX,
 		.head_block = &dma_block_cfg,
 		.user_data = (void *)dev,
 		.dma_callback = dma_tx_callback,
@@ -309,8 +307,6 @@ INT_RAMFUNC static int i2s_receiver_start_dma(const struct device *const dev,
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
 	struct i2s_sync_data *dev_data = dev->data;
-	/* DMA Burst size is shifter so 1 means 2 bytes, 2 means 4 bytes. */
-	const size_t data_size = bytes_per_sample - 1;
 	int ret = 0;
 
 	struct dma_block_config dma_block_cfg = {
@@ -324,10 +320,10 @@ INT_RAMFUNC static int i2s_receiver_start_dma(const struct device *const dev,
 	struct dma_config dma_cfg = {
 		.dma_slot = dev_cfg->dma_rx.request,
 		.channel_direction = PERIPHERAL_TO_MEMORY,
-		.source_data_size = data_size,
-		.dest_data_size = data_size,
-		.source_burst_length = I2S_FIFO_TRG_LEVEL_RX - 1,
-		.dest_burst_length = I2S_FIFO_TRG_LEVEL_RX - 1,
+		.source_data_size = bytes_per_sample,
+		.dest_data_size = bytes_per_sample,
+		.source_burst_length = I2S_FIFO_TRG_LEVEL_RX,
+		.dest_burst_length = I2S_FIFO_TRG_LEVEL_RX,
 		.head_block = &dma_block_cfg,
 		.user_data = (void *)dev,
 		.dma_callback = dma_rx_callback,

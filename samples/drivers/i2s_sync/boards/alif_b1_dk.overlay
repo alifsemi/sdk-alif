@@ -29,13 +29,12 @@
  * When disabled:
  * - Direct DMA approach with manual event router programming
  */
-#define USE_EVENT_ROUTER_DRIVER   1
+#define USE_EVENT_ROUTER_DRIVER   0
 
 / {
 	aliases {
 		audio-codec = &wm8904;
 		i2s-bus = &i2s0;
-		/*i2s-mic = &i2s2;*/
 	};
 };
 
