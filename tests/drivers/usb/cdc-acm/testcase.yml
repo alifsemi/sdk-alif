@@ -1,0 +1,19 @@
+tests:
+  driver.usb.cdc-acm:
+    depends_on: usb_device
+    tags: usb
+    harness: ztest
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/alif_usb.overlay
+    integration_platforms:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
