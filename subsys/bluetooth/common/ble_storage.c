@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include "ble_storage.h"
 
-LOG_MODULE_REGISTER(storage, LOG_LEVEL_DBG);
+LOG_MODULE_REGISTER(ble_storage, LOG_LEVEL_DBG);
 
 #define SETTINGS_BASE           "ble_nvs"
 

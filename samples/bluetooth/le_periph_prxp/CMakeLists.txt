@@ -16,16 +16,12 @@ endif()
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(le_periph_prxp)
 
-include(${CMAKE_CURRENT_SOURCE_DIR}/../common/CMakeLists.txt)
-
 # Include directories
 target_include_directories(app PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/inc
-	${COMMON_INC}
 )
 
 target_sources(app PRIVATE
     src/main.c
     src/prxp_rom_1_2.c
-    ${COMMON_SRCS}
 )

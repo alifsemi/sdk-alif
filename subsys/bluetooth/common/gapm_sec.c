@@ -472,3 +472,9 @@ void gapm_connection_confirm(uint8_t conidx, uint32_t metainfo, const gap_bdaddr
 	}
 	sec_pairing_status_cb(GAP_ERR_NO_ERROR, conidx, false);
 }
+
+const uint8_t *gapm_sec_get_ltk(uint8_t conidx)
+{
+	(void)conidx;
+	return stored_keys.ltk.key.key;
+}

@@ -6,6 +6,8 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
+if ALIF_BLE_HOST
+
 config ALIF_BLUETOOTH_COMMON
 	bool "Alif Bluetooth Common"
 	depends on SOC_FAMILY_BALLETTO
@@ -25,3 +27,10 @@ config ALIF_BLUETOOTH_COMMON_ACLK_DIVIDER_VALUE
 	  Alif Bluetooth Common ACLK Divider Value
 
 endmenu
+
+config BLE_PRIVACY_ENABLED
+	bool "Enable Privacy to use Random Private Resolvable Address"
+	help
+	  Enable Privacy to use Random Private Resolvable Address
+
+endif

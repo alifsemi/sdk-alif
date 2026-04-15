@@ -15,6 +15,7 @@
 #include "gap_le.h"
 #include "gapc_le.h"
 #include "gapc_sec.h"
+#include "gapm_sec.h"
 #include "gapm_le.h"
 #include "gapm_le_adv.h"
 #include "co_buf.h"
@@ -31,7 +32,7 @@
 
 
 /* Define advertising address type */
-#define SAMPLE_ADDR_TYPE	ALIF_PUBLIC_ADDR
+#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
 
 
 /* Store and share advertising address type */
@@ -62,9 +63,9 @@ static struct connection_status app_con_info = {
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
 	.pairing_mode = GAPM_PAIRING_SEC_CON,
-	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
-	.renew_dur = 1500,
-	.private_identity.addr = {0xCA, 0xFE, 0xFA, 0xDE, 0x15, 0x08},
+	.privacy_cfg = 0,
+	.renew_dur = 50,
+	.private_identity.addr = {0},
 	.irk.key = {0xA1, 0xB2, 0xC3, 0xD4, 0xE5, 0xF1, 0x07, 0x08, 0x11, 0x22, 0x33, 0x44, 0x55,
 		    0x66, 0x77, 0x89},
 	.gap_start_hdl = 0,
@@ -104,6 +105,7 @@ void app_csism_cb_bond_data(uint8_t set_lid, uint8_t con_lid, uint8_t cli_cfg_bf
 void app_csism_cb_ltk_req(uint8_t set_lid, uint8_t con_lid)
 {
 	LOG_DBG("LTK request for set_lid %u, con_lid %u", set_lid, con_lid);
+	atc_csism_ltk_cfm(gapm_sec_get_ltk(con_lid));
 }
 
 void app_csism_cb_rsi(uint8_t set_lid, const csis_rsi_t *p_rsi)
@@ -153,16 +155,18 @@ static uint16_t server_configure(void)
 {
 	uint16_t ret = 0;
 
-
 	ret = atc_csism_configure(1, &csism_cbs);
 	if (ret) {
 		LOG_ERR("CSISM configuration failed %d", ret);
 		return ret;
 	}
 
-	ret = atc_csism_add(CSISM_ADD_CFG_SIZE_BIT | CSISM_ADD_CFG_RANK_BIT |
-				    CSISM_ADD_CFG_SIRK_ENCRYPT_BIT,
-			    2, 1, 30, 0, (csis_sirk_t *)SIRK);
+	ret = atc_csism_add(CSISM_ADD_CFG_SIZE_BIT | CSISM_ADD_CFG_RANK_BIT
+#if CONFIG_BLE_PRIVACY_ENABLED
+	| CSISM_ADD_CFG_SIRK_ENCRYPT_BIT
+#endif
+
+			    , 2, 1, 30, 0, (csis_sirk_t *)SIRK);
 
 	k_sem_take(&csis_add_sem, K_FOREVER);
 

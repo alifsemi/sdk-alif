@@ -27,7 +27,7 @@
 
 LOG_MODULE_REGISTER(central_itf, LOG_LEVEL_DBG);
 
-K_SEM_DEFINE(init_sem, 0, 1);
+K_SEM_DEFINE(init_sem_central, 0, 1);
 
 typedef struct central_env_struct {
 	profile_process_cb profile_process;
@@ -62,7 +62,7 @@ enum central_events {
 
 static void le_central_process(uint8_t event, uint16_t status, const void *p_param);
 
-gapm_config_t gapm_cfg = {
+static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_CENTRAL,
 	.pairing_mode = GAPM_PAIRING_DISABLE,
 	.privacy_cfg = 0,
@@ -178,7 +178,7 @@ static const gapm_callbacks_t gapm_cbs = {
 
 static void on_gapm_process_complete(uint32_t metainfo, uint16_t status)
 {
-	k_sem_give(&init_sem);
+	k_sem_give(&init_sem_central);
 
 	le_central_process(metainfo, status, NULL);
 }
@@ -205,7 +205,7 @@ uint16_t central_itf_gapm_cfg(profile_process_cb profile_process)
 	}
 
 	LOG_DBG("Waiting for init...\n");
-	k_sem_take(&init_sem, K_FOREVER);
+	k_sem_take(&init_sem_central, K_FOREVER);
 	LOG_DBG("Init complete.\n");
 
 	return 0;
