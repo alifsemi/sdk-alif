@@ -432,55 +432,6 @@ static uint16_t service_init(void)
 	return GAP_ERR_NO_ERROR;
 }
 
-static uint16_t service_notification_send(uint32_t conidx_mask)
-{
-	co_buf_t *p_buf;
-	uint16_t status;
-	uint8_t conidx = 0;
-
-	ARG_UNUSED(conidx_mask);
-
-	/* Cannot send another notification unless previous one is completed */
-	if (env.ntf_ongoing) {
-		return PRF_ERR_REQ_DISALLOWED;
-	}
-
-	/* Check notification subscription */
-	if (env.ntf_cfg != PRF_CLI_START_NTF) {
-		return PRF_ERR_NTF_DISABLED;
-	}
-
-	/* Get a buffer to put the notification data into */
-	status = co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, CONFIG_DATA_STRING_LENGTH,
-			      GATT_BUFFER_TAIL_LEN);
-	if (status != CO_BUF_ERR_NO_ERROR) {
-		return GAP_ERR_INSUFF_RESOURCES;
-	}
-
-	uint8_t const loop_count = ((CONFIG_DATA_STRING_LENGTH + 4) / 5);
-
-	for (int i = 0; i < loop_count; i++) {
-		memcpy(env.char0_val + i * 5, &hello_arr[hello_arr_index], 5);
-	}
-
-	memcpy(co_buf_data(p_buf), env.char0_val, CONFIG_DATA_STRING_LENGTH);
-	hello_arr_index++;
-	if (hello_arr_index > 4) {
-		hello_arr_index = 0;
-	}
-
-	status = gatt_srv_event_send(conidx, env.user_lid, HELLO_METAINFO_CHAR0_NTF_SEND,
-				     GATT_NOTIFY, env.start_hdl + HELLO_IDX_CHAR0_VAL, p_buf);
-
-	co_buf_release(p_buf);
-
-	if (status == GAP_ERR_NO_ERROR) {
-		env.ntf_ongoing = true;
-	}
-
-	return status;
-}
-
 int ble_init(void)
 {
 	/* Update preferred connection parameters */

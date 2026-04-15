@@ -30,4 +30,6 @@ void gapm_connection_confirm(uint8_t conidx, uint32_t metainfo, const gap_bdaddr
 void gapm_sec_bondata_update(uint8_t conidx, uint32_t metainfo,
 				 const gapc_bond_data_updated_t *p_data);
 
+const uint8_t *gapm_sec_get_ltk(uint8_t conidx);
+
 #endif /* GAPM_SEC_H */

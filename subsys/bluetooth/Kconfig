@@ -9,4 +9,5 @@
 rsource "le_audio/Kconfig"
 rsource "host/Kconfig"
 rsource "shell/Kconfig"
+rsource "common/Kconfig"
 

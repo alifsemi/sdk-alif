@@ -16,18 +16,10 @@ endif()
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(le_audio_auracast)
 
-set(COMMON_DIR ${CMAKE_CURRENT_LIST_DIR}/../../common)
-
-# Include directories
-target_include_directories(app PRIVATE
-	${COMMON_DIR}
-)
-
 target_sources(app PRIVATE
     src/main.c
     src/audio_datapath.c
     src/auracast_shell.c
-    ${COMMON_DIR}/power_mgr.c
 )
 target_sources_ifdef(CONFIG_AUDIO_DMIC app PRIVATE src/mic_source.c)
 

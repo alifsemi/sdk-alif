@@ -678,6 +678,10 @@ uint16_t bt_gaf_adv_start(gap_bdaddr_t *p_client_addr)
 
 	uint32_t adv_config = GAPM_ADV_MODE_GEN_DISC;
 
+#if CONFIG_BLE_PRIVACY_ENABLED
+	adv_config |= GAF_ADV_CFG_PRIVACY_BIT;
+#endif
+
 	if (alif_ble_mutex_lock(K_MSEC(BLE_MUTEX_TIMEOUT_MS))) {
 		__ASSERT(false, "BLE mutex lock timeout");
 		return GAP_ERR_TIMEOUT;
