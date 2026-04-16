@@ -41,6 +41,7 @@ Application Notes for the Zephyr Alif SDK
    pdm.rst
    ensemble_pins.rst
    power_management.rst
+   se_aipm_profiles.rst
    psram.rst
    pwm.rst
    qdec.rst
