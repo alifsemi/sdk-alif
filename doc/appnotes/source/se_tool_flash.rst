@@ -35,13 +35,13 @@ Follow these steps to build the application:
 
 1. Build command for application on the M55 HE core:
 
-   .. code-block:: bash
+   .. code-block:: console
 
       west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world
 
 2. Build command for application on the M55 HP core:
 
-   .. code-block:: bash
+   .. code-block:: console
 
       west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp samples/hello_world
 
@@ -111,7 +111,7 @@ Step 2: Encrypt the Binary (Optional)
 
 Encrypt the binary for secure applications using a 16-byte AES key.
 
-.. code-block:: bash
+.. code-block:: console
 
    /home/$USER/prebuilt-images/CSPI_AES128_ECB \
      -i build/zephyr/zephyr.bin \
@@ -128,13 +128,13 @@ Step 3: Copy Files to SE Tool Directories
 
 1. Copy the Binary:
 
-   .. code-block:: bash
+   .. code-block:: console
 
       cp ./build/zephyr/zephyr.bin <SE tool folder>/build/images/
 
 2. Copy the JSON Configuration:
 
-   .. code-block:: bash
+   .. code-block:: console
 
       cp ble_hr.json <SE tool folder>/build/config/
 
@@ -143,14 +143,14 @@ Step 4: Run SE Tool Scripts
 
 1. Generate ATOC:
 
-   .. code-block:: bash
+   .. code-block:: console
 
       cd <SE tool folder>
       ./app-gen-toc --filename build/config/ble_hr.json
 
 2. Write to MRAM:
 
-   .. code-block:: bash
+   .. code-block:: console
 
       ./app-write-mram
 
@@ -192,7 +192,7 @@ Sample Output
 
 For the BLE application
 
-   .. code-block:: bash
+   .. code-block:: text
 
          Device ALIF_HR appears in BLE scanner apps.
 

@@ -65,7 +65,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -73,7 +73,7 @@ To execute binaries on the DevKit follow the command
 Console Output
 ===============
 
-::
+.. code-block:: text
 
   Watchdog sample application
   Attempting to test pre-reset callback

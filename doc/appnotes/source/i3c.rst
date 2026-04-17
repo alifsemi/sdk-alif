@@ -112,14 +112,14 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
 Console Output
 ===============
 
-.. code-block:: bash
+.. code-block:: text
 
    Device 0xb35c name is bmi323@69000003b810431000
    Accel AX: -0.004209; AY: -0.008052; AZ: 1.022177 g       Gyro GX: 0.076295; GY: -0.289921; GZ: -0.015259 deg/s

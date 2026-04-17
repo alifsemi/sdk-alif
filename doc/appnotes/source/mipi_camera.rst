@@ -154,7 +154,7 @@ Image Conversion from Bayer to RGB
 
 To convert a Bayer 10 image to RGB format for viewing, run the following command:
 
-.. code-block:: bash
+.. code-block:: console
 
    bayer2rgb -i image_file.bin -o checking_rgb.tiff -w 560 -v 560 -b 8 -f GRBG -m SIMPLE -t
 
@@ -187,7 +187,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 

@@ -75,7 +75,7 @@ Follow these steps to build the LPI2C application using the Alif Zephyr SDK:
 
 2. Build command for application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -90,7 +90,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -98,7 +98,7 @@ Console Output
 ================
 
 
-.. code-block:: console
+.. code-block:: text
 
    [00:00:00.000,000] <inf> ALIF_LPI2C: Start Master transmit and Slave receive
    [00:00:00.001,000] <inf> ALIF_LPI2C: Master transmit and slave receive successful

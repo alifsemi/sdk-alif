@@ -67,7 +67,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -75,7 +75,7 @@ Console Output
 ================
 
 
-.. code-block:: console
+.. code-block:: text
 
    Sample program to r/w files on littlefs
    Area 4 at 0x1a0000 on mram_flash@80000000 for 16384 bytes

@@ -45,7 +45,7 @@ Follow these steps to build the DMA application using the Alif Zephyr SDK:
 
 2. Build command for application on the M55 HE core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -54,7 +54,7 @@ Follow these steps to build the DMA application using the Alif Zephyr SDK:
 
 3. Build command for application on the M55 HP core:
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
@@ -181,7 +181,7 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
@@ -193,7 +193,7 @@ SPI data transfer occurs using the selected DMA. The following output is display
 Console Output 1
 ----------------
 
-.. code-block:: console
+.. code-block:: text
 
 
     Slave Transceive Iter= 10
@@ -226,7 +226,7 @@ Console Output 1
 Console Output 2
 ----------------
 
-.. code-block:: console
+.. code-block:: text
 
     Master Transceive Iter= 7
     slave wrote: ef120000 ef120001 ef120002 ef120003 ef120004
@@ -276,7 +276,7 @@ Console Output 2
 Console Output 3
 ----------------
 
-.. code-block:: console
+.. code-block:: text
 
     Slave Transceive Iter= 2
     Master wrote: abcd0000 abcd0001 abcd0002 abcd0003 abcd0004

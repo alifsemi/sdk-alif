@@ -22,6 +22,7 @@ Application Notes for the Zephyr Alif SDK
    entropy.rst
    ethos.rst
    ethernet.rst
+   gpio.rst
    touchscreen.rst
    hwsem.rst
    i2c.rst
@@ -76,4 +77,4 @@ Document History
    * - 2.1
      - Added support for MIPI-CSI, CMP, ISP, USB-device, Ethernet.
    * - 2.2
-     - Updated the document to include OV5640 camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), ExecuTorch, EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), and Deep Sleep IWIC support.
+     - Updated the document to include OV5640 camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), Deep Sleep IWIC support, and AI Acceleration section updates (Executorch, InferenceRunner, TFLite Micro samples).
