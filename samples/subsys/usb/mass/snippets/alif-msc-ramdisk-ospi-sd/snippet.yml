@@ -1,0 +1,20 @@
+#
+# SPDX-FileCopyrightText: Copyright Alif Semiconductor
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: alif-msc-ramdisk-ospi-sd
+
+boards:
+  /alif_b1_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_dk.overlay
+  /alif_e1c_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e1c_dk.overlay
+  /alif_e7_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e7_dk.overlay
+  /alif_e8_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e8_dk.overlay

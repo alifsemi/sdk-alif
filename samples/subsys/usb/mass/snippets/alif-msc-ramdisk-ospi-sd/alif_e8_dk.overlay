@@ -1,0 +1,106 @@
+/*
+ * SPDX-FileCopyrightText: Copyright Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&ns {
+	status = "okay";
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+
+&pinctrl {
+	pinctrl_flash:pinctrl_flash {
+		group0 {
+			pinmux = <PIN_P5_5__OSPI1_SCLK_C>,
+				 <PIN_P5_7__OSPI1_SS0_C>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+		group1 {
+			pinmux = <PIN_P9_5__OSPI1_D0_C>,
+				 <PIN_P9_6__OSPI1_D1_C>,
+				 <PIN_P9_7__OSPI1_D2_C>,
+				 <PIN_P10_0__OSPI1_D3_C>,
+				 <PIN_P10_1__OSPI1_D4_C>,
+				 <PIN_P10_2__OSPI1_D5_C>,
+				 <PIN_P10_3__OSPI1_D6_C>,
+				 <PIN_P10_4__OSPI1_D7_C>,
+				 <PIN_P10_7__OSPI1_RXDS0_C>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+	};
+};
+
+&ospi1 {
+	pinctrl-0 = <&pinctrl_flash>;
+	status = "okay";
+};
+
+&ospi_flash {
+	status = "okay";
+};
+
+/* Update zephyr,flash property */
+/{
+	chosen {
+		zephyr,flash-controller = &ospi_flash;
+		zephyr,flash = &flash_storage;
+
+		/delete-property/ zephyr,code-partition;
+	};
+};
+
+&flash_storage {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		ospi_storage_partition: partition@0 {
+			label = "ospi-storage";
+			reg = <0x0 DT_SIZE_M(64)>;
+		};
+	};
+};
+
+/ {
+	msc_disk0 {
+		compatible = "zephyr,flash-disk";
+		partition = <&ospi_storage_partition>;
+		disk-name = "NAND";
+		cache-size = <4096>;
+	};
+};
+
+/* RAMDISK support */
+
+/ {
+	ramdisk0 {
+		compatible = "zephyr,ram-disk";
+		disk-name = "RAM";
+		sector-size = <512>;
+		sector-count = <192>;
+	};
+};
+
+/* SD card support */
+
+&gpio14 {
+	status = "okay";
+};
+
+&sdhc {
+	status = "okay";
+
+	mmc {
+		status = "okay";
+		disk-name = "SD";
+	};
+};
