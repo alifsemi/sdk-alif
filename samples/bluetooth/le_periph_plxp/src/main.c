@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -26,6 +26,9 @@
 #include <alif/bluetooth/bt_adv_data.h>
 #include <alif/bluetooth/bt_scan_rsp.h>
 #include "gapm_api.h"
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+#include "ble_gpio.h"
+#endif
 
 /*  Profile definitions */
 #include "prf.h"
@@ -37,13 +40,19 @@
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
 
-/* Variable to check if peer device is ready to receive data"*/
+/* Peer device is ready to receive data */
 static bool ready_to_send;
+
+/* Variable to check if features indication is in progress */
+static bool features_indication_ongoing;
+
+/* Stored CCCD configuration for bonded peer (simplistic approach for PTS testing) */
+static uint8_t saved_evt_cfg;
 
 K_SEM_DEFINE(conn_sem, 0, 1);
 
 /* Define advertising address type */
-#define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
+#define SAMPLE_ADDR_TYPE	ALIF_PUBLIC_ADDR
 
 /* Store and share advertising address type */
 static uint8_t adv_type;
@@ -63,10 +72,10 @@ static plxp_spo2pr_t plx_value = {
  */
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_DISABLE,
+	.pairing_mode = GAPM_PAIRING_SEC_CON,
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
-	/*      Dummy address   */
+	/* Dummy address */
 	.private_identity.addr = {0xCB, 0xFE, 0xFB, 0xDE, 0x11, 0x07},
 	.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	.gap_start_hdl = 0,
@@ -79,7 +88,6 @@ static gapm_config_t gapm_cfg = {
 	.tx_path_comp = 0,
 	.rx_path_comp = 0,
 };
-
 
 /* Load name from configuration file */
 #define DEVICE_NAME CONFIG_BLE_DEVICE_NAME
@@ -133,19 +141,37 @@ static uint16_t create_advertising(void)
  */
 static void on_spot_meas_send_cmp(uint8_t conidx, uint16_t status)
 {
+	LOG_DBG("conidx: %" PRIu8 ", status: %" PRIx16, conidx, status);
 }
 
 static void on_cont_meas_send_cmp(uint8_t conidx, uint16_t status)
 {
+	LOG_DBG("conidx: %" PRIu8 ", status: %" PRIx16, conidx, status);
 	/* Notification was correctly received, it is now allowed to send a new one */
 	ready_to_send = true;
 }
 
 static void on_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
 {
-	if (evt_cfg & PLXS_FEATURES_IND_CFG_BIT) {
+	/* Save CCCD configuration for future reconnections */
+	saved_evt_cfg = evt_cfg;
+	LOG_INF("Bond data updated for connection index %" PRIu8 ", evt_cfg: %" PRIx8,
+		conidx, evt_cfg);
 
-		LOG_DBG("Features Indications not supported for this example");
+	if (evt_cfg & PLXS_FEATURES_IND_CFG_BIT) {
+		uint16_t err;
+
+		if (features_indication_ongoing) {
+			LOG_WRN("Features indication already in progress, skipping");
+		} else {
+			LOG_INF("PLX Features indications enabled, sending feature update");
+			err = plxs_features_updated(conidx);
+			if (err) {
+				LOG_ERR("Error 0x%" PRIx16 " sending feature indication", err);
+			} else {
+				features_indication_ongoing = true;
+			}
+		}
 	}
 
 	if (evt_cfg & PLXS_MEAS_SPOT_IND_CFG_BIT) {
@@ -173,6 +199,47 @@ static void on_racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
 
 static void on_cmp_evt(uint8_t conidx, uint16_t status, uint8_t cmd_type)
 {
+	LOG_INF("conidx: %" PRIu8 ", status: %" PRIu16 ", cmd_type: %" PRIu8,
+		conidx, status, cmd_type);
+
+	switch (cmd_type) {
+	case PLXS_FEATURES_UPDATED_CMD_OP_CODE:
+		features_indication_ongoing = false;
+		if (status == GAP_ERR_NO_ERROR) {
+			LOG_INF("PLX Features indication procedure completed successfully");
+		} else {
+			LOG_ERR("PLX Features indication procedure failed with error %" PRIu16,
+				status);
+		}
+		break;
+	case PLXS_SPOT_CHECK_MEAS_CMD_OP_CODE:
+		if (status == GAP_ERR_NO_ERROR) {
+			LOG_INF("Spot-check measurement procedure completed successfully");
+		} else {
+			LOG_ERR("Spot-check measurement procedure failed with error %" PRIu16,
+				status);
+		}
+		break;
+	case PLXS_CONTINUOUS_MEAS_CMD_OP_CODE:
+		if (status == GAP_ERR_NO_ERROR) {
+			LOG_INF("Continuous measurement procedure completed successfully");
+		} else {
+			LOG_ERR("Continuous measurement procedure failed with error %" PRIu16,
+				status);
+		}
+		break;
+	case PLXS_RACP_CMD_OP_CODE:
+		if (status == GAP_ERR_NO_ERROR) {
+			LOG_INF("Record Access Control Point procedure completed successfully");
+		} else {
+			LOG_ERR("Record Access Control Point procedure failed with error %" PRIu16,
+				status);
+		}
+		break;
+	default:
+		LOG_WRN("Unknown command type %" PRIu8, cmd_type);
+		break;
+	}
 }
 
 /* profile callbacks */
@@ -185,12 +252,12 @@ static const plxs_cb_t plxs_cb = {
 	.cb_cmp_evt = on_cmp_evt,
 };
 
-/* Add profile to the stack */
+/* Add PLXS profile to the stack */
 static void server_configure(void)
 {
 	uint16_t err;
 
-	/* Dinamic allocation of service start handle*/
+	/* Dynamic allocation of service start handle */
 	uint16_t start_hdl = 0;
 
 	/* Database configuration structure */
@@ -201,12 +268,44 @@ static void server_configure(void)
 	err = prf_add_profile(TASK_ID_PLXS, 0, 0, &plxs_cfg, &plxs_cb, &start_hdl);
 
 	if (err) {
-		LOG_ERR("Error %u adding profile", err);
+		LOG_ERR("Error 0x%" PRIx16 " adding profile", err);
 	}
 }
 
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+static void button_update_handler(uint32_t button_state, uint32_t has_changed)
+{
+	uint16_t err;
+
+	if (has_changed & 1) {
+		if (!(button_state & 1)) {
+			/* Button pressed (active low) */
+			LOG_INF("Button 0 pressed - attempting to send PLX Features indication");
+
+			if (conn_status != BT_CONN_STATE_CONNECTED) {
+				LOG_WRN("Not connected - cannot send indication");
+				return;
+			}
+
+			if (features_indication_ongoing) {
+				LOG_WRN("Features indication already in progress, please wait");
+				return;
+			}
+
+			err = plxs_features_updated(0);
+			if (err) {
+				LOG_ERR("Error 0x%" PRIx16 " sending features indication", err);
+			} else {
+				LOG_INF("Features indication sent successfully");
+				features_indication_ongoing = true;
+			}
+		}
+	}
+}
+#endif
+
 /* Dummy sensor reading emulation */
-void read_sensor_value(void)
+static void read_sensor_value(void)
 {
 	/* Increment and wrap around the values within their respective ranges */
 	plx_value.sp_o2++;
@@ -225,22 +324,22 @@ void read_sensor_value(void)
 	plx_value.pr = plx_value.pr;
 }
 
-/*  Generate and send dummy data*/
+/* Generate and send dummy data */
 static void send_measurement(void)
 {
 	uint16_t err;
 
-	/*      Dummy measurements values       */
+	/* Dummy measurement values */
 	plxp_cont_meas_t p_meas = {
 		.cont_flags = 0,
 		.normal = plx_value,
 	};
 
-	/* Using connection ndex 0 to notify to the first connected client*/
+	/* Using connection index 0 to notify the first connected client */
 	err = plxs_cont_meas_send(0, &p_meas);
 
 	if (err) {
-		LOG_ERR("Error %u sending measurement", err);
+		LOG_ERR("Error 0x%" PRIx16 " sending measurement", err);
 	}
 }
 
@@ -267,26 +366,39 @@ static void service_process(void)
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
 				  uint16_t status)
 {
+	uint16_t err;
+	uint8_t restored_evt_cfg;
+
 	switch (con_event) {
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
 		conn_status = BT_CONN_STATE_CONNECTED;
 		k_sem_give(&conn_sem);
-		LOG_INF("Connection index %u connected to known device", con_idx);
-		LOG_DBG("Please enable notifications on peer device..");
+		LOG_INF("Connection index %" PRIu8 " connected to known device", con_idx);
+
+		/* Restore bond data for known peer device with saved CCCD values */
+		restored_evt_cfg = saved_evt_cfg;
+		LOG_INF("Restoring PLXS with evt_cfg: %" PRIu8 "", restored_evt_cfg);
+		err = plxs_enable(con_idx, restored_evt_cfg);
+		if (err) {
+			LOG_ERR("Error %" PRIu16 " enabling PLXS for known device", err);
+		} else {
+			LOG_INF("PLXS enabled for known device");
+		}
 		break;
 	case GAPM_API_DEV_CONNECTED:
 		conn_status = BT_CONN_STATE_CONNECTED;
 		k_sem_give(&conn_sem);
-		LOG_INF("Connection index %u connected to new device", con_idx);
+		LOG_INF("Connection index %" PRIu8 " connected to new device", con_idx);
 		LOG_DBG("Please enable notifications on peer device..");
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
-		LOG_INF("Connection index %u disconnected for reason %u", con_idx, status);
 		conn_status = BT_CONN_STATE_DISCONNECTED;
 		ready_to_send = false;
+		features_indication_ongoing = false;
 		break;
 	case GAPM_API_PAIRING_FAIL:
-		LOG_INF("Connection pairing index %u fail for reason %u", con_idx, status);
+		LOG_INF("Connection pairing index %" PRIu8 " fail for reason 0x%" PRIx16,
+			con_idx, status);
 		break;
 	}
 }
@@ -298,6 +410,15 @@ static gapm_user_cb_t gapm_user_cb = {
 int main(void)
 {
 	uint16_t err;
+
+#if defined(CONFIG_IUT_TESTER_ENABLED)
+	/* Initialize button handler for manual features indication testing */
+	err = ble_gpio_buttons_init(button_update_handler);
+	if (err) {
+		LOG_ERR("Button Init fail 0x%" PRIx16, err);
+		return -1;
+	}
+#endif
 
 	/* Start up bluetooth host stack */
 	alif_ble_enable(NULL);
@@ -311,7 +432,7 @@ int main(void)
 	LOG_INF("Init gapm service");
 	err = bt_gapm_init(&gapm_cfg, &gapm_user_cb, DEVICE_NAME, strlen(DEVICE_NAME));
 	if (err) {
-		LOG_ERR("gapm_configure error %u", err);
+		LOG_ERR("gapm_configure error 0x%" PRIx16, err);
 		return -1;
 	}
 
@@ -320,25 +441,25 @@ int main(void)
 	/* Create an advertising activity */
 	err = create_advertising();
 	if (err) {
-		LOG_ERR("Advertisement create fail %u", err);
+		LOG_ERR("Advertisement create fail 0x%" PRIx16, err);
 		return -1;
 	}
 
 	err = set_advertising_data(adv_actv_idx);
 	if (err) {
-		LOG_ERR("Advertisement data set fail %u", err);
+		LOG_ERR("Advertisement data set fail 0x%" PRIx16, err);
 		return -1;
 	}
 
 	err = bt_gapm_scan_response_set(adv_actv_idx);
 	if (err) {
-		LOG_ERR("Scan response set fail %u", err);
+		LOG_ERR("Scan response set fail 0x%" PRIx16, err);
 		return -1;
 	}
 
 	err = bt_gapm_advertisement_start(adv_actv_idx);
 	if (err) {
-		LOG_ERR("Advertisement start fail %u", err);
+		LOG_ERR("Advertisement start fail 0x%" PRIx16, err);
 		return -1;
 	}
 
