@@ -216,18 +216,74 @@ add_custom_command(
 add_custom_target(gen_model_header DEPENDS ${_model_pte_header})
 add_dependencies(app gen_model_header)
 
+# Memory pool sizes configuration
+#
+# Boards are categorized by SRAM availability:
+#   WITH SRAM0 (E3/E4/E7/E8): Large pools (1.5MB) in dedicated SRAM sections
+#   WITHOUT SRAM0 (E1C, B1):  Small pools (64KB) in DTCM
+#
+# Detection logic:
+#   - B1 (Balletto family): No SRAM0
+#   - E1C (Ensemble E1C series): No SRAM0
+#   - E3/E4/E7/E8: Have SRAM0
+#
+# Note: The actual section placement is handled by DT_NODE_HAS_STATUS in main.cpp
+# This CMake logic ensures pool sizes match the available memory.
+
+set(BOARD_HAS_SRAM0 TRUE)
+
+# Balletto family (B1) - no SRAM0
+if(CONFIG_SOC_FAMILY_BALLETTO)
+  set(BOARD_HAS_SRAM0 FALSE)
+endif()
+
+# Ensemble E1C series - no SRAM0 (DTCM only, similar to B1)
+if(CONFIG_SOC_SERIES_E1C)
+  set(BOARD_HAS_SRAM0 FALSE)
+endif()
+
+if(BOARD_HAS_SRAM0)
+  # Boards with SRAM0 (E3/E4/E7/E8): 1.5MB pools
+  set(DEFAULT_METHOD_POOL_SIZE 1572864)
+  set(DEFAULT_TEMP_POOL_SIZE 1572864)
+  message(STATUS "ExecutorTorch: Using SRAM0 configuration (1.5MB pools)")
+else()
+  # Boards without SRAM0 (E1C, B1): 64KB pools for limited DTCM
+  set(DEFAULT_METHOD_POOL_SIZE 65536)
+  set(DEFAULT_TEMP_POOL_SIZE 65536)
+  message(STATUS "ExecutorTorch: Using DTCM configuration (64KB pools)")
+endif()
+
+# Allow Kconfig override, but validate against board capabilities
 if(DEFINED CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE)
-  target_compile_definitions(
-    app PRIVATE
-    ET_ARM_METHOD_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE}
-  )
+  set(METHOD_POOL_SIZE ${CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE})
+else()
+  set(METHOD_POOL_SIZE ${DEFAULT_METHOD_POOL_SIZE})
 endif()
+
 if(DEFINED CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE)
-  target_compile_definitions(
-    app PRIVATE
-    ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE}
-  )
+  set(TEMP_POOL_SIZE ${CONFIG_EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE})
+else()
+  set(TEMP_POOL_SIZE ${DEFAULT_TEMP_POOL_SIZE})
 endif()
+
+# Safety check: Override large pool sizes on DTCM-only boards to prevent overflow
+if(NOT BOARD_HAS_SRAM0)
+  if(METHOD_POOL_SIZE GREATER 262144)
+    message(WARNING "ExecutorTorch: Reducing METHOD_POOL_SIZE from ${METHOD_POOL_SIZE} to ${DEFAULT_METHOD_POOL_SIZE} for DTCM-only board")
+    set(METHOD_POOL_SIZE ${DEFAULT_METHOD_POOL_SIZE})
+  endif()
+  if(TEMP_POOL_SIZE GREATER 262144)
+    message(WARNING "ExecutorTorch: Reducing TEMP_POOL_SIZE from ${TEMP_POOL_SIZE} to ${DEFAULT_TEMP_POOL_SIZE} for DTCM-only board")
+    set(TEMP_POOL_SIZE ${DEFAULT_TEMP_POOL_SIZE})
+  endif()
+endif()
+
+target_compile_definitions(
+  app PRIVATE
+  ET_ARM_METHOD_ALLOCATOR_POOL_SIZE=${METHOD_POOL_SIZE}
+  ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE=${TEMP_POOL_SIZE}
+)
 
 target_link_libraries(app PRIVATE libexecutorch)
 if(EXECUTORCH_OPS_LIB)
