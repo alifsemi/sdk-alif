@@ -1,0 +1,18 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+config SDMMC_TEST_DESTRUCTIVE_SECTOR_ZERO
+	bool "Enable destructive raw sector 0 test"
+	default n
+	help
+		Enable the test that writes directly to sector 0 (FAT boot sector).
+		If the test aborts or power is lost, the SD card may be left
+		corrupted and require reformatting. Only enable for destructive
+		testing scenarios.
+
+source "Kconfig.zephyr"

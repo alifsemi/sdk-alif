@@ -1,0 +1,29 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+ns: &ns {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+sdhc: &sdhc {
+	status = "okay";
+
+	mmc {
+		status = "okay";
+		disk-name = "SD";
+	};
+};
