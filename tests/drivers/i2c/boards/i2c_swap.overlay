@@ -1,0 +1,30 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* I2C controller swap overlay for validation testing
+ * Swaps master/slave assignments: i2c1 becomes master, i2c0 becomes slave
+ * Used for cross-validation and controller role testing
+ */
+
+/ {
+	aliases {
+		i2c-controller = &i2c1;
+		i2c-target = &i2c0;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+	/* Slave controller in swapped configuration */
+};
+
+&i2c1 {
+	status = "okay";
+	/* Master controller in swapped configuration */
+};

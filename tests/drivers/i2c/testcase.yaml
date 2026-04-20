@@ -1,0 +1,160 @@
+common:
+  tags:
+    - drivers
+    - i2c
+  extra_conf_files:
+    - prj.conf
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  depends_on: i2c
+  harness: ztest
+  filter: dt_alias_exists("i2c_controller") and \
+          dt_alias_exists("i2c_target")
+  extra_dtc_overlay_files:
+    - boards/i2c.overlay
+
+tests:
+  # ============================================================================
+  # Smoke Tests - Quick validation for CI
+  # ============================================================================
+
+  # Core API validation only - fastest smoke test (~5s)
+  drivers.i2c.api:
+    timeout: 60
+
+  # Basic functionality with single frequency - standard CI test
+  drivers.i2c.smoke:
+    timeout: 120
+    extra_configs:
+      - CONFIG_I2C_TEST_FREQ_FAST=n
+      - CONFIG_I2C_TEST_FREQ_FAST_PLUS=n
+      - CONFIG_I2C_TEST_FREQ_HIGH=n
+
+  # ============================================================================
+  # Full Suite Tests - All test suites enabled
+  # ============================================================================
+
+  # All standard test suites (boundary, fault, hardware, stress)
+  drivers.i2c.all:
+    timeout: 600
+    extra_configs:
+      - CONFIG_I2C_ALL_TESTS=y
+
+  # All test suites with buffer mode enabled
+  drivers.i2c.all.buffer:
+    timeout: 600
+    extra_configs:
+      - CONFIG_I2C_ALL_TESTS=y
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+
+  # ============================================================================
+  # Individual Test Suites - Granular validation
+  # ============================================================================
+
+  # Performance benchmarking suite
+  drivers.i2c.performance:
+    timeout: 180
+    extra_configs:
+      - CONFIG_I2C_PERFORMANCE_TESTS=y
+
+  # Stress testing - basic variant
+  drivers.i2c.stress.basic:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_STRESS_TESTS=y
+
+  # Stress testing - enhanced with fault injection
+  drivers.i2c.stress:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_ENHANCED_STRESS=y
+
+  # Stress testing with buffer mode
+  drivers.i2c.stress.buffer:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+      - CONFIG_I2C_STRESS_TESTS=y
+
+  # Restart condition integrity test (non-buffer mode)
+  drivers.i2c.stress.restart:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_STRESS_TESTS=y
+    testcases:
+      - i2c_stress.test_wr_restart_integrity
+
+  # Restart condition integrity test (buffer mode)
+  drivers.i2c.stress.restart.buffer:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+      - CONFIG_I2C_STRESS_TESTS=y
+    testcases:
+      - i2c_stress.test_wr_restart_integrity
+
+  # Boundary/FIFO testing - standard mode
+  drivers.i2c.boundary:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_BOUNDARY_TESTS=y
+
+  # Boundary testing with buffer mode
+  drivers.i2c.boundary.buffer:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_BOUNDARY_TESTS=y
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+
+  # Fault injection testing - standard mode
+  drivers.i2c.fault:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_FAULT_INJECTION_TESTS=y
+
+  # Fault injection testing with buffer mode
+  drivers.i2c.fault.buffer:
+    timeout: 300
+    extra_configs:
+      - CONFIG_I2C_FAULT_INJECTION_TESTS=y
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+
+  # Hardware-aware testing - standard mode
+  drivers.i2c.hardware:
+    timeout: 400
+    extra_configs:
+      - CONFIG_I2C_HARDWARE_AWARE_TESTS=y
+
+  # Hardware-aware testing with buffer mode
+  drivers.i2c.hardware.buffer:
+    timeout: 400
+    extra_configs:
+      - CONFIG_I2C_HARDWARE_AWARE_TESTS=y
+      - CONFIG_I2C_TARGET_BUFFER_MODE=y
+
+  # ============================================================================
+  # Sensor Integration Tests
+  # ============================================================================
+
+  drivers.i2c.bme680:
+    tags:
+      - drivers
+      - i2c
+      - sensor
+    depends_on:
+      - i2c
+      - sensor
+    filter: dt_alias_exists("i2c_controller")
+    extra_dtc_overlay_files:
+      - boards/i2c.overlay
+      - boards/i2c_bme680.overlay
+    extra_configs:
+      - CONFIG_I2C_BME680_TESTS=y
