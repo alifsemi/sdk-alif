@@ -29,6 +29,7 @@ Application Notes for the Zephyr Alif SDK
    i2s.rst
    i3c.rst
    isp.rst
+   jpeg.rst
    lp_timer.rst
    lp_i2c.rst
    lp_rtc.rst
