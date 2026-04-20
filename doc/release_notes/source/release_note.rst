@@ -352,7 +352,8 @@ Camera Interfaces
      - MIPI Camera Serial Interface (CSI-2) supporting high-speed serial transmission of pixel data from image sensors (e.g., ARX3A0). Data is received via D-PHY, processed through the PHY Protocol Interface (PPI), unpacked by the MIPI CSI-2 host controller, and delivered via the Image Pixel Interface (IPI) to the Camera Pixel Interface (CPI) for storage in memory over AXI. Integrated with Zephyr’s video input subsystem for streaming and frame capture.
    * - ISP
      - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, and color correction. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
-
+   * - JPEG Encoder
+     - VeriSilicon Hantro VC9000E hardware JPEG encoder for real-time compression of YUV420 (NV12/NV21) image frames. Supports configurable quality factor, hardware-accelerated quantization table programming, and JPEG header generation. Integrated with the video driver to enable camera capture-to-JPEG encoding pipelines in Zephyr-based applications.
 
 Camera Sensors Support
 ~~~~~~~~~~~~~~~~~~~~~~
