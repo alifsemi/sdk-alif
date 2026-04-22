@@ -55,10 +55,10 @@ uint16_t time_offset_minutes = 0x00BB;
 /* Dummy record store */
 #define DEFAULT_REPORT_COUNT 3
 
-#define DEFAULT_REPORT_MAX_COUNT 250
+#define DEFAULT_REPORT_MAX_COUNT 25000
 
-static uint8_t record_read_index;
-static uint8_t record_stored_index = DEFAULT_REPORT_COUNT;
+static uint16_t record_read_index;
+static uint16_t record_stored_index = DEFAULT_REPORT_COUNT;
 
 static cgms_record_t record_store[DEFAULT_REPORT_MAX_COUNT];
 
@@ -215,7 +215,7 @@ static uint16_t number_of_report_stored(void)
 	}
 	uint16_t report_count = 0;
 
-	for (uint8_t i = 0; i < record_stored_index; i++) {
+	for (uint16_t i = 0; i < record_stored_index; i++) {
 		if (record_store[i].time_offset >= app_env.filter_time_offset) {
 			report_count++;
 		}
@@ -225,7 +225,7 @@ static uint16_t number_of_report_stored(void)
 
 static cgms_record_t *read_entry_report_stored(void)
 {
-	for (uint8_t i = record_read_index; i < record_stored_index; i++) {
+	for (uint16_t i = record_read_index; i < record_stored_index; i++) {
 		if (record_store[i].time_offset >= app_env.filter_time_offset) {
 			record_read_index = i + 1;
 			return &record_store[i];
