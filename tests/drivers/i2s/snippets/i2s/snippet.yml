@@ -1,0 +1,17 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+name: i2s
+
+boards:
+   /(alif_b1|alif_e1c|alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_lpi2s_rtss_he.overlay
+
+   /alif_e7.*/.*/rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2s2_rtss_hp.overlay
+
+   /alif_e8.*/.*/rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2s3_rtss_hp.overlay

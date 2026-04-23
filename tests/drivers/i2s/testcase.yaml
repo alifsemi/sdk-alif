@@ -1,0 +1,82 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# Twister test definitions for the Alif I2S driver test application.
+#
+# All entries apply the `i2s` snippet via SNIPPET=i2s so that the correct
+# devicetree overlay is selected per board (see snippets/i2s/snippet.yml).
+#
+# Validation uses Zephyr's built-in ZTest harness only -- twister parses
+# the on-target ZTest output (PASS/FAIL/PROJECT EXECUTION ...) directly.
+# HW-dependent scenarios are gated via `fixture:` so twister auto-skips
+# them when the corresponding wire / codec is not declared on the
+# command line via --fixture <name>.
+
+common:
+  tags:
+    - drivers
+    - i2s
+    - alif
+  harness: ztest
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+  extra_args:
+    - SNIPPET=i2s
+  timeout: 300
+
+tests:
+
+  # -------------------------------------------------------------------
+  # No HW wire required -- safe in CI.
+  # Loopback / RX-verify cases self-skip when CONFIG_I2S_GPIO_LOOPBACK
+  # is not set.
+  # -------------------------------------------------------------------
+
+  drivers.i2s.alif.smoke: {}
+
+  drivers.i2s.alif.features:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=y
+      - CONFIG_I2S_FEATURES=y
+
+  # -------------------------------------------------------------------
+  # HW-fixture-gated scenarios. Twister will only build/flash these
+  # when the requested fixture is declared via --fixture <name>;
+  # otherwise they are skipped automatically.
+  # -------------------------------------------------------------------
+
+  drivers.i2s.alif.loopback:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=y
+      - CONFIG_I2S_LOOPBACK=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+    harness_config:
+      fixture: gpio_loopback
+
+  drivers.i2s.alif.golden_verify:
+    extra_configs:
+      - CONFIG_I2S_GOLDEN_TESTS=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+      - CONFIG_I2S_LOOPBACK_VERIFY=y
+    harness_config:
+      fixture: gpio_loopback
+
+  drivers.i2s.alif.play_hello:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=y
+      - CONFIG_I2S_PLAY_HELLO=y
+    harness_config:
+      fixture: audio_codec
+
+  drivers.i2s.alif.play_hello_codec:
+    extra_args:
+      - SNIPPET=i2s-codec
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=y
+      - CONFIG_I2S_PLAY_HELLO_CODEC=y
+    harness_config:
+      fixture: audio_codec
