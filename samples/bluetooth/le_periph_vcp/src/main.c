@@ -91,7 +91,7 @@ static arc_vcs_cb_t vcs_cb;
 static arc_vocs_cb_t vocs_cb;
 static arc_aics_cb_t aics_cb;
 
-#define AICS_CFG_BF 0
+#define AICS_CFG_BF ARC_AICS_CFG_DESC_NTF_POS
 #define AICS_DESC_MAX_LEN 20
 
 static void led_worker_handler(struct k_work *work);
