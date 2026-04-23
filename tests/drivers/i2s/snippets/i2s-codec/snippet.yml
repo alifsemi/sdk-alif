@@ -1,0 +1,23 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+name: i2s-codec
+
+boards:
+  /(alif_b1|alif_e1c)_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e1c_b1_rtss.overlay
+
+  /alif_(e4|e8)_ak.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e4_e8_rtss_ak.overlay
+
+  /alif_(e4|e7|e8)_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e4_e8_rtss_dk.overlay
