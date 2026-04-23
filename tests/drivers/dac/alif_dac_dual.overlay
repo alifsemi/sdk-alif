@@ -1,0 +1,34 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/ {
+	aliases {
+		dac = &dac1;
+	};
+};
+
+&dac0 {
+	status = "okay";
+	/* Two's complement mode disabled (property omitted) */
+	/* Load capacitance compensation: 4pF */
+	capacitance = "DAC_4PF_CAPACITANCE";
+	/* Output current: 800 uA */
+	output_current = "DAC_800UA_OUT_CUR";
+};
+
+&dac1 {
+	status = "okay";
+	/* Two's complement mode enabled (for testing R-32_2) */
+	twoscomp_enabled;
+	/* Load capacitance compensation: 6pF (different from DAC0) */
+	capacitance = "DAC_6PF_CAPACITANCE";
+	/* Output current: 1000 uA (higher current for testing) */
+	output_current = "DAC_1000UA_OUT_CUR";
+};
