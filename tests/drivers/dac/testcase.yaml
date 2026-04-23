@@ -1,0 +1,38 @@
+common:
+  tags: drivers dac
+  harness: ztest
+  timeout: 600
+  platform_allow:
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+
+tests:
+  drivers.dac.dac0:
+    extra_dtc_overlay_files:
+      - alif_dac0.overlay
+
+  drivers.dac.dac0_twoscomp:
+    extra_dtc_overlay_files:
+      - alif_dac0_twoscomp.overlay
+
+  drivers.dac.dac1:
+    extra_dtc_overlay_files:
+      - alif_dac1.overlay
+
+  drivers.dac.dual:
+    extra_dtc_overlay_files:
+      - alif_dac_dual.overlay
+
+  drivers.dac.dac0_max_current:
+    extra_dtc_overlay_files:
+      - alif_dac0_max_current.overlay
+
+  drivers.dac.dac0_min_current:
+    extra_dtc_overlay_files:
+      - alif_dac0_min_current.overlay
