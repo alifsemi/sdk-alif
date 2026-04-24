@@ -37,7 +37,15 @@ static const char applet_call_server_uci[] = "E.164";
 #define CALL_BEARER_CCID (0x43)
 /* Configuration bit field for Telephone Bearer Service instance */
 #define CALL_BEARER_CFG_BF                                                                         \
-	(ACC_TBS_CFG_SIGNAL_STRENGTH_SUPP_BIT | ACC_TBS_CFG_FRIENDLY_NAME_SUPP_BIT)
+	(ACC_TBS_CFG_SIGNAL_STRENGTH_SUPP_BIT | ACC_TBS_CFG_FRIENDLY_NAME_SUPP_BIT |             \
+	 ACC_TBS_CFG_INCOMING_TARGET_URI_SUPP_BIT)
+
+/* CCID of the Generic Telephone Bearer Service instance */
+#define GTBS_BEARER_CCID (0x00)
+
+/* Bearer LIDs for tracking added bearers */
+static uint8_t gtbs_bearer_lid = 0xFF;
+static uint8_t tbs_bearer_lid = 0xFF;
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -51,6 +59,7 @@ struct app_env {
 	const char *p_provider_name;
 	const char *p_friendly_name;
 	const char *p_uri;
+	const char *p_tgt_uri;
 
 	uint32_t cli_cfg_bf;
 	/* Signal strength reporting interval (in seconds) */
@@ -66,6 +75,7 @@ static struct app_env env = {
 	.p_friendly_name = NULL,
 	.p_provider_name = NULL,
 	.p_uri = NULL,
+	.p_tgt_uri = NULL,
 	.cli_cfg_bf = 0,
 	.signal_strength_intv_s = 0,
 	.start_call = false,
@@ -232,6 +242,9 @@ void app_acc_tbs_cb_get_req(uint8_t bearer_lid, uint8_t call_id, uint8_t con_lid
 	case ACC_TB_CHAR_TYPE_URI_SCHEMES_LIST: {
 		p_val = call_server_uri_schemes_supported;
 	} break;
+	case ACC_TB_CHAR_TYPE_IN_TGT_CALLER_ID: {
+		p_val = env.p_tgt_uri;
+	} break;
 	default: {
 	} break;
 	}
@@ -300,21 +313,39 @@ static uint16_t create_advertising(void)
 
 static uint16_t server_configure(void)
 {
-	uint8_t bearer_lid;
 	uint16_t ret = GAF_ERR_NO_ERROR;
 
+	/* Configure TBS module:
+	 * nb_tbs=1: allocates space for 1 TBS instance + 1 GTBS.
+	 * acc_tbs_add() must be called (nb_tbs + 1) times: first call adds GTBS,
+	 * subsequent calls add TBS instances.
+	 */
 	ret = acc_tbs_configure(1, 2, 20, 20, &ccp_cbs, 0);
 	if (ret) {
 		LOG_ERR("CCP configuration failed %u", ret);
 		return ret;
 	}
 
+	/* First add: Generic Telephone Bearer Service, bearer_lid=0 */
+	ret = acc_tbs_add(CALL_BEARER_CFG_BF, 0, GTBS_BEARER_CCID, 0,
+			  strlen(applet_call_server_uci), (const uint8_t *)applet_call_server_uci,
+			  &gtbs_bearer_lid);
+	if (ret) {
+		LOG_ERR("GTBS add failed %u", ret);
+		return ret;
+	}
+
+	/* Second add: Telephone Bearer Service, bearer_lid=1 */
 	ret = acc_tbs_add(CALL_BEARER_CFG_BF, 0, CALL_BEARER_CCID, 0,
 			  strlen(applet_call_server_uci), (const uint8_t *)applet_call_server_uci,
-			  &bearer_lid);
+			  &tbs_bearer_lid);
 	if (ret) {
-		LOG_ERR("CCP add failed %u", ret);
+		LOG_ERR("TBS add failed %u", ret);
+		return ret;
 	}
+
+	LOG_INF("CCP configured: GTBS bearer_lid=%u, TBS bearer_lid=%u",
+		gtbs_bearer_lid, tbs_bearer_lid);
 
 	return ret;
 }
