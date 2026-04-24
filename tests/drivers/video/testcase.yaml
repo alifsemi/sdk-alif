@@ -1,0 +1,67 @@
+common:
+  tags:
+    - drivers
+    - video
+    - cpi
+  depends_on: video
+  harness: ztest
+  harness_config:
+    fixture: fixture_camera
+  platform_allow:
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+  integration_platforms:
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+tests:
+  # Default test: relies on the auto-picked per-board overlay
+  # (boards/<board>.overlay). Used for Balletto targets (B1-DK, E1C-DK)
+  # whose LPCPI wiring differs from the Ensemble CPI overlays below.
+  drivers.video.cpi:
+    filter: dt_compat_enabled("alif,cam") and dt_compat_enabled("aptina,mt9m114")
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+
+  # Ensemble CPI (&cam + &i2c1). Forces cpi_mt9m114.overlay, which
+  # references node labels that exist only on Ensemble targets (E8, E7).
+  drivers.video.cpi.mt9m114:
+    extra_args:
+      - "DTC_OVERLAY_FILE=boards/cpi_mt9m114.overlay"
+    filter: dt_compat_enabled("alif,cam") and dt_compat_enabled("aptina,mt9m114")
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  # Ensemble LPCPI (&lpcam + &i2c1). Same SoC-family restriction as above.
+  drivers.video.cpi.lpcpi_mt9m114:
+    extra_args:
+      - "DTC_OVERLAY_FILE=boards/lpcpi_mt9m114.overlay"
+    filter: dt_compat_enabled("alif,cam") and dt_compat_enabled("aptina,mt9m114")
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.video.cpi.arx3a0_isp:
+    extra_args:
+      - "DTC_OVERLAY_FILE=boards/serial_camera_arx3a0_selfie.overlay"
+      - "EXTRA_CONF_FILE=boards/isp.conf"
+    filter: dt_compat_enabled("alif,cam") and dt_compat_enabled("onnn,arx3a0")
+      and dt_compat_enabled("vsi,isp-pico")
+    tags:
+      - drivers
+      - video
+      - cpi
+      - isp
+      - csi2
