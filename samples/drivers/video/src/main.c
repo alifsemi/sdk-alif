@@ -47,6 +47,24 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #define NUM_CAMS 1
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
+#if ISP_ENABLED
+enum logging_level {
+	LOGGING_LEVEL_NONE = 0,
+	LOGGING_LEVEL_ERR,
+	LOGGING_LEVEL_WARN,
+	LOGGING_LEVEL_INFO,
+	LOGGING_LEVEL_DEBUG,
+	LOGGING_LEVEL_VERBOSE,
+};
+
+#define LIB_LOG_LEVEL LOGGING_LEVEL_WARN
+
+int log_level(void)
+{
+	return LIB_LOG_LEVEL;
+}
+#endif
+
 static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 {
 	int pitch;
