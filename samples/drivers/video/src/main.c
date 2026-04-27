@@ -12,6 +12,7 @@
 #include <zephyr/drivers/gpio.h>
 
 #include <zephyr/drivers/video/video_alif.h>
+#include <zephyr/drivers/video/isp-vsi.h>
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #include <zephyr/drivers/video/hm0360-video-controls.h>
@@ -124,6 +125,15 @@ static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 	return pitch;
 }
 
+#if ISP_ENABLED && defined(CONFIG_ISP_LIB_AE_MODULE)
+static void ae_status(const struct device *dev, uint8_t ae_stable, void *user_data)
+{
+	ARG_UNUSED(dev);
+	ARG_UNUSED(user_data);
+	LOG_INF("AE Stabilization status: %d", ae_stable);
+}
+#endif /* ISP_ENABLED && defined(CONFIG_ISP_LIB_AE_MODULE) */
+
 int main(void)
 {
 	struct video_buffer *buffers[N_VID_BUFF], *vbuf;
@@ -159,6 +169,14 @@ int main(void)
 		return -1;
 	}
 	LOG_INF("- Device name: %s", video->name);
+
+#if ISP_ENABLED && defined(CONFIG_ISP_LIB_AE_MODULE)
+	ret = isp_vsi_register_ae_status_callback(video, ae_status, NULL);
+	if (ret) {
+		LOG_ERR("Failed to register AE callback!");
+		return ret;
+	}
+#endif /* ISP_ENABLED && defined(CONFIG_ISP_LIB_AE_MODULE) */
 
 	for (loop_ctr = NUM_CAMS - 1; loop_ctr >= 0; loop_ctr--) {
 #if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
