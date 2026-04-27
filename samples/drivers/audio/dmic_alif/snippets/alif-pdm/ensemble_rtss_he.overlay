@@ -7,14 +7,30 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  */
-
- / {
+/* PDM + DMA */
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+/* Set to 1 for DMA mode, 0 for normal interrupt mode */
+#define USE_DMA 1
+/ {
 	aliases {
 		pdm-audio = &lppdm;
 	};
 };
-
+#if USE_DMA
+&lppdm {
+	status = "okay";
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 0, 1) 19>;
+	dma-names = "pdm_dma_1";
+};
+&dma2 {
+	status = "okay";
+};
+&evtrtr2 {
+	status = "okay";
+};
+#else
+/* Normal interrupt mode */
 &lppdm {
 	status = "okay";
 };
-
+#endif
