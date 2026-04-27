@@ -13,3 +13,20 @@ config ALIF_POWER_MGR_SHELL
 	depends on HAS_ALIF_POWER_MANAGER
 	help
 	  Enable Alif Power manager commands
+
+config ALIF_PWR_AUTOSTART
+	bool "Automatically start ES0 BLE radio on boot"
+	default n
+	depends on ALIF_POWER_MGR_SHELL
+	help
+	  When enabled, automatically initializes the ES0 BLE radio
+	  with HPA mode on boot. Equivalent to running the shell
+	  commands 'pwr start --hpa' and 'pwr hci' at startup.
+
+config ALIF_PWR_AUTOSTART_HCI_PINMUX_B
+	bool "Use pinmux_b for HCI UART on autostart"
+	default n
+	depends on ALIF_PWR_AUTOSTART
+	help
+	  When enabled, the autostart HCI configuration uses pinmux_b.
+	  Equivalent to running 'pwr hci --pinmux_b'.
