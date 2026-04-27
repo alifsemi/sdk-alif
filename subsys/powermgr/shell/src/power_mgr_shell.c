@@ -177,12 +177,16 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 	alif_eui48_read(bd_address);
 
 	if (param_get_flag(argc, argv, "--hpa")) {
-		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Enable HPA\n");
+		if (shell) {
+			shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Enable HPA\n");
+		}
 		hpa_setup = 1;
 	}
 
 	if (param_get_flag(argc, argv, "--lpa")) {
-		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Enable LPA\n");
+		if (shell) {
+			shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Enable LPA\n");
+		}
 		hpa_setup = 0;
 	}
 
@@ -283,7 +287,9 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 	int8_t ret = take_es0_into_use_with_params(ll_boot_params_buffer, total_length,
 						   es0_clock_select, hpa_setup);
 
-	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start ES0 ret:%d\n", ret);
+	if (shell) {
+		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start ES0 ret:%d\n", ret);
+	}
 	return 0;
 }
 
@@ -378,8 +384,10 @@ static int cmd_hci(const struct shell *shell, size_t argc, char **argv)
 		pinctrl_configure_pins(pinctrl_hci_a_ext, ARRAY_SIZE(pinctrl_hci_a_ext),
 				       PINCTRL_REG_NONE);
 	}
-	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT,
-		      "configuring external UART trace select:0x%x\n", trace_select);
+	if (shell) {
+		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT,
+			      "configuring external UART trace select:0x%x\n", trace_select);
+	}
 
 	sys_write32(trace_select, 0x1a605008);
 	return 0;
@@ -393,3 +401,25 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(pwr, &sub_cmds, "Power management test commands", NULL);
+
+#if IS_ENABLED(CONFIG_ALIF_PWR_AUTOSTART)
+static int pwr_autostart_init(void)
+{
+	static const char * const start_argv[] = {"start", "--hpa"};
+
+	cmd_start(NULL, 2, (char **)start_argv);
+
+#if IS_ENABLED(CONFIG_ALIF_PWR_AUTOSTART_HCI_PINMUX_B)
+	static const char * const hci_argv[] = {"hci", "--pinmux_b"};
+
+	cmd_hci(NULL, 2, (char **)hci_argv);
+#else
+	static const char * const hci_argv[] = {"hci"};
+
+	cmd_hci(NULL, 1, (char **)hci_argv);
+#endif
+
+	return 0;
+}
+SYS_INIT(pwr_autostart_init, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+#endif /* CONFIG_ALIF_PWR_AUTOSTART */

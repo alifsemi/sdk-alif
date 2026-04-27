@@ -73,3 +73,34 @@ To build the sample with OpenThread Sleepy end device support with automatic sta
 .. code-block:: console
 
    west build -- -DCONFIG_OPENTHREAD_MANUAL_START=n -DEXTRA_CONF_FILE=overlay-sed.conf
+
+BLE radio and pinmux autostart
+*******************
+
+Automatically initialize the ES0 BLE radio on boot without manual shell commands.
+This is useful for automated testing scenarios.
+
+To enable autostart in prj.conf:
+
+.. code-block:: ini
+
+   CONFIG_ALIF_PWR_AUTOSTART=y
+   # Optional: use pinmux_b instead of default pinmux_a
+   CONFIG_ALIF_PWR_AUTOSTART_HCI_PINMUX_B=y
+
+Or enable via build command:
+
+.. code-block:: console
+
+   west build alif/applications/testapp -- \
+     -DCONFIG_ALIF_PWR_AUTOSTART=y \
+     -DCONFIG_ALIF_PWR_AUTOSTART_HCI_PINMUX_B=y
+
+This automatically executes the equivalent of:
+
+.. code-block:: console
+
+   pwr start --hpa
+   pwr hci [--pinmux_b]
+
+The feature is disabled by default (CONFIG_ALIF_PWR_AUTOSTART=n).
