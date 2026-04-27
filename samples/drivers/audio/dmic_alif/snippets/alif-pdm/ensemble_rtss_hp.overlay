@@ -7,13 +7,21 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  */
-
- / {
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+/ {
 	aliases {
 		pdm-audio = &pdm;
 	};
 };
 
 &pdm {
+	status = "okay";
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 2, 1) 31>;
+	dma-names = "rxdma";
+};
+&dma0 {
+	status = "okay";
+};
+&evtrtr0 {
 	status = "okay";
 };
