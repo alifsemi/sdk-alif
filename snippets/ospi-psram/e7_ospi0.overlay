@@ -1,0 +1,68 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * For OSPI0 Test with ISSI HyperRAM
+ */
+
+/ {
+	aliases {
+		spi-psram = &ospi_ram;
+	};
+};
+
+&pinctrl {
+	pinctrl_psram: pinctrl_psram {
+		group0 {
+			pinmux = <PIN_P3_0__OSPI0_SCLK_B>,
+				 <PIN_P3_1__OSPI0_SCLKN_B>,
+				 <PIN_P3_2__OSPI0_SS0_B>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+
+		group1 {
+			pinmux = <PIN_P1_6__OSPI0_RXDS_B>,
+				 <PIN_P2_0__OSPI0_D0_B>,
+				 <PIN_P2_1__OSPI0_D1_B>,
+				 <PIN_P2_2__OSPI0_D2_B>,
+				 <PIN_P2_3__OSPI0_D3_B>,
+				 <PIN_P2_4__OSPI0_D4_B>,
+				 <PIN_P2_5__OSPI0_D5_B>,
+				 <PIN_P2_6__OSPI0_D6_B>,
+				 <PIN_P2_7__OSPI0_D7_B>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+	};
+};
+
+&ospi0 {
+	pinctrl-0 = <&pinctrl_psram>;
+	pinctrl-names = "default";
+
+	cs-pin = <0>;
+	baud2-delay = <0>;
+	rx-ds-delay = <11>;
+	xip-wait-cycles = <6>;
+	tx-fifo-threshold = <64>;
+	ddr-drive-edge = <0>;
+	clocks = <&clockctrl ALIF_OSPI0_ACLK_CLK>;
+	xip-base-address = <0xA0000000 0x10000000>;
+	bus-speed = <100000000>;
+	status = "okay";
+
+	ospi_ram: hyperram {
+		compatible = "issi,wvh64m8eall";
+		size = <DT_SIZE_M(64)>;
+		status = "okay";
+	};
+};
