@@ -1,0 +1,77 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+#include <dt-bindings/pinctrl/balletto-pinctrl.h>
+#include <dt-bindings/gpio/gpio.h>
+
+/ {
+	aliases {
+		/delete-property/ sw0;
+
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		led_red: led_0 {
+			gpios = <&gpio4 7 0>;
+			label = "LED0_R";
+		};
+		led_blue: led_1 {
+			gpios = <&gpio4 3 0>;
+			label = "LED0_B";
+		};
+		led_green: led_2 {
+			gpios = <&gpio4 5 0>;
+			label = "LED0_G";
+		};
+	};
+
+	buttons {
+
+		button0: button_0 {
+			gpios = < &gpio5 0x7 0x0 >;
+			label = "TOGGLE_LOCK";
+		};
+
+		/* JOY_SW1 */
+		button_up: button_up {
+			gpios = < &gpio5 0x0 0x0 >;
+			label = "DISCONNECT";
+		};
+		/* JOY_SW2 */
+		button_down: button_down {
+			gpios = < &gpio5 0x4 0x0 >;
+			label = "READ_SIRK";
+		};
+	};
+};
+
+&lppdm {
+	status = "okay";
+};
+
+
+/* Configure joystick buttons */
+&pinctrl_gpio5 {
+	group1 {
+		pinmux = <PIN_P5_0__GPIO>,
+			 <PIN_P5_4__GPIO>,
+			 <PIN_P5_7__GPIO>;
+		/* enable pull-up */
+		driver-state-control = <1>;
+		read-enable = < 0x1 >;
+	};
+};
+
+/* Disable unnecessary nodes */
+&uart_ahi {
+	status = "disabled";
+};
+

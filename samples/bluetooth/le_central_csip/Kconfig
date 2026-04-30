@@ -1,0 +1,40 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+menu "Alif Bluetooth LE Audio CSIP Initiator"
+
+config BLE_DEVICE_NAME
+	string "BLE device name"
+	default "ALIF_CSIP_CLI"
+	help
+	  Device name
+
+config PERIPHERAL_NAME
+	string "CSIP server peripheral name"
+	default "ALIF_CSIP"
+	help
+	  CSIP server to be connected to
+
+menu "Logging"
+
+module = MAIN
+module-str = main
+source "subsys/logging/Kconfig.template.log_config"
+
+module = LE_GAF_SCAN
+module-str = le_gaf_scan
+source "subsys/logging/Kconfig.template.log_config"
+
+module = STORAGE
+module-str = storage
+source "subsys/logging/Kconfig.template.log_config"
+
+endmenu # "Logging"
+
+endmenu # "Alif Bluetooth LE Audio CSIP Initiator"
+source "Kconfig.zephyr"
