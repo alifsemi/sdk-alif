@@ -1,0 +1,185 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# Main test category switches
+config I2S_FUNCTIONAL_TESTS
+	bool "Enable functional I2S tests"
+	default y
+	help
+	  Enable functional I2S tests including loopback, features, and playback tests.
+	  Includes comprehensive loopback matrix testing and audio playback validation.
+
+config I2S_GOLDEN_TESTS
+	bool "Enable golden vector tests"
+	default y
+	help
+	  Enable golden vector tests with pre-computed test patterns for
+	  comprehensive I2S validation across multiple sample rates and bit depths.
+
+config I2S_LOOPBACK_VERIFY
+	bool "Verify RX data against golden vectors in golden TX tests"
+	depends on I2S_GOLDEN_TESTS && I2S_GPIO_LOOPBACK
+	default n
+	help
+	  When enabled, i2s_golden_run() also configures RX and verifies that
+	  received data matches the transmitted golden vectors bit-exactly.
+
+	  Requires an external wire from the I2S SDO output to the I2S SDI
+	  input on the target board. The exact pin pair depends on the board
+	  and overlay (see README.rst and the boards/ overlays).
+
+	  The snps,designware-i2s driver does not support I2S_OPT_LOOPBACK,
+	  so a physical wire is mandatory.
+
+config I2S_NEGATIVE_TESTS
+	bool "Enable negative tests"
+	default y
+	help
+	  Enable negative test cases to validate error handling and robustness
+	  of the I2S driver under invalid conditions.
+
+config I2S_CONFIG_TESTS
+	bool "Enable configuration tests"
+	default y
+	help
+	  Enable configuration tests to validate I2S driver configuration
+	  options and parameter handling.
+
+# Functional test granular controls
+config I2S_GPIO_LOOPBACK
+	bool "Physical GPIO wire loopback between I2S SDO and SDI present"
+	default n
+	help
+	  Master switch indicating that an external wire connects the I2S
+	  SDO output to the I2S SDI input on the target board, enabling
+	  hardware loopback tests.
+
+	  The exact pinout depends on the board and the device-tree overlay
+	  selected at build time (for example: P9_3 -> P9_0 on the AE7/AE8
+	  development kits, P0_5 -> P0_4 on B1, etc.). Refer to README.rst
+	  and the per-board overlays under boards/ for the wiring required
+	  by your target.
+
+	  Individual per-bit-depth switches below control which functional
+	  test cases actually run.
+
+config I2S_LB_12BIT
+	bool "Enable 44.1 kHz 12-bit loopback test"
+	depends on I2S_GPIO_LOOPBACK
+	default n
+	help
+	  Run test_loopback_44k1hz_12bit_golden.
+	  Enable with: -DCONFIG_I2S_GPIO_LOOPBACK=y -DCONFIG_I2S_LB_12BIT=y
+
+config I2S_LB_16BIT
+	bool "Enable 44.1 kHz 16-bit loopback test"
+	depends on I2S_GPIO_LOOPBACK
+	default n
+	help
+	  Run test_loopback_44k1hz_16bit_golden.
+	  Enable with: -DCONFIG_I2S_GPIO_LOOPBACK=y -DCONFIG_I2S_LB_16BIT=y
+
+config I2S_LB_20BIT
+	bool "Enable 44.1 kHz 20-bit loopback test"
+	depends on I2S_GPIO_LOOPBACK
+	default n
+	help
+	  Run test_loopback_44k1hz_20bit_golden.
+	  Enable with: -DCONFIG_I2S_GPIO_LOOPBACK=y -DCONFIG_I2S_LB_20BIT=y
+
+config I2S_LB_24BIT
+	bool "Enable 44.1 kHz 24-bit loopback test"
+	depends on I2S_GPIO_LOOPBACK
+	default n
+	help
+	  Run test_loopback_44k1hz_24bit_golden.
+	  Enable with: -DCONFIG_I2S_GPIO_LOOPBACK=y -DCONFIG_I2S_LB_24BIT=y
+
+config I2S_LB_32BIT
+	bool "Enable 44.1 kHz 32-bit loopback test"
+	depends on I2S_GPIO_LOOPBACK
+	default n
+	help
+	  Run test_loopback_44k1hz_32bit_golden.
+	  Enable with: -DCONFIG_I2S_GPIO_LOOPBACK=y -DCONFIG_I2S_LB_32BIT=y
+
+# Hardware capability flags
+config I2S_SLAVE_MODE_SUPPORTED
+	bool "I2S controller supports clock-slave configuration"
+	default n
+	help
+	  Set to y only if the I2S hardware can be configured with
+	  I2S_OPT_BIT_CLK_SLAVE / I2S_OPT_FRAME_CLK_SLAVE (i.e. BCLK and
+	  WS are accepted as inputs from an external master).
+
+	  When disabled (default), tests that require a clock-slave RX
+	  port — specifically test_mic_rx_to_tx_bit_exact_forwarding and
+	  test_mic_rx_to_tx_bit_exact_matrix — will skip explicitly
+	  instead of silently timing out with -EAGAIN.
+
+# Feature test controls
+config I2S_PLAY_HELLO
+	bool "Enable TX-only hello_samples_24bit_48khz playback test"
+	depends on I2S_FUNCTIONAL_TESTS
+	default n
+	help
+	  Enable test_PlayHelloSamples48k_TxOnly_10s.
+
+config I2S_PLAY_HELLO_10S_ONLY
+	bool "Run only TX-only hello playback test (skip all other I2S tests)"
+	depends on I2S_PLAY_HELLO
+	default n
+	help
+	  When enabled, all other tests in this test application will be skipped
+	  so only test_PlayHelloSamples48k_TxOnly_10s executes.
+
+config I2S_FULL_DUPLEX_TEST
+	bool "Enable full-duplex same device test"
+	depends on I2S_FUNCTIONAL_TESTS
+	default y
+	help
+	  Enable test_full_duplex_same_device to validate simultaneous
+	  TX and RX operation on the same I2S device.
+
+config I2S_SAMPLE44_TEST
+	bool "Enable 44.1kHz transmit/receive test"
+	depends on I2S_FUNCTIONAL_TESTS
+	default n
+	help
+	  Enable test_TransmitReceive44Only.
+
+# Legacy compatibility options
+config I2S_LOOPBACK_ONLY
+	bool "Run only GPIO wire loopback tests (skip all other I2S tests)"
+	depends on I2S_FUNCTIONAL_TESTS
+	default n
+	help
+	  When enabled, only the loopback test suite executes. All other
+	  test suites are suppressed via CMakeLists.txt source exclusion.
+
+	  Requires an external wire from the I2S SDO output to the I2S SDI
+	  input on the target board. The exact pin pair depends on the board
+	  and overlay (see README.rst and the boards/ overlays).
+
+config I2S_FEATURES_ONLY
+	bool "Run only the i2s_features ZTEST suite (skip loopback + playback)"
+	depends on I2S_FUNCTIONAL_TESTS
+	default n
+	help
+	  When enabled, compile and run only the i2s_features ZTEST_SUITE
+	  (src/functional/test_i2s_features.c). The i2s_alif_functional
+	  suite (lb_matrix_*, src/functional/test_i2s_loopback.c) and the
+	  i2s_functional suite (PlayHello, src/functional/test_i2s_playback.c)
+	  are excluded at the CMakeLists level (their translation units are
+	  not compiled). All other suites remain controlled by their own
+	  I2S_*_TESTS master switches.
+
+config I2S_FULL_DUPLEX_ONLY
+	bool "Run only test_full_duplex_same_device"
+	depends on I2S_FUNCTIONAL_TESTS
+	default n
+	help
+	  When enabled, only test_full_duplex_same_device from functional tests
+	  is compiled into the image. All other tests are excluded.
+
+source "Kconfig.zephyr"
