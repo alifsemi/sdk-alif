@@ -1,0 +1,65 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* SPI0/SPI1 test overlay.  Include board-common macros then wire SPI1
+ * controller <-> SPI0 target.  Board is auto-detected from the BOARD
+ * CMake variable (set in CMakeLists.txt) or can be overridden on the
+ * west command line with -DALIF_BOARD=ALIF_BOARD_E7_HP.
+ */
+#include "board_common.overlay"
+
+/ {
+	aliases {
+		controller-spi = &spi1;
+		target-spi     = &spi0;
+	};
+
+	chosen {
+		zephyr,console = &CONSOLE;
+	};
+};
+
+&CONSOLE {
+	status = "okay";
+};
+
+&UART_DISABLED {
+	status = "disabled";
+};
+
+&spi1 {
+	status = "okay";
+	interrupts = <SPI1_IRQ 0>;
+};
+
+&spi0 {
+	status = "okay";
+	serial-target;
+	interrupts = <SPI0_IRQ 1>;
+};
+
+&pinctrl_spi0 {
+	group0 {
+		pinmux = < SPI0_MISO >,
+			 < SPI0_MOSI >,
+			 < SPI0_SCLK >,
+			 < SPI0_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
+
+&pinctrl_spi1 {
+	group0 {
+		pinmux = < SPI1_MISO >,
+			 < SPI1_MOSI >,
+			 < SPI1_SCLK >,
+			 < SPI1_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};

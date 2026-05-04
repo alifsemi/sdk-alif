@@ -1,0 +1,188 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * -----------------------------------------------------------------------
+ * Alif SPI test board-common macros.
+ *
+ * Include this from every instance/feature overlay:
+ *   #include "alif_board_common.overlay"
+ *
+ * It defines board-specific pinmux, interrupt numbers, GPIO/SS mappings,
+ * console choice and DMA controller — everything that varies by board.
+ *
+ * Instance overlays then only need to:
+ *   - pick controller-spi / target-spi aliases
+ *   - &node { status = "okay"; interrupts = <ALIF_SPIx_IRQ 0>; };
+ *   - apply &pinctrl using the ALIF_SPIx_* macros from this file.
+ * -----------------------------------------------------------------------
+ */
+
+#ifndef ALIF_BOARD_COMMON_OVERLAY
+#define ALIF_BOARD_COMMON_OVERLAY
+
+/* --- Board enum ------------------------------------------------------- */
+#define ALIF_BOARD_E7_HP 1
+#define ALIF_BOARD_E8_HP 2
+#define ALIF_BOARD_A5    3
+#define ALIF_BOARD_E7_HE 4
+#define ALIF_BOARD_E8_HE 5
+#define ALIF_BOARD_E1C   6
+#define ALIF_BOARD_B1    7
+
+/* Manual override: -DALIF_BOARD=ALIF_BOARD_E7_HP on west command line  */
+#ifndef ALIF_BOARD
+#define ALIF_BOARD ALIF_BOARD_E8_HP
+#endif
+
+/* --- Console (UART) --------------------------------------------------- */
+#if ALIF_BOARD == ALIF_BOARD_E7_HP || ALIF_BOARD == ALIF_BOARD_E8_HP
+  #define CONSOLE          uart4
+  #define UART_DISABLED    uart2
+#else
+  #define CONSOLE          uart2
+  #define UART_DISABLED    uart4
+#endif
+
+/* --- SPI0 pinmux ------------------------------------------------------ */
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define SPI0_MISO   PIN_P5_0__SPI0_MISO_B
+  #define SPI0_MOSI   PIN_P5_1__SPI0_MOSI_B
+  #define SPI0_SCLK   PIN_P5_2__SPI0_SCLK_B
+  #define SPI0_SS0    PIN_P5_3__SPI0_SS0_B
+#elif ALIF_BOARD == ALIF_BOARD_E7_HP
+  #define SPI0_MISO   PIN_P5_0__SPI0_MISO_B
+  #define SPI0_MOSI   PIN_P5_1__SPI0_MOSI_B
+  #define SPI0_SCLK   PIN_P5_3__SPI0_SCLK_B
+  #define SPI0_SS0    PIN_P5_2__SPI0_SS0_B
+#else
+  #define SPI0_MISO   PIN_P1_0__SPI0_MISO_A
+  #define SPI0_MOSI   PIN_P1_1__SPI0_MOSI_A
+  #define SPI0_SCLK   PIN_P1_2__SPI0_SCLK_A
+  #define SPI0_SS0    PIN_P1_3__SPI0_SS0_A
+#endif
+
+/* --- SPI1 pinmux ------------------------------------------------------ */
+#if ALIF_BOARD == ALIF_BOARD_E7_HP || ALIF_BOARD == ALIF_BOARD_E7_HE
+  #define SPI1_MISO   PIN_P8_3__SPI1_MISO_B
+  #define SPI1_MOSI   PIN_P8_4__SPI1_MOSI_B
+  #define SPI1_SCLK   PIN_P8_5__SPI1_SCLK_B
+  #define SPI1_SS0    PIN_P6_4__SPI1_SS0_B
+#elif ALIF_BOARD == ALIF_BOARD_E8_HP || ALIF_BOARD == ALIF_BOARD_E8_HE
+  #define SPI1_MISO   PIN_P14_4__SPI1_MISO_C
+  #define SPI1_MOSI   PIN_P14_5__SPI1_MOSI_C
+  #define SPI1_SCLK   PIN_P14_6__SPI1_SCLK_C
+  #define SPI1_SS0    PIN_P14_7__SPI1_SS0_C
+#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define SPI1_MISO   PIN_P8_4__SPI1_MISO_C
+  #define SPI1_MOSI   PIN_P8_5__SPI1_MOSI_C
+  #define SPI1_SCLK   PIN_P8_6__SPI1_SCLK_C
+  #define SPI1_SS0    PIN_P8_7__SPI1_SS0_C
+#endif
+
+/* --- SPI2 pinmux ------------------------------------------------------ */
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define SPI2_MISO   PIN_P7_0__SPI2_MISO_B
+  #define SPI2_MOSI   PIN_P7_1__SPI2_MOSI_B
+  #define SPI2_SCLK   PIN_P7_2__SPI2_SCLK_B
+  #define SPI2_SS0    PIN_P7_3__SPI2_SS0_B
+#else
+  #define SPI2_MISO   PIN_P4_2__SPI2_MISO_A
+  #define SPI2_MOSI   PIN_P4_3__SPI2_MOSI_A
+  #define SPI2_SCLK   PIN_P4_4__SPI2_SCLK_A
+  #define SPI2_SS0    PIN_P4_5__SPI2_SS0_A
+#endif
+
+/* --- SPI3 pinmux ------------------------------------------------------ */
+#if ALIF_BOARD == ALIF_BOARD_E7_HP || \
+	ALIF_BOARD == ALIF_BOARD_E7_HE
+  #define SPI3_MISO   PIN_P10_5__SPI3_MISO_B
+  #define SPI3_MOSI   PIN_P12_5__SPI3_MOSI_A
+  #define SPI3_SCLK   PIN_P12_6__SPI3_SCLK_B
+  #define SPI3_SS0    PIN_P12_7__SPI3_SS0_B
+#elif ALIF_BOARD == ALIF_BOARD_E8_HP || \
+	ALIF_BOARD == ALIF_BOARD_E8_HE
+  #define SPI3_MISO   PIN_P12_4__SPI3_MISO_A
+  #define SPI3_MOSI   PIN_P12_5__SPI3_MOSI_A
+  #define SPI3_SCLK   PIN_P12_6__SPI3_SCLK_A
+  #define SPI3_SS0    PIN_P12_7__SPI3_SS0_A
+#endif
+
+/* --- SPI4 / LPSPI0 pinmux (HE boards + A5) -------------------------- */
+#if ALIF_BOARD == ALIF_BOARD_E7_HE
+  #define SPI4_MISO   PIN_P7_4__LPSPI_MISO_A
+  #define SPI4_MOSI   PIN_P7_5__LPSPI_MOSI_A
+  #define SPI4_SCLK   PIN_P7_6__LPSPI_SCLK_A
+  #define SPI4_SS0    PIN_P7_7__LPSPI_SS0_A
+#elif ALIF_BOARD == ALIF_BOARD_E8_HE
+  #define SPI4_MISO   PIN_P11_4__LPSPI_MISO_B
+  #define SPI4_MOSI   PIN_P11_5__LPSPI_MOSI_B
+  #define SPI4_SCLK   PIN_P11_6__LPSPI_SCLK_B
+  #define SPI4_SS0    PIN_P11_7__LPSPI_SS0_B
+#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define LPSPI0_MISO PIN_P1_3__LPSPI_MISO_A
+  #define LPSPI0_MOSI PIN_P1_4__LPSPI_MOSI_A
+  #define LPSPI0_SCLK PIN_P1_5__LPSPI_SCLK_A
+  #define LPSPI0_SS0  PIN_P2_0__LPSPI_SS0_A
+#endif
+
+/* --- Interrupt numbers (instance-based, same across boards) ---------- */
+#define SPI0_IRQ    137
+#define SPI1_IRQ    138
+#define SPI2_IRQ    139
+#define SPI3_IRQ    140
+#define SPI4_IRQ    46   /* LPSPI0 uses same number on A5 */
+
+/* --- Software-CS GPIO pins (SPI1-based overlays) --------------------- */
+#if ALIF_BOARD == ALIF_BOARD_E7_HP || ALIF_BOARD == ALIF_BOARD_E7_HE
+  #define SPI_SS_GPIO_PIN   PIN_P6_4__GPIO
+  #define SPI_SS_GPIO_BANK  gpio6
+  #define SPI_SS_GPIO_NUM   4
+#elif ALIF_BOARD == ALIF_BOARD_E8_HP || ALIF_BOARD == ALIF_BOARD_E8_HE
+  #define SPI_SS_GPIO_PIN   PIN_P14_7__GPIO
+  #define SPI_SS_GPIO_BANK  gpio14
+  #define SPI_SS_GPIO_NUM   7
+#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define SPI_SS_GPIO_PIN   PIN_P8_7__GPIO
+  #define SPI_SS_GPIO_BANK  gpio8
+  #define SPI_SS_GPIO_NUM   7
+#endif
+
+/* --- Software-CS GPIO pins (LPSPI-based overlays) --------------------- */
+#if ALIF_BOARD == ALIF_BOARD_E7_HE
+  #define LPSPI_SS_GPIO_PIN   PIN_P7_7__GPIO
+  #define LPSPI_SS_GPIO_BANK  gpio7
+  #define LPSPI_SS_GPIO_NUM   7
+#elif ALIF_BOARD == ALIF_BOARD_E8_HE
+  #define LPSPI_SS_GPIO_PIN   PIN_P11_7__GPIO
+  #define LPSPI_SS_GPIO_BANK  gpio11
+  #define LPSPI_SS_GPIO_NUM   7
+#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define LPSPI_SS_GPIO_PIN   PIN_P2_0__GPIO
+  #define LPSPI_SS_GPIO_BANK  gpio2
+  #define LPSPI_SS_GPIO_NUM   0
+#endif
+
+/* --- DMA controller per board ----------------------------------------- */
+#if ALIF_BOARD == ALIF_BOARD_E7_HP || ALIF_BOARD == ALIF_BOARD_E8_HP
+  #define DMA_CTRL    dma1
+#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+  #define DMA_CTRL    dma2
+#else  /* E7_HE, E8_HE */
+  #define DMA_CTRL    dma2
+#endif
+
+#endif /* ALIF_BOARD_COMMON_OVERLAY */

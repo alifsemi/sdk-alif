@@ -1,0 +1,34 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Event-router DMA overlay for SPI1/SPI0.
+ * Stack with boards/alif_spi.overlay.
+ */
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+#include "board_common.overlay"
+
+&dma0 {
+	status = "okay";
+};
+
+&evtrtr0 {
+	status = "okay";
+};
+
+&spi1 {
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 2, 1) 21>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(1, 2, 1) 17>;
+	dma-names = "txdma", "rxdma";
+};
+
+&spi0 {
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(2, 2, 1) 20>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(3, 2, 1) 16>;
+	dma-names = "txdma", "rxdma";
+};

@@ -1,0 +1,40 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* DMA overlay for LPSPI test instances.  Stack with boards/lpspi.overlay.
+ * HP boards use dma1; HE / A5 / E1C / B1 use dma2.
+ */
+#include "board_common.overlay"
+
+&DMA_CTRL {
+	status = "okay";
+};
+
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+&lpspi0 {
+	dmas = <&DMA_CTRL 0 13>, <&DMA_CTRL 1 12>;
+	dma-names = "txdma", "rxdma";
+};
+#else
+&spi4 {
+	dmas = <&DMA_CTRL 0 13>, <&DMA_CTRL 1 12>;
+	dma-names = "txdma", "rxdma";
+};
+#endif
+
+&spi0 {
+	dmas = <&DMA_CTRL 2 20>, <&DMA_CTRL 3 16>;
+	dma-names = "txdma", "rxdma";
+};
+
+&spi1 {
+	dmas = <&DMA_CTRL 2 21>, <&DMA_CTRL 3 17>;
+	dma-names = "txdma", "rxdma";
+};
