@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: LicenseRef-Alif
+
+description: GPIO basic API test node
+
+compatible: "test-gpio-basic-api"
+
+properties:
+  out-gpios:
+    type: phandle-array
+    required: true
+  in-gpios:
+    type: phandle-array
+    required: true
