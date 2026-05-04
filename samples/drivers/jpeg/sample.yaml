@@ -1,0 +1,24 @@
+sample:
+  name: JPEG Encoder Test
+  description: Test application for Alif JPEG hardware encoder
+common:
+  tags:
+    - video
+    - jpeg
+    - encoder
+    - compression
+  platform_allow:
+    - alif_e8_dk_rtss_hp
+    - alif_e8_dk_rtss_he
+  integration_platforms:
+    - alif_e8_dk_rtss_hp
+tests:
+  sample.video.jpeg_encoder:
+    harness: console
+    harness_config:
+      type: multi_line
+      ordered: true
+      regex:
+        - "JPEG device ready"
+        - "Test completed successfully"
+        - "All Tests Completed Successfully"
