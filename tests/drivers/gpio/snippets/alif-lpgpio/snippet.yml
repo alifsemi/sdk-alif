@@ -1,8 +1,7 @@
 name: alif-lpgpio
 
 boards:
-
-	/(alif_e7|alif_e8).*/.*/rtss_he/:
-	append:
-		EXTRA_DTC_OVERLAY_FILE: alif_ensemble_dk_rtss_he_lpgpio.overlay
+  /(alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_ensemble_dk_rtss_he_lpgpio.overlay
 
