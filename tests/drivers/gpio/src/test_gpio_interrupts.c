@@ -1,4 +1,4 @@
-/* Copyright Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -7,256 +7,194 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+/*
+ * Alif-unique GPIO interrupt coverage.
+ *
+ * Edge, level, add/remove, enable/disable and self-remove callback
+ * flows are already covered by Zephyr's upstream
+ * tests/drivers/gpio/gpio_basic_api conformance test
+ * (gpio_port_cb_vari and gpio_port_cb_mgmt suites) and are therefore
+ * NOT duplicated here.
+ *
+ * The only scenario retained in this file is multi-input / single-
+ * output: two independent input pins wired to the same output
+ * source, each with its own gpio_callback registered on a different
+ * controller/pin, exercised together. That wiring topology is not
+ * expressible in the upstream single-IN/single-OUT test harness and
+ * so remains valuable as Alif-specific coverage.
+ */
+
 #include "test_gpio.h"
-#include <limits.h>
-#include <zephyr/sys/util.h>
 #include <zephyr/drivers/gpio.h>
 
-#define SLEEP_TIME_MS   1000
-
-int cb_count, int_level_type = 0;
-
-static const struct gpio_dt_spec test_int = GPIO_DT_SPEC_GET(GPIO_NODE, gpios);
-
-/** gpio_port = P1_7 input */
-static const struct gpio_dt_spec gpio_port = GPIO_DT_SPEC_GET(GPIO_NODE, gpios);
-
-/** led = P6_4 output */
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-
-extern int Check_result(int ret);
-extern int check_pin_set_conf(int ret);
-
-int check_cb_res(int ret)
-{
-switch (ret) {
-case 0:
-TC_PRINT("Callback set\n");
-return 0;
-case -ENOSYS:
-	TC_PRINT("Operation is not implemented by the driver.\n");
-	return -1;
-default:
-	if (ret < 0) {
-		TC_PRINT("Other negative errno code on failure\n");
-		return -1;
-	}
-	break;
-}
-return -1;
-}
-
-/**
- * Function to check gpio_pin_interrupt_configure_dt() return status
- */
-int check_int_conf(int ret)
-{
-switch (ret) {
-case 0:
-TC_PRINT("Configured interrupt\n");
-return 0;
-default:
-	if (ret == -ENOSYS) {
-		TC_PRINT("Operation is not implemented by the driver.\n");
-		ztest_test_skip();
-		return -1;
-	} else if (ret == -ENOTSUP) {
-		TC_PRINT("The configuration option is not supported\n");
-		ztest_test_skip();
-		return -1;
-	} else if (ret == -EINVAL) {
-		TC_PRINT("Invalid argument.\n");
-		return -1;
-	} else if (ret == -EBUSY) {
-		TC_PRINT("Interrupt line required to configure pin interrupt "
-				"is already in use.\n");
-		return -1;
-	} else if (ret == -EIO) {
-		TC_PRINT("I/O error when accessing\n");
-		return -1;
-	} else if (ret == -EWOULDBLOCK) {
-		TC_PRINT("Operation would block\n");
-		return -1;
-	}
-	break;
-}
-return -1;
-}
-
-/**
- * Function to check gpio_pin_configure_dt() return status
- */
+/* Shared helpers also used from test_gpio.c */
 int check_pin_conf(int ret)
 {
-switch (ret) {
-case 0:
-TC_PRINT("Configured the pin\n");
-return 0;
-default:
+	if (ret == 0) {
+		return 0;
+	}
 	if (ret == -ENOTSUP) {
-		TC_PRINT("Simultaneous pin in/out mode is not supported.\n");
+		TC_PRINT("Pin configuration option not supported\n");
 		ztest_test_skip();
-		return -1;
-	} else if (ret == -EINVAL) {
-		TC_PRINT("Invalid argument.\n");
-		return -1;
-	} else if (ret == -EIO) {
-		TC_PRINT("Error when accessing\n");
-		return -1;
-	} else if (ret == -EWOULDBLOCK) {
-		TC_PRINT("Operation would block\n");
-		return -1;
 	}
-	break;
-}
-return -1;
+	return -1;
 }
 
-/**
- * Function to check gpio_pin_toggle_dt() return status
+static int check_cb_res(int ret)
+{
+	return (ret == 0) ? 0 : -1;
+}
+
+static int check_int_conf(int ret)
+{
+	if (ret == 0) {
+		return 0;
+	}
+	if (ret == -ENOTSUP) {
+		TC_PRINT("Interrupt configuration not supported\n");
+		ztest_test_skip();
+	}
+	return -1;
+}
+
+static int check_pin_toggle(int ret)
+{
+	return (ret == 0) ? 0 : -1;
+}
+
+#define LED0_NODE  DT_ALIAS(led0)
+
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+
+#if DT_HAS_ALIAS(led2)
+
+static const struct gpio_dt_spec gpio_in1 = GPIO_DT_SPEC_GET(GPIO_NODE, gpios);
+static const struct gpio_dt_spec gpio_in2 = GPIO_DT_SPEC_GET(DT_ALIAS(led2), gpios);
+
+static int cb_multi_in1_count;
+static int cb_multi_in2_count;
+
+static void callback_multi_in1(const struct device *port, struct gpio_callback *cb,
+			       gpio_port_pins_t pins)
+{
+	ARG_UNUSED(port);
+	ARG_UNUSED(cb);
+
+	if (pins & BIT(gpio_in1.pin)) {
+		cb_multi_in1_count++;
+	}
+}
+
+static void callback_multi_in2(const struct device *port, struct gpio_callback *cb,
+			       gpio_port_pins_t pins)
+{
+	ARG_UNUSED(port);
+	ARG_UNUSED(cb);
+
+	if (pins & BIT(gpio_in2.pin)) {
+		cb_multi_in2_count++;
+	}
+}
+
+static void drive_led_edges(int count)
+{
+	for (int i = 0; i < count; i++) {
+		zassert_equal(check_pin_toggle(gpio_pin_toggle_dt(&led)), 0,
+			      "Failed to toggle LED pin");
+		k_msleep(100);
+	}
+}
+
+/*
+ * Alif-unique: two inputs driven from a single output trigger
+ * independent callbacks. Upstream gpio_basic_api only supports one
+ * IN/OUT pair, so this wiring topology is not otherwise exercised.
  */
-int check_pin_toggle(int ret)
+ZTEST(gpio_test_interrupts, test_gpio_multi_input_single_output_interrupt)
 {
-switch (ret) {
-case 0:
-	TC_PRINT("LED pin toggled\n");
-	return 0;
-case -EIO:
-	TC_PRINT("I/O error when toggling LED pin\n");
-	return -1;
-case -EWOULDBLOCK:
-	TC_PRINT("Operation would block\n");
-	return -1;
-default:
-	TC_PRINT("Unexpected return value: %d\n", ret);
-	return -1;
-	}
-}
+	struct gpio_callback gpio_cb_in1;
+	struct gpio_callback gpio_cb_in2;
+	int in1_initial;
+	int in2_initial;
+	bool in1_toggled = false;
+	bool in2_toggled = false;
+	int ret;
 
-static void callback_edge(const struct device *port, struct gpio_callback *cb,
-			gpio_port_pins_t pins)
-{
-int ret, ret_int3;
+	zassert_true(gpio_is_ready_dt(&gpio_in1), "GPIO input1 dev is not ready");
+	zassert_true(gpio_is_ready_dt(&gpio_in2), "GPIO input2 dev is not ready");
+	zassert_true(gpio_is_ready_dt(&led), "GPIO output dev is not ready");
 
-if (pins & BIT(test_int.pin)) {
-	printk("Zephyr GPIO Interrupt triggered\n");
-	cb_count++;
-	printk("cb_count value %d\n", cb_count);
+	zassert_equal(check_int_conf(gpio_pin_interrupt_configure_dt(&gpio_in1,
+								     GPIO_INT_DISABLE)),
+		      0, "Disable input1 interrupt failed");
+	zassert_equal(check_int_conf(gpio_pin_interrupt_configure_dt(&gpio_in2,
+								     GPIO_INT_DISABLE)),
+		      0, "Disable input2 interrupt failed");
 
-	if (int_level_type != 0) {
-		ret = gpio_pin_interrupt_configure_dt(&gpio_port, GPIO_INT_DISABLE);
-		ret_int3 = check_int_conf(ret);
-		zassert_equal(ret_int3, 0, "Pin interrupt disabling failed\n");
-	}
-} else {
-	printk("Zephyr GPIO Interrupt triggered on an unexpected pin\n");
-}
-}
+	zassert_equal(check_pin_conf(gpio_pin_configure_dt(&gpio_in1, GPIO_INPUT)), 0,
+		      "Configure input1 pin failed");
+	zassert_equal(check_pin_conf(gpio_pin_configure_dt(&gpio_in2, GPIO_INPUT)), 0,
+		      "Configure input2 pin failed");
+	zassert_equal(check_pin_conf(gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE)), 0,
+		      "Configure output pin failed");
 
-void test_gpio_pin_interrupt(unsigned int int_flags)
-{
-int ou_ret, in_ret, ret, pin_value = 0;
-struct gpio_callback gpio_cb_edge;
+	gpio_init_callback(&gpio_cb_in1, callback_multi_in1, BIT(gpio_in1.pin));
+	zassert_equal(check_cb_res(gpio_add_callback(gpio_in1.port, &gpio_cb_in1)), 0,
+		      "Add callback for input1 failed");
 
-	zassert_true(gpio_is_ready_dt(&gpio_port), "GPIO dev is not ready");
-	zassert_true(gpio_is_ready_dt(&led), "LED dev is not ready");
+	gpio_init_callback(&gpio_cb_in2, callback_multi_in2, BIT(gpio_in2.pin));
+	zassert_equal(check_cb_res(gpio_add_callback(gpio_in2.port, &gpio_cb_in2)), 0,
+		      "Add callback for input2 failed");
 
-	TC_PRINT("Running test on GPIO dev and pin\n");
+	ret = gpio_pin_interrupt_configure_dt(&gpio_in1, GPIO_INT_EDGE_BOTH);
+	zassert_equal(check_int_conf(ret), 0, "Enable input1 interrupt failed");
 
-	ret = gpio_pin_interrupt_configure_dt(&gpio_port, GPIO_INT_DISABLE);
-	int ret_int = check_int_conf(ret);
+	ret = gpio_pin_interrupt_configure_dt(&gpio_in2, GPIO_INT_EDGE_BOTH);
+	zassert_equal(check_int_conf(ret), 0, "Enable input2 interrupt failed");
 
-	zassert_equal(ret_int, 0, "Pin interrupt disable failed\n");
+	in1_initial = gpio_pin_get_dt(&gpio_in1);
+	in2_initial = gpio_pin_get_dt(&gpio_in2);
 
-	/* Configure GPIO PIN as an input */
-	in_ret = gpio_pin_configure_dt(&gpio_port, GPIO_INPUT);
-	int ret_PCI = check_pin_conf(in_ret);
-
-	zassert_equal(ret_PCI, 0, "Failed to configure the input pin");
-
-	/* Configure LED pin as an output */
-	ou_ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE);
-	int ret_PCO = check_pin_conf(ou_ret);
-
-	zassert_equal(ret_PCO, 0, "Failed to configure the output pin");
-
-	cb_count = 0;
-	gpio_init_callback(&gpio_cb_edge, callback_edge, BIT(gpio_port.pin));
-
-	TC_PRINT("Callback initialized\n");
-	int cb_ret = gpio_add_callback(gpio_port.port, &gpio_cb_edge);
-
-	TC_PRINT("Callback added\n");
-
-	int cb_ret_status = check_cb_res(cb_ret);
-
-	zassert_equal(cb_ret_status, 0, "GPIO add callback failed\n");
-
-	ret = gpio_pin_interrupt_configure_dt(&gpio_port, int_flags);
-	int ret_int2 = check_int_conf(ret);
-
-	zassert_equal(ret_int2, 0, "Interrupt pin configuring failed\n");
-
-	TC_PRINT("LED pin starts toggling now...\n");
+	cb_multi_in1_count = 0;
+	cb_multi_in2_count = 0;
 	for (int i = 0; i < 10; i++) {
-		/* Toggle LED pin */
-		int ret1 = gpio_pin_toggle_dt(&led);
-		int ret_pin_tog = check_pin_toggle(ret1);
-
-		zassert_equal(ret_pin_tog, 0, "Failed to toggle LED pin");
-
-		pin_value = gpio_pin_get_dt(&gpio_port);
-		TC_PRINT("Input pin value is %d\n", pin_value);
-
-		k_msleep(SLEEP_TIME_MS);
+		drive_led_edges(1);
+		if (gpio_pin_get_dt(&gpio_in1) != in1_initial) {
+			in1_toggled = true;
+		}
+		if (gpio_pin_get_dt(&gpio_in2) != in2_initial) {
+			in2_toggled = true;
+		}
 	}
 
-	ret = gpio_pin_interrupt_configure_dt(&gpio_port, GPIO_INT_DISABLE);
-	int ret_int3 = check_int_conf(ret);
+	if (!in2_toggled) {
+		TC_PRINT("Input2 (led2) did not toggle; check wiring led0->led2.\n");
+		ztest_test_skip();
+	}
 
-	zassert_equal(ret_int3, 0, "Pin interrupt disabling failed\n");
+	zassert_true(in1_toggled, "Input1 did not toggle; check wiring");
+	zassert_true(cb_multi_in1_count > 0, "No interrupt seen on input1");
+	zassert_true(cb_multi_in2_count > 0, "No interrupt seen on input2");
 
-	int cb_rm_ret = gpio_remove_callback(gpio_port.port, &gpio_cb_edge);
-	int cb_rm_status = check_cb_res(cb_rm_ret);
+	zassert_equal(check_int_conf(gpio_pin_interrupt_configure_dt(&gpio_in1,
+								     GPIO_INT_DISABLE)),
+		      0, "Disable input1 interrupt failed");
+	zassert_equal(check_int_conf(gpio_pin_interrupt_configure_dt(&gpio_in2,
+								     GPIO_INT_DISABLE)),
+		      0, "Disable input2 interrupt failed");
 
-	zassert_equal(cb_rm_status, 0, "GPIO remove callback failed\n");
+	zassert_equal(check_cb_res(gpio_remove_callback(gpio_in1.port, &gpio_cb_in1)), 0,
+		      "Remove callback for input1 failed");
+	zassert_equal(check_cb_res(gpio_remove_callback(gpio_in2.port, &gpio_cb_in2)), 0,
+		      "Remove callback for input2 failed");
 }
 
-/** @brief Verify GPIO_INT_EDGE_FALLING flag. */
-ZTEST(gpio_test_interrupts, test_gpio_int_edge_falling)
-{
-	test_gpio_pin_interrupt(GPIO_INT_EDGE_FALLING);
-}
+#else /* !DT_HAS_ALIAS(led2) */
 
-/** @brief Verify GPIO_INT_EDGE_RISING flag. */
-ZTEST(gpio_test_interrupts, test_gpio_int_edge_rising)
+ZTEST(gpio_test_interrupts, test_gpio_multi_input_single_output_interrupt)
 {
-	test_gpio_pin_interrupt(GPIO_INT_EDGE_RISING);
-}
-
-/** @brief Verify GPIO_INT_LEVEL_HIGH flag with 1 interrupt call */
-ZTEST(gpio_test_interrupts, test_gpio_2int_level_high)
-{
-	int_level_type++;
-	test_gpio_pin_interrupt(GPIO_INT_LEVEL_HIGH);
-	int_level_type = 0;
-}
-
-/** @brief Verify GPIO_INT_LEVEL_LOW flag with 1 interrupt call */
-ZTEST(gpio_test_interrupts, test_gpio_2int_level_low)
-{
-	int_level_type++;
-	test_gpio_pin_interrupt(GPIO_INT_LEVEL_LOW);
-	int_level_type = 0;
-}
-
-/** @brief Verify GPIO_INT_EDGE_BOTH flag with 1 interrupt call */
-ZTEST(gpio_test_interrupts, test_gpio_int_edge_both)
-{
-	test_gpio_pin_interrupt(GPIO_INT_EDGE_BOTH);
-}
-
-ZTEST(gpio_test_interrupts, test_gpio_VO_FLEX_Pin_test)
-{
+	TC_PRINT("led2 alias not present in devicetree; skipping multi-input test.\n");
 	ztest_test_skip();
 }
+
+#endif /* DT_HAS_ALIAS(led2) */

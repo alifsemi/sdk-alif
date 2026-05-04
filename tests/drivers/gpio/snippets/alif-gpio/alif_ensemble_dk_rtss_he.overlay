@@ -4,19 +4,24 @@
  *
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https: //alifsemi.com/license
- *
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
 /{
 	aliases {
 		led1 = &aled1;
+		led2 = &aled2;
 		led0 = &aled0;
+		gpio-0 = &gpio1;    /* Required for upstream gpio_basic_api test */
+		gpio-1 = &gpio6;    /* Required for upstream gpio_basic_api test */
 	};
 
 	leds {
 		aled1: led_1 {
-			gpios = <&gpio1 7 0>;
+			gpios = <&gpio1 4 0>;
+		};
+		aled2: led_2 {
+			gpios = <&gpio1 6 0>;
 		};
 		aled0: led_0 {
 			gpios = <&gpio6 4 0>;
@@ -24,7 +29,19 @@
 	};
 };
 
+/* Test node required by upstream gpio_basic_api test */
+	/{
+		gpio_test {
+			compatible = "test-gpio-basic-api";
+			out-gpios = <&gpio1 2 0>;
+			in-gpios = <&gpio1 3 0>;
+		};
+	};
+
 &gpio1 {
 	status = "okay";
 };
 
+&gpio6 {
+	status = "okay";
+};
