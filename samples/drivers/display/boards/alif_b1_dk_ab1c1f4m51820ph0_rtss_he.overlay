@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -10,16 +10,19 @@
 
 / {
 	chosen {
-		zephyr,console = &lpuart;
-		zephyr,shell-uart = &lpuart;
+		zephyr,console = &uart2;
+		zephyr,shell-uart = &uart2;
+	};
+};
+
+&pinctrl_uart2 {
+	group0 {
+		pinmux = <PIN_P8_4__UART2_RX_C>,
+			 <PIN_P8_5__UART2_TX_C>;
 	};
 };
 
 &uart2 {
-	status = "disabled";
-};
-
-&lpuart {
 	status = "okay";
 };
 
