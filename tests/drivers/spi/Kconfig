@@ -1,0 +1,106 @@
+
+mainmenu "Alif SPI Test Suite"
+
+# ---------------------------------------------------------------------------
+# Test selection - enable the test you want to run
+# ---------------------------------------------------------------------------
+
+config TEST_SPI_LOOPBACK
+	bool "Loopback tests"
+	help
+	  Enable the SPI loopback test suite.  This suite exercises
+	  the controller by wiring MOSI to MISO either internally or
+	  externally and validates data integrity across 8, 16 and
+	  32-bit word sizes at configurable frequencies.
+
+config TEST_SPI_NEGATIVE
+	bool "Negative tests"
+	help
+	  Enable the SPI negative test suite.  These tests deliberately
+	  pass invalid configurations, unsupported SPI modes, and null
+	  pointers to the driver to verify that proper error codes are
+	  returned and the driver does not crash or corrupt state.
+
+config TEST_SPI_BOUNDARY
+	bool "Boundary tests"
+	help
+	  Enable the SPI boundary test suite.  These tests probe driver
+	  behaviour at FIFO depth limits, minimum and maximum transfer
+	  sizes, unaligned buffer addresses, and extreme word widths
+	  to ensure robust handling of edge cases.
+
+config TEST_SPI_STRESS
+	bool "Stress tests"
+	help
+	  SPI stress tests that exercise repeated back-to-back
+	  full-duplex transfers between two controllers (SPI1 <-> SPI0)
+	  with rotating data patterns. Detects FIFO leakage and
+	  state retention issues across iterations.
+
+config TEST_SPI_PERFORMANCE
+	bool "Performance tests"
+	help
+	  Enable the SPI performance test suite.  It runs back-to-back
+	  MOSI, MISO and full-duplex transceive tests across 8, 16 and
+	  32-bit word sizes while sweeping frequencies from 1x to 25x
+	  the base rate, reporting cycle counts and elapsed time.
+
+# ---------------------------------------------------------------------------
+# Test options
+# ---------------------------------------------------------------------------
+
+config TEST_SPI_INTERNAL_LOOPBACK
+	bool "Use controller internal loopback for loopback and boundary tests"
+	depends on TEST_SPI_LOOPBACK || TEST_SPI_BOUNDARY
+	default y
+	help
+	  When enabled, loopback and boundary tests run on a single
+	  controller using the SPI_MODE_LOOP flag (no external wiring
+	  needed). When disabled, the same tests run across two
+	  controllers (SPI1 as controller, SPI0 as target wired
+	  together) and validate both MOSI and MISO directions
+	  with two independent transceives.
+
+config TEST_SPI_WORD_SIZE_SWEEP
+	bool "Sweep word sizes (8/16/32)"
+	default y
+	help
+	  When enabled, all test suites sweep word sizes 8, 16 and 32 bits.
+	  When disabled, TEST_SPI_WORD_SIZE pins every suite to a single
+	  data width.  This is useful for targeted debugging.
+
+config TEST_SPI_WORD_SIZE
+	int "Pinned SPI word size for all tests"
+	range 4 32
+	default 8
+	depends on !TEST_SPI_WORD_SIZE_SWEEP
+	help
+	  Fixed word size (4..32 bits) used by all test suites when
+	  TEST_SPI_WORD_SIZE_SWEEP is disabled.
+
+config TEST_SPI_FREQUENCY
+	int "SPI test base frequency (Hz)"
+	default 1000000
+	help
+	  Base operating frequency used by all SPI test scenarios.
+	  Frequency sweep multipliers (1x, 5x, 12x, 25x) and the
+	  performance sweep are relative to this value.  Default is
+	  1 MHz (1000000 Hz).
+
+# ---------------------------------------------------------------------------
+# DMA support
+# ---------------------------------------------------------------------------
+config TEST_SPI_USE_DMA
+	bool "Enable DMA for SPI transfers"
+	depends on $(dt_nodelabel_enabled,dma0) || $(dt_nodelabel_enabled,dma1) || $(dt_nodelabel_enabled,dma2)
+	select SPI_DW_USE_DMA
+	select DMA
+	select DMA_PL330
+	help
+	  Enable DMA-based SPI transfers for all selected test suites.
+	  When enabled, the driver routes large transfers through the
+	  PL330 DMA controller instead of the PIO path.  This option is
+	  only selectable when a DMA controller node is present in the
+	  active devicetree overlay (e.g. spi_DMA.overlay).
+
+source "Kconfig.zephyr"

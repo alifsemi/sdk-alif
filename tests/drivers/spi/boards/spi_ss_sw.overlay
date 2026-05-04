@@ -1,0 +1,32 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Software-controlled GPIO chip-select overlay for SPI1 controller.
+ * Stack with boards/alif_spi.overlay (base pinmux already applied).
+ * This overlay only overrides the SS pin to GPIO and adds cs-gpios.
+ */
+#include "board_common.overlay"
+
+&spi1 {
+	cs-gpios = <&SPI_SS_GPIO_BANK SPI_SS_GPIO_NUM GPIO_ACTIVE_LOW>;
+};
+
+&pinctrl_spi1 {
+	group0 {
+		pinmux = < SPI1_MISO >,
+			 < SPI1_MOSI >,
+			 < SPI1_SCLK >,
+			 < SPI_SS_GPIO_PIN >;
+		read-enable = <0x1>;
+	};
+};
+
+&SPI_SS_GPIO_BANK {
+	status = "okay";
+};

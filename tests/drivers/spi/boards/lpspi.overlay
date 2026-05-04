@@ -1,0 +1,118 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* LPSPI / SPI test overlay.
+ * HE: SPI4 controller <-> SPI0/SPI1 target (board-dependent)
+ * A5: LPSPI0 controller <-> SPI1 target
+ */
+#include "board_common.overlay"
+
+/ {
+	aliases {
+#if ALIF_BOARD == ALIF_BOARD_E7_HE
+		controller-spi = &spi4;
+		target-spi     = &spi0;
+#elif ALIF_BOARD == ALIF_BOARD_E8_HE
+		controller-spi = &spi4;
+		target-spi     = &spi1;
+#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+		controller-spi = &lpspi0;
+		target-spi     = &spi1;
+#else
+		/* Default to SPI4/SPI0 for unknown HE boards */
+		controller-spi = &spi4;
+		target-spi     = &spi0;
+#endif
+	};
+
+	chosen {
+		zephyr,console = &CONSOLE;
+	};
+};
+
+&CONSOLE {
+	status = "okay";
+};
+
+&UART_DISABLED {
+	status = "disabled";
+};
+
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+&lpspi0 {
+	status = "okay";
+	interrupts = <SPI4_IRQ 0>;
+};
+#else
+&spi4 {
+	status = "okay";
+	interrupts = <SPI4_IRQ 0>;
+};
+#endif
+
+#if ALIF_BOARD == ALIF_BOARD_E7_HE
+&spi0 {
+	status = "okay";
+	serial-target;
+	interrupts = <SPI0_IRQ 1>;
+};
+#endif
+
+&spi1 {
+	status = "okay";
+	serial-target;
+	interrupts = <SPI1_IRQ 1>;
+};
+
+#if ALIF_BOARD == ALIF_BOARD_E7_HE
+&pinctrl_spi0 {
+	group0 {
+		pinmux = < SPI0_MISO >,
+			 < SPI0_MOSI >,
+			 < SPI0_SCLK >,
+			 < SPI0_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
+#endif
+
+&pinctrl_spi1 {
+	group0 {
+		pinmux = < SPI1_MISO >,
+			 < SPI1_MOSI >,
+			 < SPI1_SCLK >,
+			 < SPI1_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
+
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+&pinctrl_lpspi0 {
+	group0 {
+		pinmux = < LPSPI0_MISO >,
+			 < LPSPI0_MOSI >,
+			 < LPSPI0_SCLK >,
+			 < LPSPI0_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
+#else
+&pinctrl_lpspi {
+	group0 {
+		pinmux = < SPI4_MISO >,
+			 < SPI4_MOSI >,
+			 < SPI4_SCLK >,
+			 < SPI4_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
+#endif

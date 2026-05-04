@@ -1,0 +1,52 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Software-CS overlay for LPSPI controller.
+ * Stack with boards/alif_lpspi.overlay.
+ */
+#include "board_common.overlay"
+
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+&lpspi0 {
+	status = "okay";
+	cs-gpios = <&LPSPI_SS_GPIO_BANK LPSPI_SS_GPIO_NUM GPIO_ACTIVE_LOW>;
+	interrupts = <SPI4_IRQ 0>;
+};
+
+&pinctrl_lpspi0 {
+	group0 {
+		pinmux = < LPSPI0_MISO >,
+			 < LPSPI0_MOSI >,
+			 < LPSPI0_SCLK >,
+			 < LPSPI_SS_GPIO_PIN >;
+		read-enable = < 0x1 >;
+	};
+};
+#else
+&spi4 {
+	status = "okay";
+	cs-gpios = <&LPSPI_SS_GPIO_BANK LPSPI_SS_GPIO_NUM GPIO_ACTIVE_LOW>;
+	interrupts = <SPI4_IRQ 0>;
+};
+
+&pinctrl_lpspi {
+	group0 {
+		pinmux = < SPI4_MISO >,
+			 < SPI4_MOSI >,
+			 < SPI4_SCLK >,
+			 < LPSPI_SS_GPIO_PIN >;
+		read-enable = < 0x1 >;
+	};
+};
+#endif
+
+&LPSPI_SS_GPIO_BANK {
+	status = "okay";
+};

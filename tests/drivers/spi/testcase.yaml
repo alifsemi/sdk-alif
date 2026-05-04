@@ -1,0 +1,147 @@
+common:
+  tags:
+    - drivers
+    - spi
+    - gpio
+  extra_conf_files:
+    - prj.conf
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+
+tests:
+  drivers.spi.alif.loopback:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_LOOPBACK=y
+
+  drivers.spi.alif.loopback.explicit:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_LOOPBACK=y
+
+  drivers.spi.alif.perf:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_PERFORMANCE=y
+
+  drivers.spi.alif.perf.dma:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+      - boards/spi_DMA.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_PERFORMANCE=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.perf.dma.evtrtr:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+      - boards/spi_DMA_evtrtr.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_PERFORMANCE=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.negative:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_NEGATIVE=y
+
+  drivers.spi.alif.loopback.ext:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_LOOPBACK=y
+      - CONFIG_TEST_SPI_INTERNAL_LOOPBACK=n
+
+  drivers.spi.alif.boundary:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_BOUNDARY=y
+
+  drivers.spi.alif.boundary.ext:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_BOUNDARY=y
+      - CONFIG_TEST_SPI_INTERNAL_LOOPBACK=n
+
+  drivers.spi.alif.stress:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_STRESS=y
+
+  drivers.spi.alif.stress.dma:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+      - boards/spi_DMA.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_STRESS=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.stress.dma.evtrtr:
+    extra_dtc_overlay_files:
+      - boards/spi.overlay
+      - boards/spi_DMA_evtrtr.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_STRESS=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.lpspi.loopback:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_LOOPBACK=y
+
+  drivers.spi.alif.lpspi.perf:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_PERFORMANCE=y
+
+  drivers.spi.alif.lpspi.perf.dma:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+      - boards/lpspi_DMA.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_PERFORMANCE=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.lpspi.perf.dma.evtrtr:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+      - boards/lpspi_DMA_evtrtr.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_PERFORMANCE=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.lpspi.stress:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_STRESS=y
+
+  drivers.spi.alif.lpspi.stress.dma:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+      - boards/lpspi_DMA.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_STRESS=y
+      - CONFIG_TEST_SPI_USE_DMA=y
+
+  drivers.spi.alif.lpspi.stress.dma.evtrtr:
+    extra_dtc_overlay_files:
+      - boards/lpspi.overlay
+      - boards/lpspi_DMA_evtrtr.overlay
+    extra_configs:
+      - CONFIG_TEST_SPI_STRESS=y
+      - CONFIG_TEST_SPI_USE_DMA=y

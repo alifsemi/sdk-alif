@@ -1,0 +1,49 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Event-router DMA overlay for LPSPI instances.
+ * Stack with boards/alif_lpspi.overlay.
+ */
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+#include "board_common.overlay"
+
+&DMA_CTRL {
+	status = "okay";
+};
+
+&evtrtr2 {
+	status = "okay";
+};
+
+#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
+	ALIF_BOARD == ALIF_BOARD_B1
+&lpspi0 {
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 2, 1) 13>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(1, 2, 1) 12>;
+	dma-names = "txdma", "rxdma";
+};
+#else
+&spi4 {
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 2, 1) 13>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(1, 2, 1) 12>;
+	dma-names = "txdma", "rxdma";
+};
+#endif
+
+&spi0 {
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(2, 2, 1) 20>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(3, 2, 1) 16>;
+	dma-names = "txdma", "rxdma";
+};
+
+&spi1 {
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(2, 2, 1) 21>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(3, 2, 1) 17>;
+	dma-names = "txdma", "rxdma";
+};
