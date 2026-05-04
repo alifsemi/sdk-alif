@@ -1,0 +1,14 @@
+name: uart0-rts-cts
+
+boards:
+  /alif_b1_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_e1c_dk.overlay
+
+  /alif_e1c_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_e1c_dk.overlay
+
+  /alif_e[5-8]_dk/.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_ensemble_dk.overlay
