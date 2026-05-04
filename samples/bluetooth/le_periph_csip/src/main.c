@@ -161,7 +161,7 @@ static uint16_t server_configure(void)
 		return ret;
 	}
 
-	ret = atc_csism_add(CSISM_ADD_CFG_SIZE_BIT | CSISM_ADD_CFG_RANK_BIT
+	ret = atc_csism_add(CSISM_ADD_CFG_SIZE_BIT | CSISM_ADD_CFG_RANK_BIT | CSISM_ADD_CFG_LOCK_BIT
 #if CONFIG_BLE_PRIVACY_ENABLED
 	| CSISM_ADD_CFG_SIRK_ENCRYPT_BIT
 #endif
