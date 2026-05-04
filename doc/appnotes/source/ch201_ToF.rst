@@ -120,7 +120,7 @@ Console Output
 
 Example runtime output:
 
-.. code-block:: console
+.. code-block:: text
 
    [00:00:00.417,000] <inf> CH201_TOF: Device 0x9a98 name is ch201@29
    [00:00:00.455,000] <inf> CH201_TOF:     Object Range --> 0.223593 m, Amplitude --> 13981

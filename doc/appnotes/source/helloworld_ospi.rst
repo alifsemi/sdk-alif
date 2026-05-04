@@ -104,7 +104,7 @@ To secure the application, encrypt the ZAS binary using a 16-byte AES key.
 Encrypt the Binary
 ------------------
 
-.. code-block:: bash
+.. code-block:: console
 
    /home/$USER/ZAS-v1.2.0/prebuilt-images/CSPI_AES128_ECB \
        -i build/zephyr/zephyr.bin \

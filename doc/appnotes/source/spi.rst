@@ -63,7 +63,7 @@ Once the build command completes successfully, executable images will be generat
 
 By default, the Alif Zephyr SDK enables DMA (Direct Memory Access) support for SPI transactions. To disable Tx/Rx with DMA on SPI, set the following in ``../alif/samples/drivers/spi_dw/prj.conf``:
 
-.. code-block:: bash
+.. code-block:: console
 
    CONFIG_SPI_DW_USE_DMA=n
 

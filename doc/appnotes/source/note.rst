@@ -5,7 +5,7 @@ Generic Note
 
 * For **TCM memory**, use:
 
-  .. code-block:: bash
+  .. code-block:: console
 
      -DCONFIG_FLASH_BASE_ADDRESS=0 -DCONFIG_FLASH_LOAD_OFFSET=0
 

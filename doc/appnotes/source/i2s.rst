@@ -63,7 +63,7 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
 2. Build Command for the I2S Echo Sample Application
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -73,7 +73,7 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
 3. Build Commands for the I2S output Sample Application
 
-.. code-block:: bash
+.. code-block:: console
 
    west build -p always \
      -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
@@ -88,14 +88,14 @@ Executing Binary on the DevKit
 
 To execute binaries on the DevKit follow the command
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
 Console Output
 ===============
 
-.. code-block:: console
+.. code-block:: text
 
    I2S echo sample
    Press "gpio@42002000" to toggle the echo effect
