@@ -55,7 +55,7 @@ static struct app_env env = {
  */
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_LEGACY | GAPM_PAIRING_SEC_CON,
+	.pairing_mode = GAPM_PAIRING_SEC_CON,
 	.privacy_cfg = GAPM_PRIV_CFG_PRIV_ADDR_BIT,
 	.renew_dur = 1500,
 	.private_identity.addr = {0},
@@ -335,7 +335,14 @@ static uint16_t expose_object_to_connection(uint8_t con_lid)
 /* Add Object transfer profile to the stack */
 static uint16_t server_configure(void)
 {
-	uint16_t cfg_flags = OTS_ADD_CFG_ACCESS_CLOCK_BIT;
+	uint16_t cfg_flags =
+				OTS_ADD_CFG_NAME_WRITE_BIT |
+				OTS_ADD_CFG_FIRST_CREATED_BIT |
+				OTS_ADD_CFG_FIRST_CREATED_WRITE_BIT |
+				OTS_ADD_CFG_LAST_MODIFIED_BIT |
+				OTS_ADD_CFG_MORE_OBJECTS_BIT |
+				OTS_ADD_CFG_PROPERTIES_WRITE_BIT |
+				OTS_ADD_CFG_CHANGED_BIT;
 	uint32_t oacp_features = OTP_OACP_FEAT_READ_SUPP_BIT;
 	uint32_t olcp_features =
 		OTP_OLCP_FEAT_GOTO_SUPP_BIT | OTP_OLCP_FEAT_REQ_NUM_OBJECTS_SUPP_BIT;
