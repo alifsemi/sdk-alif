@@ -1,0 +1,61 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* SPI1/SPI2 test overlay. */
+#include "board_common.overlay"
+
+/ {
+	aliases {
+		controller-spi = &spi1;
+		target-spi     = &spi2;
+	};
+
+	chosen {
+		zephyr,console = &CONSOLE;
+	};
+};
+
+&CONSOLE {
+	status = "okay";
+};
+
+&UART_DISABLED {
+	status = "disabled";
+};
+
+&spi1 {
+	status = "okay";
+	interrupts = <SPI1_IRQ 0>;
+};
+
+&spi2 {
+	status = "okay";
+	serial-target;
+	interrupts = <SPI2_IRQ 1>;
+};
+
+&pinctrl_spi1 {
+	group0 {
+		pinmux = < SPI1_MISO >,
+			 < SPI1_MOSI >,
+			 < SPI1_SCLK >,
+			 < SPI1_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
+
+&pinctrl_spi2 {
+	group0 {
+		pinmux = < SPI2_MISO >,
+			 < SPI2_MOSI >,
+			 < SPI2_SCLK >,
+			 < SPI2_SS0 >;
+		read-enable = < 0x1 >;
+	};
+};
