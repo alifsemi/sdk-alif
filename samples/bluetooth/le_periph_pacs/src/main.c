@@ -117,15 +117,20 @@ static uint16_t create_advertising(void)
 static uint16_t server_configure(void)
 {
 	uint16_t ret = 0;
+	uint8_t pac_lid_sink = 0;
+	uint8_t pac_lid_src = 1;
+	uint8_t record_id_sink = 0;
+	uint8_t record_id_src = 1;
+
 	bap_capa_srv_cfg_t srv_cfg = {
 		.cfg_bf = 0,
-		.nb_pacs_sink = 0,
+		.nb_pacs_sink = 1,
 		.nb_pacs_src = 1,
 		.pref_mtu = 0,
 		.shdl = GATT_INVALID_HDL,
-		.location_bf_sink = 0,
-		.location_bf_src = 0, /* Mono */
-		.supp_context_bf_sink = 0,
+		.location_bf_sink = GAF_LOC_FRONT_LEFT_BIT,
+		.location_bf_src = GAF_LOC_FRONT_LEFT_BIT,
+		.supp_context_bf_sink = BAP_CONTEXT_TYPE_ALL,
 		.supp_context_bf_src = BAP_CONTEXT_TYPE_ALL,
 	};
 
@@ -135,29 +140,51 @@ static uint16_t server_configure(void)
 		return ret;
 	}
 
-	/* We must use HS malloc as we pass the ownership */
-	bap_capa_t *p_capa = (bap_capa_t *)ke_malloc_user(BAP_CAPA_SIZE, KE_MEM_PROFILE);
 	gaf_codec_id_t const codec_id = GAF_CODEC_ID_LC3;
-	size_t pac_lid = 0;
-	size_t record_id = 1; /* Records start from ID 1 */
 
-	if (!p_capa) {
-		LOG_ERR("PACS capability record malloc failed");
+	/* Add Sink PAC record (pac_lid = 0) */
+	bap_capa_t *p_capa_sink = (bap_capa_t *)ke_malloc_user(BAP_CAPA_SIZE, KE_MEM_PROFILE);
+
+	if (!p_capa_sink) {
+		LOG_ERR("PACS sink capability record malloc failed");
 		return -ENOMEM;
 	}
 
-	p_capa->param.sampling_freq_bf = BAP_SAMPLING_FREQ_32000HZ_BIT;
-	p_capa->param.frame_dur_bf = BAP_FRAME_DUR_10MS_BIT;
-	p_capa->param.chan_cnt_bf = 1;
-	p_capa->param.frame_octet_min = 60;
-	p_capa->param.frame_octet_max = 80;
-	p_capa->param.max_frames_sdu = 1;
-	p_capa->add_capa.len = 0;
+	p_capa_sink->param.sampling_freq_bf = BAP_SAMPLING_FREQ_32000HZ_BIT;
+	p_capa_sink->param.frame_dur_bf = BAP_FRAME_DUR_10MS_BIT;
+	p_capa_sink->param.chan_cnt_bf = 1;
+	p_capa_sink->param.frame_octet_min = 60;
+	p_capa_sink->param.frame_octet_max = 80;
+	p_capa_sink->param.max_frames_sdu = 1;
+	p_capa_sink->add_capa.len = 0;
 
-	ret = bap_capa_srv_set_record(pac_lid, record_id, &codec_id, p_capa, NULL);
+	ret = bap_capa_srv_set_record(pac_lid_sink, record_id_sink, &codec_id, p_capa_sink, NULL);
 	if (ret) {
-		LOG_ERR("PACS capability record set failed %u", ret);
-		ke_free(p_capa);
+		LOG_ERR("PACS sink capability record set failed %u", ret);
+		ke_free(p_capa_sink);
+		return ret;
+	}
+
+	/* Add Source PAC record (pac_lid = 1) */
+	bap_capa_t *p_capa_src = (bap_capa_t *)ke_malloc_user(BAP_CAPA_SIZE, KE_MEM_PROFILE);
+
+	if (!p_capa_src) {
+		LOG_ERR("PACS source capability record malloc failed");
+		return -ENOMEM;
+	}
+
+	p_capa_src->param.sampling_freq_bf = BAP_SAMPLING_FREQ_32000HZ_BIT;
+	p_capa_src->param.frame_dur_bf = BAP_FRAME_DUR_10MS_BIT;
+	p_capa_src->param.chan_cnt_bf = 1;
+	p_capa_src->param.frame_octet_min = 60;
+	p_capa_src->param.frame_octet_max = 80;
+	p_capa_src->param.max_frames_sdu = 1;
+	p_capa_src->add_capa.len = 0;
+
+	ret = bap_capa_srv_set_record(pac_lid_src, record_id_src, &codec_id, p_capa_src, NULL);
+	if (ret) {
+		LOG_ERR("PACS source capability record set failed %u", ret);
+		ke_free(p_capa_src);
 	}
 	return ret;
 }
