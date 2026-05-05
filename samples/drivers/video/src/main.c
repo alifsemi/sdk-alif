@@ -28,6 +28,15 @@ LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 #define N_VID_BUFF              MIN(CONFIG_VIDEO_BUFFER_POOL_NUM_MAX, N_FRAMES)
 
 #define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
+#define CAM_AXI_EP_ENABLED DT_NODE_EXISTS(DT_NODELABEL(cam_mem_ep_out))
+#define DUAL_EP (ISP_ENABLED && CAM_AXI_EP_ENABLED)
+
+#if DUAL_EP
+#define CPI_RAW_FRAMES 5  /* Number of raw frames to capture via CPI before switching to ISP */
+#define N_RAW_BUFF 1      /* Single buffer for CPI raw capture, reused for ISP later */
+#undef N_VID_BUFF
+#define N_VID_BUFF 0      /* No separate ISP buffers initially, reuse CPI buffer */
+#endif
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
 #define PIPELINE_FORMAT	VIDEO_PIX_FMT_BGGR8
@@ -108,7 +117,10 @@ static int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 
 int main(void)
 {
-	struct video_buffer *buffers[N_VID_BUFF], *vbuf;
+#if !DUAL_EP
+	struct video_buffer *buffers[N_VID_BUFF];
+#endif
+	struct video_buffer *vbuf;
 	struct video_format fmt = { 0 };
 	struct video_caps caps[NUM_CAMS];
 	const struct device *video;
@@ -127,6 +139,15 @@ int main(void)
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	int loop_ctr;
 
+#if DUAL_EP
+	const struct device *cam_dev;
+	struct video_buffer *raw_buffers[N_RAW_BUFF], *raw_vbuf;
+	struct video_buffer *cpi_dummy_buf;  /* Dummy buffer for CPI in ISP mode (AXI disabled) */
+	struct video_format raw_fmt = { 0 };
+	size_t raw_bsize;
+	uint32_t cpi_frame_count = 0;
+	bool mode_switched = false;
+#endif
 	uint32_t last_timestamp = 0;
 	uint32_t frame_time = 0;
 
@@ -141,6 +162,13 @@ int main(void)
 		return -1;
 	}
 	LOG_INF("- Device name: %s", video->name);
+#if DUAL_EP
+	cam_dev = DEVICE_DT_GET_ONE(alif_cam);
+	if (!device_is_ready(cam_dev)) {
+		LOG_ERR("%s: device not ready.", cam_dev->name);
+		return -1;
+	}
+#endif
 
 	for (loop_ctr = NUM_CAMS - 1; loop_ctr >= 0; loop_ctr--) {
 #if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
@@ -217,6 +245,10 @@ int main(void)
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	}
 
+#if DUAL_EP
+	raw_fmt = fmt;
+#endif
+
 #if (ISP_ENABLED)
 		/*
 		 * Set Output Endpoint format. Ensure that ISP EP-out
@@ -258,7 +290,8 @@ int main(void)
 		}
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
-	/* Alloc video buffers and enqueue for capture */
+#if !DUAL_EP
+	/* Alloc video buffers and enqueue for capture (non-DUAL_EP mode) */
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
 		buffers[i] = video_buffer_alloc(bsize, K_NO_WAIT);
 		if (buffers[i] == NULL) {
@@ -280,6 +313,47 @@ int main(void)
 			i, i, (uint32_t)buffers[i]->buffer,
 			(uint32_t)buffers[i]->buffer + bsize - 1);
 	}
+#endif
+
+#if DUAL_EP
+	/*
+	 * Allocate single large buffer for CPI raw capture.
+	 * This buffer will be reused for ISP output after CPI_RAW_FRAMES.
+	 * Use the larger of raw_bsize or ISP bsize to accommodate both modes.
+	 */
+	raw_bsize = raw_fmt.pitch * raw_fmt.height;
+	size_t shared_bsize = (raw_bsize > bsize) ? raw_bsize : bsize;
+
+	LOG_INF("Shared buffer size: %d (raw: %d, ISP: %d)", shared_bsize, raw_bsize, bsize);
+	LOG_INF("Mode: CPI raw capture for first %d frames, then ISP", CPI_RAW_FRAMES);
+
+	for (i = 0; i < ARRAY_SIZE(raw_buffers); i++) {
+		raw_buffers[i] = video_buffer_alloc(shared_bsize, K_NO_WAIT);
+		if (raw_buffers[i] == NULL) {
+			LOG_ERR("Unable to alloc shared video buffer");
+			return -1;
+		}
+		memset(raw_buffers[i]->buffer, 0, shared_bsize);
+
+		/* Initially enqueue to CPI for raw capture */
+		ret = video_enqueue(cam_dev, VIDEO_EP_OUT, raw_buffers[i]);
+		if (ret) {
+			LOG_ERR("Unable to enqueue raw video buffer");
+			return -1;
+		}
+		LOG_INF("shared buffer[%d]: addr 0x%08x size %d",
+			i, (uint32_t)raw_buffers[i]->buffer, shared_bsize);
+	}
+
+	/* Allocate small dummy buffer for CPI in ISP mode (AXI disabled, won't be written) */
+	cpi_dummy_buf = video_buffer_alloc(1024, K_NO_WAIT);  /* Small 1KB buffer */
+	if (cpi_dummy_buf == NULL) {
+		LOG_ERR("Unable to alloc dummy CPI buffer");
+		return -1;
+	}
+	LOG_INF("CPI dummy buffer: addr 0x%08x (for ISP mode, AXI disabled)",
+		(uint32_t)cpi_dummy_buf->buffer);
+#endif
 
 	/*
 	 * TODO: Need to fix this delay.
@@ -299,15 +373,190 @@ int main(void)
 #endif
 
 	/* Start video capture */
+#if DUAL_EP
+	/* In DUAL_EP mode, configure CPI for raw capture first */
+	/* Enable AXI port for CPI->Memory, disable ISP port initially */
+	uint32_t port_enable = 1;
+
+	ret = video_set_ctrl(cam_dev, VIDEO_CID_ALIF_CPI_AXI_PORT_EN,
+			      &port_enable);
+	if (ret) {
+		LOG_ERR("Failed to enable CPI AXI port. ret - %d", ret);
+		return -1;
+	}
+
+	port_enable = 0;
+	ret = video_set_ctrl(cam_dev, VIDEO_CID_ALIF_CPI_ISP_PORT_EN,
+			      &port_enable);
+	if (ret) {
+		LOG_ERR("Failed to disable CPI ISP port. ret - %d", ret);
+		return -1;
+	}
+
+	/* Start CPI stream for raw capture */
+	ret = video_stream_start(cam_dev);
+	if (ret) {
+		LOG_ERR("Unable to start CPI capture. ret - %d", ret);
+		return -1;
+	}
+	LOG_INF("CPI capture started: CPI->Memory (raw mode for first %d frames)", CPI_RAW_FRAMES);
+#else
 	ret = video_stream_start(video);
 	if (ret) {
 		LOG_ERR("Unable to start capture (interface). ret - %d", ret);
 		return -1;
 	}
-
 	LOG_INF("Capture started");
+#endif
 
 	for (int i = 0; i < N_FRAMES; i++) {
+#if DUAL_EP
+		/* Phase 1: CPI raw capture for first CPI_RAW_FRAMES */
+		if (cpi_frame_count < CPI_RAW_FRAMES) {
+			ret = video_dequeue(cam_dev, VIDEO_EP_OUT, &raw_vbuf, K_FOREVER);
+			if (ret) {
+				LOG_ERR("Unable to dequeue CPI raw buffer");
+				return -1;
+			}
+
+			cpi_frame_count++;
+			LOG_INF("[CPI Mode] Got raw frame %u! size: %u; timestamp %u ms",
+				cpi_frame_count, raw_vbuf->bytesused, raw_vbuf->timestamp);
+
+			if (last_timestamp == 0) {
+				LOG_INF("FPS: 0.0");
+				last_timestamp = raw_vbuf->timestamp;
+			} else {
+				frame_time = raw_vbuf->timestamp - last_timestamp;
+				last_timestamp = raw_vbuf->timestamp;
+				LOG_INF("FPS: %f", 1000.0/frame_time);
+			}
+
+			/* Check if we need to switch to ISP mode */
+			if (cpi_frame_count >= CPI_RAW_FRAMES && !mode_switched) {
+				uint32_t port_enable = 0;
+
+				LOG_INF("=== Switching from CPI to ISP mode ===");
+
+				/* Stop CPI stream */
+				ret = video_stream_stop(cam_dev);
+				if (ret) {
+					LOG_ERR("Failed to stop CPI stream. ret - %d", ret);
+					return -1;
+				}
+
+				/* Flush CPI buffers */
+				video_flush(cam_dev, VIDEO_EP_OUT, false);
+
+				/* Disable CPI AXI port (CPI->Memory path) */
+				port_enable = 0;
+				ret = video_set_ctrl(cam_dev,
+						     VIDEO_CID_ALIF_CPI_AXI_PORT_EN,
+						     &port_enable);
+				if (ret) {
+					LOG_ERR("Failed to disable CPI AXI port. ret - %d", ret);
+					return -1;
+				}
+
+				/* Enable CPI ISP port (CPI->ISP path) */
+				port_enable = 1;
+				ret = video_set_ctrl(cam_dev,
+						     VIDEO_CID_ALIF_CPI_ISP_PORT_EN,
+						     &port_enable);
+				if (ret) {
+					LOG_ERR("Failed to enable CPI ISP port. ret - %d", ret);
+					return -1;
+				}
+
+				/*
+				 * Enqueue dummy buffer to CPI (AXI disabled, won't be written).
+				 * CPI needs a buffer in its queue when ISP starts it.
+				 */
+				ret = video_enqueue(cam_dev, VIDEO_EP_OUT, cpi_dummy_buf);
+				if (ret) {
+					LOG_ERR("Unable to enqueue dummy buffer to CPI");
+					return -1;
+				}
+
+				/*
+				 * Enqueue buffer to ISP output queue for processed data.
+				 * Data flows: Sensor->CPI->ISP(via ISP port)->Memory(this buffer)
+				 */
+				ret = video_enqueue(video, VIDEO_EP_OUT, raw_vbuf);
+				if (ret) {
+					LOG_ERR("Unable to enqueue buffer to ISP");
+					return -1;
+				}
+
+				/* Start ISP stream (which will internally start CPI) */
+				ret = video_stream_start(video);
+				if (ret) {
+					LOG_ERR("Unable to start ISP stream. ret - %d", ret);
+					return -1;
+				}
+
+				mode_switched = true;
+				LOG_INF("=== Mode switch complete: CPI->ISP->Memory active ===");
+			} else {
+				/* Re-enqueue buffer for next CPI capture */
+				ret = video_enqueue(cam_dev, VIDEO_EP_OUT, raw_vbuf);
+				if (ret) {
+					LOG_ERR("Unable to requeue CPI buffer");
+					return -1;
+				}
+
+				ret = video_stream_start(cam_dev);
+				if (ret && ret != -EBUSY) {
+					LOG_ERR("Unable to restart CPI capture. ret - %d", ret);
+					return -1;
+				}
+			}
+		} else {
+			/* Phase 2: ISP capture from frame 6 onwards */
+			ret = video_dequeue(video, VIDEO_EP_OUT, &vbuf, K_FOREVER);
+			if (ret) {
+				LOG_ERR("Unable to dequeue ISP video buf");
+				return -1;
+			}
+
+			frame++;
+			LOG_INF("[ISP Mode] Got frame %u! size: %u; timestamp %u ms",
+			       frame, vbuf->bytesused, vbuf->timestamp);
+
+			if (last_timestamp == 0) {
+				LOG_INF("FPS: 0.0");
+				last_timestamp = vbuf->timestamp;
+			} else {
+				frame_time = vbuf->timestamp - last_timestamp;
+				last_timestamp = vbuf->timestamp;
+				LOG_INF("FPS: %f", 1000.0/frame_time);
+			}
+
+			/* Re-enqueue buffers for next ISP capture */
+			if (i < N_FRAMES - 1) {
+				/* Enqueue dummy buffer to CPI (AXI disabled, won't be written) */
+				ret = video_enqueue(cam_dev, VIDEO_EP_OUT, cpi_dummy_buf);
+				if (ret) {
+					LOG_ERR("Unable to enqueue dummy buffer to CPI");
+					return -1;
+				}
+
+				/* Enqueue buffer to ISP output queue for processed data */
+				ret = video_enqueue(video, VIDEO_EP_OUT, vbuf);
+				if (ret) {
+					LOG_ERR("Unable to requeue ISP video buf");
+					return -1;
+				}
+
+				ret = video_stream_start(video);
+				if (ret && ret != -EBUSY) {
+					LOG_ERR("Unable to restart ISP capture. ret - %d", ret);
+					return -1;
+				}
+			}
+		}
+#else
+		/* Non-DUAL_EP mode: standard ISP/CPI capture */
 		ret = video_dequeue(video, VIDEO_EP_OUT, &vbuf, K_FOREVER);
 		if (ret) {
 			LOG_ERR("Unable to dequeue video buf");
@@ -340,6 +589,7 @@ int main(void)
 				return -1;
 			}
 		}
+#endif
 	}
 
 	LOG_INF("Calling video flush.");
