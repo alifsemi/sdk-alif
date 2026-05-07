@@ -422,6 +422,8 @@ Bug Fixes
      - Corrected SRAM1 mapping from ``0x08000000`` to ``0x02400000``
    * - Touchscreen
      - Fixed issue where touch screen events were intermittently dropped
+   * - I2C
+     - Fixed I2C target ``read_requested`` and ``read_processed`` callback handling
 
 Planned Deprecations
 --------------------
