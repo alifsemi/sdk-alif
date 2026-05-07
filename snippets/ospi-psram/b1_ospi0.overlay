@@ -1,0 +1,77 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * For OSPI0 Test with ISSI HyperRAM
+ */
+
+/ {
+	aliases {
+		spi-psram = &ospi_ram;
+	};
+};
+
+&pinctrl {
+	pinctrl_psram: pinctrl_psram {
+		group0 {
+			pinmux = <PIN_P4_2__OSPI0_SCLK_A>,
+				 <PIN_P0_2__OSPI0_SS0_A>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+
+		group1 {
+			pinmux = <PIN_P4_1__OSPI0_RXDS_A>,
+				 <PIN_P3_0__OSPI0_D0_A>,
+				 <PIN_P3_1__OSPI0_D1_A>,
+				 <PIN_P3_2__OSPI0_D2_A>,
+				 <PIN_P3_3__OSPI0_D3_A>,
+				 <PIN_P3_4__OSPI0_D4_A>,
+				 <PIN_P3_5__OSPI0_D5_A>,
+				 <PIN_P3_6__OSPI0_D6_A>,
+				 <PIN_P3_7__OSPI0_D7_A>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+	};
+
+	/* Default AHI Trace pins affect OSPI pins. */
+	pinctrl_ahi_trace: pinctrl_ahi_trace {
+		group0 {
+			pinmux = <PIN_P8_7__EXT_TX_B>,
+				 <PIN_P8_3__EXT_RTS_B>,
+				 <PIN_P8_5__EXT_TRACE_B>;
+			read-enable = <0x0>;
+		};
+	};
+};
+
+&ospi0 {
+	pinctrl-0 = <&pinctrl_psram>;
+	pinctrl-names = "default";
+
+	cs-pin = <0>;
+	baud2-delay = <1>;
+	rx-ds-delay = <8>;
+	xip-wait-cycles = <7>;
+	tx-fifo-threshold = <64>;
+	ddr-drive-edge = <0>;
+	clocks = <&clockctrl ALIF_OSPI_CLK>;
+	xip-base-address = <0xA0000000 0x10000000>;
+	bus-speed = <80000000>;
+	status = "okay";
+
+	ospi_ram: hyperram {
+		compatible = "issi,wvh64m8eall";
+		size = <DT_SIZE_M(64)>;
+		status = "okay";
+	};
+};

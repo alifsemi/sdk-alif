@@ -8,48 +8,48 @@
  */
 
 /*
- * For HSPI0 Test with APS512XXN RAM
+ * For OSPI0 Test with APS512XXN RAM
  */
 
 / {
 	aliases {
-		spi-psram = &aps512xxn;
+		spi-psram = &ospi_ram;
 	};
 };
 
 &pinctrl {
 	pinctrl_ospi0:pinctrl_ospi0 {
 		group0 {
-			pinmux = < PIN_P2_0__OSPI0_D0_B >,
-				 < PIN_P2_1__OSPI0_D1_B >,
-				 < PIN_P2_2__OSPI0_D2_B >,
-				 < PIN_P2_3__OSPI0_D3_B >,
-				 < PIN_P2_4__OSPI0_D4_B >,
-				 < PIN_P2_5__OSPI0_D5_B >,
-				 < PIN_P2_6__OSPI0_D6_B >,
-				 < PIN_P2_7__OSPI0_D7_B >,
-				 < PIN_P16_0__OSPI0_D8_B >,
-				 < PIN_P16_1__OSPI0_D9_B >,
-				 < PIN_P16_2__OSPI0_D10_B >,
-				 < PIN_P16_3__OSPI0_D11_B >,
-				 < PIN_P16_4__OSPI0_D12_B >,
-				 < PIN_P16_5__OSPI0_D13_B >,
-				 < PIN_P16_6__OSPI0_D14_B >,
-				 < PIN_P16_7__OSPI0_D15_B >;
+			pinmux = <PIN_P2_0__OSPI0_D0_B>,
+				 <PIN_P2_1__OSPI0_D1_B>,
+				 <PIN_P2_2__OSPI0_D2_B>,
+				 <PIN_P2_3__OSPI0_D3_B>,
+				 <PIN_P2_4__OSPI0_D4_B>,
+				 <PIN_P2_5__OSPI0_D5_B>,
+				 <PIN_P2_6__OSPI0_D6_B>,
+				 <PIN_P2_7__OSPI0_D7_B>,
+				 <PIN_P16_0__OSPI0_D8_B>,
+				 <PIN_P16_1__OSPI0_D9_B>,
+				 <PIN_P16_2__OSPI0_D10_B>,
+				 <PIN_P16_3__OSPI0_D11_B>,
+				 <PIN_P16_4__OSPI0_D12_B>,
+				 <PIN_P16_5__OSPI0_D13_B>,
+				 <PIN_P16_6__OSPI0_D14_B>,
+				 <PIN_P16_7__OSPI0_D15_B>;
 			read-enable = <0x1>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
 			schmitt-enable = <0x1>;
 		};
 		group1 {
-			pinmux = < PIN_P3_0__OSPI0_SCLK_B >,
-				 < PIN_P3_2__OSPI0_SS0_B >;
+			pinmux = <PIN_P3_0__OSPI0_SCLK_B>,
+				 <PIN_P3_2__OSPI0_SS0_B>;
 			read-enable = <0x1>;
 			drive-strength = <12>;
 		};
 		group2 {
-			pinmux = < PIN_P1_6__OSPI0_RXDS_B >,
-				 < PIN_P8_5__OSPI0_RXDS1_A >;
+			pinmux = <PIN_P1_6__OSPI0_RXDS_B>,
+				 <PIN_P8_5__OSPI0_RXDS1_A>;
 			read-enable = <0x1>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
@@ -57,7 +57,6 @@
 		};
 	};
 };
-
 
 &ospi0 {
 	rx-ds-delay = <11>;
@@ -69,7 +68,7 @@
 	bus-speed = <100000000>;
 	status = "okay";
 
-	aps512xxn: aps512xxn {
+	ospi_ram: psram {
 		compatible = "alif,apmemory-aps512xxn";
 		size = <DT_SIZE_M(64)>;
 		x16-data-transfer-mode;
