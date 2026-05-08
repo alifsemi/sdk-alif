@@ -62,22 +62,23 @@ Follow these steps to build the UART application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      samples/drivers/uart/echo_bot
 
-4. Build commands for LPUART application on the M55 HE core:
+4. Build command for LPUART application on the M55 HE core using the ``lpuart`` snippet:
 
 .. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     samples/drivers/uart/echo_bot \
-     -- -DDTC_OVERLAY_FILE=$PWD/../alif/boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_LPUART.overlay
+     -S lpuart \
+     samples/drivers/uart/echo_bot
 
-**UART RTS/CTS Support**
+5. Build command for UART0 with hardware flow control (RTS/CTS) using the ``uart0-rts-cts`` snippet:
 
-Users can enable UART RTS/CTS hardware flow control using board-specific overlay files located under the `boards directory <boards_arm_directory_>`_ in the Alif Zephyr tree. For example:
+.. code-block:: console
 
-- ``alif_b1_dk_rtss_he_UART0_RTS_CTS.overlay``
-- ``alif_e7_dk_rtss_he_hp_UART0_RTS_CTS.overlay`` (also applicable for Alif E8 DevKit)
-
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     -S uart0-rts-cts \
+     samples/drivers/uart/echo_bot
 
 By default, software pull-ups are enabled on the RTS/CTS lines. However, on some development kits, these lines may not be driven high due to pin multiplexing conflicts with other peripherals.
 In such cases, it is recommended to use external pull-up resistors on the RTS/CTS lines to ensure proper operation.
@@ -103,3 +104,86 @@ Console Output
   Echo: hello
   Echo: Hello World
 
+
+UART Snippets
+==============
+
+UART-related board overlays are organized as Zephyr snippets. Use the ``-S <snippet-name>`` flag
+in the build command to apply them.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 60
+
+   * - Snippet
+     - Description
+   * - ``lpuart``
+     - Enables LPUART and sets it as the Zephyr shell UART.
+   * - ``uart0-rts-cts``
+     - Enables UART0 with hardware flow control (RTS/CTS) as shell UART.
+   * - ``uart2-hfosc-clk``
+     - Configures UART2 to use the HFOSC 38.4 MHz clock source.
+
+Example usage:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     -S uart2-hfosc-clk \
+     samples/drivers/uart/echo_bot
+
+
+UART DMA Echo Application
+============================
+
+The ``echo_dma`` sample demonstrates UART data transmission and reception using
+DMA-based transfers with the Zephyr asynchronous UART API. It receives data over
+a DMA-enabled UART and echoes the received line back after the user presses Enter.
+
+The application uses two separate UART instances:
+
+- **Console UART** – used only for debug output via ``printk``.
+- **Shell UART (DMA)** – used for RX and TX using DMA.
+
+.. note::
+   The console UART cannot be used as a DMA UART in this sample. The UART
+   instance used for the console is initialized before the DMA controller
+   during system boot. A separate Shell UART instance must be used for
+   DMA-based communication.
+
+Building the UART DMA Echo Application
+-----------------------------------------
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     -S alif-dk \
+     ../alif/samples/drivers/uart/echo_dma
+
+After flashing:
+
+1. Connect to the **Console UART** to see debug messages.
+2. Open a terminal connected to the **Shell UART (DMA)**.
+3. Type anything and press **Enter** on Shell UART.
+
+Console Output (debug):
+
+.. code-block:: text
+
+   UART DMA Echo Test
+   Enabling UART RX DMA
+   RX buffer request
+   Type anything on Shell UART and press ENTER!
+   DMA TX done
+   DMA TX done
+   DMA TX done
+
+Shell UART (DMA) Output:
+
+.. code-block:: text
+
+   Hi! How are you!
+   Echo:
+   Hi! How are you!
