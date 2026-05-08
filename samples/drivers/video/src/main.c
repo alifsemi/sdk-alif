@@ -267,10 +267,11 @@ int main(void)
 		}
 
 		/* Allocated Buffer Information */
-		LOG_INF("- addr - 0x%x, size - %d, bytesused - %d",
+		LOG_INF("- addr - 0x%x, size - %d, bytesused - %d, resolution - %ux%u",
 			(uint32_t)buffers[i]->buffer,
 			bsize,
-			buffers[i]->bytesused);
+			buffers[i]->bytesused,
+			fmt.width, fmt.height);
 
 		memset(buffers[i]->buffer, 0, sizeof(char) * bsize);
 		video_enqueue(video, VIDEO_EP_OUT, buffers[i]);

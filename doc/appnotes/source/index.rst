@@ -78,4 +78,6 @@ Document History
    * - 2.1
      - Added support for MIPI-CSI, CMP, ISP, USB-device, Ethernet.
    * - 2.2
-     - Updated the document to include OV5640 camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), Deep Sleep IWIC support, and AI Acceleration section updates (Executorch, InferenceRunner, TFLite Micro samples).
+     - Updated the document to include OV5640 parallel camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), Deep Sleep IWIC support, and AI Acceleration section updates (Executorch, InferenceRunner, TFLite Micro samples).
+   * - 2.3
+     - Updated the document to include JPEG, MT9M114 MIPI serial camera sensor, USB Device MSC support, SDIO Wi-Fi support, DMA support for UART.

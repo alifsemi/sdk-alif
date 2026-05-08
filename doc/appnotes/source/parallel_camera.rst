@@ -285,7 +285,7 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
 
-2. Build command for the application on the M55 HE core:
+2. Build command for the application with LPCAM interface (M55 HE core):
 
 .. code-block:: console
 
@@ -294,9 +294,9 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/drivers/video/ \
      -- \
-     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_he.overlay"
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
 
-3. Build command for the application on the M55 HP core:
+3. Build command for the application with CAM interface (M55 HP core):
 
 .. code-block:: console
 
@@ -305,7 +305,7 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/video/ \
      -- \
-     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_hp.overlay"
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
 
 
 Executing Binary on the DevKit
