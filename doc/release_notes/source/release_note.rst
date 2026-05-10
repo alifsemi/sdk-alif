@@ -11,7 +11,7 @@ Supported Development Kits
 
 - **DK-E7**: Configurable to emulate E5, and E3 series devices (Ethos-U55 microNPUs)
 - **DK-E8**: Configurable to emulate E6 and E4 series devices (Ethos-U55 and Ethos-U85 microNPUs)
-- **DK-E1C**: Compact series development platform
+- **DK-E1C**: Features Ethos-U55 microNPU and Cortex-M55 core
 
 **Balletto Series** - Wireless-enabled MCUs with AI/ML acceleration:
 
@@ -54,23 +54,23 @@ The following are the software components used in the latest release.
      - Version
      - Link
    * -  Alif SDK
-     - v2.0-zas-branch
+     - v2.3-zas-branch
      - `Alif SDK`_
    * -  Alif Zephyr RTOS
-     - v2.0-zas-branch
+     - v2.3-zas-branch
      - `Alif SDK - Zephyr`_
    * -  Alif SDK - HAL
-     - v2.0-zas-branch
+     - v2.3-zas-branch
      - `Alif SDK - HAL`_
    * -  Alif Secure Enclave (SE)
-     - v1.109
-     - `Alif Security Toolkit Quick Start Guide`_
+     - v1.110
+     - `Alif Security Toolkit`_
    * -  SE Host Services
-     - v0.50.9
+     - v0.50.10
      - `Alif SE Host Services`_
 
 .. note::
-   This release requires Secure Enclave software version v1.109 or later for proper operation.
+   This release requires Secure Enclave software version v1.110 or later for proper operation.
 
 New Features
 ------------

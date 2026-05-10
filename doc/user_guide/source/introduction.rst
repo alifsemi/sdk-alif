@@ -15,8 +15,8 @@ In this user guide, we cover the following steps:
 4. **Running the Application from MRAM:**
     - Discover how to run applications directly from MRAM. Learn about the supported targets, specific MRAM boot addresses for RTSS-HE and RTSS-HP, and the necessary build commands.
 
-Zephyr RTOS and Toolchain
------------------------------
+Zephyr RTOS
+-------------
 
 The real-time subsystems boot with Zephyr OS, a small RTOS for connected, resource-constrained, and embedded devices. Zephyr supports multiple architectures and is available under the Apache 2.0 license.
 
@@ -32,12 +32,16 @@ Host Requirements
 **Hardware Requirements**
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Ensure you have one of the following development kits to proceed with your project setup:
+Ensure you have one of the following Alif development kits to proceed with your project setup:
 
 - Ensemble DevKit (DK-E7)
 - Ensemble DevKit (DK-E8)
 - Ensemble E1C DevKit (DK-E1C)
 - Balletto DevKit (DK-B1)
+- Ensemble AppKit (AK-E7)
+- Ensemble AppKit (AK-E8)
+- Ensemble E1C StarterKit (SK-E1C)
+- Balletto StarterKit (SK-B1)
 
 Ensure you have the following debugger available to proceed with your project setup:
 
@@ -51,7 +55,7 @@ Ensure you have the following debugger available to proceed with your project se
 
 
 2. **Alif Security Toolkit:**
-    - SE version is 1.109.0
+    - SE version is 1.110
 
     * Available at `Alif Toolkit Download`_
 
@@ -104,31 +108,17 @@ The Alif DevKit is a development board featuring an Alif multi-core SoC, offerin
         - An Ethos-U55 microNPU for AI acceleration
         - A Cortex-M55 MCU core
 
-**Toolchains**
-~~~~~~~~~~~~~~
-
-The following toolchains have been tested for the SDK application:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Compiler
-     - Version
-     - Link
-   * - GCC (GNU Compiler Collection)
-     - v12.2.0
-     - `GCC Download`_
-
-
 **Target Reference Board**
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-- Alif DevKit Ensemble E3
-- Alif DevKit Ensemble E4
-- Alif DevKit Ensemble E7
-- Alif DevKit Ensemble E8
-- Alif DevKit Ensemble E1C
-- Alif DevKit Balletto B1
+- Ensemble DevKit (DK-E7)
+- Ensemble DevKit (DK-E8)
+- Ensemble E1C DevKit (DK-E1C)
+- Balletto DevKit (DK-B1)
+- Ensemble AppKit (AK-E7)
+- Ensemble AppKit (AK-E8)
+- Ensemble E1C StarterKit (SK-E1C)
+- Balletto StarterKit (SK-B1)
 
 **Software Components**
 ~~~~~~~~~~~~~~~~~~~~~~~

@@ -2,10 +2,11 @@
 
 .. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.2.0/user_guide.pdf
 .. _`Alif Trademarks`: https://alifsemi.com/legal
-.. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
+.. _`Alif Security Toolkit`: https://alifsemi.com/download/APFW0001
 .. _`Alif SDK`: https://github.com/alifsemi/sdk-alif
 .. _`Alif SDK - Zephyr`: https://github.com/alifsemi/zephyr_alif
 .. _`Alif SDK - HAL`: https://github.com/alifsemi/hal_alif
+.. _`Alif SE Host Services`: https://alifsemi.com/download/APFW0004
 
 .. ### Zephyr Project
 .. _`Zephyr Project website`: https://www.zephyrproject.org
