@@ -1,12 +1,7 @@
 .. ### This page lists links used in Alif docs.
 
 .. _`Toolchain Selection`: https://docs.zephyrproject.org/latest/develop/toolchains/index.html
-.. _`GCC Download`: https://github.com/zephyrproject-rtos/sdk-ng/releases/tag/v0.17.0
-.. _`ArmCLang Download`: https://developer.arm.com/Tools%20and%20Software/Arm%20Compiler%20for%20Embedded
-.. _`LLVM Download`: https://github.com/ARM-software/LLVM-embedded-toolchain-for-Arm/releases
-.. _`Alif Toolkit Download`: https://alifsemi.com/download/APFW0002
-.. _`Alif Zephyr SDK Source`: https://github.com/alifsemi/zephyr_alif
-.. _`Alif Security Toolkit Quick Start Guide`: https://alifsemi.com/download/AUGD0005
+.. _`Alif Toolkit Download`: https://alifsemi.com/download/APFW0001
 .. _`zephyr_alif`: https://github.com/alifsemi/zephyr_alif
 .. _`mcuboot_alif`: https://github.com/alifsemi/mcuboot_alif
 .. _`cmsis_alif`: https://github.com/alifsemi/cmsis_alif

@@ -36,4 +36,6 @@ Document History
     * - 2.1
       - Updated the document to include MIPI-CSI, CMP, ISP, USB-device, Ethernet.
     * - 2.2
-      - Updated the document to include OV5640 camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, RTC, UART), Deep Sleep IWIC support, and AI Acceleration section updates (Executorch, InferenceRunner, TFLite Micro samples).
+      - Updated the document to include OV5640 parallel camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, UART), Deep Sleep IWIC support, and AI Acceleration section updates (Executorch, InferenceRunner, TFLite Micro samples).
+    * - 2.3
+      - Release with Zephyr v4.1.0. Added driver support for MT9M114 MIPI serial camera sensor, JPEG, Exposure modification support for ARX3A0 camera sensor, DTS-driven SE off/run profile setting, USB Device MSC support (SD/OSPI), SDIO Wi-Fi support, DMA support for UART, SPI, support for APSS.
