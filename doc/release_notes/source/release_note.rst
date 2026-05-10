@@ -9,13 +9,18 @@ Supported Development Kits
 
 **Ensemble Series** - High-performance multi-core MCUs with Arm Cortex-M55 cores:
 
-- **DK-E7**: Configurable to emulate E5, and E3 series devices (Ethos-U55 microNPUs)
+- **DK-E7**: Configurable to emulate E5, E3, and E1 series devices (Ethos-U55 microNPUs)
 - **DK-E8**: Configurable to emulate E6 and E4 series devices (Ethos-U55 and Ethos-U85 microNPUs)
-- **DK-E1C**: Compact series development platform
+- **DK-E1C**: Features Ethos-U55 microNPU and Cortex-M55 core
+- **AK-E7**: Configurable to emulate E5, E3, and E1 series devices (Ethos-U55 microNPUs)
+- **AK-E8**: Configurable to emulate E6 and E4 series devices (Ethos-U55 and Ethos-U85 microNPUs)
+- **SK-E1C**: Features Ethos-U55 microNPU and Cortex-M55 core
+
 
 **Balletto Series** - Wireless-enabled MCUs with AI/ML acceleration:
 
 - **DK-B1**: Features Bluetooth Low Energy 5.3, Ethos-U55 microNPU, and Cortex-M55 core
+- **SK-B1**: Features Bluetooth Low Energy 5.3, Ethos-U55 microNPU, and Cortex-M55 core
 
 Installing the SDK and Building the Application
 -----------------------------------------------
@@ -54,23 +59,23 @@ The following are the software components used in the latest release.
      - Version
      - Link
    * -  Alif SDK
-     - v2.0-zas-branch
+     - v2.3-zas-branch
      - `Alif SDK`_
    * -  Alif Zephyr RTOS
-     - v2.0-zas-branch
+     - v2.3-zas-branch
      - `Alif SDK - Zephyr`_
    * -  Alif SDK - HAL
-     - v2.0-zas-branch
+     - v2.3-zas-branch
      - `Alif SDK - HAL`_
    * -  Alif Secure Enclave (SE)
-     - v1.109
-     - `Alif Security Toolkit Quick Start Guide`_
+     - v1.110
+     - `Alif Security Toolkit`_
    * -  SE Host Services
-     - v0.50.9
+     - v0.50.10
      - `Alif SE Host Services`_
 
 .. note::
-   This release requires Secure Enclave software version v1.109 or later for proper operation.
+   This release requires Secure Enclave software version v1.110 or later for proper operation.
 
 New Features
 ------------
@@ -90,6 +95,22 @@ This release adds two new APIs to the SE Host Services component:
      - Request to process a TOC entry.
    * - read_otp
      - Read an OTP word specified by offset.
+
+Compatibility Notes
+-------------------
+
+- **USB Device**
+
+  - Default USB PHY power-gating settings have been moved from `SoC_common.cfile` to the application overlays through the AIPM run profile.
+  - Applications using USB Device functionality must ensure that the required AIPM run profile settings are enabled in the corresponding overlay files.
+
+- **SDMMC**
+
+  - The Intel eMMC Host driver has been deprecated in this release. Going forward, the Alif SDHC driver (`sdhc_dwc.c`) will be used as the default SD/MMC host controller driver for all Wi-Fi and filesystem samples across Alif targets.
+
+  - SD regulators are defined in the board DTSI and are disabled by default.
+  - Applications must enable the regulator (`CONFIG_REGULATOR=y`) in the application configuration file for the E8 DevKit, AppKit, and Spark A6 boards.
+    boards.
 
 Supported Peripheral Drivers and Features
 ------------------------------------------
@@ -148,9 +169,9 @@ Display Interfaces
    * - MIPI-DSI
      - MIPI Display Serial Interface supporting high-speed, low-power video data transmission to external LCD/OLED panels. Integrated with Zephyr’s display subsystem.
    * - CDC-200
-     - Configurable Display Controller (CDC-200) PHY for MIPI-DSI, enabling reliable high-speed display link operation.
+     - CDC-200 is a fully customizable display controller IP supporting the OpenWF Display API specification, capable of combining image layers from memory and generating video output streams for display interfaces such as MIPI-DSI.
    * - Touch screen
-     - Capacitive touch controller supporting multi-touch gestures via I2C or SPI. Provides touch coordinates and wake-on-touch capability.
+     - Capacitive touch controller supporting multi-touch gestures via I2C, providing touch coordinates and wake-on-touch capability.
 
 Display Support
 ~~~~~~~~~~~~~~~
@@ -167,10 +188,10 @@ Display Support
      - DevKit E7, DevKit E8
    * - ILI9488
      - 1-Lane Serial (MIPI-DSI)
-     - E1C, B1 A5/A6
+     - E1C, B1 A7
    * - Parallel Display
      - Parallel
-     - DevKit E7, DevKit E8, E1C, B1 A5/A6
+     - DevKit E7, DevKit E8, E1C, B1 A7
 
 Audio Interfaces
 ~~~~~~~~~~~~~~~~
@@ -375,7 +396,7 @@ Camera Sensors Support
      - DevKit E7, DevKit E8
    * - MT9M114
      - Parallel (CPI)
-     - DevKit E7, DevKit E8, E1C, B1 A5/A6
+     - DevKit E7, DevKit E8, E1C, B1 A7
    * - OV5640
      - Parallel (CPI)
      - E1C StartKit
@@ -406,7 +427,7 @@ Wireless Connectivity
        - Common settings storage support shared by Alif BLE samples
 
 Bug Fixes
-----------
+---------
 
 .. list-table::
    :header-rows: 1
@@ -414,22 +435,24 @@ Bug Fixes
 
    * - **Component**
      - **Fix**
-   * - Alif BLE Audio
-     - Fixed unicast initiator bonding handling on the ROM-based stack
-   * - Alif BLE Audio
-     - Fixed bonded device reconnection in unicast audio
-   * - Alif BLE Audio
-     - Fixed Auracast delegator to work with encrypted streams
-   * - Alif BLE PM
-     - Fixed ROM-based BLE PM build issues
-   * - CRC Driver
-     - Corrected DTS property ``crc_algo`` to ``crc-algo`` and updated enum values to lowercase
-   * - Eagle SoC SRAM
-     - Corrected SRAM1 mapping from ``0x08000000`` to ``0x02400000``
-   * - Touchscreen
-     - Fixed issue where touch screen events were intermittently dropped
-   * - I2C
-     - Fixed I2C target ``read_requested`` and ``read_processed`` callback handling
+   * - BLE Audio
+     - Fixed audio unicast initiator issue when opening a second channel using the host stack
+   * - SPI1 DMA
+     - Resolved inconsistent SPI1 DMA operation behavior
+   * - OSPI Boot
+     - Verified OSPI boot functionality
+   * - Power Management
+     - Fixed PM demo application error when running from HE-MRAM on Spark-A6
+   * - LP Camera
+     - Updated LP Camera overlay configuration to use I2C1 on B1-DK
+   * - Executorch
+     - Added support for Executorch on E1C
+   * - CMP
+     - Fixed CMP functionality on Balletto
+   * - ADC
+     - Added testing and functional support for ADC on A1
+   * - Power Management
+     - Fixed PM sample application functionality on B1
 
 Planned Deprecations
 --------------------
@@ -449,27 +472,19 @@ The following items are planned for deprecation in the next release:
   devicetree ``clocks`` configuration instead of manually enabling clocks
   through the register.
 
-- **E3-DK and E4-DK Board Support**
-
-  Support for **E3-DK** and **E4-DK** board files will be removed. Support for **E3** and **E4** SoCs will continue to be available through **E8-DK** and **E7-DK** builds.
-
 - **DMA Node Referencing**
 
   Referring to DMA nodes directly in device driver nodes will be deprecated. All drivers using DMA must reference DMA resources through **EVTRTR** nodes.
 
 Known Issues
--------------
+----------------
 
-- BLE (Alif ROM stack) audio unicast initiator fails to open a second channel when using the host stack.
-- SPI1 DMA operations exhibit inconsistent behavior.
-- OSPI boot has not been verified.
-- When running from HE-MRAM, the PM demo application throws an error message on spark-A6.
-- LPCMP sample is not functional on all families.
-- LP Camera node in the overlay file needs to be updated to I2C1 for B1-DK.
-- Executorch is not supported on E1C.
-- CMP is not functional on Balletto.
-- ADC is not tested or not functional on A1.
-- PM sample application is not functional on B1.
+* The LPPDM sample application does not function as expected.
+* On the e8_dk board, the Wi-Fi Shell sample application requires ``CONFIG_UHS_PROTOCOL`` to be commented out.
+* USB Device MSC (SD, RAMDISK, and OSPI) test applications may exhibit inconsistent behavior when booting from MRAM.
+* The SDMMC test application may not operate reliably with the SanDisk 32GB card.
+* The LPCMP sample application does not function as expected.
+
 
 External References
 -------------------
