@@ -15,6 +15,14 @@
 % ----------------------------------------------------------------------------
 \usepackage{hyperref}
 
+% Remove footer/header section names only
+\makeatletter
+\renewcommand{\chaptermark}[1]{}
+\renewcommand{\sectionmark}[1]{}
+\let\leftmark\empty
+\let\rightmark\empty
+\makeatother
+
 % Floats and Graphics
 % ----------------------------------------------------------------------------
 \usepackage{float}
@@ -60,6 +68,7 @@
 % ----------------------------------------------------------------------------
 \usepackage{eso-pic}
 \usepackage{tikz}
+
 
 % Page Geometry
 % ----------------------------------------------------------------------------

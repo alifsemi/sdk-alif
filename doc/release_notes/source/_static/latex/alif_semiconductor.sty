@@ -16,6 +16,14 @@
 % ----------------------------------------------------------------------------
 \usepackage{hyperref}
 
+% Remove footer/header section names only
+\makeatletter
+\renewcommand{\chaptermark}[1]{}
+\renewcommand{\sectionmark}[1]{}
+\let\leftmark\empty
+\let\rightmark\empty
+\makeatother
+
 % Floats and Graphics
 % ----------------------------------------------------------------------------
 \usepackage{float}
@@ -91,6 +99,11 @@
 \usepackage{etoolbox}
 \pretocmd{\tableofcontents}{\clearpage}{}{}
 \addto\captionsenglish{\renewcommand{\contentsname}{Table of Contents}}
+
+\usepackage{tocloft}
+\setlength{\cftbeforetoctitleskip}{-25pt}
+\setlength{\cftbeforesecskip}{2pt}
+\setlength{\cftbeforesubsecskip}{1pt}
 
 % Logo on First Page
 % ----------------------------------------------------------------------------

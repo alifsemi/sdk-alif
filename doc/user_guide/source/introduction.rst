@@ -15,8 +15,8 @@ In this user guide, we cover the following steps:
 4. **Running the Application from MRAM:**
     - Discover how to run applications directly from MRAM. Learn about the supported targets, specific MRAM boot addresses for RTSS-HE and RTSS-HP, and the necessary build commands.
 
-Zephyr RTOS and Toolchain
------------------------------
+Zephyr RTOS
+-------------
 
 The real-time subsystems boot with Zephyr OS, a small RTOS for connected, resource-constrained, and embedded devices. Zephyr supports multiple architectures and is available under the Apache 2.0 license.
 
@@ -32,12 +32,16 @@ Host Requirements
 **Hardware Requirements**
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Ensure you have one of the following development kits to proceed with your project setup:
+Ensure you have one of the following Alif development kits to proceed with your project setup:
 
 - Ensemble DevKit (DK-E7)
 - Ensemble DevKit (DK-E8)
 - Ensemble E1C DevKit (DK-E1C)
 - Balletto DevKit (DK-B1)
+- Ensemble AppKit (AK-E7)
+- Ensemble AppKit (AK-E8)
+- Ensemble E1C StarterKit (SK-E1C)
+- Balletto StarterKit (SK-B1)
 
 Ensure you have the following debugger available to proceed with your project setup:
 
@@ -51,7 +55,7 @@ Ensure you have the following debugger available to proceed with your project se
 
 
 2. **Alif Security Toolkit:**
-    - SE version is 1.109.0
+    - SE version is 1.110
 
     * Available at `Alif Toolkit Download`_
 
@@ -73,62 +77,23 @@ Ensure you have the following debugger available to proceed with your project se
    Ensemble Gen2 Family
 
 
-The Alif DevKit is a development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
+The Alif development board featuring an Alif multi-core SoC, offering both high-performance and low-power execution.
 
-- **DK-E7:**
-    - Features:
-        - Two Cortex-M55 CPU cores
-        - Two Ethos-U55 neural network processor cores
-        - Two Cortex-A32 MPU cores
-    - Allows configuration of the E7 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E5, E3, and E1 series devices using a single kit.
+- **Ensemble DevKit (DK-E7):**
+    - The Ensemble E7 DevKit (DK-E7) is a cost-effective, single-board solution that brings out all signals on the device to easily access pins for power and performance profiling, prototyping, and more. The DevKit can be configured to operate as your choice of the E1, E3, E5, or E7 series MCU devices in the Ensemble family, with superset E7 series device having two Cortex-M55 CPU cores, two Ethos-U55 neural network processors cores, and two Cortex-A32 MPU cores.
 
-- **DK-E8:**
-    - Features:
-        - Two Cortex-M55 CPU cores
-        - Two Ethos-U55 + One Ethos-U85 neural network processor cores
-        - Two Cortex-A32 MPU cores
-        - Allows configuration of the E8 MCU to operate like other Ensemble MCUs with fewer cores, enabling exploration of the E6, and E4 series devices using a single kit.
+- **Ensemble DevKit (DK-E8):**
+    - The Ensemble E8 DevKit (DK-E8) is a cost-effective, single-board solution that brings out all signals on the device to easily access pins for power and performance profiling, prototyping, and more. The DevKit can be configured to operate as your choice of the E4, E6, or E8 series MCU devices in the Ensemble family, with superset E8 series device having two Cortex-M55 CPU cores, two Ethos-U55 + one Ethos-U85 neural network processors cores, and two Cortex-A32 MPU cores.
 
-- **DK-E1C:**
-    - Designed to explore the Compact series of Ensemble devices.
-    - Features:
-        - A Cortex-M55 CPU core
-        - Arm Ethos-U55 micro NPU
-    - Known for its low power consumption within the Ensemble family.
+- **Ensemble E1C DevKit (DK-E1C):**
+    - The Ensemble E1C DevKit is a cost-effective, single-board platform that brings out all signals on the E1C MCU to easily access pins for power and performance profiling, prototyping, and more. The E1C MCU on the board has a Cortex M55 CPU core with Helium-M Vector Extension, operating at 160 MHz, an Ethos-U55 neural network processor core with 128 MACs per cycle, 2MB of SRAM and 1.9MB of NVM, off-chip OSPI flash and PSRAM memory devices (64MB and 32MB respectively), plus a variety of digital and analog interfaces.
 
-- **DK-B1:**
-    - Introduces the Balletto B1 series, a wireless MCU with integrated hardware acceleration for AI/ML workloads.
-    - Features:
-        - Bluetooth Low Energy 5.3
-        - 802.15.4 based Thread protocols
-        - An Ethos-U55 microNPU for AI acceleration
-        - A Cortex-M55 MCU core
+- **Balletto DevKit (DK-B1):**
+    - The Balletto B1 DevKit (DK-B1) is a cost-effective, single-board platform that brings out all signals on the Balletto B1 MCU to easily access pins for power and performance profiling, prototyping, and more. The B1 MCU on the board has a Cortex M-55 CPU core with Helium-M Vector Extension, operating at 160 MHz, an Ethos-U55 neural network processor core with 128 MACs per cycle, 2MB of SRAM and 1.8MB of NVM, off-chip OSPI flash and PSRAM memory devices (64MB and 32MB respectively), a variety of digital and analog interfaces, plus and a BLE 5.3 + 802.15.4 radio subsystem with a chip antenna.
 
-**Toolchains**
-~~~~~~~~~~~~~~
+- **Ensemble AppKit (AK-E7):**
+    - The Ensemble E7 AI/ML AppKit (AK-E7-AIML) enables quick software development and evaluation for Endpoint Machine Learning use cases. Powered by an Alif Ensemble E7 fusion processor with four compute cores (two Arm Cortex-M55 and two Cortex-A32), and two machine learning accelerator coprocessors (two Arm Ethos-U55 microNPUs) with ample memory and peripherals, this kit is the ideal platform to build Endpoint ML projects that input sensor data and leverage ML in an extremely power-efficient way. On board is a camera/image sensor for snapshots or video input, plus motion and sound sensors to round out a variety of Endpoint ML use case scenarios. Several pre-built applications are available for the AI/ML AppKit so you can quickly get started.
 
-The following toolchains have been tested for the SDK application:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Compiler
-     - Version
-     - Link
-   * - GCC (GNU Compiler Collection)
-     - v12.2.0
-     - `GCC Download`_
-
-
-**Target Reference Board**
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-- Alif DevKit Ensemble E3
-- Alif DevKit Ensemble E4
-- Alif DevKit Ensemble E7
-- Alif DevKit Ensemble E8
-- Alif DevKit Ensemble E1C
-- Alif DevKit Balletto B1
 
 **Software Components**
 ~~~~~~~~~~~~~~~~~~~~~~~
