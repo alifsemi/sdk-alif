@@ -89,13 +89,6 @@ The Documentation section provides essential resources to help developers quickl
 - **README**: Comprehensive project overview.
 - **AppNotes**: Application notes offering practical implementation examples, design guidelines, and best practices for specific use cases with the Zephyr Alif SDK.
 
-Toolchains
-----------
-
-SDK supports the following development toolchains:
-
-- **GCC (GNU Compiler Collection v12.2.0)** - Used through the Zephyr Project.
-
 Zephyr RTOS
 -------------
 

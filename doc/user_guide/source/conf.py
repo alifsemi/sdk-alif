@@ -12,9 +12,9 @@ import shutil
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'Getting Started with Zephyr Alif SDK'
-copyright = '2024-2025, Alif Semiconductor'
+copyright = '2025-2026, Alif Semiconductor'
 author = 'Alif Semiconductor'
-release = '2.2.0'
+release = '2.3.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -77,7 +77,7 @@ latex_documents = [
 ]
 
 latex_logo = "_static/logo.png"
-latex_show_urls = 'footnote'
+latex_show_urls = 'no'
 latex_domain_indices = False
 
 # -- Custom setup ------------------------------------------------------------
