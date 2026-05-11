@@ -871,6 +871,122 @@ static void hw_scenario_restart_read_read_tx_abrt(void)
 	LOG_INF("Restart R->R (tx_abrt boundary) test completed");
 }
 
+/**
+ * @brief NACK recovery stress — exposes missing error classification / recovery
+ *
+ * Repeatedly triggers TX_ABRT by writing to an un-acknowledged address,
+ * then immediately follows with a valid transfer.  If the driver does
+ * not clear sticky error flags or abort sources, the valid transfer
+ * will spuriously fail.
+ */
+static void hw_scenario_nack_recovery_stress(void)
+{
+	const struct device *controller = hw_ctx.controller;
+	uint8_t tx_data[] = {0xDE, 0xAD, 0xBE, 0xEF};
+	struct i2c_test_freq_desc freqs[I2C_TEST_MAX_FREQS];
+	int ret;
+	int freq_count;
+
+	i2c_test_skip_if_no_freqs();
+	freq_count = i2c_test_get_enabled_freqs(freqs, ARRAY_SIZE(freqs));
+
+	for (int f = 0; f < freq_count; f++) {
+		TC_PRINT("NACK recovery stress at %s (%u Hz)\n",
+			 freqs[f].name, freqs[f].freq_hz);
+
+		ret = i2c_test_configure_controller_freq(controller,
+							 &i2c_test_ctx, &freqs[f]);
+		if (ret == -ENOTSUP) {
+			TC_PRINT("Skipping %s: not supported\n", freqs[f].name);
+			continue;
+		}
+		zassert_ok(ret, "Failed to configure %s: %d",
+			   freqs[f].name, ret);
+
+		register_target_speed_i2c(I2C_SPEED_SET(freqs[f].zephyr_speed));
+
+		/* Stress loop: NACK then valid transfer */
+		for (int i = 0; i < 50; i++) {
+			ret = hw_xfer_write(controller, tx_data, sizeof(tx_data),
+					    0x7E); /* reserved address */
+			if (ret == 0) {
+				LOG_WRN(
+					"Reserved addr 0x7E accepted (iter %d)",
+					i);
+			}
+
+			ret = hardware_write_validate(
+				controller, tx_data, sizeof(tx_data),
+				TGT_I2C_ADDR);
+			zassert_ok(ret,
+				   "Valid transfer after NACK failed at iter %d: %d",
+				   i, ret);
+		}
+	}
+
+	LOG_INF("NACK recovery stress test completed");
+}
+
+/**
+ * @brief Error-state contamination — verifies driver cleans up after aborts
+ *
+ * Performs valid -> invalid -> valid transfers in rapid succession.
+ * If the driver leaks error state or sticky interrupt flags across
+ * transfers without recovery, the final valid transfer fails.
+ */
+static void hw_scenario_error_state_contamination(void)
+{
+	const struct device *controller = hw_ctx.controller;
+	uint8_t tx_ok1[] = {0x11, 0x22, 0x33};
+	uint8_t tx_ok2[] = {0x44, 0x55, 0x66};
+	uint8_t tx_bad[] = {0xAA, 0xBB};
+	struct i2c_test_freq_desc freqs[I2C_TEST_MAX_FREQS];
+	int ret;
+	int freq_count;
+
+	i2c_test_skip_if_no_freqs();
+	freq_count = i2c_test_get_enabled_freqs(freqs, ARRAY_SIZE(freqs));
+
+	for (int f = 0; f < freq_count; f++) {
+		TC_PRINT("Error-state contamination at %s (%u Hz)\n",
+			 freqs[f].name, freqs[f].freq_hz);
+
+		ret = i2c_test_configure_controller_freq(controller,
+							 &i2c_test_ctx, &freqs[f]);
+		if (ret == -ENOTSUP) {
+			TC_PRINT("Skipping %s: not supported\n", freqs[f].name);
+			continue;
+		}
+		zassert_ok(ret, "Failed to configure %s: %d",
+			   freqs[f].name, ret);
+
+		register_target_speed_i2c(I2C_SPEED_SET(freqs[f].zephyr_speed));
+
+		/* Valid */
+		ret = hardware_write_validate(controller, tx_ok1,
+					      sizeof(tx_ok1), TGT_I2C_ADDR);
+		zassert_ok(ret, "First valid transfer failed: %d", ret);
+
+		/* Reserved address — force abort if rejected */
+		ret = hw_xfer_write(controller, tx_bad, sizeof(tx_bad),
+				    0x7E);
+		if (ret == 0) {
+			LOG_WRN(
+				"Reserved addr 0x7E accepted at %s",
+				freqs[f].name);
+		}
+
+		/* Valid again — must succeed if state is clean */
+		ret = hardware_write_validate(controller, tx_ok2,
+					      sizeof(tx_ok2), TGT_I2C_ADDR);
+		zassert_ok(ret,
+			   "Second valid transfer contaminated at %s: %d",
+			   freqs[f].name, ret);
+	}
+
+	LOG_INF("Error-state contamination test completed");
+}
+
 static void *i2c_hardware_suite_setup(void)
 {
 	const struct device *controller = DEVICE_DT_GET(I2C_CONTROLLER);
@@ -963,6 +1079,18 @@ ZTEST(i2c_hardware_suite, test_restart_read_read_tx_abrt_sync)
 	hw_scenario_restart_read_read_tx_abrt();
 }
 
+ZTEST(i2c_hardware_suite, test_nack_recovery_stress_sync)
+{
+	hw_test_async_mode = false;
+	hw_scenario_nack_recovery_stress();
+}
+
+ZTEST(i2c_hardware_suite, test_error_state_contamination_sync)
+{
+	hw_test_async_mode = false;
+	hw_scenario_error_state_contamination();
+}
+
 #if IS_ENABLED(CONFIG_I2C_CALLBACK)
 ZTEST(i2c_hardware_suite, test_irq_robustness_async)
 {
@@ -998,6 +1126,18 @@ ZTEST(i2c_hardware_suite, test_restart_read_read_tx_abrt_async)
 {
 	hw_test_async_mode = true;
 	hw_scenario_restart_read_read_tx_abrt();
+}
+
+ZTEST(i2c_hardware_suite, test_nack_recovery_stress_async)
+{
+	hw_test_async_mode = true;
+	hw_scenario_nack_recovery_stress();
+}
+
+ZTEST(i2c_hardware_suite, test_error_state_contamination_async)
+{
+	hw_test_async_mode = true;
+	hw_scenario_error_state_contamination();
 }
 #endif
 

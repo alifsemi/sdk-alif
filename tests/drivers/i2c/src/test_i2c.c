@@ -190,7 +190,13 @@ int i2c_do_xfer(const struct device *dev, struct i2c_msg *msgs,
 static int cb_i2c_target_write_requested(struct i2c_target_config *config)
 {
 	ARG_UNUSED(config);
-	i2c_test_ctx.tgt_rx_cnt = 0U;
+	/* Do NOT reset tgt_rx_cnt here — it is reset by prepare_target_rx()
+	 * (called from i2c_test_prime_buffers) and by
+	 * i2c_test_reset_runtime_config() in the before() hook.
+	 * Resetting here breaks repeated-START write-write transfers
+	 * because write_requested fires again after Sr, discarding
+	 * the first phase's accumulated count.
+	 */
 	return 0;
 }
 
