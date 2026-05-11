@@ -5,7 +5,7 @@ HWSEM
 =======
 
 Introduction
-=============
+============
 
 This document provides detailed instructions on how to create, compile, and run a demo application for the Hardware Semaphore (HWSEM). The HWSEM is a mechanism used to coordinate concurrency between processor cores when accessing shared resources such as memory regions or peripherals.
 
@@ -13,8 +13,8 @@ This document provides detailed instructions on how to create, compile, and run 
 
 .. include:: note.rst
 
-Build an HWSEM Application with Zephyr
-==========================================
+Build a HWSEM Application with Zephyr
+=====================================
 
 Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 
@@ -67,7 +67,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
-===============================
+==============================
 
 To execute binaries on the DevKit, follow the command:
 
@@ -76,12 +76,12 @@ To execute binaries on the DevKit, follow the command:
     west flash
 
 Console Outputs
-================
+===============
 
 This section provides the console outputs for both single HWSEM and all HWSEM test runs on the **alif_e7_dk** board.
 
 Single HWSEM Test Output
---------------------------
+------------------------
 
 .. code-block:: text
 
@@ -98,7 +98,7 @@ Single HWSEM Test Output
     I: Unlocked HWSEM0!
 
 All HWSEM Output Log
----------------------
+--------------------
 
 .. code-block:: text
 
