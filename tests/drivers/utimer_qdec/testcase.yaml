@@ -1,0 +1,35 @@
+common:
+  depends_on: utimer_qdec
+  tags: qdec
+  harness: ztest
+
+tests:
+  drivers.utimer.qdec:
+    extra_dtc_overlay_files:
+      - boards/alif_ensemble_qdec.overlay
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+  drivers.sensor.alif_utimer_qdec.b1:
+    extra_dtc_overlay_files:
+      - boards/alif_b1_dk_rtss_he.overlay
+    integration_platforms:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+
+  drivers.sensor.alif_utimer_qdec.e1c:
+    extra_dtc_overlay_files:
+      - boards/alif_e1c_dk_rtss_he.overlay
+    integration_platforms:
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    platform_allow:
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
