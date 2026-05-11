@@ -1,0 +1,14 @@
+/*
+ * SPDX-FileCopyrightText: Copyright Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/ {
+	aliases {
+		i2s-node0 = &i2s2;
+	};
+};
+
+i2s_rxtx: &i2s2 {
+	status = "okay";
+};
