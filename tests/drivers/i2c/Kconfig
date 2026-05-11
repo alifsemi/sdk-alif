@@ -156,15 +156,17 @@ config I2C_FAULT_INJECTION_TESTS
 		Note: This is independent from I2C_ENHANCED_STRESS.
 		I2C_FAULT_INJECTION_TESTS focuses on specific fault scenarios,
 		while I2C_ENHANCED_STRESS provides comprehensive stress testing.
-
-config I2C_BME680_TESTS
-	bool "Enable BME680 sensor integration tests"
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+#Sensor integration tests (self-contained, do not need i2c_target)
+#-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -
+config I2C_SENSOR_TESTS
+	bool "Enable I2C sensor integration tests"
 	default n
 	help
-		Enable BME680 sensor integration tests. These tests validate
-		communication with an actual BME680 environmental sensor over I2C.
-		Requires the BME680 sensor to be connected to the test board.
-
+		Enable I2C sensor integration tests. The test suite
+		auto-detects which sensors are present in the devicetree
+		and runs tests for all of them. Add sensor-specific DT
+		overlays to include particular sensors.sensor-only builds.
 endmenu
 
 source "Kconfig.zephyr"

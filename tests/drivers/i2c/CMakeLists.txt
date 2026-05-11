@@ -32,14 +32,15 @@ set(I2C_STRESS_SOURCES
   src/test_i2c_stress.c
 )
 
-set(I2C_BME680_SOURCES
-  src/test_i2c_bme680.c
+set(I2C_SENSOR_SOURCES
+  src/test_i2c_sensor.c
 )
-
 # ==================== CORE TEST BUILD =======================
-# Always include core functional tests
-target_sources(app PRIVATE ${I2C_CORE_SOURCES})
-
+# Core tests require both i2c_controller and i2c_target DT aliases.
+# Sensor tests are self-contained and only need i2c_controller.
+if(NOT CONFIG_I2C_SENSOR_TESTS)
+  target_sources(app PRIVATE ${I2C_CORE_SOURCES})
+endif()
 # ==================== CONDITIONAL TEST SUITES ===============
 # Include test suites based on Kconfig settings
 if(CONFIG_I2C_PERFORMANCE_TESTS)
@@ -62,8 +63,8 @@ if(CONFIG_I2C_STRESS_TESTS OR CONFIG_I2C_ENHANCED_STRESS)
   target_sources(app PRIVATE ${I2C_STRESS_SOURCES})
 endif()
 
-if(CONFIG_I2C_BME680_TESTS)
-  target_sources(app PRIVATE ${I2C_BME680_SOURCES})
+if(CONFIG_I2C_SENSOR_TESTS)
+  target_sources(app PRIVATE ${I2C_SENSOR_SOURCES})
 endif()
 
 # ==================== COMPILATION FLAGS ====================
@@ -100,6 +101,6 @@ if(CONFIG_I2C_ENHANCED_STRESS)
   message(STATUS "  Enabled: Enhanced Stress Tests")
 endif()
 
-if(CONFIG_I2C_BME680_TESTS)
-  message(STATUS "  Enabled: BME680 Sensor Integration Tests")
+if(CONFIG_I2C_SENSOR_TESTS)
+  message(STATUS "  Enabled: Sensor Integration Tests")
 endif()

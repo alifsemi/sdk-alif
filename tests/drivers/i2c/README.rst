@@ -1,6 +1,6 @@
 .. _i2c_ztest:
 
-ALIF I2C validation suite
+I2C validation suite
 =========================
 
 Overview
@@ -17,7 +17,7 @@ Test sources are organized as:
 - Fault injection and error paths: ``src/test_i2c_fault_injection.c``
 - Hardware-aware validation: ``src/test_i2c_hardware_aware.c``
 - Throughput tests: ``src/test_i2c_performance.c``
-- Sensor integration: ``src/test_i2c_bme680.c``
+- Sensor integration: ``src/test_i2c_sensor.c``
 
 Requirements
 ------------
@@ -40,7 +40,7 @@ Granular test suites:
 - ``CONFIG_I2C_BOUNDARY_TESTS``        Edge cases and limits
 - ``CONFIG_I2C_FAULT_INJECTION_TESTS`` Error handling validation
 - ``CONFIG_I2C_HARDWARE_AWARE_TESTS``  Platform-specific tests
-- ``CONFIG_I2C_BME680_TESTS``          BME680 sensor integration
+- ``CONFIG_I2C_SENSOR_TESTS``         Sensor integration (auto-detects DT sensors)
 
 Note: 10-bit addressing is always enabled.
 
@@ -50,7 +50,7 @@ Test compatibility
 +------------------+-------------+-----------------------+
 | Suite            | Buffer mode | Status                |
 +==================+=============+=======================+
-| All tests        | Yes         | Full (no performance) |
+| All tests        | Yes         | Full                  |
 +------------------+-------------+-----------------------+
 | Performance      | No          | Non-buffer only       |
 +------------------+-------------+-----------------------+
@@ -63,7 +63,7 @@ Standard loopback (sync only, Standard frequency)
 
 .. code-block:: console
 
-   west build -p always -b alif_e7_dk tests/drivers/i2c \
+   west build -- \
         -DDTC_OVERLAY_FILE=boards/i2c.overlay
 
 Enable async transfers
@@ -71,47 +71,39 @@ Enable async transfers
 
 .. code-block:: console
 
-   west build -p always -b alif_e7_dk tests/drivers/i2c \
+   west build -- \
         -DDTC_OVERLAY_FILE=boards/i2c.overlay \
-        -- -DCONFIG_I2C_CALLBACK=y
+        -DCONFIG_I2C_CALLBACK=y
 
 Enable all frequencies (Fast, Fast+, High)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
-   west build -p always -b alif_e7_dk tests/drivers/i2c \
+   west build -- \
         -DDTC_OVERLAY_FILE=boards/i2c.overlay \
-        -- -DCONFIG_I2C_TEST_FREQ_FAST=y \
-           -DCONFIG_I2C_TEST_FREQ_FAST_PLUS=y \
-           -DCONFIG_I2C_TEST_FREQ_HIGH=y
+        -DCONFIG_I2C_TEST_FREQ_FAST=y \
+        -DCONFIG_I2C_TEST_FREQ_FAST_PLUS=y \
+        -DCONFIG_I2C_TEST_FREQ_HIGH=y
 
 Enable all test suites
 ~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
-   west build -p always -b alif_e7_dk tests/drivers/i2c \
+   west build -- \
         -DDTC_OVERLAY_FILE=boards/i2c.overlay \
-        -- -DCONFIG_I2C_ALL_TESTS=y
+        -DCONFIG_I2C_ALL_TESTS=y
 
-Twister
-~~~~~~~
-
-Standard sync loopback:
+Sensor integration (e.g. BME680)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: console
 
-   twister -p alif_e7_dk --testsuite-root tests/drivers/i2c \
-        --device-testing --device-serial /dev/ttyACM0
+   west build -- \
+        -DDTC_OVERLAY_FILE=boards/i2c_sensor.overlay \
+        -DCONFIG_I2C_SENSOR_TESTS=y -DCONFIG_SENSOR=y
 
-With async and all frequencies:
+Sensors are auto-detected from the devicetree.
+Kconfig or CMake changes are not required for new sensors.
 
-.. code-block:: console
-
-   twister -p alif_e7_dk --testsuite-root tests/drivers/i2c \
-        --device-testing --device-serial /dev/ttyACM0 \
-        -- -DCONFIG_I2C_CALLBACK=y \
-           -DCONFIG_I2C_TEST_FREQ_FAST=y \
-           -DCONFIG_I2C_TEST_FREQ_FAST_PLUS=y \
-           -DCONFIG_I2C_TEST_FREQ_HIGH=y
