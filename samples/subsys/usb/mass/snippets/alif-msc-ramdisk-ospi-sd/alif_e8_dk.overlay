@@ -3,6 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
 &ns {
 	status = "okay";
 };
@@ -16,21 +22,21 @@ zephyr_udc0: &usb {
 	pinctrl_flash:pinctrl_flash {
 		group0 {
 			pinmux = <PIN_P5_5__OSPI1_SCLK_C>,
-				 <PIN_P5_7__OSPI1_SS0_C>;
+				<PIN_P5_7__OSPI1_SS0_C>;
 			read-enable = <0x0>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
 		};
 		group1 {
 			pinmux = <PIN_P9_5__OSPI1_D0_C>,
-				 <PIN_P9_6__OSPI1_D1_C>,
-				 <PIN_P9_7__OSPI1_D2_C>,
-				 <PIN_P10_0__OSPI1_D3_C>,
-				 <PIN_P10_1__OSPI1_D4_C>,
-				 <PIN_P10_2__OSPI1_D5_C>,
-				 <PIN_P10_3__OSPI1_D6_C>,
-				 <PIN_P10_4__OSPI1_D7_C>,
-				 <PIN_P10_7__OSPI1_RXDS0_C>;
+				<PIN_P9_6__OSPI1_D1_C>,
+				<PIN_P9_7__OSPI1_D2_C>,
+				<PIN_P10_0__OSPI1_D3_C>,
+				<PIN_P10_1__OSPI1_D4_C>,
+				<PIN_P10_2__OSPI1_D5_C>,
+				<PIN_P10_3__OSPI1_D6_C>,
+				<PIN_P10_4__OSPI1_D7_C>,
+				<PIN_P10_7__OSPI1_RXDS0_C>;
 			read-enable = <0x1>;
 			drive-strength = <12>;
 			slew-rate = <0x1>;
