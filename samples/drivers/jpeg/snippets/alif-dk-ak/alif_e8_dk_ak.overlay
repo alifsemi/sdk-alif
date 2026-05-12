@@ -14,3 +14,8 @@
 	quality-factor = <75>;
 	max-burst-length = <64>;
 };
+
+/* Jpeg's AIPM run profile */
+&aipm_run_default {
+	memory-blocks = < (ALIF_SRAM0_MASK | ALIF_MRAM_MASK) >;
+};
