@@ -38,10 +38,10 @@ Key Features of the Zephyr Networking Stack
 
    - TCP (Transmission Control Protocol)
    - UDP (User Datagram Protocol)
-   - ICMP (Internet Control Message Protocal)
+   - ICMP (Internet Control Message Protocol)
    - IPv4/IPv6 (Internet Protocol)
    - DHCP (Dynamic Host Configuration Protocol)
-   - DNS (Domain Name Server Protocal)
+   - DNS (Domain Name Server Protocol)
    - ARP (Address Resolution Protocol)
 
 2. **Modular Configuration:**
@@ -151,7 +151,7 @@ DTS configuration for Ethernet
 The DTS configuration for Ethernet is as follows:
 
 - The MAC address is provided in the DTS entry using the ``local-mac-address`` property.
-- By default, auto-negotiation mode is enabled. If the user wants to change the PHY mode, they can specify either full-duplex or half-duplex by setting ``phy_mode = "PHY_FULL_DUPLEX"`` or ``phy_mode = "PHY_HALF_DUPlex"``, respectively.
+- By default, auto-negotiation mode is enabled. If the user wants to change the PHY mode, they can specify either full-duplex or half-duplex by setting ``phy_mode = "PHY_FULL_DUPLEX"`` or ``phy_mode = "PHY_HALF_DUPLEX"``, respectively.
 - The PHY speed can also be configured. Users can set the speed to 10 Mbps or 100 Mbps by using ``phy_speed = "PHY_SPEED_10M"`` or ``phy_speed = "PHY_SPEED_100M"``, respectively.
 - To configure the PHY speed, add the property ``phy_speed = "PHY_SPEED_100M";`` in the ``ethernet_phy`` node.
 
@@ -251,3 +251,178 @@ Procedure to Test DHCP Client Application
 
 - Use tools like **Wireshark** to capture and analyze DHCP packets to verify that the client is sending requests and receiving responses.
 
+
+Ethernet, MDIO, and PHY Initialization Priority
+=================================================
+
+Overview
+--------
+
+In Zephyr, device initialization order is determined at link time, not at runtime. All devices
+registered using ``DEVICE_DT_DEFINE()`` or ``DEVICE_DT_INST_DEFINE()`` are placed into special
+linker sections based on:
+
+- **Initialization level** (e.g., ``POST_KERNEL``)
+- **Initialization priority** (numerical value from Kconfig)
+- **Devicetree ordinal number** (tiebreaker when level and priority are equal)
+
+At boot, Zephyr walks through these linker sections sequentially and executes each device's init
+function in that order.
+
+Alif Default Configuration
+--------------------------
+
+Following the upstream Zephyr recommendation (`drivers: ethernet: set init prio to the same value
+<https://github.com/zephyrproject-rtos/zephyr/commit/2e5d7620b49119e0663d471045c5a0ba6cf4df61>`_),
+all three Ethernet-related drivers on the Alif platform use the **same** init priority:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 40 15
+
+   * - Driver
+     - Kconfig
+     - Default
+   * - Ethernet MAC (DWMAC)
+     - ``CONFIG_ETH_INIT_PRIORITY``
+     - 80
+   * - MDIO (DesignWare)
+     - ``CONFIG_ETH_INIT_PRIORITY``
+     - 80
+   * - PHY (RTL8201FR)
+     - ``CONFIG_ETH_INIT_PRIORITY``
+     - 80
+
+Since all three share the same level (``POST_KERNEL``) and priority (80), the final execution
+order is determined by Devicetree ordinal numbers.
+
+Devicetree Hierarchy
+^^^^^^^^^^^^^^^^^^^^
+
+The Devicetree defines MDIO as a child of Ethernet and PHY as a child of MDIO:
+
+.. code-block:: dts
+
+   ethernet: ethernet@48100000 {
+       compatible = "alif,ethernet", "snps,designware-ethernet";
+       ...
+       mdio: mdio {
+           compatible = "snps,designware-mdio";
+           ...
+           ethernet_phy@1 {
+               compatible = "realtek,rtl8201fr";
+               ...
+           };
+       };
+   };
+
+Because of this parent–child structure, the Devicetree assigns increasing ordinal numbers
+(e.g., Ethernet = 215, MDIO = 216, PHY = 217).
+
+How ``DEVICE_DT_INST_DEFINE`` Maps to Linker Sections
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a driver uses ``DEVICE_DT_INST_DEFINE()`` with ``POST_KERNEL`` and priority 80, the
+macro expands (conceptually) into a structure placed in a linker section whose name encodes
+both the priority and the Devicetree ordinal. For example, for the MDIO driver with
+ordinal 216:
+
+.. code-block:: c
+
+   __attribute__((section(".z_init_POST_KERNEL80_00216")))
+   static const struct init_entry __init_mdio = {
+       .init_fn = { .dev = mdio_dwmac_init },
+       .dev = &mdio_device,
+   };
+
+The linker script collects all ``POST_KERNEL`` init sections and sorts them by name:
+
+.. code-block:: text
+
+   *(SORT_BY_NAME(SORT_BY_ALIGNMENT(.z_init_POST_KERNEL??_*)))
+
+This sorting by section name implicitly sorts by priority first, then by Devicetree ordinal
+(when priorities are equal).
+
+Linker Map Output
+^^^^^^^^^^^^^^^^^
+
+The build map file (``build/zephyr/zephyr.map``) confirms the final ordering. The relevant
+entries can be viewed with:
+
+.. code-block:: console
+
+   grep "z_init_POST_KERNEL80" build/zephyr/zephyr.map
+
+Example output:
+
+.. code-block:: text
+
+   .z_init_POST_KERNEL80_00215
+       0x...    zephyr/drivers/ethernet/libdrivers__ethernet.a(eth_dwmac_alif_ensemble.c.obj)
+   .z_init_POST_KERNEL80_00216
+       0x...    zephyr/drivers/mdio/libdrivers__mdio.a(mdio_dwmac.c.obj)
+   .z_init_POST_KERNEL80_00217
+       0x...    zephyr/drivers/ethernet/libdrivers__ethernet.a(phy_realtek_rtl8201fr.c.obj)
+
+This guarantees the correct initialization sequence: **Ethernet MAC → MDIO → PHY**.
+
+.. note::
+
+   The exact ordinal numbers may vary depending on the board and build configuration.
+   The important aspect is that the parent always receives a lower ordinal than its children.
+
+Verifying Initialization Order
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+To verify the initialization order for your build, run:
+
+.. code-block:: console
+
+   west build -t initlevels
+
+The ``POST_KERNEL`` section in the output shows the three drivers in the expected order:
+
+.. code-block:: text
+
+   POST_KERNEL
+     ...
+     __init___device_dts_ord_215: dwmac_probe(__device_dts_ord_215)
+     __init___device_dts_ord_216: mdio_dwmac_init(__device_dts_ord_216)
+     __init___device_dts_ord_217: phy_rtl8201fr_init(__device_dts_ord_217)
+     ...
+
+Using a Different PHY Driver
+----------------------------
+
+Some third-party PHY drivers in the Zephyr tree (e.g., Microchip KSZ8081) use
+``CONFIG_PHY_INIT_PRIORITY`` (default 70) instead of ``CONFIG_ETH_INIT_PRIORITY`` (default 80)
+for their initialization priority. When such a PHY driver is used with the Alif platform, the
+PHY priority (70) becomes lower than the MDIO priority (80), causing the PHY to initialize
+before its MDIO bus dependency. This results in a build-time validation error:
+
+.. code-block:: text
+
+   ERROR: Device initialization priority validation failed, the sequence of
+   initialization calls does not match the devicetree dependencies.
+
+Configuring Priorities for Third-Party PHY Drivers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When using a PHY driver that does not use ``CONFIG_ETH_INIT_PRIORITY``, the user must ensure
+that the PHY init priority is equal to or higher than the MDIO init priority. Add the following
+to ``prj.conf`` or the board defconfig:
+
+.. code-block:: kconfig
+
+   CONFIG_PHY_INIT_PRIORITY=80
+
+This aligns the PHY priority with the MDIO and Ethernet MAC drivers, allowing the Devicetree
+ordinal to determine the correct order — consistent with the Alif default configuration.
+
+.. note::
+
+   Initialization priorities are project-configurable values. The Alif default values work
+   out of the box with the RTL8201FR PHY on the Alif DevKit. When integrating a different
+   PHY driver, verify the initialization order using ``west build -t initlevels`` and adjust
+   priorities as needed.
