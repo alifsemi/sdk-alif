@@ -1,0 +1,917 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+#include "aipm.h"
+#include <stdio.h>
+#include <string.h>
+#include <zephyr/kernel.h>
+#include <zephyr/device.h>
+#include <zephyr/init.h>
+#include <zephyr/pm/pm.h>
+#include <zephyr/pm/policy.h>
+#if defined(CONFIG_POWEROFF)
+#include <zephyr/sys/poweroff.h>
+#endif
+#include <zephyr/drivers/counter.h>
+#include <zephyr/drivers/i2s.h>
+#include <se_service.h>
+#include <zephyr/sys/util.h>
+
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(i2s_pm, LOG_LEVEL_INF);
+
+/* ========================================================================
+ * I2S Configuration
+ * ========================================================================
+ */
+
+#if DT_NODE_EXISTS(DT_NODELABEL(i2s_rxtx))
+#define I2S_RX_NODE  DT_NODELABEL(i2s_rxtx)
+#define I2S_TX_NODE  I2S_RX_NODE
+#else
+#define I2S_RX_NODE  DT_NODELABEL(i2s_rx)
+#define I2S_TX_NODE  DT_NODELABEL(i2s_tx)
+#endif
+
+#define SAMPLE_FREQUENCY    44100
+#define SAMPLE_BIT_WIDTH    16
+#define BYTES_PER_SAMPLE    sizeof(int16_t)
+#define NUMBER_OF_CHANNELS  2
+/* Such block length provides an echo with the delay of 100 ms. */
+#define SAMPLES_PER_BLOCK   ((SAMPLE_FREQUENCY / 10) * NUMBER_OF_CHANNELS)
+#define INITIAL_BLOCKS      4
+#define TIMEOUT             1000
+
+#define BLOCK_SIZE  (BYTES_PER_SAMPLE * SAMPLES_PER_BLOCK)
+#define BLOCK_COUNT (INITIAL_BLOCKS + 6)
+K_MEM_SLAB_DEFINE_STATIC(mem_slab, BLOCK_SIZE, BLOCK_COUNT, 4);
+/* I2S streaming duration per phase (number of loop iterations) */
+#define I2S_STREAM_ITERATIONS	20
+
+static int16_t echo_block[SAMPLES_PER_BLOCK];
+static volatile bool echo_enabled = true;
+
+/* ========================================================================
+ * Power Management Configuration
+ * ========================================================================
+ */
+
+/**
+ * As per the application requirements, it can remove the memory blocks which are not in use.
+ */
+#if defined(CONFIG_SOC_SERIES_E1C) || defined(CONFIG_SOC_SERIES_B1)
+	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | \
+					SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |\
+					SRAM5_5_MASK
+	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
+#else
+	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK
+	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
+#endif
+
+#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
+	#define SE_OFFP_EWIC_CFG EWIC_RTC_A
+	#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
+#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
+	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
+	#define SE_OFFP_EWIC_CFG EWIC_VBAT_TIMER
+	#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
+#else
+#error "Wakeup Device not enabled in the dts"
+#endif
+
+/* Sleep duration for PM_STATE_RUNTIME_IDLE */
+#define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
+#define SUSPEND_IDLE_SLEEP_USEC (4 * 1000)
+/* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
+#define S2RAM_STANDBY_SLEEP_USEC (20 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
+#define S2RAM_STOP_SLEEP_USEC (22 * 1000 * 1000)
+/* Sleep duration for PM_STATE_SOFT_OFF */
+#define SOFT_OFF_SLEEP_USEC (26 * 1000 * 1000)
+/* Wakeup duration for sys_poweroff (permanent power off) */
+#define POWEROFF_WAKEUP_USEC (30 * 1000 * 1000)
+
+/*
+ * MRAM base address - used to determine boot location
+ * TCM boot: VTOR = 0x0
+ * MRAM boot: VTOR >= 0x80000000
+ */
+#define MRAM_BASE_ADDRESS 0x80000000
+
+/*
+ * Helper macro to check if booting from MRAM
+ */
+#define IS_BOOTING_FROM_MRAM() (SCB->VTOR >= MRAM_BASE_ADDRESS)
+
+/*
+ * PM_STATE_SUSPEND_TO_RAM (S2RAM) support:
+ * - HP core: NOT supported (no retention capability)
+ * - HE core + TCM boot: SUPPORTED (TCM retention keeps code and context)
+ */
+#if defined(CONFIG_RTSS_HE)
+#define S2RAM_SUPPORTED (!IS_BOOTING_FROM_MRAM())
+#else
+#define S2RAM_SUPPORTED 0
+#endif
+
+/*
+ * PM_STATE_SOFT_OFF support:
+ * - HP core: Always supported (no retention, must use SOFT_OFF)
+ * - HE core + MRAM boot: Supported (MRAM preserved, wakeup possible)
+ * - HE core + TCM boot: Skip (use S2RAM with retention instead)
+ */
+#if defined(CONFIG_RTSS_HP)
+#define SOFT_OFF_SUPPORTED 1
+#elif defined(CONFIG_RTSS_HE)
+#define SOFT_OFF_SUPPORTED IS_BOOTING_FROM_MRAM()
+#else
+#define SOFT_OFF_SUPPORTED 0
+#endif
+
+#if defined(CONFIG_RTSS_HE)
+/* Additional validation for power state sleep durations */
+BUILD_ASSERT((S2RAM_STOP_SLEEP_USEC > S2RAM_STANDBY_SLEEP_USEC),
+	"STOP sleep duration should be greater than STANDBY sleep duration");
+BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
+	"SOFT_OFF sleep duration should be greater than STOP sleep duration");
+#endif
+
+/* ========================================================================
+ * I2S Helper Functions
+ * ========================================================================
+ */
+
+static void process_block_data(void *mem_block, uint32_t number_of_samples)
+{
+	static bool clear_echo_block;
+
+	if (echo_enabled) {
+		for (int i = 0; i < number_of_samples; ++i) {
+			int16_t *sample = &((int16_t *)mem_block)[i];
+			*sample += echo_block[i];
+			echo_block[i] = (*sample) / 2;
+		}
+
+		clear_echo_block = true;
+	} else if (clear_echo_block) {
+		clear_echo_block = false;
+		memset(echo_block, 0, sizeof(echo_block));
+	}
+}
+
+static bool i2s_configure_streams(const struct device *i2s_dev_rx,
+				  const struct device *i2s_dev_tx,
+				  const struct i2s_config *config)
+{
+	int ret;
+
+	if (i2s_dev_rx == i2s_dev_tx) {
+		ret = i2s_configure(i2s_dev_rx, I2S_DIR_BOTH, config);
+		if (ret == 0) {
+			return true;
+		}
+		/* -ENOSYS means that the RX and TX streams need to be
+		 * configured separately.
+		 */
+		if (ret != -ENOSYS) {
+			LOG_ERR("Failed to configure streams: %d", ret);
+			return false;
+		}
+	}
+
+	ret = i2s_configure(i2s_dev_rx, I2S_DIR_RX, config);
+	if (ret < 0) {
+		LOG_ERR("Failed to configure RX stream: %d", ret);
+		return false;
+	}
+
+	ret = i2s_configure(i2s_dev_tx, I2S_DIR_TX, config);
+	if (ret < 0) {
+		LOG_ERR("Failed to configure TX stream: %d", ret);
+		return false;
+	}
+
+	return true;
+}
+
+static bool i2s_prepare_transfer(const struct device *i2s_dev_tx)
+{
+	int ret;
+
+	for (int i = 0; i < INITIAL_BLOCKS; ++i) {
+		void *mem_block;
+
+		ret = k_mem_slab_alloc(&mem_slab, &mem_block, K_NO_WAIT);
+		if (ret < 0) {
+			LOG_ERR("Failed to allocate TX block %d: %d", i, ret);
+			return false;
+		}
+
+		memset(mem_block, 0, BLOCK_SIZE);
+
+		ret = i2s_write(i2s_dev_tx, mem_block, BLOCK_SIZE);
+		if (ret < 0) {
+			LOG_ERR("Failed to write block %d: %d", i, ret);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static bool i2s_trigger_command(const struct device *i2s_dev_rx,
+				const struct device *i2s_dev_tx,
+				enum i2s_trigger_cmd cmd)
+{
+	int ret;
+
+	if (i2s_dev_rx == i2s_dev_tx) {
+		ret = i2s_trigger(i2s_dev_rx, I2S_DIR_BOTH, cmd);
+		if (ret == 0) {
+			return true;
+		}
+		/* -ENOSYS means that commands for the RX and TX streams need
+		 * to be triggered separately.
+		 */
+		if (ret != -ENOSYS) {
+			LOG_ERR("Failed to trigger command %d: %d", cmd, ret);
+			return false;
+		}
+	}
+
+	ret = i2s_trigger(i2s_dev_rx, I2S_DIR_RX, cmd);
+	if (ret < 0) {
+		LOG_ERR("Failed to trigger command %d on RX: %d", cmd, ret);
+		return false;
+	}
+
+	ret = i2s_trigger(i2s_dev_tx, I2S_DIR_TX, cmd);
+	if (ret < 0) {
+		LOG_ERR("Failed to trigger command %d on TX: %d", cmd, ret);
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Configure and start I2S streaming.
+ * Returns true on success, false on failure.
+ */
+static bool i2s_start(const struct device *i2s_dev_rx,
+		      const struct device *i2s_dev_tx)
+{
+	struct i2s_config config;
+
+	config.word_size = SAMPLE_BIT_WIDTH;
+	config.channels = NUMBER_OF_CHANNELS;
+	config.format = I2S_FMT_DATA_FORMAT_I2S;
+	config.options = I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER;
+	config.frame_clk_freq = SAMPLE_FREQUENCY;
+	config.mem_slab = &mem_slab;
+	config.block_size = BLOCK_SIZE;
+	config.timeout = TIMEOUT;
+
+	if (!i2s_configure_streams(i2s_dev_rx, i2s_dev_tx, &config)) {
+		return false;
+	}
+
+	if (!i2s_prepare_transfer(i2s_dev_tx)) {
+		return false;
+	}
+
+	if (!i2s_trigger_command(i2s_dev_rx, i2s_dev_tx, I2S_TRIGGER_START)) {
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Run I2S echo loop for a given number of iterations.
+ * Each iteration reads one block from RX, processes it, and writes to TX.
+ */
+static void i2s_stream_for(const struct device *i2s_dev_rx,
+			    const struct device *i2s_dev_tx,
+			    int iterations)
+{
+	for (int i = 0; i < iterations; i++) {
+		void *mem_block;
+		uint32_t block_size;
+		int ret;
+
+		ret = i2s_read(i2s_dev_rx, &mem_block, &block_size);
+		if (ret < 0) {
+			LOG_ERR("read failed: %d", ret);
+			break;
+		}
+
+		process_block_data(mem_block, SAMPLES_PER_BLOCK);
+
+		ret = i2s_write(i2s_dev_tx, mem_block, block_size);
+		if (ret < 0) {
+			LOG_ERR("write failed: %d", ret);
+			k_mem_slab_free(&mem_slab, mem_block);
+			break;
+		}
+	}
+	LOG_INF("stream loop exited");
+}
+
+/**
+ * Stop and drop I2S streams cleanly.
+ */
+static void i2s_stop(const struct device *i2s_dev_rx,
+		     const struct device *i2s_dev_tx)
+{
+	int ret;
+
+	/* DROP handles any state (RUNNING, ERROR, READY, STOPPING)
+	 * except NOT_READY, so no need for PREPARE first.
+	 */
+	ret = i2s_trigger(i2s_dev_rx, I2S_DIR_RX, I2S_TRIGGER_DROP);
+	LOG_INF("%s: RX drop returned %d", __func__, ret);
+
+	ret = i2s_trigger(i2s_dev_tx, I2S_DIR_TX, I2S_TRIGGER_DROP);
+	LOG_INF("%s: TX drop returned %d", __func__, ret);
+
+	k_sleep(K_MSEC(100));
+	LOG_INF("%s: done", __func__);
+}
+
+/* ========================================================================
+ * Power Management Functions
+ * ========================================================================
+ */
+
+/**
+ * Set the RUN profile parameters for this application.
+ */
+static int app_set_run_params(void)
+{
+	run_profile_t runp;
+	int ret;
+
+	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
+	runp.dcdc_voltage  = 825;
+	runp.dcdc_mode     = DCDC_MODE_PWM;
+	runp.aon_clk_src   = CLK_SRC_LFXO;
+	runp.run_clk_src   = CLK_SRC_PLL;
+	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	runp.ip_clock_gating = 0;
+	runp.phy_pwr_gating = 0;
+#if defined(CONFIG_RTSS_HP)
+	runp.cpu_clk_freq  = CLOCK_FREQUENCY_400MHZ;
+#else
+	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
+#endif
+
+	runp.memory_blocks = MRAM_MASK;
+
+	ret = se_service_set_run_cfg(&runp);
+	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
+
+	return ret;
+}
+/*
+ * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
+ *
+ * Priority 46 ensures this runs:
+ *   - AFTER SE Services (priority 45) - SE must be ready for set_run_cfg()
+ *   - BEFORE Power Domain (priority 47) - Power domain needs SYSTOP enabled
+ *   - BEFORE UART and peripherals (priority 50+) - Peripherals need SYSTOP ON
+ *
+ * On cold boot: SYSTOP is already ON by default, safe to call.
+ * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
+ */
+SYS_INIT(app_set_run_params, PRE_KERNEL_1, 46);
+
+static int app_set_off_params(enum pm_state state, uint8_t substate_id)
+{
+	int ret;
+	off_profile_t offp;
+
+	offp.dcdc_voltage  = 825;
+	offp.dcdc_mode     = DCDC_MODE_OFF;
+	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
+	offp.aon_clk_src   = CLK_SRC_LFXO;
+	offp.stby_clk_src  = CLK_SRC_HFRC;
+	offp.vtor_address  = SCB->VTOR;
+	offp.ip_clock_gating = 0;
+	offp.phy_pwr_gating = 0;
+	offp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
+	offp.ewic_cfg      = SE_OFFP_EWIC_CFG;
+	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
+	offp.memory_blocks = MRAM_MASK;
+
+#if defined(CONFIG_RTSS_HE)
+	/*
+	 * HE core retention configuration:
+	 * - TCM boot (VTOR = 0): Enable TCM retention (SERAM + APP_RET_MEM_BLOCKS)
+	 * - MRAM boot (VTOR >= 0x80000000): Only SERAM retention needed
+	 */
+	if (!IS_BOOTING_FROM_MRAM()) {
+		/* TCM boot: enable full retention including TCM memory blocks */
+		offp.memory_blocks |= APP_RET_MEM_BLOCKS | SERAM_MEMORY_BLOCKS_IN_USE;
+	} else {
+		/* MRAM boot */
+		offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
+	}
+#else
+	/*
+	 * HP core: Retention is not possible with HP-TCM
+	 */
+	__ASSERT(IS_BOOTING_FROM_MRAM(), "HP TCM Retention is not possible - VTOR is set to TCM");
+#endif
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+		if (substate_id == 0) {
+			offp.power_domains = PD_SSE700_AON_MASK;
+		} else if (substate_id == 1) {
+			offp.power_domains = PD_VBAT_AON_MASK;
+		}
+		break;
+	case PM_STATE_SOFT_OFF:
+		offp.memory_blocks = MRAM_MASK | SERAM_MEMORY_BLOCKS_IN_USE;
+		offp.power_domains = PD_VBAT_AON_MASK;
+		break;
+	default:
+		break;
+	}
+
+	ret = se_service_set_off_cfg(&offp);
+	__ASSERT(ret == 0, "SE: set_off_cfg failed = %d", ret);
+
+	return ret;
+}
+
+/**
+ * PM Notifier callback for power state entry
+ */
+static void pm_notify_state_entry(enum pm_state state)
+{
+	const struct pm_state_info *next_state = pm_state_next_get(0);
+	uint8_t substate_id = next_state ? next_state->substate_id : 0;
+	int ret;
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_IDLE:
+		/* No action needed */
+		break;
+	case PM_STATE_SUSPEND_TO_RAM:
+	case PM_STATE_SOFT_OFF:
+		ret = app_set_off_params(state, substate_id);
+		__ASSERT(ret == 0, "app_set_off_params failed = %d", ret);
+		break;
+	default:
+		__ASSERT(false, "Entering unknown power state %d", state);
+		break;
+	}
+}
+
+/**
+ * PM Notifier callback called BEFORE devices are resumed
+ *
+ * This restores SE run configuration when resuming from S2RAM states.
+ * Note: For SOFT_OFF, the system resets completely and app_set_run_params()
+ * runs during normal PRE_KERNEL_1 initialization, so this callback is not needed.
+ */
+static void pm_notify_pre_device_resume(enum pm_state state)
+{
+	int ret;
+
+	switch (state) {
+	case PM_STATE_SUSPEND_TO_RAM:
+		ret = app_set_run_params();
+		__ASSERT(ret == 0, "app_set_run_params failed = %d", ret);
+		break;
+	case PM_STATE_SUSPEND_TO_IDLE:
+		/* No action needed - IWIC keeps power, no restoration required */
+		break;
+	case PM_STATE_SOFT_OFF:
+		/* No action needed - SOFT_OFF causes reset, not resume */
+		break;
+	default:
+		__ASSERT(false, "Pre-resume for unknown power state %d", state);
+		break;
+	}
+}
+
+/**
+ * PM Notifier structure
+ */
+static struct pm_notifier app_pm_notifier = {
+	.state_entry = pm_notify_state_entry,
+	.pre_device_resume = pm_notify_pre_device_resume,
+};
+
+/**
+ * Helper function to lock/unlock deeper power states
+ * @param lock true to lock deeper states (allow only RUNTIME_IDLE), false to unlock all
+ */
+static void app_pm_lock_deeper_states(bool lock)
+{
+	const char *state_desc;
+
+#if defined(CONFIG_RTSS_HP)
+	/* HP core: only SOFT_OFF (no S2RAM support) */
+	enum pm_state deep_states[] = {
+		PM_STATE_SOFT_OFF
+	};
+	state_desc = "SOFT_OFF";
+
+	for (int i = 0; i < ARRAY_SIZE(deep_states); i++) {
+		if (lock) {
+			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
+		} else {
+			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
+		}
+	}
+
+#elif defined(CONFIG_RTSS_HE)
+	/*
+	 * HE core: States depend on boot location
+	 * - TCM boot: S2RAM only (SOFT_OFF not needed with retention)
+	 * - MRAM boot: SOFT_OFF only (Keep S2RAM locked)
+	 */
+	enum pm_state deep_states[2];
+	int num_states = 0;
+
+	if (S2RAM_SUPPORTED) {
+		/* TCM boot: S2RAM works with retention */
+		deep_states[num_states++] = PM_STATE_SUSPEND_TO_RAM;
+		state_desc = "S2RAM";
+	} else {
+		/* MRAM boot: Keep S2RAM locked so SOFT_OFF is selected */
+		if (!lock) {
+			/* Ensure S2RAM stays locked when unlocking SOFT_OFF */
+			pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+		}
+	}
+
+	if (SOFT_OFF_SUPPORTED) {
+		/* MRAM boot: SOFT_OFF is the only deep sleep option for now */
+		deep_states[num_states++] = PM_STATE_SOFT_OFF;
+		state_desc = "SOFT_OFF";
+	}
+
+	for (int i = 0; i < num_states; i++) {
+		if (lock) {
+			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
+		} else {
+			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
+		}
+	}
+
+#else
+	#error "Unknown core type"
+#endif
+
+	LOG_DBG("%s deeper power state(s) (%s)",
+	       lock ? "Locked" : "Unlocked", state_desc);
+}
+
+/*
+ * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
+ */
+static int app_pre_kernel_init(void)
+{
+	/* Lock deeper power states to allow only RUNTIME_IDLE */
+	app_pm_lock_deeper_states(true);
+
+	/* Also lock SUSPEND_TO_IDLE until a proper wakeup source is configured.
+	 * Without this, any k_sleep before the PM sequence could enter
+	 * SUSPEND_TO_IDLE with no LPM timer to wake up, causing a hang.
+	 */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+
+	/* Register PM notifier callbacks */
+	pm_notifier_register(&app_pm_notifier);
+
+	return 0;
+}
+SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
+
+#if !defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
+static volatile uint32_t alarm_cb_status;
+static void alarm_callback_fn(const struct device *wakeup_dev,
+				uint8_t chan_id, uint32_t ticks,
+				void *user_data)
+{
+	LOG_DBG("%s: Alarm triggered", wakeup_dev->name);
+	alarm_cb_status = 1;
+}
+#endif
+
+static int app_enter_normal_sleep(uint32_t sleep_usec)
+{
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
+	k_sleep(K_USEC(sleep_usec));
+#else
+	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
+	struct counter_alarm_cfg alarm_cfg;
+	int ret;
+
+	alarm_cfg.flags = 0;
+	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
+	alarm_cfg.callback = alarm_callback_fn;
+	alarm_cfg.user_data = &alarm_cfg;
+
+	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
+	if (ret) {
+		LOG_ERR("Could not set the alarm");
+		return ret;
+	}
+	LOG_DBG("Set alarm for %u microseconds", sleep_usec);
+
+	k_sleep(K_USEC(sleep_usec));
+
+	if (!alarm_cb_status) {
+		return -1;
+	}
+	alarm_cb_status = 0;
+#endif
+	return 0;
+}
+
+#if !defined(CONFIG_POWEROFF)
+static int app_enter_deep_sleep(uint32_t sleep_usec)
+{
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
+	/**
+	 * Set a delay more than the min-residency-us configured so that
+	 * the sub-system will go to OFF state.
+	 */
+	k_sleep(K_USEC(sleep_usec));
+#else
+	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
+	struct counter_alarm_cfg alarm_cfg;
+	int ret;
+	/*
+	 * Set the alarm and delay so that idle thread can run
+	 */
+	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
+	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
+	if (ret) {
+		LOG_ERR("Failed to set the alarm (err %d)", ret);
+		return ret;
+	}
+
+	LOG_DBG("Set alarm for %u microseconds", sleep_usec);
+	/*
+	 * Wait for the alarm to trigger. The idle thread will
+	 * take care of entering the deep sleep state via PM framework.
+	 */
+	k_sleep(K_USEC(sleep_usec));
+#endif
+
+	return 0;
+}
+#endif /* !CONFIG_POWEROFF */
+
+/* ========================================================================
+ * Main Thread — I2S + PM, single thread
+ * ========================================================================
+ */
+
+int main(void)
+{
+	const struct device *const cons = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
+	const struct device *const i2s_dev_rx = DEVICE_DT_GET(I2S_RX_NODE);
+	const struct device *const i2s_dev_tx = DEVICE_DT_GET(I2S_TX_NODE);
+	int ret;
+
+	__ASSERT(device_is_ready(cons), "%s: device not ready", cons->name);
+	__ASSERT(device_is_ready(wakeup_dev), "%s: device not ready", wakeup_dev->name);
+	__ASSERT(device_is_ready(i2s_dev_rx), "%s: device not ready", i2s_dev_rx->name);
+	if (i2s_dev_rx != i2s_dev_tx) {
+		__ASSERT(device_is_ready(i2s_dev_tx), "%s: device not ready",
+			 i2s_dev_tx->name);
+	}
+
+#if defined(CONFIG_RTSS_HE)
+	/* Boot location determines which PM states are available */
+	bool is_mram_boot = IS_BOOTING_FROM_MRAM();
+
+	if (is_mram_boot) {
+		LOG_INF("%s RTSS_HE (MRAM boot): I2S PM demo "
+			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)",
+			CONFIG_BOARD);
+	} else {
+		LOG_INF("%s RTSS_HE (TCM boot): I2S PM demo "
+			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)",
+			CONFIG_BOARD);
+	}
+#else
+	LOG_INF("%s RTSS_HP: I2S PM demo "
+		"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)", CONFIG_BOARD);
+#endif
+
+	/* --- Phase 1: Initial I2S streaming --- */
+	LOG_INF("=== Phase 1: Initial I2S streaming ===");
+	if (i2s_start(i2s_dev_rx, i2s_dev_tx)) {
+		i2s_stream_for(i2s_dev_rx, i2s_dev_tx, I2S_STREAM_ITERATIONS);
+		i2s_stop(i2s_dev_rx, i2s_dev_tx);
+	} else {
+		LOG_ERR("Failed to start I2S in Phase 1 - continuing to PM tests");
+	}
+
+	/* --- Phase 2: Start counter and print power state sequence --- */
+	ret = counter_start(wakeup_dev);
+	__ASSERT(!ret || ret == -EALREADY, "Failed to start counter (err %d)", ret);
+
+	LOG_INF("POWER STATE SEQUENCE:");
+#if defined(CONFIG_POWEROFF)
+	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
+	LOG_INF("  3. Power off (sys_poweroff)");
+#elif defined(CONFIG_RTSS_HE)
+	/* HE core: sequence depends on boot location */
+	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
+	if (!is_mram_boot) {
+		/* TCM boot: S2RAM works (TCM retention) */
+		LOG_INF("  3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)");
+		LOG_INF("  4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)");
+		LOG_INF("  5. (SOFT_OFF skipped - TCM boot, using retention)");
+	} else {
+		/* MRAM boot: Enable Only SOFT_OFF */
+		LOG_INF("  3. (S2RAM skipped - MRAM boot)");
+		LOG_INF("  4. PM_STATE_SOFT_OFF");
+	}
+#else
+	/* HP core: no retention, only SOFT_OFF supported */
+	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
+	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
+	LOG_INF("  3. PM_STATE_SOFT_OFF");
+#endif
+
+	/* --- RUNTIME_IDLE --- */
+	/* Release the initial SUSPEND_TO_IDLE lock from app_pre_kernel_init.
+	 * From here on, the PM sequence explicitly manages its own locks.
+	 */
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
+	ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
+	__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
+
+	LOG_INF("Exited from RUNTIME_IDLE sleep");
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+
+	/* --- SUSPEND_TO_IDLE --- */
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
+	LOG_INF("Enter PM_STATE_SUSPEND_TO_IDLE for (%d microseconds)",
+		SUSPEND_IDLE_SLEEP_USEC);
+	k_sleep(K_USEC(SUSPEND_IDLE_SLEEP_USEC));
+	LOG_INF("Exited from PM_STATE_SUSPEND_TO_IDLE");
+#else
+	/* Lock SUSPEND_TO_IDLE when LPM timer support is not configured */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	LOG_INF("PM_STATE_SUSPEND_TO_IDLE (skipped - LPM timer not enabled)");
+#endif
+
+	/* --- Restart I2S after light sleep --- */
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	LOG_INF("=== Restarting I2S after light sleep ===");
+
+	if (i2s_start(i2s_dev_rx, i2s_dev_tx)) {
+		i2s_stream_for(i2s_dev_rx, i2s_dev_tx, I2S_STREAM_ITERATIONS);
+		i2s_stop(i2s_dev_rx, i2s_dev_tx);
+	} else {
+		LOG_ERR("Failed to restart I2S after light sleep - continuing");
+	}
+
+	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+#if defined(CONFIG_POWEROFF)
+	/* Configure wakeup source for permanent power off */
+	struct counter_alarm_cfg alarm_cfg;
+
+	LOG_INF("=== Enter (sys_poweroff) ===");
+	LOG_INF("System will power off and can only wake via external event (RTC/Timer)");
+	k_sleep(K_SECONDS(2));
+
+	/* Set alarm for wakeup from power off */
+	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, POWEROFF_WAKEUP_USEC);
+	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
+	if (ret) {
+		LOG_ERR("Failed to set wakeup alarm (err %d)", ret);
+	} else {
+		LOG_INF("Wakeup alarm set for %u seconds", POWEROFF_WAKEUP_USEC / 1000000);
+	}
+
+	/* Configure OFF profile for wakeup capability */
+	app_set_off_params(PM_STATE_SOFT_OFF, 0);
+
+	LOG_INF("Calling sys_poweroff() - system will power off permanently");
+	sys_poweroff();
+
+	/* Should never reach here */
+	LOG_ERR("Failed to execute sys_poweroff()");
+
+	return -1;
+#else
+	/* Unlock deeper power states to allow S2RAM and/or SOFT_OFF */
+	app_pm_lock_deeper_states(false);
+
+#if defined(CONFIG_RTSS_HE)
+	/* HE core: S2RAM only if booting from TCM */
+	if (S2RAM_SUPPORTED) {
+		/* --- S2RAM STANDBY --- */
+		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
+			S2RAM_STANDBY_SLEEP_USEC);
+		ret = app_enter_deep_sleep(S2RAM_STANDBY_SLEEP_USEC);
+		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
+
+		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
+
+		/* Restart I2S after STANDBY resume */
+		if (!i2s_start(i2s_dev_rx, i2s_dev_tx)) {
+			LOG_ERR("Failed to restart I2S after STANDBY");
+		} else {
+			i2s_stream_for(i2s_dev_rx, i2s_dev_tx, I2S_STREAM_ITERATIONS);
+			i2s_stop(i2s_dev_rx, i2s_dev_tx);
+		}
+		/* --- S2RAM STOP --- */
+		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (%d microseconds)",
+			S2RAM_STOP_SLEEP_USEC);
+		ret = app_enter_deep_sleep(S2RAM_STOP_SLEEP_USEC);
+		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
+
+		k_sleep(K_SECONDS(5));
+
+		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===");
+		/* Restart I2S after STOP resume */
+		if (!i2s_start(i2s_dev_rx, i2s_dev_tx)) {
+			LOG_ERR("Failed to restart I2S after STOP");
+		} else {
+			i2s_stream_for(i2s_dev_rx, i2s_dev_tx, I2S_STREAM_ITERATIONS);
+			i2s_stop(i2s_dev_rx, i2s_dev_tx);
+		}
+
+	} else {
+		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
+	}
+#endif /* CONFIG_RTSS_HE */
+
+	/* PM_STATE_SOFT_OFF (deepest sleep with wake capability) */
+#if defined(CONFIG_RTSS_HP)
+	/* HP core: always SOFT_OFF */
+	LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
+	LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
+	ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
+	__ASSERT(ret == 0, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
+
+	/* Should never reach here - SOFT_OFF causes full reset on wakeup */
+	LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
+	__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
+
+#elif defined(CONFIG_RTSS_HE)
+	/* HE core: only SOFT_OFF when booting from MRAM */
+	if (SOFT_OFF_SUPPORTED) {
+		/* Stream I2S before SOFT_OFF */
+		if (i2s_start(i2s_dev_rx, i2s_dev_tx)) {
+			i2s_stream_for(i2s_dev_rx, i2s_dev_tx, I2S_STREAM_ITERATIONS);
+			i2s_stop(i2s_dev_rx, i2s_dev_tx);
+		} else {
+			LOG_ERR("Failed to restart I2S before SOFT_OFF - continuing");
+		}
+
+		LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
+		LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
+		ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
+		__ASSERT(ret == 0, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
+
+		/* Should never reach here - SOFT_OFF causes full reset on wakeup */
+		LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
+		__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
+	} else {
+		LOG_INF("Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)");
+	}
+#endif
+
+	LOG_INF("=== POWER STATE SEQUENCE COMPLETED ===");
+
+	app_pm_lock_deeper_states(true);
+
+	while (true) {
+		/* spin here */
+		k_sleep(K_SECONDS(1));
+	}
+#endif
+
+	return 0;
+}

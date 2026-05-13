@@ -1,0 +1,35 @@
+sample:
+  name: Alif I2S Power Management Demo
+  description: >
+    Demonstrates I2S audio streaming combined with Zephyr power management
+    states on Alif RTSS cores. Shows I2S stop/restart across PM state
+    transitions (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM, SOFT_OFF) with
+    RTC wakeup and proper peripheral suspend/resume handling.
+common:
+  tags:
+    - power
+    - pm
+    - i2s
+    - counter
+    - rtc
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "I2S PM demo"
+      - "Phase 1: Initial I2S streaming"
+      - "POWER STATE SEQUENCE"
+tests:
+  sample.pm.i2s_pm:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e8_dk_rtss_he
+    depends_on:
+      - counter
+      - i2s
