@@ -46,6 +46,7 @@ Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
 
    west build -p always \
    -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+   -S ospi-psram \
    ../alif/samples/drivers/spi_psram/
 
 
@@ -55,6 +56,7 @@ Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
 
    west build -p always \
    -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+   -S ospi-psram \
    ../alif/samples/drivers/spi_psram/
 
 
