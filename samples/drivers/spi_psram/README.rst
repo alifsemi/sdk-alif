@@ -16,7 +16,16 @@ Building and Running
 
 The application will build only for a target that has a devicetree entry with
 *:dt compatible:`alif,apmemory-aps512xxn`* as a compatible.
-Use respective ovderlay files in boards folder for AP PSRAM HyperRam with build command.
+Use the ``ospi-psram`` snippet to enable the OSPI controller and AP PSRAM
+HyperRAM devicetree nodes.
+
+Example command to build:
+
+.. code-block:: console
+
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_he -S ospi-psram ../alif/samples/drivers/spi_psram -p
+   OR
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_he ../alif/samples/drivers/spi_psram -p -- -DSNIPPET=ospi-psram
 
 Sample Output
 =============
