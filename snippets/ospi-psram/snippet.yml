@@ -1,0 +1,9 @@
+name: ospi-psram
+
+boards:
+  /alif_e8_ak.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e8_ak_ospi0.overlay
+  /alif_e8_dk.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e8_dk_ospi0.overlay
