@@ -16,7 +16,15 @@ Building and Running
 
 The application will build only for a target that has a devicetree entry with
 *:dt compatible:`alif,apmemory-aps512xxn`* as a compatible.
-Use respective ovderlay files in boards folder for AP PSRAM HyperRam with build command.
+Use the ``ospi-psram`` snippet to enable the OSPI controller and AP PSRAM
+HyperRAM nodes.
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/spi_psram
+   :board: alif_e8_ak/ae822fa0e5597xx0/rtss_he
+   :goals: build
+   :gen-args: -S ospi-psram
+   :compact:
 
 Sample Output
 =============
