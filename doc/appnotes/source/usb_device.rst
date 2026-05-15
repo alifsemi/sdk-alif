@@ -6,8 +6,7 @@ USB Device
 Introduction
 ============
 
-This application note outlines the process of creating, compiling, and running a sample CDC-ACM demo application using the Alif UDC driver (dwc3) in USB device mode on the DevKit.
-The implementation enables the target board to function as a USB virtual COM port, allowing communication with a host PC over the USB interface.
+This application note outlines the process of creating, compiling, and running a sample CDC-ACM and MSC demo application using the Alif UDC driver (dwc3) in USB device mode on the DevKit.
 
 USB Features
 ------------
@@ -15,6 +14,15 @@ USB Features
 - The Alif UDC dwc3 driver supports **USB 2.0 High Speed**.
 - CDC-ACM.
 - MSC
+
+.. note::
+   The USB PHY power settings are enabled in the application overlays through the AIPM run profile.
+
+.. code-block:: devicetree
+
+   &aipm_run_default {
+       phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+   };
 
 .. include:: prerequisites.rst
 
