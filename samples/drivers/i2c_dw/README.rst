@@ -30,6 +30,7 @@ The overlay used in the snippet configures i2c master and slave instances.
 Sample Output
 =============
 .. code-block:: console
+
    Received a byte in slave : 0xaa
    Received a byte in slave : 0xab
    Received a byte in slave : 0xac
