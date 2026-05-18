@@ -44,6 +44,11 @@
 	status = "okay";
 };
 
+&aipm_run_default {
+	aipm-power-domains = <(ALIF_PD_SSE700_AON_MASK | ALIF_PD_SYST_MASK)>;
+	memory-blocks      = <ALIF_MRAM_MASK>;
+};
+
 &aipm_off {
 	vtor-address = <0x00000000>;
 	status = "okay";
