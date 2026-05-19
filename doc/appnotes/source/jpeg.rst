@@ -124,7 +124,7 @@ a. Build command for the M55 HP core on Alif E8 Board:
    west build -p always \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
      ../alif/samples/drivers/jpeg/ \
-     -S alif-dk-ak \
+     -S alif-dk-ak
 
 b. Build command for the M55 HE core on Alif E8 Board:
 
@@ -133,7 +133,7 @@ b. Build command for the M55 HE core on Alif E8 Board:
    west build -p always \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
      ../alif/samples/drivers/jpeg/ \
-     -S alif-dk-ak \
+     -S alif-dk-ak
 
 c. Build command for the M55 HP core on Alif E4 Board:
 
@@ -142,7 +142,7 @@ c. Build command for the M55 HP core on Alif E4 Board:
    west build -p always \
      -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
      ../alif/samples/drivers/jpeg/ \
-     -S alif-dk-ak \
+     -S alif-dk-ak
 
 d. Build command for the M55 HE core on Alif E4 Board:
 
@@ -151,7 +151,7 @@ d. Build command for the M55 HE core on Alif E4 Board:
    west build -p always \
      -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
      ../alif/samples/drivers/jpeg/ \
-     -S alif-dk-ak \
+     -S alif-dk-ak
 
 Video Pipeline with JPEG Encoding
 ---------------------------------
@@ -273,6 +273,7 @@ Video Pipeline with JPEG Encoding
 
    [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
    [00:00:00.664,000] <inf> jpeg_hantro_vc9000e: VeriSilicon Hantro VC9000E JPEG encoder initialized
+   *** Booting Zephyr OS build e8786fd41312 ***
    [00:00:00.664,000] <inf> video_app: - Device name: isp@49046000
    [00:00:00.664,000] <inf> video_app: Selected camera: Selfie
    [00:00:00.664,000] <inf> video_app: - Capabilities:

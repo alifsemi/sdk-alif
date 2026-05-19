@@ -205,8 +205,8 @@ Key Properties (per child node)
      - No
      - GPIO voltage level. Default ``ALIF_IOFLEX_LEVEL_1V8``.
 
-Example — Enabling the Off Profile in a Board Overlay
-------------------------------------------------------
+Example — Enabling the Off Profile for TCM in a Board Overlay
+---------------------------------------------------------------
 
 .. code-block:: dts
 
@@ -235,6 +235,25 @@ Example — Enabling the Off Profile in a Board Overlay
                          ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
                          ALIF_SERAM_MASK   | ALIF_MRAM_MASK)>;
    };
+
+Example — Enabling the Off Profile for MRAM in a Board Overlay
+---------------------------------------------------------------
+
+.. code-block:: dts
+
+   /* Override vtor-address for MRAM boot */
+   &aipm_off {
+       vtor-address = <0x80000000>;
+       status = "okay";
+   };
+
+   &off_profile_soft_off {
+        status = "okay";
+        memory-blocks      = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+        wakeup-events      = <ALIF_WE_LPRTC>;
+        ewic-cfg           = <ALIF_EWIC_RTC_A>;
+   };
+
 
 .. note::
    ``wakeup-events`` and ``ewic-cfg`` default to ``0`` in the SoC DTSI

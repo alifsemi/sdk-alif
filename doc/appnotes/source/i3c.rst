@@ -68,8 +68,8 @@ Pin Connections I3C
       - SDA
       - SCL
     * - I3C-0
-      - J15-8
-      - J15-10
+      - P7_6
+      - P7_7
 
 .. include:: note.rst
 

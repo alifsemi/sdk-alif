@@ -1,6 +1,6 @@
 .. ### This page lists links used in Alif docs.
 
-.. _ZAS User Guide: https://github.com/alifsemi/sdk-alif/releases/download/v2.2.0/user_guide.pdf
+.. _ZAS User Guide: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/user_guide.pdf
 
 
 .. _`executorch Documentation`: https://pytorch.org/executorch/
@@ -22,3 +22,5 @@
 .. _`bl32_e7.bin`: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/bl32_e7.bin
 
 .. _`bl32-z.json`: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/bl32-z.json
+
+.. _CRC Calculator: https://www.sunshine2k.de/coding/javascript/crc/crc_js.html

@@ -9,7 +9,7 @@ Introduction
 
 This application note provides an overview of the Cyclic Redundancy Check (CRC), a powerful method used for error detection and correction. Here are the key features:
 
-- **CRC Algorithm Support**: Supports CRC-8-CCITT, CRC-16-CCITT, CRC-32, and CRC-32C standards.
+- **CRC Algorithm Support**: Supports CRC-8-CCITT, CRC-16, CRC-16-CCITT, CRC-32, and CRC-32C standards.
 - **Data Processing**: Processes data in 8-bit or 32-bit chunks.
 - **Automatic Byte and Bit Swapping**: Optionally performs byte and bit swapping of data.
 - **Customized Polynomials**: Allows customization of polynomials for specific applications.
@@ -51,7 +51,7 @@ Once all data has been processed, read the CRC result from the crc_out register 
 
 .. include:: note.rst
 
-Build an CRC Application with Zephyr
+Build a CRC Application with Zephyr
 ========================================
 
 Follow these steps to build the CRC application using the Alif Zephyr SDK:
@@ -85,7 +85,7 @@ Once the build command completes successfully, executable images will be generat
 Verifying CRC Algorithm in a Web CRC Calculator
 ===============================================
 
-You can verify that the CRC output in a web CRC calculator matches the devKit output. Refer to a web CRC calculator (e.g., https://crccalc.com/) for validation.
+You can verify that the CRC output in a web CRC calculator matches the devKit output. Refer to a web `CRC Calculator`_ for validation.
 
 CRC-8-CCITT
 -----------
@@ -122,6 +122,39 @@ Flatboard CRC 8 Output
 
    CRC output: 0xCD
 
+CRC-16
+------------
+
+To verify the output in a web CRC calculator:
+
+1. Select CRC16 and enter the CRC input data.
+2. Calculate the CRC output.
+
+To verify the CRC-16 algorithm in the Alif CRC Hardware module:
+
+1. Navigate to the ``e1.dtsi`` file and set ``crc_algo = "CRC_16_BIT_SIZE"``.
+2. Provide the input data in the CRC application.
+
+Example code:
+
+.. code-block:: c
+
+   uint8_t arr[] = {0x67, 0x3F, 0x90, 0xC9, 0x25, 0xF0, 0x4A, 0xB1, 0x12}; /* CRC unaligned input data */
+   uint32_t seed_value = 0x00000000; /* Seed value for 16 bit */
+   /* Output: CRC-16 output value: 0xBAE7 */
+
+.. figure:: _static/CRC_16.png
+    :alt: Web CRC 16 Output
+    :align: center
+
+    Web CRC 16 Output
+
+Flatboard CRC 16 Output
+-----------------------
+
+.. code-block:: text
+
+   CRC output: 0xBAE7
 
 CRC-16-CCITT
 ------------
@@ -150,8 +183,8 @@ Example code:
 
     Web CRC 16 Output
 
-Flatboard CRC 16 Output
------------------------
+Flatboard CRC-16-CCITT Output
+-------------------------------
 
 .. code-block:: text
 
@@ -206,7 +239,7 @@ CRC 32 Sample Code
 
 
 .. figure:: _static/web_crc32_output.png
-    :alt: Web CRC 16 Output
+    :alt: Web CRC 32 Output
     :align: center
 
     Web CRC 32 Output
@@ -250,7 +283,7 @@ Custom CRC 32 Sample Code
 
 .. code-block:: c
 
-    uint32_t polynomial = 0x2CEEAC68;
+    uint32_t polynomial = 0x2CEEA6C8;
     uint32_t seed_value = 0xFFFFFFFF;
 
     void main(void)
@@ -296,7 +329,7 @@ Custom CRC 32 Sample Code Continued
     printk("CRC output: 0x%x\n", *params.data_out);
 
 .. figure:: _static/web_custom_crc32_output.png
-    :alt: Web Custom CRC 16 Output
+    :alt: Web Custom CRC 32 Output
     :align: center
 
     Web Custom CRC 32 Output

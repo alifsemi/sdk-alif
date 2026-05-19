@@ -531,4 +531,16 @@ The following output is observed in the console during execution of the MT9M114 
 
 .. note::
 
+   During camera initialization, the following CSI2 receiver logs may be observed:
+
+   .. code-block:: text
+
+      [00:00:00.562,000] <err> csi2_dw: Fatal Interrupt due to mismatch of Frame Start and Frame End for a specific VC. status - 0x1
+      [00:00:00.562,000] <err> csi2_dw: Review the Timings programmed to IPI. Resetting the IPI for now.
+
+   These logs are non-fatal and do not impact normal frame capture operation. The CSI2 controller automatically recovers by resetting the IPI interface, and video capture continues successfully.
+
+
+.. note::
+
    The MT9M114 sensor with ISP captures at 480x480 resolution in RGB888 planar (PRGB) format with a frame rate of approximately 15 FPS. The ISP processes the RAW Bayer data from the sensor and outputs RGB888 format. The buffer size is 691,200 bytes per frame. Note the CSI2 timing error message during initialization which is automatically recovered.

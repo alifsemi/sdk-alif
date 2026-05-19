@@ -131,7 +131,7 @@ Hardware Requirements
 
    The following displays are supported:
 
-   - **MW405-ILI8906E** (2-lane serial): DevKit E7, DevKit E8
+   - **MW405-ILI9806E** (2-lane serial): DevKit E7, DevKit E8
    - **ILI9488** (1-lane serial): E1C, B1 A5/A6
 
 CDC200 Controller
@@ -158,9 +158,6 @@ Focus LCDs Panel Specifications
 -------------------------------
 
 Two example displays have been brought up on Alif Development Kit hardware. There is a 5" non-touch panel and a 4.3" capacitive touch panel included with the development kit depending on availability. They share the ILI9806E TFT controller, for which a driver is provided. To support additional displays using this same controller, simply change the resolution, timing values, and register sequence in the driver example.
-
-.. note::
-   For serial display: 2-lane display ILI9806E support is available only on the Alif Ensemble E7 DevKit.
 
 .. list-table:: Key Features
    :widths: 30 30 30
@@ -282,46 +279,6 @@ The Alif DevKit connects to the ILI9806E panel via the MIPI DSI interface. The M
    :align: center
 
    Hardware Setup
-
-Build an CDC200 Application in Zephyr
-========================================
-
-Follow these steps to build CDC200 application using the Alif Zephyr SDK:
-
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
-
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
-
-
-2. Build command for HE application for TCM memory:
-
-.. code-block:: console
-
-
-   west build -p always \
-    -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-    ../alif/samples/drivers/display \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
-
-
-3. Build command for HP application for TCM memory:
-
-.. code-block:: console
-
-
-   west build -p always \
-    -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-    ../alif/samples/drivers/display \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
-
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
 Required Config Features
 ========================
@@ -502,6 +459,82 @@ The DTS entry for the FW-405 serial panel has the following tweakable properties
      - Height of Panel. This should be same as height property of CDC200
      - 800
 
+.. include:: note.rst
+
+Build a CDC200 Application in Zephyr
+========================================
+
+Follow these steps to build CDC200 application using the Alif Zephyr SDK:
+
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+
+.. note::
+   The build commands shown here are for the Alif E7 DevKit, E8 DevKit, and B1 DK.
+
+
+2. Build command for the E7 HE application (2lane):
+
+.. code-block:: console
+
+
+   west build -p always \
+    -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+    ../alif/samples/drivers/display \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+
+
+3. Build command for the E7 HP application (2lane):
+
+.. code-block:: console
+
+
+   west build -p always \
+    -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+    ../alif/samples/drivers/display \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+
+4. Build command for the E8 HE application (2lane):
+
+.. code-block:: console
+
+
+   west build -p always \
+    -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+    ../alif/samples/drivers/display \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+
+5. Build command for the E8 HP application (2lane):
+
+.. code-block:: console
+
+
+   west build -p always \
+    -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+    ../alif/samples/drivers/display \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+
+6. Build command for the B1 DK HE application (1lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+    ../alif/samples/drivers/display/ \
+    -- \
+    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_1lane.overlay" \
+    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+
+Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+
+
 Validating CDC200
 =================
 
@@ -515,8 +548,8 @@ The output screen is configured with the following layer settings:
 - Pixel where Layer 2 starts (x, y) = (0, 0)
 - Pixel where Layer 2 ends (x, y) = (0, 0)
 
-Output Logs
------------
+Output Logs for 2lane
+----------------------
 
 The following are the output logs observed on minicom:
 
@@ -546,7 +579,38 @@ The following are the output logs observed on minicom:
    :alt: Serial Display Output
    :align: center
 
-   Serial Display Output
+   2-lane Serial Display Output
+
+Output Logs for 1lane
+----------------------
+
+The following are the output logs observed on minicom:
+
+.. code-block:: console
+
+   *** Booting Zephyr OS build  ***
+   [00:00:00.272,000] <inf> disp: Rotating the display by 180 degrees
+   [00:00:00.272,000] <inf> disp: Enable Ensemble-DSI Device video mode.
+   [00:00:00.272,000] <inf> disp: Panel Orientation - 2
+   [00:00:00.272,000] <inf> disp: Display sample for cdc200@49031000
+   [00:00:00.272,000] <inf> disp: Enabling CDC200 Device.
+   [00:00:00.272,000] <inf> disp: Display Capabilities
+   [00:00:00.272,000] <inf> disp: Panel resolution, supported formats - (320, 480), 25
+   [00:00:00.272,000] <inf> disp: CDC200 orientation - 0
+   [00:00:00.272,000] <inf> disp: Display Capabilities layer 1:
+   [00:00:00.272,000] <inf> disp:  layer_enabled - 1
+   [00:00:00.272,000] <inf> disp:  (x_res, y_res) - (320, 480)
+   [00:00:00.272,000] <inf> disp:  curr_pix_fmt - 16
+   [00:00:00.272,000] <inf> disp: Display Capabilities layer 2:
+   [00:00:00.272,000] <inf> disp:  layer_enabled - 0
+   [00:00:00.272,000] <inf> disp:  (x_res, y_res) - (0, 0)
+   [00:00:00.272,000] <inf> disp:  curr_pix_fmt - 0
+   [00:00:00.272,000] <inf> disp: FB0 - 0x20040000, size - 307200
+
+.. figure:: _static/Serial_display_output.png
+   :align: center
+
+   1-lane Serial Display Output
 
 Known Issues
 ============
