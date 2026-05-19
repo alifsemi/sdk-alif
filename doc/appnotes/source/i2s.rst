@@ -57,11 +57,9 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build Command for the I2S Echo Sample Application
+
+2. Build Command for the e7_dk I2S Echo Sample Application on HE
 
 .. code-block:: console
 
@@ -70,8 +68,17 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
      samples/drivers/i2s/echo \
      -S alif-i2s-echo
 
+3. Build Command for the e7_dk I2S Echo Sample Application on HP
 
-3. Build Commands for the I2S output Sample Application
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/i2s/echo \
+     -S alif-i2s-echo
+
+
+4. Build Commands for the b1_dk I2S output Sample Application
 
 .. code-block:: console
 
@@ -80,6 +87,36 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
      samples/drivers/i2s/output \
      -S alif-i2s-output
 
+5. Build Commands for the b1_dk I2S codec Sample Application
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/i2s_codec \
+     -S i2s-codec
+
+6. Build Commands for the e8_dk I2S codec Sample Application for HE
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/i2s_codec \
+     -S i2s-codec
+
+7. Build Commands for the e8_dk I2S codec Sample Application for HP
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/i2s_codec \
+     -S i2s-codec
+
+.. note::
+
+   The codec application can be run only on the Eagle and Spark boards, as the on-board WM8904 codec is available on these boards. The Bolt board does not support this application.
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 

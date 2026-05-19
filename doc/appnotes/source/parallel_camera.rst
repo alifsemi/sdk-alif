@@ -216,7 +216,6 @@ Required Config Features
 --------------------------
 
 - ``CONFIG_VIDEO=y``
-- ``CONFIG_VIDEO_MIPI_CSI2_DW=n``
 - ``CONFIG_LOG=y``
 - ``CONFIG_PRINTK=y``
 - ``CONFIG_STDOUT_CONSOLE=y``
@@ -224,18 +223,6 @@ Required Config Features
 - ``CONFIG_I2C=y``
 - ``CONFIG_I2C_DW_CLOCK_SPEED=100``
 - ``CONFIG_SYS_HEAP_AUTO=y``
-
-Required Device Tree Changes
------------------------------
-
-**If testing with LPCAM instance**:
-- Enable the LPCAM node.
-- In the `i2c1` node, enable the `mt9m114` sub-node and uncomment the `lpcam` remote endpoint.
-- Disable the `cam` node.
-
-**If testing with CAM instance**:
-- Enable the `cam` node.
-- In the `i2c1` node, enable the `mt9m114` sub-node and uncomment the `cam` remote endpoint.
 
 Software Requirements
 -----------------------
@@ -307,6 +294,16 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
 
+4. Build command for the application with CAM interface (M55 HE core):
+
+.. code-block:: console
+
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
 
 Executing Binary on the DevKit
 --------------------------------

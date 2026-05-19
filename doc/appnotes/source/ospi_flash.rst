@@ -74,6 +74,16 @@ Follow these steps to build the OSPI Flash application using the Alif Zephyr SDK
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
+.. note::
+
+   To enable XIP (Execute In Place) support for OSPI Flash, add the
+   following configuration:
+
+   -DCONFIG_ALIF_OSPI_FLASH_XIP=y
+
+   This configuration enables XIP support for the OSPI Flash module.
+
+
 Executing Binary on the DevKit
 ===============================
 

@@ -22,8 +22,8 @@ The APS512XXN device is connected to the HexSPI0/OSPI0 SS0 instance of the DW OS
 
 For debugging and console output:
 
-- UART2 is used on the M55 HP core.
-- UART4 is used on the M55 HE core.
+- UART4 is used on the M55 HP core.
+- UART2 is used on the M55 HE core.
 
 .. include:: prerequisites.rst
 

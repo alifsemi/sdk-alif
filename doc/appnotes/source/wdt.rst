@@ -5,21 +5,24 @@ WDT
 =====
 
 Introduction
-=============
+============
 
-The Real-Time Subsystem Watchdog Timer (WDT_RTSS) is a 32-bit down-counter timer designed to monitor system health and ensure reliable operation. Its primary function is to count down over a predefined period, during which it expects to be serviced (i.e., "fed") by the system to confirm normal operation. If the system fails to service the watchdog before the countdown expires, the WDT_RTSS triggers a recovery action—such as a Non-Maskable Interrupt (NMI) or a CPU reset—to detect and recover from errant or stalled system behavior.
+The Real-Time Subsystem Watchdog Timer module, hereinafter referred to as WDT_RTSS, is a timer based on a 32-bit down-counter. The basic function of the WDT_RTSS is to count for a fixed period, during which it expects to be serviced by the system, indicating normal operation. The WDT_RTSS provides a mechanism to detect errant system behavior and recover from an unknown state by causing a system reset if the count period elapses without intervention.
 
-The device integrates up to two WDT_RTSS instances:
+The device includes up to two WDT_RTSS modules:
 
-- **WDT_HP:** Dedicated to the Arm® Cortex®-M55 High-Performance (M55-HP) processor
-- **WDT_HE:** Dedicated to the Arm® Cortex®-M55 High-Efficiency (M55-HE) processor
+* WDT_HP: Dedicated to the Arm Cortex-M55 High-Performance (M55-HP) processor
+* WDT_HE: Dedicated to the Arm Cortex-M55 High-Efficiency (M55-HE) processor
 
-Key Features of the WDT_RTSS Module:
+Features
+-----------
 
-- 32-bit down-counter architecture
-- Counter decrements by one on each rising edge of the watchdog clock
-- Configurable generation of a Non-Maskable Interrupt (NMI) upon timeout
-- Configurable CPU reset upon timeout
+The WDT_RTSS module supports the following main features:
+
+* 32-bit down-counter
+* Counter decrements by one on each positive watchdog clock edge
+* Configurable NMI generation upon watch period expiration
+* Configurable CPU reset upon watch period expiration
 
 .. include:: prerequisites.rst
 
