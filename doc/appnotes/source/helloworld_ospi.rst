@@ -46,6 +46,18 @@ To disable the MPU, perform the following changes:
 
   - ``ARM_MPU_Disable()``
 
+- For E7 device, update the following file:
+
+  ``zephyr/soc/alif/ensemble/e7/soc.h``
+
+  Set:
+
+  .. code-block:: c
+
+     #define __MPU_PRESENT 0
+
+  This configuration is required when building Hello World for OSPI NOR Flash.
+
 Additional Defines for RTSS-HE
 ------------------------------
 

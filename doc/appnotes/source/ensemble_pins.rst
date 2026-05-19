@@ -114,8 +114,8 @@ CAN Pin Setup
    * - Output Observation
      - P14_7 (Logic Analyzer)
 
-DAC and I2C Pin Setup
------------------------
+DAC Pin Setup
+-----------------
 
 **Pin Configuration (DAC)**
 
@@ -130,9 +130,6 @@ DAC and I2C Pin Setup
    * - Ensemble E7
      - P2_2
      - P2_3
-   * - Ensemble E1C
-     - P2_3
-     - -
 
 **Hardware Setup (DAC)**
 
@@ -152,6 +149,9 @@ DAC and I2C Pin Setup
    - **Input**: Provided to DAC registers.
    - **Resolution**: 12-bit, accepting values up to 4095.
    - **Operation**: Input of 0 gives 0 output; increments by 1000 are observable; inputs exceeding 4095 reset to 0.
+
+I2C Pin Setup
+-----------------
 
 **Pin Configuration (I2C)**
 

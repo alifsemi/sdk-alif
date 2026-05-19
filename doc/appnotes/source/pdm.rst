@@ -7,10 +7,10 @@ PDM
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the Pulse Density Modulation (PDM) controller IP provided by Alif Semiconductor" and integrated into Ensemble" devices. Key features include:
+This document explains how to create, compile, and run a demo application for the Pulse Density Modulation (PDM) controller IP provided by Alif Semiconductor™ and integrated into Ensemble™ devices. Key features include:
 
 - A PDM (Pulse Density Modulation) microphone produces 1-bit digital data streams in Pulse Density Modulated format.
-- The PDM Audio module supports eight audio channels, with each channel connecting to one microphone.
+- The PDM Audio module supports up to eight audio channels, one microphone per channel.
 - PDM Audio converts each 1-bit PDM audio input into 16-bit PCM (Pulse Code Modulated) format.
 - The host reads the 16-bit PCM data for each microphone through a set of APB registers.
 
@@ -50,16 +50,16 @@ The DevKit board has internal PDM microphones connected to channels 4 and 5, req
 **For Channels 2 and 3**:
 
 - **Data Line Configuration**:
-  - Connect pin `P5_4` on Flat board J14 to pin `P0_6` on Flat board J11.
+  - Connect pin `P5_4` on Flat board J14 to pin `P3_2` on Flat board J8.
 - **Clock Line Configuration**:
-  - Connect pin `P6_7` on Flat board J15 to pin `P0_7` on Flat board J11.
+  - Connect pin `P6_7` on Flat board J15 to pin `P3_3` on Flat board J8.
 
 **For Channels 6 and 7**:
 
 - **Data Line Configuration**:
-  - Connect pin `P5_4` on Flat board J14 to pin `P5_1` on Flat board J12.
+  - Connect pin `P5_4` on Flat board J14 to pin `P5_1` on Flat board J10.
 - **Clock Line Configuration**:
-  - Connect pin `P6_7` on Flat board J15 to pin `P5_2` on Flat board J12.
+  - Connect pin `P6_7` on Flat board J15 to pin `P5_2` on Flat board J10.
 
 **PDM Channel Configurations**:
 
@@ -166,9 +166,9 @@ The DevKit board has internal PDM microphones. To test PDM channels 0, 1, 2, and
 **For Channels 2 and 3**:
 
 - **Data Line Configuration**:
-  - Connect pin `P5_4` on Flat board J14 to pin `P0_6` on Flat board J11.
+  - Connect pin `P5_4` on Flat board J14 to pin `P3_2` on Flat board J8.
 - **Clock Line Configuration**:
-  - Connect pin `P6_7` on Flat board J15 to pin `P0_7` on Flat board J11.
+  - Connect pin `P6_7` on Flat board J15 to pin `P3_3` on Flat board J8.
 
 Hardware Setup for Multiple LPPDM Channels
 ------------------------------------------
@@ -178,16 +178,16 @@ The DevKit has internal PDM microphones. To test LPPDM channels 0, 1, 2, and 3, 
 **For Channels 0 and 1**:
 
 - **Data Line (LPPDM_D0_B)**:
-  - Connect pin `P5_4` on Flat board J14 to pin `P3_5` on Flat board J11.
+  - Connect pin `P5_4` on Flat board J14 to pin `P3_5` on Flat board J8.
 - **Clock Line (LPPDM_C0_B)**:
-  - Connect pin `P6_7` on Flat board J15 to pin `P3_4` on Flat board J11.
+  - Connect pin `P6_7` on Flat board J15 to pin `P3_4` on Flat board J8.
 
 **For Channels 2 and 3**:
 
 - **Data Line (LPPDM_D1_B)**:
-  - Connect pin `P5_4` on Flat board J14 to pin `P3_7` on Flat board J11.
+  - Connect pin `P5_4` on Flat board J14 to pin `P3_7` on Flat board J8.
 - **Clock Line (LPPDM_C1_B)**:
-  - Connect pin `P6_7` on Flat board J15 to pin `P3_6` on Flat board J11.
+  - Connect pin `P6_7` on Flat board J15 to pin `P3_6` on Flat board J8.
 
 Hardware Setup for Low-Power PDM (LPPDM)
 ----------------------------------------
@@ -197,13 +197,13 @@ The DevKit has internal PDM microphones. To test LPPDM channels 0 and 1, connect
 **For Channels 0 and 1**:
 
 - **Data Line (LPPDM_D0_B)**:
-  - Connect pin `P5_4` on Flat board J14 to pin `P3_5` on Flat board J11.
+  - Connect pin `P5_4` on Flat board J14 to pin `P3_5` on Flat board J8.
 - **Clock Line (LPPDM_C0_B)**:
-  - Connect pin `P6_7` on Flat board J15 to pin `P3_4` on Flat board J11.
+  - Connect pin `P6_7` on Flat board J15 to pin `P3_4` on Flat board J8.
 
 .. include:: note.rst
 
-Build an PDM and LPPDM Application with Zephyr
+Build a PDM and LPPDM Application with Zephyr
 ===================================================
 
 Follow these steps to build the PDM and LPPDM application using the Alif Zephyr SDK:
@@ -267,23 +267,23 @@ For multiple channels, consider enabling channels 0, 1, 2, and 3.
      */
     #define PDM_CHANNELS    PDM_MASK_CHANNEL_0 | PDM_MASK_CHANNEL_1 | PDM_MASK_CHANNEL_2 | PDM_MASK_CHANNEL_3
 
-1. Specify the block size to store the PCM data.
+2. Specify the block size to store the PCM data.
 
-.. code-block:: bash
+.. code-block:: c
 
-   #define PCMJ BlockSize >> >>   50000
+   #define PCM_BLOCK_SIZE 30000
 
 3. Specify the number of samples to store the captured PCM data.
 
-.. code-block:: bash
+.. code-block:: c
 
     /* Number of blocks in the slab */
-   #define MEM_SLAB_NUM_BLOCKS >> >>   1
+    #define MEM_SLAB_NUM_BLOCKS    1
 
 
-- If `PCMJ_BLOCK_SIZE` is 50000 and `MEM_SLAB_NUM_BLOCKS` is 1, 50000 PCM samples can be stored in the `pcmj_data` buffer.
+- If `PCM_BLOCK_SIZE` is 30000 and `MEM_SLAB_NUM_BLOCKS` is 1, 30000 PCM samples can be stored in the `pcm_data` buffer.
 
-- If `PCMJ_BLOCK_SIZE` is 50000 and `MEM_SLAB_NUM_BLOCKS` is 2, 100000 PCM samples can be stored in the `pcmj_data` buffer.
+- If `PCM_BLOCK_SIZE` is 30000 and `MEM_SLAB_NUM_BLOCKS` is 2, 60000 PCM samples can be stored in the `pcm_data` buffer.
 
 4. Choose the mode of operation in the `pdm_mode` API.
 
@@ -303,39 +303,47 @@ For multiple channels, consider enabling channels 0, 1, 2, and 3.
 
 12. The PCM samples will be stored in the `pcmj_data` buffer. Print the base address of the `pcmj_data` buffer.
 
-The text below shows channels 4 and 5 enabled, with the buffer address at `0x20000c3c`. 50,000 PCM samples are stored in the `pcmj_data` buffer, and the stored PCM samples are being printed.
+The text below shows channels 4 and 5 enabled, with the buffer address at 0x20000e74 and 60,000 PCM samples are stored in the `pcmj_data` buffer, and the stored PCM samples are being printed.
 
-PCM Samples Buffer (Channels 4 and 5, Address 0x20000c3c)
+PCM Samples Buffer (Channels 4 and 5, Address 0x20000e74)
 ---------------------------------------------------------
 
 .. code-block:: text
 
+   *** Booting Zephyr OS build ***
+   [00:00:00.000,000] <inf> PDM: PDM init okay
+
+   [00:00:00.000,000] <inf> PDM: memslab: 0x200003d4
+
+   [00:00:00.000,000] <inf> PDM: channel_map 30 block size: 7530
+
    Start Speaking or Play some Audio!
-   [00:00:00.000,000] <inf> alif_pdm: Memory block allocated : 0x2000dfd8
-   [00:00:01.563,000] <inf> PDM: Block freed at address: 0x2000dfd8
+   Stop recording
 
-   stop recording
-   [00:00:01.563,000] <inf> PDM: PCM samples will be stored in 0x20000c3c address and size of buffer is 50000
-   [00:00:01.563,000] <inf> PDM: pcm data : 0x20000c3c
+   [00:00:01.875,000] <inf> PDM: PCM samples will be stored in
+   0x20000e74 address and size of buffer is 60000
 
-   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
-   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
-   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
-   [00:00:01.563,000] <inf> PDM:   0 0 0 0 0 0 0 0
+   [00:00:01.875,000] <inf> PDM: Block freed at address: 0x20017e50
 
-   [00:00:01.563,000] <inf> PDM:   ff ff 0 0 fb ff 0 0
-   [00:00:01.563,000] <inf> PDM:   f2 ff 5 0 ee ff 2 0
-   [00:00:01.563,000] <inf> PDM:   14 0 ee ff b 0 e0 ff
-   [00:00:01.563,000] <inf> PDM:   49 0 f7 ff 68 0 fa ff
-   [00:00:01.563,000] <inf> PDM:   91 0 1d 0 15 1 94 0
-   [00:00:01.564,000] <inf> PDM:   16 1 71 0 e0 1 a2 ff
+   [00:00:01.875,000] <inf> PDM: pcm data : 0x20000e74
+
+   [00:00:01.875,000] <inf> PDM:  0  0  0  0  0  0  0  0
+   [00:00:01.875,000] <inf> PDM:  0  0  0  0  0  0  0  0
+   [00:00:01.875,000] <inf> PDM:  0  0  0  0  0  0  0  0
+   [00:00:01.875,000] <inf> PDM:  0  0  0  0 ff ff  0  0
+   [00:00:01.875,000] <inf> PDM: fb ff  0  0 f2 ff  5  0
+   [00:00:01.875,000] <inf> PDM: ed ff  2  0 12  0 ef ff
+   [00:00:01.875,000] <inf> PDM:  9  0 e0 ff 48  0 f3 ff
+   [00:00:01.875,000] <inf> PDM: 6d  0 f7 ff 9d  0 19  0
+   [00:00:01.875,000] <inf> PDM: 29  1 92  0 3b  1 78  0
+   [00:00:01.875,000] <inf> PDM: 17  2 b0 ff 6e  2 86 ff
 
 
-13. Copy the buffer address for channels 4 and 5.
+13.  Copy the buffer address for channels 4 and 5.
 
-14. Open the memory section, paste the buffer address, and press Enter.
+14.  Open the memory section, paste the buffer address, and press Enter.
 
-15. In the buffer memory section, view the converted PCM samples stored in the buffer.
+15.  In the buffer memory section, view the converted PCM samples stored in the buffer.
 
     The screenshot below shows the PCM samples stored at the specified buffer address.
 
@@ -345,7 +353,8 @@ PCM Samples Buffer (Channels 4 and 5, Address 0x20000c3c)
 
        PCM Samples in Memory Section
 
-16. To export the memory:
+16.  To export the memory:
+
     - Go to the right-most corner.
     - Click on the **View** menu.
     - Select the **Export Memory** option.
@@ -356,12 +365,13 @@ PCM Samples Buffer (Channels 4 and 5, Address 0x20000c3c)
 
        Export Memory Option
 
-17. By default, the start and end address will be present in the memory bounds.
+17.  By default, the start and end address will be present in the memory bounds.
 
-18. Specify the length in bytes, corresponding to the buffer size.
-    For example, if the number of samples is 50,000, the length in bytes will be 50,000 bytes.
+18.  Specify the length in bytes, corresponding to the buffer size.
 
-19. Store the PCM samples in binary format with the filename `memory.bin`.
+    For example, if the number of samples is 60,000, the length in bytes will be 60,000 bytes.
+
+19.  Store the PCM samples in binary format with the filename `memory.bin`.
 
     .. figure:: _static/storing_pcm_samples.png
        :alt: Storing PCM Samples

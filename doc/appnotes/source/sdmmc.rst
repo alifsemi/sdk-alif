@@ -57,6 +57,18 @@ Build SDMMC Applications
 For instructions on fetching the Alif Zephyr SDK and navigating to the
 Zephyr repository, please refer to the `ZAS User Guide`_.
 
+.. note::
+
+   ``sd-vsel`` (``gpio_6_3``) is used for run-time voltage selection
+   (1.8 V ↔ 3.3 V) and is multiplexed with UART2. Therefore, do not use
+   UART2 together with the SD application on E8.
+
+   If SD card functionality does not work with the default configuration,
+   try toggling ``CONFIG_SD_UHS_PROTOCOL`` in the respective application
+   configuration. This option enables or disables 1.8 V switching, and
+   some SD cards or modules may only operate correctly at a specific
+   voltage level.
+
 FatFS File System Sample
 ------------------------
 
@@ -78,7 +90,8 @@ Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
 
    west build -p always \
      -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
 
@@ -86,7 +99,8 @@ Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
 
    west build -p always \
      -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
 
@@ -94,7 +108,8 @@ Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
 
    west build -p always \
      -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
 
@@ -102,7 +117,8 @@ Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
 
    west build -p always \
      -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Once build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
@@ -138,7 +154,8 @@ Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
 
    west build -p always \
      -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Once build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
@@ -174,7 +191,8 @@ Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
@@ -182,7 +200,8 @@ Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Once build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
@@ -218,7 +237,8 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
 
    west build -p always \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
 
@@ -226,7 +246,8 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
 
    west build -p always \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-     samples/subsys/fs/fs_sample/
+     samples/subsys/fs/fs_sample/ \
+     -S alif-sdmmc
 
 Once build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``

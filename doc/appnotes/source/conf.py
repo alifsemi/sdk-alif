@@ -14,7 +14,7 @@ import shutil
 project = 'Application Notes for Zephyr Alif SDK'
 copyright = '2025-2026, Alif Semiconductor'
 author = 'Alif Semiconductor'
-release = '2.2.0'
+release = '2.3.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -24,6 +24,7 @@ extensions = [
     'sphinx.ext.todo',
     'sphinx.ext.autodoc',
     'sphinx.ext.viewcode',
+    'sphinx_rtd_theme',
 ]
 
 templates_path = ['_templates']
@@ -61,20 +62,9 @@ latex_elements = {
     'preamble': r'''
         \usepackage{float}
         \usepackage{graphicx}
-        \usepackage{fancyhdr}
-        \input{_static/latex/alif_semiconductor.sty}
-
-        % Override Sphinx page style
-        \makeatletter
-        \fancypagestyle{sphinx}{
-            \fancyhf{}
-            \fancyfoot[C]{\thepage}
-            \renewcommand{\headrulewidth}{0pt}
-            \renewcommand{\footrulewidth}{0pt}
-        }
-        \makeatother
+        \usepackage{_static/latex/alif_semiconductor}
     ''',
-    'figure_align': 'H',
+    'figure_align': 'H',  # Force figures to appear exactly where placed
 }
 
 latex_table_style = ['booktabs', 'colorrows']

@@ -123,6 +123,8 @@ in the build command to apply them.
      - Enables UART0 with hardware flow control (RTS/CTS) as shell UART.
    * - ``uart2-hfosc-clk``
      - Configures UART2 to use the HFOSC 38.4 MHz clock source.
+   * - ``alif-dk``
+     - Enables DMA for UART.
 
 Example usage:
 
