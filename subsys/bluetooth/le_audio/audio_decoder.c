@@ -195,9 +195,17 @@ INT_RAMFUNC static void audio_decoder_thread_func(void *p1, void *p2, void *p3)
 #define RIGHT_CH (1 << 1)
 
 	while (!dec->thread_abort) {
-		/* Get a free audio block to decode into */
+		/* Get a free audio block to decode into. Use a bounded wait so
+		 * the thread is never parked indefinitely on the slab waitq -
+		 * if delete is called while we're blocked here, we'd otherwise
+		 * leak a dangling waitq entry into the kernel scheduler.
+		 */
 		audio = NULL;
-		ret = k_mem_slab_alloc(&audio_queue->slab, (void **)&audio, K_FOREVER);
+		ret = k_mem_slab_alloc(&audio_queue->slab, (void **)&audio, K_MSEC(20));
+		if (ret == -EAGAIN) {
+			/* Timed out - re-check thread_abort and try again */
+			continue;
+		}
 		if (ret || !audio) {
 			k_sleep(K_MSEC(2));
 			LOG_ERR("Failed to allocate audio block");
@@ -362,35 +370,46 @@ get_next_sdus:
 #endif
 
 decode_finalize:
-		audio->timestamp = timestamp;
-		audio->num_channels = (num_channels == (LEFT_CH + RIGHT_CH)) ? 2 : 1;
+	audio->timestamp = timestamp;
+	audio->num_channels = (num_channels == (LEFT_CH + RIGHT_CH)) ? 2 : 1;
 
-		/* Push the audio data to queue */
-		ret = k_msgq_put(&audio_queue->msgq, (void **)&audio, K_FOREVER);
-		if (ret) {
-			k_sleep(K_MSEC(1));
-			LOG_ERR("Failed to push audio block to queue");
-			/* try again */
-			goto decode_finalize;
+	/* Notify datapath that SDUs are completed. This also triggers next read
+	 * if last one was failed for some reason. Do this before the audio queue
+	 * put so ISO RX can re-arm immediately even if the audio queue is full.
+	 */
+	for (int i = 0; i < ARRAY_SIZE(dec->channel); i++) {
+		iso_datapath_ctoh_notify_sdu_done(dec->channel[i].iso_dp, timestamp,
+						  last_sdu_seq);
+	}
+
+	/* Notify listeners that a block is completed. Do this before the audio
+	 * queue put so callbacks (e.g., sequence tracking) fire even when the
+	 * audio queue is full and the frame is dropped.
+	 */
+	struct cb_list *cb_item = dec->cb_list;
+
+	while (cb_item) {
+		cb_item->cb(cb_item->context, timestamp, last_sdu_seq);
+		cb_item = cb_item->next;
+	}
+
+	/* Push the audio data to queue. Use a bounded wait so the thread
+	 * is never parked indefinitely on the msgq waitq during teardown.
+	 * If the queue is full and we time out, free the block and drop
+	 * the frame rather than retrying forever.
+	 */
+	ret = k_msgq_put(&audio_queue->msgq, (void **)&audio, K_MSEC(20));
+	if (ret) {
+		k_mem_slab_free(&audio_queue->slab, audio);
+		if (dec->thread_abort) {
+			break;
 		}
+		LOG_WRN("Audio queue full, dropped frame (err %d)", ret);
+		continue;
+	}
 
-		/* Notify I2S sink that it has a buffer available */
-		audio_sink_i2s_notify_buffer_available(NULL, 0, 0);
-
-		/* Notify datapath that SDUs are completed. This also triggers next read
-		 * if last one was failed for some reason.
-		 */
-		for (int i = 0; i < ARRAY_SIZE(dec->channel); i++) {
-			iso_datapath_ctoh_notify_sdu_done(dec->channel[i].iso_dp, timestamp,
-							  last_sdu_seq);
-		}
-
-		/* Notify listeners that a block is completed */
-		struct cb_list *cb_item = dec->cb_list;
-		while (cb_item) {
-			cb_item->cb(cb_item->context, timestamp, last_sdu_seq);
-			cb_item = cb_item->next;
-		}
+	/* Notify I2S sink that it has a buffer available */
+	audio_sink_i2s_notify_buffer_available(NULL, 0, 0);
 	}
 
 	LOG_DBG("Decoder thread finished");
@@ -498,7 +517,7 @@ struct audio_decoder *audio_decoder_create(struct audio_decoder_params const *co
 
 	/* Create and start thread */
 	dec->tid = k_thread_create(&dec->thread, decoder_stack, CONFIG_LC3_DECODER_STACK_SIZE,
-				   audio_decoder_thread_func, dec, NULL, NULL,
+				   audio_decoder_thread_func, dec, NULL, "lc3_decoder",
 				   CONFIG_ALIF_BLE_HOST_THREAD_PRIORITY, 0, K_NO_WAIT);
 
 	if (!dec->tid) {
@@ -630,12 +649,11 @@ int audio_decoder_delete(struct audio_decoder *decoder)
 		return -EINVAL;
 	}
 
-	/* Signal to thread that it should abort */
+	/* Signal to thread that it should abort. The thread loop polls
+	 * this flag on every iteration and all blocking waits inside the
+	 * loop are bounded to K_MSEC(20), so it will exit within ~20 ms.
+	 */
 	decoder->thread_abort = true;
-	void *dummy_queue_item = NULL;
-
-	/* Send dummy item to wake up and cancel thread */
-	k_msgq_put(&decoder->channel[0].sdu_queue->msgq, &dummy_queue_item, K_FOREVER);
 
 	/* Join thread before freeing anything */
 	k_thread_join(&decoder->thread, K_FOREVER);
