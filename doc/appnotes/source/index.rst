@@ -10,6 +10,7 @@ Application Notes for the Zephyr Alif SDK
    :maxdepth: 2
    :caption: Contents:
 
+   apss_a32.rst
    adc.rst
    ble.rst
    clock_control.rst
