@@ -652,7 +652,6 @@ int main(void)
 
 	LOG_INF(" 0x%X", buffer[0]);
 
-/*	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES); */
 	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
