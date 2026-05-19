@@ -31,7 +31,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
    The build commands shown here are specifically for the Alif E7 DevKit.
    To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
 
-2. Build command for application on the M55 HE core:
+2. Build Command for the MHU0 Application on the M55-HE Core:
 
 .. code-block:: console
 
@@ -42,7 +42,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -DRTSS_HP_MHU0=on
 
 
-3. Build command for application on the M55 HP core:
+3. Build Command for the MHU0 Application on the M55-HP Core:
 
 .. code-block:: console
 
@@ -51,6 +51,27 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
      -- \
      -DRTSS_HE_MHU0=on
+
+4. Build Command for the MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+
+5. Build Command for the MHU1 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU1=on
 
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
@@ -69,7 +90,7 @@ To execute binaries on the DevKit follow the command
 Console Output
 ===============
 
-The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU examples on the Alif E7 DevKit.
+The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU0 examples on the Alif E7 DevKit.
 
 .. list-table::
    :header-rows: 1
@@ -126,7 +147,81 @@ The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU 
           MSG received is 0xbeabdead
           data sent
 
+The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU1 examples on the Alif E7 DevKit.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 50 50
+
+   * - **Minicom - Port /dev/ttyUSB0**
+     - **Minicom - Port /dev/ttyACM1**
+
+   * - .. code-block:: text
+
+          *** Booting Zephyr OS build ***
+
+          RTSS-HP RTSS-HE MHU 1 example on alif_e7_dk
+
+          RTSS-HP: MSG sent on Ch:0 is 0xfaceface
+          RTSS-HP: MSG rcvd on ch:0 is 0xfaceface
+
+          RTSS-HP: MSG sent on Ch:1 is 0xfadefade
+          RTSS-HP: MSG rcvd on ch:1 is 0xfadefade
+
+          RTSS-HP: MSG sent on Ch:0 is 0xfaceface
+          RTSS-HP: MSG rcvd on ch:0 is 0xfaceface
+
+          RTSS-HP: MSG sent on Ch:1 is 0xfadefade
+          RTSS-HP: MSG rcvd on ch:1 is 0xfadefade
+
+          RTSS-HP: MSG sent on Ch:0 is 0xfaceface
+          RTSS-HP: MSG rcvd on ch:0 is 0xfaceface
+
+          RTSS-HP: MSG sent on Ch:1 is 0xfadefade
+          RTSS-HP: MSG rcvd on ch:1 is 0xfadefade
+
+          RTSS-HP: MSG sent on Ch:0 is 0xfaceface
+          RTSS-HP: MSG rcvd on ch:0 is 0xfaceface
+
+          RTSS-HP: MSG sent on Ch:1 is 0xfadefade
+
+     - .. code-block:: text
+
+          *** Booting Zephyr OS build ***
+
+          RTSS-HE RTSS-HP MHU 1 example on alif_e7_dk
+
+          RTSS-HE: MSG rcvd on ch:0 is 0xfaceface
+          RTSS-HE: MSG sent on Ch:0 is 0xfaceface
+
+          RTSS-HE: MSG rcvd on ch:1 is 0xfadefade
+          RTSS-HE: MSG sent on Ch:1 is 0xfadefade
+
+          RTSS-HE: MSG rcvd on ch:0 is 0xfaceface
+          RTSS-HE: MSG sent on Ch:0 is 0xfaceface
+
+          RTSS-HE: MSG rcvd on ch:1 is 0xfadefade
+          RTSS-HE: MSG sent on Ch:1 is 0xfadefade
+
+          RTSS-HE: MSG rcvd on ch:0 is 0xfaceface
+          RTSS-HE: MSG sent on Ch:0 is 0xfaceface
+
+          RTSS-HE: MSG rcvd on ch:1 is 0xfadefade
+          RTSS-HE: MSG sent on Ch:1 is 0xfadefade
+
+          RTSS-HE: MSG rcvd on ch:0 is 0xfaceface
+          RTSS-HE: MSG sent on Ch:0 is 0xfaceface
+
+          RTSS-HE: MSG rcvd on ch:1 is 0xfadefade
+          RTSS-HE: MSG sent on Ch:1 is 0xfadefade
+
+          RTSS-HE: MSG rcvd on ch:0 is 0xfaceface
+
+.. note::
+   MHU0 and MHU1 communication is not supported on Balletto devices.
+
 .. note::
    The logs above show successful message exchange between RTSS-HP and RTSS-HE cores through the MHU interface on the Alif E7 DevKit.
+
 
 

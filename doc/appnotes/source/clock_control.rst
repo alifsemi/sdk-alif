@@ -126,6 +126,10 @@ The following table lists all the available clocks:
      - High-performance clock for NPU
    * - ALIF_DMA1_CLK
      - Clock for DMA1
+   * - ALIF_I2Cn_GATED_CLK
+     - Gated clock for I2Cn (Ensemble E8, E1C, and Balletto B1 only)
+   * - ALIF_LPI2C1_CLK
+     - Clock for LPI2C1 (Ensemble E8 only)
 
 Clock Node
 ==========

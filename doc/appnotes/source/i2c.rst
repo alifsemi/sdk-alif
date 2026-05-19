@@ -104,7 +104,7 @@ Follow these steps to build the I2C application using the Alif Zephyr SDK:
      -S alif-dk
 
 
-> If using an external **Environment 3 Click Board**, use the build command for application on the  M55 HP core:
+> If using an external **Environment 3 Click Board**, use the following build command for the M55 HP core:
 
 .. code-block:: console
 
@@ -136,9 +136,6 @@ Follow these steps to build the I2C application using the Alif Zephyr SDK:
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
-.. note::
-
-   Set ``CONFIG_I2C_DW_CLOCK_SPEED`` to 160 when building the ``LPI2C1`` instance, as the input I2C clock is 160 MHz.
 
 Executing Binary on the DevKit
 ===============================
@@ -154,32 +151,17 @@ Console Output
 
 Upon reviewing the output logs, the I2C functionality has been successfully validated.
 
-.. code-block:: text
+.. code-block:: console
 
    Received a byte in slave : 0xaa
    Received a byte in slave : 0xab
    Received a byte in slave : 0xac
    Received a byte in slave : 0xad
    Master wrote 0xaa 0xab 0xac 0xad to slave
-   Read requested from Master and send 0x60 from slave
-   Read processed_cb called
-   Master received Data 0x60 From Slave
-
-   Received a byte in slave : 0xaa
-   Received a byte in slave : 0xab
-   Received a byte in slave : 0xac
-   Received a byte in slave : 0xad
-   Master wrote 0xaa 0xab 0xac 0xad to slave
-   Read requested from Master and send 0x60 from slave
-   Read processed_cb called
-   Master received Data 0x60 From Slave
-
-   Received a byte in slave : 0xaa
-   Received a byte in slave : 0xab
-   Received a byte in slave : 0xac
-   Received a byte in slave : 0xad
-   Master wrote 0xaa 0xab 0xac 0xad to slave
-   Read requested from Master and send 0x60 from slave
-   Read processed_cb called
-   Master received Data 0x60 From Slave
+   Read requested from Master and send 0x50 from slave
+   Read processed from Master and send 0x51 from slave
+   Read processed from Master and send 0x52 from slave
+   Read processed from Master and send 0x53 from slave
+   Master received following data from the Slave: 0x50 0x51 0x52 0x53
+   ...continues, with the slave TX bytes incrementing on subsequent iterations
 

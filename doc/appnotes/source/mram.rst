@@ -5,15 +5,15 @@ MRAM
 ========
 
 Introduction
-=============
+============
 
-Embedded Magnetoresistive Random-Access Memory (MRAM) is a type of non-volatile random-access memory that stores data using magnetic elements.
+The MRAM module is a type of non-volatile random-access memory which stores information in magnetic elements.
 
-The MRAM module operates at a clock frequency of 26.67 MHz over a 128-bit (16-byte) data bus. The 128-bit word represents the smallest addressable sector size in MRAM. This fine granularity significantly improves efficiency compared to legacy flash memory technologies, which require much larger sectors and consequently suffer from longer program and erase times.
+The MRAM operates at 66 MHz clock frequency over a 128-bit data bus. The 128-bit (16-byte) word represents the minimum sector size for the MRAM. The smaller granularity offers much better efficiency compared to the legacy flash memory modules. It takes flash memories longer to be programmed/erased due to their much larger sector sizes.
 
-A built-in state machine manages the erase and program sequences for 16-byte memory blocks. These operations are fully transparent to the CPU core and do not require software intervention or a dedicated driver.
+The MRAM module implements a state machine controlling the erase and programming sequence of 16-byte memory blocks. This operation is transparent to the CPU core.
 
-To enhance performance, the MRAM controller incorporates a read cache and a write buffer, enabling concurrent read and write operations. This architecture is especially beneficial in multi-core systems, where multiple bus masters can access the MRAM simultaneously without explicit synchronization. Specifically, up to four bus masters can initiate concurrent write operations, while the number of concurrent read operations is unrestricted.
+The MRAM controller implements read cache and write buffer mechanism that enables the concurrent read and write operations. This greatly benefits the implementation of multi-core applications that are not required to coordinate the access to the MRAM. Up to four bus masters can originate concurrent write operations, while the number of concurrent read operations is not limited.
 
 **Key Features**
 ------------------

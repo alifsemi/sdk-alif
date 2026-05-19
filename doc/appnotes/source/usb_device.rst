@@ -388,6 +388,14 @@ Console Output with RAMDISK Support
 MSC with RAMDISK, SD Card and OSPI Support
 ------------------------------------------
 
+.. note::
+
+   When booting the application from TCM, ensure that the following
+   configuration options are disabled or removed from the configuration file:
+
+   * ``CONFIG_USE_DT_CODE_PARTITION``
+   * ``CONFIG_FLASH_BASE_ADDRESS=0x80000000``
+
 1. Build command for MSC sample application with RAMDISK, SD card and OSPI support on Alif E7 Board(M55 HP):
 
 .. code-block:: console
