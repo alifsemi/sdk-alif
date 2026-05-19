@@ -397,10 +397,10 @@ int main(void)
  */
 static int app_set_parameters(void)
 {
-#if (CONFIG_VIDEO_MIPI_CSI2_DW)
 	run_profile_t runp;
 	int ret;
 
+#if defined(CONFIG_VIDEO_MIPI_CSI2_DW)
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_select), okay))
 	const struct gpio_dt_spec sel =
 		GPIO_DT_SPEC_GET(DT_NODELABEL(camera_select), select_gpios);
@@ -408,6 +408,7 @@ static int app_set_parameters(void)
 	gpio_pin_configure_dt(&sel, GPIO_OUTPUT);
 	gpio_pin_set_dt(&sel, 1);
 #endif /* (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_sensor), okay)) */
+#endif
 
 	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
 #if defined(CONFIG_SOC_SERIES_E8)
@@ -445,6 +446,7 @@ static int app_set_parameters(void)
 	 * TODO: parse this clock from DTS and set on board from camera
 	 * controller driver.
 	 */
+#if defined(CONFIG_VIDEO_MIPI_CSI2_DW)
 	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
 #endif
 
