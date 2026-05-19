@@ -16,3 +16,9 @@
 .. _`DS-CNN Paper`: https://arxiv.org/abs/1711.07128
 
 .. _boards_arm_directory: https://github.com/alifsemi/sdk-alif/tree/v2.2.0/boards/arm
+
+.. _`bl32_e8.bin`: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/bl32_e8.bin
+
+.. _`bl32_e7.bin`: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/bl32_e7.bin
+
+.. _`bl32-z.json`: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/bl32-z.json
