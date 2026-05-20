@@ -18,6 +18,10 @@
 #include <zephyr/drivers/video/hm0360-video-controls.h>
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+#include <zephyr/drivers/regulator.h>
+#endif
+
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 
@@ -290,6 +294,16 @@ int main(void)
 	}
 	LOG_INF("- Device name: %s", video->name);
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	const struct device *cam_enbuf =
+		DEVICE_DT_GET(DT_NODELABEL(cam_enbuf));
+
+	if (!device_is_ready(cam_enbuf)) {
+		LOG_ERR("cam_enbuf regulator not ready\n");
+		return -1;
+	}
+#endif
+
 #if ISP_ENABLED && defined(CONFIG_ISP_LIB_AE_MODULE)
 	ret = isp_vsi_register_ae_status_callback(video, ae_status, NULL);
 	if (ret) {
@@ -495,6 +509,10 @@ int main(void)
 	}
 #endif
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	regulator_enable(cam_enbuf);
+#endif
+
 	/* Start video capture */
 	ret = video_stream_start(video);
 	if (ret) {
@@ -558,6 +576,10 @@ exit_exec:
 		LOG_ERR("Unable to stop capture (interface). ret - %d", ret);
 		return -1;
 	}
+
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	regulator_disable(cam_enbuf);
+#endif
 
 	return 0;
 }
@@ -630,12 +652,6 @@ static int app_set_parameters(void)
 	 * controller.
 	 * sys_write32(0x140001, M55HE_CFG_HE_CAMERA_PIXCLK);
 	 */
-#if CONFIG_DT_HAS_OVTI_OV5640_ENABLED
-	const struct gpio_dt_spec cam_enbuf =
-		GPIO_DT_SPEC_GET(DT_NODELABEL(cam_enbuf), enbuf_gpios);
-
-	gpio_pin_configure_dt(&cam_enbuf, GPIO_OUTPUT_ACTIVE);
-#endif
 #endif
 	return 0;
 }
