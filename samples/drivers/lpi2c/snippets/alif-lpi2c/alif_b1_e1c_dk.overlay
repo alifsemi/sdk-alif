@@ -12,12 +12,12 @@
 
 / {
 	aliases {
-		master-i2c = &i2c0;
+		master-i2c = &i2c1;
 		slave-i2c = &lpi2c0;
 	};
 };
 
-&i2c0 {
+&i2c1 {
 	status = "okay";
 };
 
