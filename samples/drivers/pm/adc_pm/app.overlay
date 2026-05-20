@@ -1,0 +1,73 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+&lpgpio {
+	status = "disabled";
+};
+
+&adc0 {
+	status = "okay";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <25000000>;
+	status = "okay";
+};
+
+&standby_s2ram {
+	min-residency-us = <19000000>;
+	status = "okay";
+};
+
+&stop_s2ram {
+	min-residency-us = <21000000>;
+	status = "okay";
+};
+
+&suspend_idle {
+	status = "disabled";
+};
+
+&aipm_off {
+	vtor-address = <0x00000000>;
+	status = "okay";
+};
+
+&off_profile_standby {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+&off_profile_stop {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+		zephyr,console = &uart2;
+	};
+};
