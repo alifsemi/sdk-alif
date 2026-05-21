@@ -28,7 +28,7 @@
 &i2c1 {
 	status = "okay";
 
-	ov5640: ov5640@3c{
+	ov5640: ov5640@3c {
 		compatible = "ovti,ov5640";
 		reg = <0x3c>;
 		status = "okay";
@@ -36,7 +36,7 @@
 		powerdown-gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
 
 		port {
-			ov5640_ep_out: endpoint {
+			lpcam_ep_out: endpoint {
 				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
 				remote-endpoint-label = "lpcam_ep_in";
 			};
@@ -55,7 +55,7 @@
 		port@0 {
 			reg = <0>;
 			lpcam_ep_in: endpoint {
-				remote-endpoint-label = "ov5640_ep_out";
+				remote-endpoint-label = "lpcam_ep_out";
 			};
 		};
 
