@@ -34,7 +34,7 @@
 /* DMA-compatible word size - DMA controllers
  * typically only support 8-bit reliably
  */
-#define SPI_TEST_DMA_WORD_SIZE      8U     /* Use 8-bit for DMA transfers */
+#define SPI_TEST_DMA_WORD_SIZE      32U     /* Use 8-bit for DMA transfers */
 
 /* Convenience macro to avoid repeating the long ternary in every test file */
 #define SPI_TEST_WORD_SIZE \
@@ -51,6 +51,7 @@
 
 #define SPI_TEST_CS_DELAY_US        100U
 #define SPI_TEST_TARGET_HEADSTART_US 10000U  /* Increased for DMA timing */
+#define SPI_TEST_TIMEOUT_MARGIN_MS  500U
 
 /* Devicetree node aliases */
 #define SPI_CONTROLLER_NODE         DT_ALIAS(controller_spi)
@@ -125,6 +126,8 @@ int spi_test_prepare_data(uint32_t *data, uint16_t pattern, uint32_t count);
 int spi_test_reset_buffer(uint32_t *buffer, size_t count);
 bool spi_test_device_ready(const struct device *dev, const char *role);
 void spi_test_controller_cs_init(struct spi_cs_control *cs);
+uint64_t spi_test_transfer_timeout_ms(size_t bytes, uint32_t freq_hz);
+k_timeout_t spi_test_transfer_timeout(size_t bytes, uint32_t freq_hz);
 
 /* Inline helper: create spi_config with CS pre-configured from DT */
 static inline struct spi_config spi_test_config(uint32_t operation,

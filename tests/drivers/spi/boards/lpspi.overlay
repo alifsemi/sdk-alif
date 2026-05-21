@@ -9,7 +9,7 @@
 
 /* LPSPI / SPI test overlay.
  * HE: SPI4 controller <-> SPI0/SPI1 target (board-dependent)
- * A5: LPSPI0 controller <-> SPI1 target
+ * E1C/B1: LPSPI0 controller <-> SPI1 target
  */
 #include "board_common.overlay"
 
@@ -21,8 +21,7 @@
 #elif ALIF_BOARD == ALIF_BOARD_E8_HE
 		controller-spi = &spi4;
 		target-spi     = &spi1;
-#elif ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
-	ALIF_BOARD == ALIF_BOARD_B1
+#elif ALIF_BOARD == ALIF_BOARD_E1C || ALIF_BOARD == ALIF_BOARD_B1
 		controller-spi = &lpspi0;
 		target-spi     = &spi1;
 #else
@@ -45,8 +44,7 @@
 	status = "disabled";
 };
 
-#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
-	ALIF_BOARD == ALIF_BOARD_B1
+#if ALIF_BOARD == ALIF_BOARD_E1C || ALIF_BOARD == ALIF_BOARD_B1
 &lpspi0 {
 	status = "okay";
 	interrupts = <SPI4_IRQ 0>;
@@ -80,6 +78,8 @@
 			 < SPI0_SCLK >,
 			 < SPI0_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 #endif
@@ -92,12 +92,13 @@
 			 < SPI1_SCLK >,
 			 < SPI1_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 #endif
 
-#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
-	ALIF_BOARD == ALIF_BOARD_B1
+#if ALIF_BOARD == ALIF_BOARD_E1C || ALIF_BOARD == ALIF_BOARD_B1
 &pinctrl_lpspi0 {
 	group0 {
 		pinmux = < LPSPI0_MISO >,
@@ -105,6 +106,8 @@
 			 < LPSPI0_SCLK >,
 			 < LPSPI0_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 #else
@@ -115,6 +118,8 @@
 			 < SPI4_SCLK >,
 			 < SPI4_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 #endif

@@ -47,6 +47,8 @@
 			 < SPI1_SCLK >,
 			 < SPI1_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 
@@ -57,5 +59,7 @@
 			 < SPI3_SCLK >,
 			 < SPI3_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };

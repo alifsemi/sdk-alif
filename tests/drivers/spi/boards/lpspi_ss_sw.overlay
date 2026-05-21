@@ -12,8 +12,7 @@
  */
 #include "board_common.overlay"
 
-#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
-	ALIF_BOARD == ALIF_BOARD_B1
+#if ALIF_BOARD == ALIF_BOARD_E1C || ALIF_BOARD == ALIF_BOARD_B1
 &lpspi0 {
 	status = "okay";
 	cs-gpios = <&LPSPI_SS_GPIO_BANK LPSPI_SS_GPIO_NUM GPIO_ACTIVE_LOW>;
@@ -27,6 +26,8 @@
 			 < LPSPI0_SCLK >,
 			 < LPSPI_SS_GPIO_PIN >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 #else
@@ -43,6 +44,8 @@
 			 < SPI4_SCLK >,
 			 < LPSPI_SS_GPIO_PIN >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 #endif

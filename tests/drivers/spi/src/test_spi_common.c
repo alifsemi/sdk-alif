@@ -11,7 +11,7 @@
 
 #include <zephyr/sys/atomic.h>
 
-LOG_MODULE_REGISTER(alif_spi_common, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(spi_test_common, LOG_LEVEL_INF);
 
 #define SPI_TEST_CFG_SHADOW_DEPTH 1024U
 
@@ -111,6 +111,26 @@ void spi_test_controller_cs_init(struct spi_cs_control *cs)
 #endif
 }
 
+uint64_t spi_test_transfer_timeout_ms(size_t bytes, uint32_t freq_hz)
+{
+	uint64_t bits;
+	uint64_t transfer_ms;
+
+	if ((bytes == 0U) || (freq_hz == 0U)) {
+		return SPI_TEST_TIMEOUT_MARGIN_MS;
+	}
+
+	bits = (uint64_t)bytes * 8U;
+	transfer_ms = (bits * 1000U + freq_hz - 1U) / freq_hz;
+	return transfer_ms + CONFIG_SPI_COMPLETION_TIMEOUT_TOLERANCE +
+	       SPI_TEST_TIMEOUT_MARGIN_MS;
+}
+
+k_timeout_t spi_test_transfer_timeout(size_t bytes, uint32_t freq_hz)
+{
+	return K_MSEC(spi_test_transfer_timeout_ms(bytes, freq_hz));
+}
+
 int spi_test_transceive(const struct device *dev,
 			const struct spi_config *cnfg,
 			const struct spi_buf_set *tx_set,
@@ -163,12 +183,24 @@ int spi_test_transceive_async(const struct device *dev,
 			      const struct spi_buf_set *rx_set,
 			      bool force_reconfig)
 {
+	ARG_UNUSED(dev);
+	ARG_UNUSED(cnfg);
+	ARG_UNUSED(tx_set);
+	ARG_UNUSED(rx_set);
+	ARG_UNUSED(force_reconfig);
+
+#if !IS_ENABLED(CONFIG_SPI_ASYNC)
+	LOG_ERR("Async SPI not enabled");
+	return -ENOTSUP;
+#else
 	struct spi_config *active_cfg;
 	const struct spi_config *cfg_to_use;
 	atomic_val_t idx;
 	struct k_poll_signal async_sig;
 	struct k_poll_event async_evt;
 	int ret;
+	size_t tx_len = 0U;
+	size_t rx_len = 0U;
 
 	if (dev == NULL) {
 		LOG_ERR("%s: NULL device", __func__);
@@ -202,18 +234,34 @@ int spi_test_transceive_async(const struct device *dev,
 	k_poll_event_init(&async_evt, K_POLL_TYPE_SIGNAL,
 			  K_POLL_MODE_NOTIFY_ONLY, &async_sig);
 
+	if ((tx_set != NULL) && (tx_set->count > 0U) &&
+	    (tx_set->buffers != NULL)) {
+		for (size_t i = 0U; i < tx_set->count; i++) {
+			tx_len += tx_set->buffers[i].len;
+		}
+	}
+	if ((rx_set != NULL) && (rx_set->count > 0U) &&
+	    (rx_set->buffers != NULL)) {
+		for (size_t i = 0U; i < rx_set->count; i++) {
+			rx_len += rx_set->buffers[i].len;
+		}
+	}
+
 	ret = spi_transceive_signal(dev, cfg_to_use, tx_set, rx_set, &async_sig);
 	if (ret != 0) {
 		return ret;
 	}
 
-	ret = k_poll(&async_evt, 1, K_MSEC(500));
+	ret = k_poll(&async_evt, 1,
+		     spi_test_transfer_timeout(MAX(tx_len, rx_len),
+					       cfg_to_use->frequency));
 	if (ret != 0) {
-		LOG_ERR("async xfer poll timeout");
+		LOG_ERR("async xfer poll timeout @%u Hz", cfg_to_use->frequency);
 		return -EIO;
 	}
 
 	return async_sig.result;
+#endif /* CONFIG_SPI_ASYNC */
 }
 
 int spi_test_controller_receive_and_check(const struct device *dev,
@@ -327,62 +375,6 @@ static void configure_lpspi0_for_dma2(void)
 }
 #endif /* E1C/B1 LPSPI0 dma2 */
 
-#if SPI_TEST_NODE_DMA_IS(spi1, dma2) /* E1C/B1 SPI1 dma2 */
-static void configure_spi1_for_dma2(void)
-{
-	const uint32_t rx_req = 17U;
-	const uint32_t tx_req = 21U;
-	const uint32_t group = 2U;
-	uint32_t regdata;
-
-	LOG_INF("Configuring spi1 for dma2");
-
-	sys_write32(DMA_CTRL_ENA |
-			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
-			EVTRTRLOCAL_DMA_CTRL0 + (rx_req * 4));
-
-	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-	regdata |= (1 << rx_req);
-	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-
-	sys_write32(DMA_CTRL_ENA |
-			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
-			EVTRTRLOCAL_DMA_CTRL0 + (tx_req * 4));
-
-	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-	regdata |= (1 << tx_req);
-	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-}
-#endif /* E1C/B1 SPI1 dma2 */
-
-#if SPI_TEST_NODE_DMA_IS(spi0, dma2) /* SPI0 dma2 */
-static void configure_spi0_for_dma2(void)
-{
-	const uint32_t rx_req = 16U;
-	const uint32_t tx_req = 20U;
-	const uint32_t group = 2U;
-	uint32_t regdata;
-
-	LOG_INF("Configuring spi0 for dma2");
-
-	sys_write32(DMA_CTRL_ENA |
-			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
-			EVTRTRLOCAL_DMA_CTRL0 + (rx_req * 4));
-
-	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-	regdata |= (1 << rx_req);
-	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-
-	sys_write32(DMA_CTRL_ENA |
-			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
-			EVTRTRLOCAL_DMA_CTRL0 + (tx_req * 4));
-
-	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-	regdata |= (1 << tx_req);
-	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
-}
-#endif /* SPI0 dma2 */
-
 #if SPI_TEST_NODE_DMA_IS(spi4, dma2) /* LPSPI(SPI4) dma2 */
 static void configure_lpspi_for_dma2(void)
 {
@@ -402,40 +394,6 @@ static void configure_lpspi_for_dma2(void)
 			EVTRTRLOCAL_DMA_CTRL0 + (tx_req * 4));
 }
 #endif /* LPSPI(SPI4) dma2 */
-
-#if SPI_TEST_NODE_DMA_IS(spi4, dma0) /* LPSPI(SPI4) dma0 */
-static void configure_lpspi_for_dma0(void)
-{
-	const uint32_t rx_req = 24U;
-	const uint32_t tx_req = 25U;
-	const uint32_t group = 2U;
-	uint32_t regdata;
-
-	LOG_INF("Configuring lpspi for dma0");
-
-	regdata = sys_read32(M55HE_CFG_HE_DMA_SEL);
-	regdata &= ~HE_DMA_SEL_LPSPI_Msk;
-	regdata |= (0 << HE_DMA_SEL_LPSPI_Pos);
-	sys_write32(regdata, M55HE_CFG_HE_DMA_SEL);
-
-	sys_write32(DMA_CTRL_ENA |
-			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
-			EVTRTR0_DMA_CTRL0 + (rx_req * 4));
-
-	regdata = sys_read32(EVTRTR0_DMA_ACK_TYPE0 + (group * 4));
-	regdata |= (1 << rx_req);
-	sys_write32(regdata, EVTRTR0_DMA_ACK_TYPE0 + (group * 4));
-
-	sys_write32(DMA_CTRL_ENA |
-			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
-			EVTRTR0_DMA_CTRL0 + (tx_req * 4));
-
-	regdata = sys_read32(EVTRTR0_DMA_ACK_TYPE0 + (group * 4));
-	regdata |= (1 << tx_req);
-	sys_write32(regdata, EVTRTR0_DMA_ACK_TYPE0 + (group * 4));
-}
-#endif /* LPSPI(SPI4) dma0 */
-
 
 /* dma0 */
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma0), arm_dma_pl330, okay)
@@ -543,9 +501,6 @@ static int spi_test_configure_dma(void)
 #if SPI_TEST_NODE_DMA_IS(lpspi0, evtrtr2)
 	LOG_INF("lpspi0 dmas -> evtrtr2 (event-router)");
 #endif
-#if SPI_TEST_NODE_DMA_IS(spi1, evtrtr2)
-	LOG_INF("spi1 dmas -> evtrtr2 (event-router)");
-#endif
 #if SPI_TEST_NODE_DMA_IS(spi4, evtrtr2)
 	LOG_INF("spi4 dmas -> evtrtr2 (event-router)");
 #endif
@@ -558,22 +513,11 @@ static int spi_test_configure_dma(void)
 #if SPI_TEST_NODE_DMA_IS(spi1, evtrtr0)
 	LOG_INF("spi1 dmas -> evtrtr0 (event-router)");
 #endif
-#if SPI_TEST_NODE_DMA_IS(spi4, evtrtr0)
-	LOG_INF("spi4 dmas -> evtrtr0 (event-router)");
-#endif
 #endif /* evtrtr0 */
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma2), arm_dma_pl330, okay)
 #if SPI_TEST_NODE_DMA_IS(lpspi0, dma2)
 	configure_lpspi0_for_dma2();
-#endif
-
-#if SPI_TEST_NODE_DMA_IS(spi0, dma2)
-	configure_spi0_for_dma2();
-#endif
-
-#if SPI_TEST_NODE_DMA_IS(spi1, dma2)
-	configure_spi1_for_dma2();
 #endif
 
 #if SPI_TEST_NODE_DMA_IS(spi4, dma2)
@@ -588,10 +532,6 @@ static int spi_test_configure_dma(void)
 
 #if SPI_TEST_NODE_DMA_IS(spi1, dma0)
 	configure_spi1_for_dma0();
-#endif
-
-#if SPI_TEST_NODE_DMA_IS(spi4, dma0)
-	configure_lpspi_for_dma0();
 #endif
 #endif /* dma0 */
 
