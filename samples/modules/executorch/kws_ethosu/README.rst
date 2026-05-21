@@ -57,7 +57,7 @@ Supported Boards
 +-------+--------+---------+-------------------------+
 | E1C   | Yes    | No      | **Tested**              |
 +-------+--------+---------+-------------------------+
-| E7    | Yes    | No      | **Tested**              |
+| E7    | Yes    | No      | **Tested** (U55 only)   |
 +-------+--------+---------+-------------------------+
 | E8    | Yes    | Yes     | **Tested**              |
 +-------+--------+---------+-------------------------+
@@ -221,6 +221,18 @@ Building for Alif E8 DK (HP Core with U85)
 .. code-block:: console
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+       -S ethos-u85-enable \
+       alif/samples/modules/executorch/kws_ethosu/ -- \
+       -DET_PTE_FILE_PATH=./kws_u85_256.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
+Building for Alif E8 DK (HE Core with U85)
+===========================================
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
        -S ethos-u85-enable \
        alif/samples/modules/executorch/kws_ethosu/ -- \
        -DET_PTE_FILE_PATH=./kws_u85_256.pte \

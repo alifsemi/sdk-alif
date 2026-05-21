@@ -5,23 +5,71 @@ common:
   tags: executorch ml npu ethos-u kws
   depends_on: executorch arm_ethos_u
 tests:
-  # Ensemble boards with SRAM0 (E7/E8) - 1.5MB pools in SRAM
-  sample.executorch.kws_ethosu.e8_hp:
+  # Ensemble boards with SRAM0 (E7/E8) - 1.5MB method pool in SRAM0
+  # E8: has both U55 (ethosu0) and U85 (ethosu1)
+  sample.executorch.kws_ethosu.e8_hp_u55:
     build_only: true
     platform_allow: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
-  sample.executorch.kws_ethosu.e8_he:
+    extra_args:
+      - SNIPPET=ethos-u55-enable
+      - ET_PTE_FILE_PATH=./kws_u55_256.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
+  sample.executorch.kws_ethosu.e8_hp_u85:
+    build_only: true
+    platform_allow: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - SNIPPET=ethos-u85-enable
+      - ET_PTE_FILE_PATH=./kws_u85_256.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+  sample.executorch.kws_ethosu.e8_he_u55:
     build_only: true
     platform_allow: alif_e8_dk/ae822fa0e5597xx0/rtss_he
-  sample.executorch.kws_ethosu.e7_hp:
+    extra_args:
+      - SNIPPET=ethos-u55-enable
+      - ET_PTE_FILE_PATH=./kws_u55_128.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+  sample.executorch.kws_ethosu.e8_he_u85:
+    build_only: true
+    platform_allow: alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_args:
+      - SNIPPET=ethos-u85-enable
+      - ET_PTE_FILE_PATH=./kws_u85_256.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+  # E7: U55 only (no U85)
+  sample.executorch.kws_ethosu.e7_hp_u55:
     build_only: true
     platform_allow: alif_e7_dk/ae722f80f55d5xx/rtss_hp
-  sample.executorch.kws_ethosu.e7_he:
+    extra_args:
+      - SNIPPET=ethos-u55-enable
+      - ET_PTE_FILE_PATH=./kws_u55_256.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
+  sample.executorch.kws_ethosu.e7_he_u55:
     build_only: true
     platform_allow: alif_e7_dk/ae722f80f55d5xx/rtss_he
-  # Boards without SRAM0 (E1C, B1) - 64KB pools in DTCM
-  sample.executorch.kws_ethosu.e1c_he:
+    extra_args:
+      - SNIPPET=ethos-u55-enable
+      - ET_PTE_FILE_PATH=./kws_u55_128.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+  # Boards without SRAM0 (E1C, B1) - 64KB pools in DTCM, U55 only
+  sample.executorch.kws_ethosu.e1c_he_u55:
     build_only: true
     platform_allow: alif_e1c_dk/ae1c1f4051920hh/rtss_he
-  sample.executorch.kws_ethosu.b1_he:
+    extra_args:
+      - SNIPPET=ethos-u55-enable
+      - ET_PTE_FILE_PATH=./kws_u55_128.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+  sample.executorch.kws_ethosu.b1_he_u55:
     build_only: true
     platform_allow: alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    extra_args:
+      - SNIPPET=ethos-u55-enable
+      - ET_PTE_FILE_PATH=./kws_u55_128.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u55-128

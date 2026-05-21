@@ -22,6 +22,7 @@
 #include <executorch/runtime/platform/runtime.h>
 #include <math.h>
 #include <stdio.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <cstring>
@@ -56,48 +57,50 @@ executorch_delegate_EthosUBackend_registered(void);
 #endif
 
 /*
- * Memory section placement for Alif boards:
- *
- * Boards WITH sram0 (E3/E4/E7/E8):
- *   - Use .alif_sram0 sections for tensor arena (fast, 4MB SRAM)
- *
- * Boards WITHOUT sram0 (E1C, B1):
- *   - Use default BSS placement in DTCM
- *
- * Pool sizes are configured via Kconfig (see EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE
- * and EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE) and passed through CMakeLists.txt as
- * compile definitions.
+ * method_allocation_pool: place in SRAM0 (fast, 4MB) on boards that
+ * have it (E7/E8). On boards without sram0 (E1C, B1) fall back to
+ * DTCM so the linker does not emit an orphan section.
  */
-#include <zephyr/devicetree.h>
-
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(sram0), okay)
-#define ET_TENSOR_ARENA_ATTR __attribute__((section(".alif_sram0.tensor_arena"), aligned(16)))
-#define ET_ETHOSU_SCRATCH_ATTR __attribute__((section(".alif_sram0.ethosu_scratch"), aligned(16)))
+#define ET_METHOD_POOL_ATTR __attribute__((section(".alif_sram0.tensor_arena"), aligned(16)))
 #else
-#define ET_TENSOR_ARENA_ATTR __attribute__((aligned(16)))
-#define ET_ETHOSU_SCRATCH_ATTR __attribute__((aligned(16)))
+#define ET_METHOD_POOL_ATTR __attribute__((aligned(16)))
+#endif
+
+#if !defined(ET_ARM_METHOD_ALLOCATOR_POOL_SIZE)
+#define ET_ARM_METHOD_ALLOCATOR_POOL_SIZE (1572864)
+#endif
+const size_t method_allocation_pool_size = ET_ARM_METHOD_ALLOCATOR_POOL_SIZE;
+ET_METHOD_POOL_ATTR
+unsigned char method_allocation_pool[ET_ARM_METHOD_ALLOCATOR_POOL_SIZE];
+
+#if !defined(ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
+#define ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE (32768)
 #endif
 
 #if !defined(ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
 #define ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE 0x600
 #endif
 
-const size_t method_allocation_pool_size = ET_ARM_METHOD_ALLOCATOR_POOL_SIZE;
-ET_TENSOR_ARENA_ATTR
-unsigned char method_allocation_pool[ET_ARM_METHOD_ALLOCATOR_POOL_SIZE];
-
+/*
+ * NPU-accessible buffers MUST be in DTCM (BSS), NOT in SRAM0.
+ * The Ethos-U55 on Alif E8 cannot access SRAM0 (0x02000000) directly.
+ * DTCM addresses are remapped by local_to_global() to the global alias
+ * (0x50800000+offset) which the NPU can reach via the AXI fabric.
+ * This applies to ALL boards (E7, E8, E1C, B1).
+ */
 const size_t temp_allocation_pool_size =
     ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE;
-ET_TENSOR_ARENA_ATTR
-unsigned char temp_allocation_pool[ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
+unsigned char __attribute__((aligned(16)))
+    temp_allocation_pool[temp_allocation_pool_size];
 
 #if defined(ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
 extern "C" {
 size_t ethosu_fast_scratch_size =
     ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE;
-ET_ETHOSU_SCRATCH_ATTR
-unsigned char dedicated_sram[ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
-unsigned char* ethosu_fast_scratch = dedicated_sram;
+unsigned char __attribute__((aligned(16)))
+    ethosu_dtcm_scratch[ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
+unsigned char* ethosu_fast_scratch = ethosu_dtcm_scratch;
 }
 #endif
 
