@@ -217,9 +217,8 @@ add_custom_target(gen_model_header DEPENDS ${_model_pte_header})
 add_dependencies(app gen_model_header)
 
 # Memory pool sizes — Kconfig is the single source of truth.
-# Board-specific defaults (SRAM0 vs DTCM) are handled by Kconfig defaults
-# (see SOC_FAMILY_BALLETTO / SOC_SERIES_E1C guards in Kconfig).
-# Section placement is handled by DT_NODE_HAS_STATUS in main.cpp.
+# NPU scratch (temp pool) is always placed in DTCM for all boards (E7, E8, E1C, B1).
+# Method pool uses .alif_sram0 on boards that have it; see main.cpp for details.
 target_compile_definitions(
   app PRIVATE
   ET_ARM_METHOD_ALLOCATOR_POOL_SIZE=${CONFIG_EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE}
