@@ -29,16 +29,66 @@ def copy_file_with_dirs(src: Path, dst: Path) -> None:
     print(f"  Copied: {src.relative_to(src.parents[3])} -> {dst.relative_to(dst.parents[5])}")
 
 
+def _resolve_latest_nightly_version(package: str, torch_url: str, nightly_date: str = None, version_prefix: str = None):
+    """
+    Query pip (via 'pip index versions') for the latest installable nightly
+    build of a package.  This is the only authoritative source: the PyTorch
+    nightly HTML index often lists wheel filenames before the files are fully
+    propagated to the CDN that pip uses, causing spurious 'not found' errors.
+
+    Args:
+        package: Package name, e.g. 'torch', 'torchvision', 'torchaudio'
+        torch_url: PyTorch nightly index URL
+        nightly_date: If given, return the version prefix that matches this date.
+        version_prefix: If given, only consider builds with this exact version
+                        prefix (e.g. '2.13.0'), so we never jump to a newer
+                        major/minor than ExecuTorch was tested against.
+
+    Returns:
+        Tuple (version_prefix, nightly_date) e.g. ('2.13.0', 'dev20260512'), or None on failure.
+    """
+    try:
+        import subprocess as _sp
+
+        result = _sp.run(
+            [sys.executable, "-m", "pip", "index", "versions", package,
+             "--pre", "--extra-index-url", torch_url],
+            capture_output=True, text=True, timeout=60,
+        )
+        # pip index versions output: "AVAILABLE VERSIONS: x.y.z, ..." or similar
+        output = result.stdout + result.stderr
+
+        matches = re.findall(
+            rf'(\d+\.\d+\.\d+)\.(dev(\d{{8}}))',
+            output,
+        )
+        if not matches:
+            return None
+
+        if version_prefix:
+            matches = [(v, d, s) for v, d, s in matches if v == version_prefix]
+            if not matches:
+                return None
+
+        if nightly_date:
+            for ver_prefix, dev_str, date_str in matches:
+                if dev_str == nightly_date:
+                    return (ver_prefix, dev_str)
+            return None
+        else:
+            latest = max(matches, key=lambda t: t[2])
+            return (latest[0], latest[1])
+    except Exception as err:
+        print(f"  Warning: Could not resolve latest nightly for {package} from pip: {err}")
+        return None
+
+
 def patch_torch_versions(executorch_dir: Path) -> bool:
     """
     Patch ExecutorTorch torch version pins to use available nightly builds.
 
-    The original versions may no longer be available on PyPI, so we update
-    to newer compatible versions using regex patterns for robustness.
-
-    Note: PyTorch nightly versions change frequently. This is a temporary
-    workaround and may need updates when ExecutorTorch upstream updates
-    their version pins.
+    The nightly version is resolved dynamically by querying the PyTorch nightly
+    index, so this never goes stale when old builds are purged from PyPI.
 
     Args:
         executorch_dir: Path to the executorch module directory
@@ -48,11 +98,57 @@ def patch_torch_versions(executorch_dir: Path) -> bool:
     """
     print("Patching PyTorch version pins...")
 
-    # Target versions - update these when newer nightlies are needed
-    TARGET_TORCH_VERSION = "2.12.0"
-    TARGET_NIGHTLY_VERSION = "dev20260223"
-    TARGET_TORCHVISION_VERSION = "0.26.0"
-    TARGET_TORCHAUDIO_VERSION = "2.11.0"
+    TORCH_NIGHTLY_URL = "https://download.pytorch.org/whl/nightly/cpu"
+    FALLBACK_NIGHTLY_VERSION = "dev20260415"
+    FALLBACK_TORCHVISION_VERSION = "0.27.0"
+    FALLBACK_TORCHAUDIO_VERSION = "2.12.0"
+
+    # Read the upstream-pinned TORCH_VERSION from torch_pin.py so we never
+    # jump to a newer major/minor than ExecuTorch was tested against.
+    torch_pin_file = executorch_dir / "torch_pin.py"
+    PINNED_TORCH_VERSION = None
+    if torch_pin_file.exists():
+        with open(torch_pin_file, 'r') as f:
+            m = re.search(r'TORCH_VERSION\s*=\s*"(\d+\.\d+\.\d+)"', f.read())
+            if m:
+                PINNED_TORCH_VERSION = m.group(1)
+
+    if PINNED_TORCH_VERSION:
+        print(f"  Upstream-pinned torch version: {PINNED_TORCH_VERSION}")
+        print(f"  Querying PyTorch nightly index for latest {PINNED_TORCH_VERSION} build...")
+        torch_result = _resolve_latest_nightly_version("torch", TORCH_NIGHTLY_URL, version_prefix=PINNED_TORCH_VERSION)
+        if not torch_result:
+            print(f"  No {PINNED_TORCH_VERSION} nightly found, trying latest available nightly...")
+            torch_result = _resolve_latest_nightly_version("torch", TORCH_NIGHTLY_URL)
+    else:
+        print(f"  Could not read upstream torch_pin.py, querying latest torch nightly...")
+        torch_result = _resolve_latest_nightly_version("torch", TORCH_NIGHTLY_URL)
+
+    if torch_result:
+        TARGET_TORCH_VERSION, TARGET_NIGHTLY_VERSION = torch_result
+        print(f"  Resolved torch: {TARGET_TORCH_VERSION}.{TARGET_NIGHTLY_VERSION}")
+    else:
+        TARGET_TORCH_VERSION = PINNED_TORCH_VERSION or "2.12.0"
+        TARGET_NIGHTLY_VERSION = FALLBACK_NIGHTLY_VERSION
+        print(f"  Could not resolve torch nightly, falling back to {TARGET_TORCH_VERSION}.{TARGET_NIGHTLY_VERSION}")
+
+    print(f"  Querying PyTorch nightly index for torchvision matching {TARGET_NIGHTLY_VERSION}...")
+    tv_result = _resolve_latest_nightly_version("torchvision", TORCH_NIGHTLY_URL, TARGET_NIGHTLY_VERSION)
+    if tv_result:
+        TARGET_TORCHVISION_VERSION = tv_result[0]
+        print(f"  Resolved torchvision: {TARGET_TORCHVISION_VERSION}.{TARGET_NIGHTLY_VERSION}")
+    else:
+        TARGET_TORCHVISION_VERSION = FALLBACK_TORCHVISION_VERSION
+        print(f"  Could not resolve torchvision nightly, falling back to {TARGET_TORCHVISION_VERSION}")
+
+    print(f"  Querying PyTorch nightly index for torchaudio matching {TARGET_NIGHTLY_VERSION}...")
+    ta_result = _resolve_latest_nightly_version("torchaudio", TORCH_NIGHTLY_URL, TARGET_NIGHTLY_VERSION)
+    if ta_result:
+        TARGET_TORCHAUDIO_VERSION = ta_result[0]
+        print(f"  Resolved torchaudio: {TARGET_TORCHAUDIO_VERSION}.{TARGET_NIGHTLY_VERSION}")
+    else:
+        TARGET_TORCHAUDIO_VERSION = FALLBACK_TORCHAUDIO_VERSION
+        print(f"  Could not resolve torchaudio nightly, falling back to {TARGET_TORCHAUDIO_VERSION}")
 
     # Patch torch_pin.py using regex for robustness
     torch_pin_file = executorch_dir / "torch_pin.py"
@@ -62,7 +158,6 @@ def patch_torch_versions(executorch_dir: Path) -> bool:
 
         original_content = content
 
-        # Use regex to match version patterns more flexibly
         # Match TORCH_VERSION = "X.Y.Z" where X, Y, Z are digits
         content = re.sub(
             r'TORCH_VERSION\s*=\s*"(\d+\.\d+\.\d+)"',
