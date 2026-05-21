@@ -13,8 +13,6 @@ if(NOT DEFINED ALIF_BOARD)
     set(ALIF_BOARD "ALIF_BOARD_E8_HE")
   elseif(BOARD MATCHES "e8.*rtss_hp")
     set(ALIF_BOARD "ALIF_BOARD_E8_HP")
-  elseif(BOARD MATCHES "a5")
-    set(ALIF_BOARD "ALIF_BOARD_A5")
   elseif(BOARD MATCHES "e1c.*rtss_he")
     set(ALIF_BOARD "ALIF_BOARD_E1C")
   elseif(BOARD MATCHES "b1.*rtss_he")
@@ -32,18 +30,9 @@ endif()
 list(APPEND DTS_EXTRA_CPPFLAGS "-DALIF_BOARD=${ALIF_BOARD}")
 message(STATUS "SPI test overlay board: ${ALIF_BOARD}")
 
-# Default overlay for plain west builds; Twister/CLI overlays take precedence.
-if(NOT DTC_OVERLAY_FILE)
-  set(DTC_OVERLAY_FILE
-      ${CMAKE_CURRENT_SOURCE_DIR}/boards/spi.overlay
-      CACHE STRING "Default SPI test overlay" FORCE)
-endif()
-
 # ==================== ZEPHYR PROJECT SETUP ==================
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(alif_spi)
-
-
 
 # ==================== STACK SIZES ==========================
 # Stack sizes are defined in prj.conf (20KB default for all tests)
