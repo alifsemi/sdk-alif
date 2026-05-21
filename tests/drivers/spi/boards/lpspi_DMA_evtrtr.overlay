@@ -9,11 +9,12 @@
 
 /* Event-router DMA overlay for LPSPI instances.
  * Stack with boards/lpspi.overlay.
+ * LPSPI is HE-only, uses dma2 and evtrtr2.
  */
 #include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
 #include "board_common.overlay"
 
-&DMA_CTRL {
+&dma2 {
 	status = "okay";
 };
 
@@ -21,8 +22,7 @@
 	status = "okay";
 };
 
-#if ALIF_BOARD == ALIF_BOARD_A5 || ALIF_BOARD == ALIF_BOARD_E1C || \
-	ALIF_BOARD == ALIF_BOARD_B1
+#if ALIF_BOARD == ALIF_BOARD_E1C || ALIF_BOARD == ALIF_BOARD_B1
 &lpspi0 {
 	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 2, 1) 13>,
 	       <&evtrtr2 ALIF_DMA_ENCODE(1, 2, 1) 12>;
