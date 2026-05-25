@@ -18,7 +18,7 @@
 #define PRIORITY                   7
 #define STACK_SIZE                 1024
 #define VERSION_RESPONSE_LENGTH    80
-#define DEV_DATA_BUFFER_SIZE       33
+#define DEV_DATA_BUFFER_SIZE       65
 
 uint8_t buffer[BUF_SIZE];
 uint8_t revision[VERSION_RESPONSE_LENGTH];
@@ -42,7 +42,7 @@ int thread0_start(void)
 		printk("fetch_device_part_number failed with %d\n", ret);
 		return ret;
 	}
-	printk("Device part number is %d\n", dev_part_num);
+	printk("Device part number is 0x%x\n", dev_part_num);
 	return 0;
 }
 
@@ -56,23 +56,15 @@ int thread0_start(void)
  */
 void format_contents(uint8_t *dst, const uint8_t *src, int bytes)
 {
-	uint8_t digit_len = 0;
-	int i = 0, pos = 0;
+	int i;
+	int next_pos = 0;
 
 	for (i = 0; i < bytes ; ++i) {
-		/* pass digit length as 2 as two charactes need to */
-		/* be printed if the number is morethan 0xF */
-		if (src[i] > 0xF)
-			digit_len = 2;
-		/* one character is printed */
-		else
-			digit_len = 1;
-
-		/* extra 1 for '\0' */
-		snprintk(&dst[pos], digit_len + 1, "%x", src[i]);
-		pos += digit_len;
+		next_pos += sprintf((char *)(dst+next_pos), "%02x", src[i]);
 	}
+	dst[next_pos] = '\0'; /* NULL terminate */
 }
+
 int thread1_start(void)
 {
 	int ret = -1;
@@ -87,7 +79,7 @@ int thread1_start(void)
 		printk("fetch_se_revision failed with %d\n", ret);
 		return ret;
 	}
-	printk("Revision is %s\n", revision);
+	printk("Revision is %.*s\n", sizeof(revision), revision);
 
 	ret = se_service_system_get_device_data(&dev_data);
 	if (ret) {
@@ -98,7 +90,7 @@ int thread1_start(void)
 	printk("Revision ID = %d (0x%x)\n", dev_data.revision_id,
 		dev_data.revision_id);
 
-	printk("Alif PN = %s\n", dev_data.ALIF_PN);
+	printk("Alif PN = %.*s\n", sizeof(dev_data.ALIF_PN), dev_data.ALIF_PN);
 
 	format_contents((uint8_t *)&dev_data_buffer[0],
 			(uint8_t *)&dev_data.SerialN[0],
@@ -133,6 +125,7 @@ int thread1_start(void)
 	format_contents((uint8_t *)&dev_data_buffer[0],
 			(uint8_t *)&dev_data.MfgData[0],
 			sizeof(dev_data.MfgData));
+
 	printk("MfgData = %s\n", dev_data_buffer);
 
 	printk("LCS = %d (0x%x)\n", dev_data.LCS, dev_data.LCS);
