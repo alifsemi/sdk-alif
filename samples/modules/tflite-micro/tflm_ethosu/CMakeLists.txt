@@ -38,6 +38,10 @@ if(ETHOSU_TARGET_NPU_CONFIG MATCHES "^ethos-(u[0-9]+)-([0-9]+)$")
                     "For 128 MACs, use HE core board variant (rtss_he)")
             endif()
             message(STATUS "Detected RTSS_HP core - U55 restricted to 256 MACs")
+        elseif(CONFIG_APSS)
+            message(FATAL_ERROR
+                "Ethos-U55 is not directly accessible from APSS (Cortex-A32).\n"
+                "Use Ethos-U85 instead: -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256")
         else()
             # Fallback validation for other core types
             if(NOT (ETHOSU_MACS STREQUAL "64" OR ETHOSU_MACS STREQUAL "128" OR ETHOSU_MACS STREQUAL "256"))
@@ -92,13 +96,14 @@ if(ETHOSU_TARGET_NPU_CONFIG MATCHES "^ethos-(u[0-9]+)-([0-9]+)$")
                 "Use: -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256")
         endif()
 
-        # Validate overlay file matches NPU type
+        # Validate overlay file matches NPU type (catches accidental U55 overlay with U85 config)
         if(DEFINED EXTRA_DTC_OVERLAY_FILE)
             if(EXTRA_DTC_OVERLAY_FILE MATCHES "ethosu55\\.overlay")
                 message(FATAL_ERROR 
                     "Overlay mismatch: ETHOSU_TARGET_NPU_CONFIG='${ETHOSU_TARGET_NPU_CONFIG}' (U85) "
                     "but using U55 overlay '${EXTRA_DTC_OVERLAY_FILE}'.\n"
-                    "For U85, use: -DEXTRA_DTC_OVERLAY_FILE=\"boards/enable_ethosu85.overlay\"")
+                    "For U85 on RTSS, use: -S ethos-u85-enable\n"
+                    "For U85 on APSS,  use: -S ethos-u85-apss-enable")
             endif()
         endif()
 
@@ -136,3 +141,9 @@ add_subdirectory(
 )
 
 target_sources(app PRIVATE src/main.cpp)
+
+# APSS (Cortex-A32): include the SRAM1 linker snippet so the tensor arena
+# is placed into the non-cacheable SRAM1 memory region defined in the overlay.
+if(CONFIG_APSS)
+    zephyr_linker_sources(SECTIONS boards/apss_sram1_sections.ld)
+endif()
