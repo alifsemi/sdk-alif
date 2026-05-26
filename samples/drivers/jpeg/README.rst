@@ -63,4 +63,3 @@ Sample Output
    [00:00:00.021,000] <inf> jpeg_test: Jpeg: Capture Image: dump memory "/home/$USER/capture_img_q10.jpg" 0x02151870 0x021590e8
 
    [00:00:00.021,000] <inf> jpeg_test: Jpeg Basic Test completed successfully!
-   [00:00:00.021,000] <inf> jpeg_test: Buffers released
