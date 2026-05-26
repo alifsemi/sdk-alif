@@ -68,8 +68,6 @@ zephyr_udc0: &usb {
 	chosen {
 		zephyr,flash-controller = &ospi_flash;
 		zephyr,flash = &flash_storage;
-
-		/delete-property/ zephyr,code-partition;
 	};
 };
 
