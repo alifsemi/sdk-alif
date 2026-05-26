@@ -12,28 +12,29 @@ Runs keyword spotting CNN model optimized with Vela compiler.
 Supported Boards
 ****************
 
-+-------+--------+---------+-------------------------+
-| Board | U55    | U85     | Notes                   |
-+=======+========+=========+=========================+
-| B1    | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
-| E1C   | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
-| E3    | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
-| E4    | Yes    | Yes     | Dual NPU                |
-+-------+--------+---------+-------------------------+
-| E7    | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
-| E8    | Yes    | Yes     | Dual NPU                |
-+-------+--------+---------+-------------------------+
++-------+--------+---------+---------+-------------------------+
+| Board | U55    | U85     | APSS    | Notes                   |
++=======+========+=========+=========+=========================+
+| B1    | Yes    | No      | No      | U55 only                |
++-------+--------+---------+---------+-------------------------+
+| E1C   | Yes    | No      | No      | U55 only                |
++-------+--------+---------+---------+-------------------------+
+| E3    | Yes    | No      | No      | U55 only                |
++-------+--------+---------+---------+-------------------------+
+| E4    | Yes    | Yes     | Yes     | Dual NPU                |
++-------+--------+---------+---------+-------------------------+
+| E7    | Yes    | No      | Yes     | U55 only (no NPU on A32)|
++-------+--------+---------+---------+-------------------------+
+| E8    | Yes    | Yes     | Yes     | Dual NPU                |
++-------+--------+---------+---------+-------------------------+
 
 Core Type Restrictions
 **********************
 
 - **HE cores (rtss_he)**: U55 supports 128 MACs only
 - **HP cores (rtss_hp)**: U55 supports 256 MACs only
-- **U85**: Always 256 MACs (both HE and HP cores)
+- **APSS cores (apss)**: U85 with 256 MACs only (Cortex-A32)
+- **U85**: Always 256 MACs (HE, HP, and APSS cores)
 
 Building and Running
 ********************
@@ -133,6 +134,25 @@ Building for Alif E8 DK
        -p always -- \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
 
+**APSS Core (Cortex-A32) with U85-256:**
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/apss \
+       samples/modules/tflite-micro/tflm_ethosu \
+       -p always \
+       -S ethos-u85-apss-enable \
+       -- -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
+.. note::
+
+   The ``ethos-u85-apss-enable`` snippet defines the Ethos-U85 NPU node with
+   GIC interrupt routing (GIC_SPI 355) and the SRAM1 memory region for the
+   non-cacheable tensor arena. Using a snippet is the Zephyr-idiomatic approach
+   and is consistent with how ``ethos-u55-enable`` and ``ethos-u85-enable`` work
+   for RTSS cores. The tensor arena is placed in SRAM1 to ensure cache coherency
+   with the NPU without explicit cache maintenance.
+
 Configuration Options
 *********************
 
@@ -142,8 +162,9 @@ Configuration Options
 
 **Snippets:**
 
-- ``-S ethos-u55-enable``: Enable U55 NPU (all boards)
-- ``-S ethos-u85-enable``: Enable U85 NPU (E4/E8 only)
+- ``-S ethos-u55-enable``: Enable U55 NPU on RTSS cores (all boards)
+- ``-S ethos-u85-enable``: Enable U85 NPU on RTSS cores (E4/E8 only)
+- ``-S ethos-u85-apss-enable``: Enable U85 NPU on APSS (Cortex-A32) core (E4/E8 only)
 
 Snippets automatically apply the necessary device tree overlays to enable the NPU.
 

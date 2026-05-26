@@ -106,8 +106,16 @@ volatile int totalCompletedJobs = 0;
 /* TensorArena allocation using TENSOR_ARENA_SIZE from model header
  * Note: TENSOR_ARENA_SIZE macro is defined in model headers (e.g., model_u85_256.h)
  * For keyword_spotting: U55 uses ~50KB, U85 uses ~50KB
+ *
+ * On APSS (Cortex-A32) the arena is placed into SRAM1 which is mapped
+ * non-cacheable by the MMU, ensuring coherency with the Ethos-U85 NPU.
+ * On RTSS (Cortex-M55) the arena goes into .bss.tflm_arena (DTCM/SRAM0).
  */
+#if defined(CONFIG_APSS)
+__attribute__((section("SRAM1.tflm_arena"), aligned(16)))
+#else
 __attribute__((section(".bss.tflm_arena"), aligned(16)))
+#endif
 uint8_t inferenceProcessTensorArena[NUM_INFERENCE_TASKS][TENSOR_ARENA_SIZE];
 
 /* Allocate and initialize heap */
