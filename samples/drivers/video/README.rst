@@ -165,7 +165,6 @@ Video app with Jpeg encoder
    [00:00:10.089,000] <inf> video_app: === JPEG Encoding Success===
    [00:00:10.089,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_9.jpg" 0x02000060 0x02005692
 
-   [00:00:10.089,000] <inf> video_app: Jpeg: Output Buffer released
    [00:00:10.089,000] <inf> video_app: Calling video flush.
    [00:00:10.089,000] <inf> video_app: Calling video stream stop.
 
