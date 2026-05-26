@@ -265,7 +265,6 @@ Standalone Static Image Test
    [00:00:00.021,000] <inf> jpeg_test: Jpeg: Capture Image: dump memory "/home/$USER/capture_img_q10.jpg" 0x02151870 0x021590e8
 
    [00:00:00.021,000] <inf> jpeg_test: Jpeg Basic Test completed successfully!
-   [00:00:00.021,000] <inf> jpeg_test: Buffers released
 
 Video Pipeline with JPEG Encoding
 ---------------------------------
@@ -273,40 +272,97 @@ Video Pipeline with JPEG Encoding
 .. code-block:: console
 
    [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
-   [00:00:00.662,000] <inf> video_app: - Device name: cam@49030000
-   [00:00:00.662,000] <inf> video_app: - Capabilities:
+   [00:00:00.664,000] <inf> jpeg_hantro_vc9000e: VeriSilicon Hantro VC9000E JPEG encoder initialized
+   [00:00:00.664,000] <inf> video_app: - Device name: isp@49046000
+   [00:00:00.664,000] <inf> video_app: Selected camera: Selfie
+   [00:00:00.664,000] <inf> video_app: - Capabilities:
 
-   [00:00:00.662,000] <inf> video_app:   Y10P width (min, max, step)[560; 560; 0] height (min, max, step)[560; 560; 0]
-   [00:00:01.202,000] <inf> dphy_dw: RX-DDR clock: 400000000
-   [00:00:01.203,000] <inf> video_app: - format: Y10P 560x560
-   [00:00:01.203,000] <inf> video_app: Width - 560, Pitch - 1120, Height - 560, Buff size - 627200
-   [00:00:01.203,000] <inf> video_app: - addr - 0x2000060, size - 627200, bytesused - 0
-   [00:00:01.231,000] <inf> video_app: capture buffer[0]: dump binary memory "/home/$USER/capture_0.bin" 0x02000060 0x0209925f -r
+   [00:00:00.664,000] <inf> video_app:   Y10P width (min, max, step)[560; 560; 0] height (min, max, step)[560; 560; 0]
+   [00:00:01.204,000] <inf> dphy_dw: RX-DDR clock: 400000000
+   [00:00:01.205,000] <inf> video_app: - format: NV12 480x480
+   [00:00:01.205,000] <inf> video_app: Width - 480, Pitch - 720, Height - 480, Buff size - 345600
+   [00:00:01.205,000] <inf> video_app: JPEG: device ready: jpeg@49044000
+   [00:00:01.205,000] <inf> video_app: JPEG: Encoder Capabilities:
+   [00:00:01.205,000] <inf> video_app:   Format: 0x3231564e, Size: 32x32 to 16384x16384
+   [00:00:01.205,000] <inf> video_app:   Format: 0x3132564e, Size: 32x32 to 16384x16384
+   [00:00:01.205,000] <inf> video_app: Jpeg: Outbuf allocated at 0x02000060 with 231023 bytes
 
-   [00:00:01.231,000] <inf> video_app: - addr - 0x2099268, size - 627200, bytesused - 0
-   [00:00:01.258,000] <inf> video_app: capture buffer[1]: dump binary memory "/home/$USER/capture_1.bin" 0x02099268 0x02132467 -r
+   [00:00:01.209,000] <inf> video_app: - addr - 0x20386d8, size - 345600, bytesused - 0, resolution - 480x480
+   [00:00:01.215,000] <inf> video_app: capture buffer[0]: dump binary memory "/home/$USER/capture_0.bin" 0x020386d8 0x0208ccd7 -r
 
-   [00:00:08.260,000] <inf> video_app: Capture started
-   [00:00:08.328,000] <inf> video_app: Got frame 0! size: 627200; timestamp 8328 ms
-   [00:00:08.328,000] <inf> video_app: FPS: 0.0
-   [00:00:08.528,000] <inf> video_app: Got frame 1! size: 627200; timestamp 8528 ms
-   [00:00:08.528,000] <inf> video_app: FPS: 5.000000
-   [00:00:08.728,000] <inf> video_app: Got frame 2! size: 627200; timestamp 8728 ms
-   [00:00:08.728,000] <inf> video_app: FPS: 5.000000
-   [00:00:08.928,000] <inf> video_app: Got frame 3! size: 627200; timestamp 8928 ms
-   [00:00:08.928,000] <inf> video_app: FPS: 5.000000
-   [00:00:09.128,000] <inf> video_app: Got frame 4! size: 627200; timestamp 9128 ms
-   [00:00:09.128,000] <inf> video_app: FPS: 5.000000
-   [00:00:09.328,000] <inf> video_app: Got frame 5! size: 627200; timestamp 9328 ms
-   [00:00:09.328,000] <inf> video_app: FPS: 5.000000
-   [00:00:09.528,000] <inf> video_app: Got frame 6! size: 627200; timestamp 9528 ms
-   [00:00:09.528,000] <inf> video_app: FPS: 5.000000
-   [00:00:09.728,000] <inf> video_app: Got frame 7! size: 627200; timestamp 9728 ms
-   [00:00:09.728,000] <inf> video_app: FPS: 5.000000
-   [00:00:09.928,000] <inf> video_app: Got frame 8! size: 627200; timestamp 9928 ms
-   [00:00:09.928,000] <inf> video_app: FPS: 5.000000
-   [00:00:10.128,000] <inf> video_app: Got frame 9! size: 627200; timestamp 10128 ms
-   [00:00:10.128,000] <inf> video_app: FPS: 5.000000
-   [00:00:10.128,000] <inf> video_app: Calling video flush.
-   [00:00:10.128,000] <inf> video_app: Calling video stream stop.
+   [00:00:01.215,000] <inf> video_app: - addr - 0x208cce0, size - 345600, bytesused - 0, resolution - 480x480
+   [00:00:01.221,000] <inf> video_app: capture buffer[1]: dump binary memory "/home/$USER/capture_1.bin" 0x0208cce0 0x020e12df -r
 
+   [00:00:08.223,000] <inf> video_app: Capture started
+   [00:00:08.291,000] <inf> video_app: Got frame 0! size: 345600; timestamp 8291 ms
+   [00:00:08.291,000] <inf> video_app: FPS: 0.0
+   [00:00:08.291,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:08.291,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:08.291,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:08.291,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_0.jpg" 0x02000060 0x02020d89
+
+   [00:00:08.491,000] <inf> video_app: Got frame 1! size: 345600; timestamp 8491 ms
+   [00:00:08.491,000] <inf> video_app: FPS: 5.000000
+   [00:00:08.491,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:08.491,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:08.491,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:08.491,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_1.jpg" 0x02000060 0x0202ccc0
+
+   [00:00:08.691,000] <inf> video_app: Got frame 2! size: 345600; timestamp 8691 ms
+   [00:00:08.691,000] <inf> video_app: FPS: 5.000000
+   [00:00:08.691,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:08.691,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:08.691,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:08.691,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_2.jpg" 0x02000060 0x0202cb40
+
+   [00:00:08.891,000] <inf> video_app: Got frame 3! size: 345600; timestamp 8891 ms
+   [00:00:08.891,000] <inf> video_app: FPS: 5.000000
+   [00:00:08.891,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:08.891,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:08.891,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:08.891,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_3.jpg" 0x02000060 0x0202c072
+
+   [00:00:09.091,000] <inf> video_app: Got frame 4! size: 345600; timestamp 9091 ms
+   [00:00:09.091,000] <inf> video_app: FPS: 5.000000
+   [00:00:09.091,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:09.091,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:09.091,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:09.091,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_4.jpg" 0x02000060 0x0202c34f
+
+   [00:00:09.291,000] <inf> video_app: Got frame 5! size: 345600; timestamp 9291 ms
+   [00:00:09.291,000] <inf> video_app: FPS: 5.000000
+   [00:00:09.291,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:09.291,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:09.291,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:09.291,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_5.jpg" 0x02000060 0x0202a230
+
+   [00:00:09.491,000] <inf> video_app: Got frame 6! size: 345600; timestamp 9491 ms
+   [00:00:09.491,000] <inf> video_app: FPS: 5.000000
+   [00:00:09.491,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:09.491,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:09.491,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:09.491,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_6.jpg" 0x02000060 0x0202cef6
+
+   [00:00:09.691,000] <inf> video_app: Got frame 7! size: 345600; timestamp 9691 ms
+   [00:00:09.691,000] <inf> video_app: FPS: 5.000000
+   [00:00:09.691,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:09.691,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:09.691,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:09.691,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_7.jpg" 0x02000060 0x0202d953
+
+   [00:00:09.891,000] <inf> video_app: Got frame 8! size: 345600; timestamp 9891 ms
+   [00:00:09.891,000] <inf> video_app: FPS: 5.000000
+   [00:00:09.891,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:09.891,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:09.891,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:09.891,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_8.jpg" 0x02000060 0x0202ce4f
+
+   [00:00:10.091,000] <inf> video_app: Got frame 9! size: 345600; timestamp 10091 ms
+   [00:00:10.091,000] <inf> video_app: FPS: 5.000000
+   [00:00:10.091,000] <inf> video_app: Starting JPEG encoding...
+   [00:00:10.091,000] <inf> video_app: Jpeg: Format set: 480x480, format: NV12
+   [00:00:10.092,000] <inf> video_app: === JPEG Encoding Success===
+   [00:00:10.092,000] <inf> video_app: Jpeg: Capture Image: dump memory "/home/$USER/capture_cp_9.jpg" 0x02000060 0x0202d2df
+
+   [00:00:10.092,000] <inf> video_app: Calling video flush.
+   [00:00:10.092,000] <inf> video_app: Calling video stream stop.
