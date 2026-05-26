@@ -244,10 +244,8 @@ int main(void)
 		return ret;
 	}
 
-	/* Free allocated buffers */
+	/* Free allocated input buffer */
 	video_buffer_release(input_buffer);
-	video_buffer_release(output_buffer);
 
-	LOG_INF("Buffers released");
 	return 0;
 }
