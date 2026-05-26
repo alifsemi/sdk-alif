@@ -527,7 +527,7 @@ int main(void)
 		ret = jpeg_compress_img(jpeg_dev, fmt, vbuf, i, jpeg_op_buf);
 		if (ret != 0) {
 			LOG_ERR("Jpeg compression failed");
-			goto release_jpeg_op_buf;
+			goto exit_exec;
 		}
 #endif /* JPEG_ENABLED */
 
@@ -547,13 +547,7 @@ int main(void)
 		}
 	}
 
-#if JPEG_ENABLED
-release_jpeg_op_buf:
-	/* Free allocated buffers */
-	video_buffer_release(jpeg_op_buf);
-
-	LOG_INF("Jpeg: Output Buffer released");
-#endif /* JPEG_ENABLED */
+exit_exec:
 
 	LOG_INF("Calling video flush.");
 	video_flush(video, VIDEO_EP_OUT, false);
