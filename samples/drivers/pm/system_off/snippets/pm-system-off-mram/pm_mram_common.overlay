@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -8,19 +8,11 @@
  *
  */
 
-&timer0 {
-	status = "okay";
-};
-
 &lpgpio {
 	status = "disabled";
 };
 
 &uart4 {
-	status = "disabled";
-};
-
-&utimer5 {
 	status = "disabled";
 };
 
@@ -33,20 +25,18 @@
 	status = "okay";
 };
 
-&aipm_off {
-	status = "okay";
-};
-
 &aipm_run_default {
 	aipm-power-domains = <(ALIF_PD_SSE700_AON_MASK | ALIF_PD_SYST_MASK)>;
 	memory-blocks      = <ALIF_MRAM_MASK>;
 };
 
+&aipm_off {
+	status = "okay";
+};
+
 &off_profile_soft_off {
 	status = "okay";
-	memory-blocks      = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
-	wakeup-events      = <ALIF_WE_LPTIMER0>;
-	ewic-cfg           = <ALIF_EWIC_VBAT_TIMER>;
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
 };
 
 / {
