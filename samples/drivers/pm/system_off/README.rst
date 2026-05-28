@@ -111,10 +111,9 @@ HP Core — SRAM0 S2RAM (E8 only)
 Both HE and HP require a first-stage loader in MRAM to power up SRAM0
 before the Zephyr image runs.  The loader placement is user-defined; the
 ``aipm_off`` ``vtor-address`` must be set to the address where the loader
-is placed so the SE restores execution there on wakeup.  Since there is
-only one RTC on the SoC and it is used as the idle timer, only one core
-can enable it at a time — the other core must be in the off-state to test
-the complete PM state transition.
+is placed so the SE restores execution there on wakeup.  The Zephyr
+application uses RTC as the idle timer; ensure no other core is using RTC
+when this application runs.
 
 .. zephyr-app-commands::
    :zephyr-app: ../alif/samples/drivers/pm/system_off
@@ -210,9 +209,9 @@ Notes
   (``ALIF_SRAM0_*_RET_MASK``) are defined only in the Ensemble Gen2
   DT-bindings header.  Using ``-S pm-system-off-s2ram-sram0`` on E7 or
   earlier will fail with a DTS compile error.
-* **SRAM0 S2RAM — shared RTC**: The SoC has a single RTC used as the idle
-  timer.  Only one core can enable it at a time; the other core must be in
-  the off-state to test the complete PM state transition.
+* **SRAM0 S2RAM — RTC as idle timer**: This application configures RTC as
+  the idle timer (``zephyr,cortex-m-idle-timer``).  Ensure no other core
+  is using RTC while this application runs.
 * **CONFIG_POWEROFF**: Alternative mode to test ``sys_poweroff()`` instead
   of the PM state sequence.
 * **Power measurement**: Disable all unused peripherals for accurate numbers.
