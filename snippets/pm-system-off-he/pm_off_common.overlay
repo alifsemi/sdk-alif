@@ -26,17 +26,17 @@
 };
 
 &subsys_off {
-	min-residency-us = <25000000>;
+	min-residency-us = <8000000>;
 	status = "okay";
 };
 
 &standby_s2ram {
-	min-residency-us = <19000000>;
+	min-residency-us = <5000000>;
 	status = "okay";
 };
 
 &stop_s2ram {
-	min-residency-us = <21000000>;
+	min-residency-us = <8000000>;
 	status = "okay";
 };
 

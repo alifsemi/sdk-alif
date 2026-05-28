@@ -64,13 +64,19 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 /* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
 #define SUSPEND_IDLE_SLEEP_USEC (4 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
-#define S2RAM_STANDBY_SLEEP_USEC (20 * 1000 * 1000)
+#define S2RAM_STANDBY_SLEEP_USEC (6 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
-#define S2RAM_STOP_SLEEP_USEC (22 * 1000 * 1000)
+#define S2RAM_STOP_SLEEP_USEC (9 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SOFT_OFF */
-#define SOFT_OFF_SLEEP_USEC (26 * 1000 * 1000)
+#define SOFT_OFF_SLEEP_USEC (10 * 1000 * 1000)
 /* Wakeup duration for sys_poweroff (permanent power off) */
-#define POWEROFF_WAKEUP_USEC (30 * 1000 * 1000)
+#define POWEROFF_WAKEUP_USEC (10 * 1000 * 1000)
+
+/*
+ * Upper bound: at 400 MHz, ticks to cycles calculation in PM driver
+ * overflows uint32 max for values > 10.7s (2^32 / 400). All deep-sleep
+ * durations and overlay min-residency-us values must stay below this ceiling.
+ */
 
 /*
  * MRAM base address - used to determine boot location
@@ -294,69 +300,45 @@ static struct pm_notifier app_pm_notifier = {
 #endif
 
 /**
- * Helper function to lock/unlock deeper power states
- * @param lock true to lock deeper states (allow only RUNTIME_IDLE), false to unlock all
+ * Helper function to lock/unlock deeper power states.
+ * @param lock true → lock all deep states (allow RUNTIME_IDLE only)
+ *             false → unlock the applicable state; keep the other locked
  */
 static void app_pm_lock_deeper_states(bool lock)
 {
-	const char *state_desc;
-
 #if defined(CONFIG_RTSS_HP)
-	/* HP core: only SOFT_OFF (no S2RAM support) */
-	enum pm_state deep_states[] = {
-		PM_STATE_SOFT_OFF
-	};
-	state_desc = "SOFT_OFF";
-
-	for (int i = 0; i < ARRAY_SIZE(deep_states); i++) {
-		if (lock) {
-			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
-		} else {
-			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
-		}
+	/*
+	 * HP core: only SOFT_OFF is ever used (no S2RAM support).
+	 * Lock SUSPEND_TO_RAM unconditionally so PM policy never selects it.
+	 */
+	if (lock) {
+		pm_policy_state_lock_get(PM_STATE_SOFT_OFF,       PM_ALL_SUBSTATES);
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	} else {
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+		/* SUSPEND_TO_RAM stays locked - HP never uses S2RAM */
 	}
 
 #elif defined(CONFIG_RTSS_HE)
 	/*
-	 * HE core: States depend on boot location
-	 * - TCM boot: S2RAM only (SOFT_OFF not needed with retention)
-	 * - MRAM boot: SOFT_OFF only (Keep S2RAM locked)
+	 * HE core: lock both states at init; on unlock, release only the
+	 * applicable one based on boot location:
+	 * - TCM boot → S2RAM supported; SOFT_OFF stays locked
+	 * - MRAM boot → SOFT_OFF only; SUSPEND_TO_RAM stays locked
 	 */
-	enum pm_state deep_states[2];
-	int num_states = 0;
-
-	if (S2RAM_SUPPORTED) {
-		/* TCM boot: S2RAM works with retention */
-		deep_states[num_states++] = PM_STATE_SUSPEND_TO_RAM;
-		state_desc = "S2RAM";
+	if (lock) {
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+		pm_policy_state_lock_get(PM_STATE_SOFT_OFF,       PM_ALL_SUBSTATES);
+	} else if (S2RAM_SUPPORTED) {
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+		/* SOFT_OFF stays locked for TCM boot */
 	} else {
-		/* MRAM boot: Keep S2RAM locked so SOFT_OFF is selected */
-		if (!lock) {
-			/* Ensure S2RAM stays locked when unlocking SOFT_OFF */
-			pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-		}
+		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
+		/* SUSPEND_TO_RAM stays locked for MRAM boot */
 	}
-
-	if (SOFT_OFF_SUPPORTED) {
-		/* MRAM boot: SOFT_OFF is the only deep sleep option for now */
-		deep_states[num_states++] = PM_STATE_SOFT_OFF;
-		state_desc = "SOFT_OFF";
-	}
-
-	for (int i = 0; i < num_states; i++) {
-		if (lock) {
-			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
-		} else {
-			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
-		}
-	}
-
 #else
 	#error "Unknown core type"
 #endif
-
-	LOG_DBG("%s deeper power state(s) (%s)",
-	       lock ? "Locked" : "Unlocked", state_desc);
 }
 
 /*
