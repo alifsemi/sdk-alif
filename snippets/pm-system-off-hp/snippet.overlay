@@ -29,7 +29,7 @@
 };
 
 &subsys_off {
-	min-residency-us = <25000000>;
+	min-residency-us = <8000000>;
 	status = "okay";
 };
 
