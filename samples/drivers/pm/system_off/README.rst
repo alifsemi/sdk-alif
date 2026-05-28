@@ -6,128 +6,164 @@ Alif Power Management States Demo
 Overview
 ********
 
-This sample demonstrates Zephyr power management states on Alif RTSS cores, showcasing
-different PM state transitions with RTC wakeup capabilities. The sample illustrates:
+This sample demonstrates Zephyr power management states on Alif RTSS cores,
+showcasing different PM state transitions with RTC/Timer wakeup capabilities.
+The PM states exercised depend on the *capability* of the target, selected via
+the build snippet:
 
-* **PM_STATE_RUNTIME_IDLE**: Light sleep state with quick wakeup (CPU clock gating via WFI)
-* **PM_STATE_SUSPEND_TO_IDLE**: CPU sleep with IWIC (Internal WIC), devices remain active (no device PM overhead)
-* **PM_STATE_SUSPEND_TO_RAM (S2RAM)**: Deep sleep with retention (HE core only)
+* **PM_STATE_RUNTIME_IDLE**: Light sleep (WFI); all clocks and retention intact
+* **PM_STATE_SUSPEND_TO_IDLE**: CPU sleep with IWIC; devices stay active
+* **PM_STATE_SUSPEND_TO_RAM (S2RAM)**: Deep sleep with retention(SERAM & TCM/SRAM0)
 
-  * Substate 0 (STANDBY): Medium power savings
-  * Substate 1 (STOP): Higher power savings
+  * Substate 0 (STANDBY): PD0, PD1 & PD2 will be ON
+  * Substate 1 (STOP): Deeper power savings, VBAT-AON(PD0) only
 
-* **PM_STATE_SOFT_OFF**: Deepest sleep, no retention, full system reset on wakeup
+* **PM_STATE_SOFT_OFF**: Deepest sleep; no retention, full system reset on wakeup
 
-The behavior differs between HP and HE cores:
+Two compile-time predicates drive the state machine in ``main.c``;
 
-**HE Core (with retention support)**:
+``S2RAM_SUPPORTED``
+  True when the DTS ``chosen`` node ``zephyr,sram`` points at ``sram0``
+  (set by the snippet overlay) OR when the HE core boots from TCM (with retention).
+  The snippet overlay is responsible for ensuring the target has SRAM0 retention capability.
 
-* When booting from **TCM** (VTOR = 0x0):
+``SOFT_OFF_SUPPORTED``
+  True when ``S2RAM_SUPPORTED`` is false (mutually exclusive).
 
-  * Demonstrates RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP
-  * Skips SOFT_OFF (uses retention instead)
-  * Resumes execution after each state
+Capability Matrix
+=================
 
-* When booting from **MRAM** (VTOR >= 0x80000000):
+.. list-table::
+   :header-rows: 1
+   :widths: 30 15 15 40
 
-  * Demonstrates RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF
-  * System resets and restarts from main() after SOFT_OFF
-
-**HP Core (no retention support)**:
-
-* Only SOFT_OFF is available for deeper sleep (no S2RAM support)
-* Demonstrates RUNTIME_IDLE, then SOFT_OFF
-* System resets and restarts from main() after SOFT_OFF
+   * - Snippet
+     - Core(s)
+     - Data RAM
+     - PM states exercised
+   * - ``pm-system-off-s2ram-tcm``
+     - HE only
+     - TCM (SRAM4/5)
+     - RUNTIME_IDLE → SUSPEND_TO_IDLE → S2RAM STANDBY → S2RAM STOP
+   * - ``pm-system-off-mram``
+     - HE + HP
+     - TCM / MRAM boot
+     - RUNTIME_IDLE → SUSPEND_TO_IDLE → SOFT_OFF
+   * - ``pm-system-off-s2ram-sram0``
+     - HE + HP
+     - SRAM0 (E8 only)
+     - RUNTIME_IDLE → SUSPEND_TO_IDLE → S2RAM STANDBY → S2RAM STOP
 
 Requirements
 ************
 
 * Alif Ensemble or Balletto development board
-* RTC peripheral enabled for wakeup
-* SE Services for power profile configuration
-
-Supported Boards
-****************
-
-* alif_e7_dk_rtss_he
-* alif_e1c_dk_rtss_he
-* alif_b1_dk_rtss_he
-* alif_e8_dk_rtss_he
-* alif_e7_dk_rtss_hp (HP core)
-* alif_e8_dk_rtss_hp (HP core)
+* RTC or LPTIMER0 peripheral enabled for wakeup (configured by snippet)
+* SE Services for power profile configuration (configured via DTS overlay)
 
 Building and Running
 ********************
 
-Build for HE core (TCM boot with retention):
+HE Core — TCM boot S2RAM (E7/E8/E1C/B1)
+=========================================
 
-.. code-block:: console
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/pm/system_off
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :west-args: -p auto
+   :snippets: pm-system-off-s2ram-tcm
+   :gen-args: -DCONFIG_FLASH_BASE_ADDRESS=0x0 -DCONFIG_FLASH_LOAD_OFFSET=0x0 -DCONFIG_FLASH_SIZE=256
 
-   west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-       ../alif/samples/drivers/pm/system_off \
-       -S pm-system-off-he \
-       -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
-       -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
-       -DCONFIG_FLASH_SIZE=256
+HE Core — MRAM boot SOFT_OFF
+=============================
 
-Build for HE core (MRAM boot):
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/pm/system_off
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_he
+   :goals: build
+   :west-args: -p auto
+   :snippets: pm-system-off-mram
 
-.. code-block:: console
+HP Core — MRAM boot SOFT_OFF
+=============================
 
-   west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-       ../alif/samples/drivers/pm/system_off \
-       -S pm-system-off-he
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/pm/system_off
+   :board: alif_e7_dk/ae722f80f55d5xx/rtss_hp
+   :goals: build
+   :west-args: -p auto
+   :snippets: pm-system-off-mram
 
-Build for HP core:
+HE Core — SRAM0 S2RAM (E8 only)
+================================
 
-.. code-block:: console
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/pm/system_off
+   :board: alif_e8_dk/ae822fa0e5597xx0/rtss_he
+   :goals: build
+   :west-args: -p auto
+   :snippets: pm-system-off-s2ram-sram0
 
-   west build -p auto -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-       ../alif/samples/drivers/pm/system_off \
-       -S pm-system-off-hp
+HP Core — SRAM0 S2RAM (E8 only)
+================================
 
-Flash the binary using SE Tools. See :ref:`programming_an_application` for details.
+Both HE and HP require a first-stage loader in MRAM to power up SRAM0
+before the Zephyr image runs.  The loader placement is user-defined; the
+``aipm_off`` ``vtor-address`` must be set to the address where the loader
+is placed so the SE restores execution there on wakeup.  Since there is
+only one RTC on the SoC and it is used as the idle timer, only one core
+can enable it at a time — the other core must be in the off-state to test
+the complete PM state transition.
+
+.. zephyr-app-commands::
+   :zephyr-app: ../alif/samples/drivers/pm/system_off
+   :board: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+   :goals: build
+   :west-args: -p auto
+   :snippets: pm-system-off-s2ram-sram0
+
+Flash the binary using SE Tools. See :ref:`programming_an_application` for
+details.
 
 Sample Output
 *************
 
-HE Core - TCM Boot (with retention, SOFT_OFF skipped)
-======================================================
+HE Core — TCM boot (S2RAM STANDBY → STOP)
+==========================================
 
 .. code-block:: console
 
-   *** Booting Zephyr OS build v4.1.0-415-g8a0d36191e14 ***
-   [00:00:00.004,000] <inf> pm_system_off: alif_e7_dk RTSS_HE (TCM boot): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)
+   *** Booting Zephyr OS build v4.1.0 ***
+   [00:00:00.004,000] <inf> pm_system_off: alif_e7_dk (S2RAM): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
    [00:00:00.016,000] <inf> pm_system_off: POWER STATE SEQUENCE:
    [00:00:00.022,000] <inf> pm_system_off:   1. PM_STATE_RUNTIME_IDLE
    [00:00:00.029,000] <inf> pm_system_off:   2. PM_STATE_SUSPEND_TO_IDLE
    [00:00:00.036,000] <inf> pm_system_off:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
    [00:00:00.044,000] <inf> pm_system_off:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
-   [00:00:00.053,000] <inf> pm_system_off:   5. (SOFT_OFF skipped - TCM boot, using retention)
    [00:00:00.062,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
    [00:00:18.071,000] <inf> pm_system_off: Exited from RUNTIME_IDLE sleep
    [00:00:18.077,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_IDLE for (4000 microseconds)
    [00:00:18.092,000] <inf> pm_system_off: Exited from PM_STATE_SUSPEND_TO_IDLE
-   [00:00:18.099,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (20000000 microseconds)
-   [00:00:38.115,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
-   [00:00:38.125,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 38125
-   [00:00:40.135,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 40135
-   [00:00:42.145,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 42145
-   [00:00:44.154,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (22000000 microseconds)
-   [00:01:06.169,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
-   [00:01:06.178,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 66178
-   [00:01:08.188,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 68188
-   [00:01:10.198,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 70198
-   [00:01:12.207,000] <inf> pm_system_off: Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)
-   [00:01:12.217,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===
+   [00:00:18.099,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+   [00:00:24.115,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:24.125,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 24125
+   [00:00:26.135,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 26135
+   [00:00:28.145,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 28145
+   [00:00:30.154,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+   [00:00:39.169,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:00:39.178,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 39178
+   [00:00:41.188,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 41188
+   [00:00:43.198,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 43198
+   [00:00:45.207,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===
 
-HP Core - MRAM Boot (no retention, only SOFT_OFF)
-==================================================
+HP Core — MRAM boot (SOFT_OFF)
+===============================
 
 .. code-block:: console
 
-   *** Booting Zephyr OS build v4.1.0-415-g8a0d36191e14 ***
-   [00:00:00.005,000] <inf> pm_system_off: alif_e7_dk RTSS_HP: PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)
+   *** Booting Zephyr OS build v4.1.0 ***
+   [00:00:00.005,000] <inf> pm_system_off: alif_e7_dk (SOFT_OFF): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)
    [00:00:00.017,000] <inf> pm_system_off: POWER STATE SEQUENCE:
    [00:00:00.023,000] <inf> pm_system_off:   1. PM_STATE_RUNTIME_IDLE
    [00:00:00.030,000] <inf> pm_system_off:   2. PM_STATE_SUSPEND_TO_IDLE
@@ -135,45 +171,48 @@ HP Core - MRAM Boot (no retention, only SOFT_OFF)
    [00:00:00.043,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
    [00:00:18.054,000] <inf> pm_system_off: Exited from RUNTIME_IDLE sleep
    [00:00:18.060,000] <inf> pm_system_off: PM_STATE_SUSPEND_TO_IDLE (skipped - LPM timer not enabled)
-   [00:00:18.070,000] <inf> pm_system_off: Enter PM_STATE_SOFT_OFF for (26000000 microseconds)
+   [00:00:18.070,000] <inf> pm_system_off: Enter PM_STATE_SOFT_OFF for (10000000 microseconds)
    [00:00:18.078,000] <inf> pm_system_off: Note: SOFT_OFF has no retention - system will reset on wakeup
 
-   <-- System resets here after 26 seconds -->
+   <-- System resets after 10 seconds -->
 
-   *** Booting Zephyr OS build v4.1.0-415-g8a0d36191e14 ***
-   [00:00:00.005,000] <inf> pm_system_off: alif_e7_dk RTSS_HP: PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)
-   [00:00:00.018,000] <inf> pm_system_off: POWER STATE SEQUENCE:
-   [00:00:00.024,000] <inf> pm_system_off:   1. PM_STATE_RUNTIME_IDLE
-   [00:00:00.030,000] <inf> pm_system_off:   2. PM_STATE_SUSPEND_TO_IDLE
-   [00:00:00.037,000] <inf> pm_system_off:   3. PM_STATE_SOFT_OFF
-   [00:00:00.043,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+   *** Booting Zephyr OS build v4.1.0 ***
+   [00:00:00.005,000] <inf> pm_system_off: alif_e7_dk (SOFT_OFF): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)
    [Cycle repeats...]
 
 Notes
 *****
 
-* **Debugger**: Disconnect debugger before testing - it prevents cores from entering OFF states
-* **UART Hub**: If using USB hub for UART, set BOOT_DELAY to avoid missing logs after power cycle
-* **Sleep Durations**:
+* **Debugger**: Disconnect the debugger before testing — it prevents cores
+  from entering OFF states.
+* **UART Hub**: If using a USB hub for UART, set ``CONFIG_BOOT_DELAY`` to
+  avoid missing logs after a power cycle.
+* **Sleep durations** (all below the 10.7 s uint32 overflow ceiling at
+  400 MHz):
 
-  * RUNTIME_IDLE: 18 seconds
-  * SUSPEND_TO_IDLE: 4 milliseconds
-  * S2RAM STANDBY: 20 seconds
-  * S2RAM STOP: 22 seconds
-  * SOFT_OFF: 26 seconds
+  * RUNTIME_IDLE: 18 s (WFI, not subject to overflow)
+  * SUSPEND_TO_IDLE: 4 ms
+  * S2RAM STANDBY: 6 s
+  * S2RAM STOP: 9 s
+  * SOFT_OFF: 10 s
 
-* **SUSPEND_TO_IDLE Details**:
+* **SUSPEND_TO_IDLE**:
 
-  * Requires LPM timer support (``CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER``)
-  * HE core: Enabled by default with RTC as LPM timer
-  * HP core: Skipped by default (RTC shared with HE, can be enabled if needed)
-  * Uses IWIC (Internal WIC) for wake sources - lighter than EWIC
-  * Only interrupts 0-63 can wake from IWIC mode
-  * Devices remain active - no suspend/resume overhead (zephyr,pm-device-disabled)
-  * Exit latency (~500µs) primarily from RTC register read/write for time compensation
-  * Suitable for frequent, low-latency wake scenarios
-  * Enable in device tree with ``suspend_idle`` node status = "okay"
+  * Requires ``CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER`` (LPM timer).
+  * HE core: enabled by default with RTC as LPM timer.
+  * HP core: skipped by default (enabled when ``-S pm-system-off-s2ram-sram0``
+    is used, with RTC as idle timer).
+  * Uses IWIC (Internal WIC) — lighter than EWIC.
+  * Only interrupts 0–63 can wake from IWIC mode.
+  * Devices remain active (no suspend/resume overhead).
 
-* **CONFIG_POWEROFF**: Alternative mode to test sys_poweroff() instead of PM state sequence
-* **Retention Memory**: HE core retains SERAM and optionally TCM (when booting from TCM)
-* **Power Measurement**: For accurate power measurements, ensure all unused peripherals are disabled
+* **SRAM0 S2RAM — E8 only**: SRAM0 retention masks
+  (``ALIF_SRAM0_*_RET_MASK``) are defined only in the Ensemble Gen2
+  DT-bindings header.  Using ``-S pm-system-off-s2ram-sram0`` on E7 or
+  earlier will fail with a DTS compile error.
+* **SRAM0 S2RAM — shared RTC**: The SoC has a single RTC used as the idle
+  timer.  Only one core can enable it at a time; the other core must be in
+  the off-state to test the complete PM state transition.
+* **CONFIG_POWEROFF**: Alternative mode to test ``sys_poweroff()`` instead
+  of the PM state sequence.
+* **Power measurement**: Disable all unused peripherals for accurate numbers.
