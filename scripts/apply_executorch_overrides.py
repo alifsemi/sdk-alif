@@ -29,23 +29,19 @@ def copy_file_with_dirs(src: Path, dst: Path) -> None:
     print(f"  Copied: {src.relative_to(src.parents[3])} -> {dst.relative_to(dst.parents[5])}")
 
 
-def _resolve_latest_nightly_version(package: str, torch_url: str, nightly_date: str = None, version_prefix: str = None):
+def _query_available_nightlies(package: str, torch_url: str):
     """
-    Query pip (via 'pip index versions') for the latest installable nightly
-    build of a package.  This is the only authoritative source: the PyTorch
-    nightly HTML index often lists wheel filenames before the files are fully
-    propagated to the CDN that pip uses, causing spurious 'not found' errors.
+    Query pip (via 'pip index versions') for all installable nightly builds
+    of a package.
 
     Args:
         package: Package name, e.g. 'torch', 'torchvision', 'torchaudio'
         torch_url: PyTorch nightly index URL
-        nightly_date: If given, return the version prefix that matches this date.
-        version_prefix: If given, only consider builds with this exact version
-                        prefix (e.g. '2.13.0'), so we never jump to a newer
-                        major/minor than ExecuTorch was tested against.
 
     Returns:
-        Tuple (version_prefix, nightly_date) e.g. ('2.13.0', 'dev20260512'), or None on failure.
+        Dict mapping date string (e.g. 'dev20260525') to version prefix
+        (e.g. '0.28.0').  Empty dict on failure.  If multiple version
+        prefixes exist for the same date, the highest one wins.
     """
     try:
         import subprocess as _sp
@@ -55,32 +51,23 @@ def _resolve_latest_nightly_version(package: str, torch_url: str, nightly_date: 
              "--pre", "--extra-index-url", torch_url],
             capture_output=True, text=True, timeout=60,
         )
-        # pip index versions output: "AVAILABLE VERSIONS: x.y.z, ..." or similar
         output = result.stdout + result.stderr
 
-        matches = re.findall(
-            rf'(\d+\.\d+\.\d+)\.(dev(\d{{8}}))',
-            output,
-        )
-        if not matches:
-            return None
-
-        if version_prefix:
-            matches = [(v, d, s) for v, d, s in matches if v == version_prefix]
-            if not matches:
-                return None
-
-        if nightly_date:
-            for ver_prefix, dev_str, date_str in matches:
-                if dev_str == nightly_date:
-                    return (ver_prefix, dev_str)
-            return None
-        else:
-            latest = max(matches, key=lambda t: t[2])
-            return (latest[0], latest[1])
+        matches = re.findall(r'(\d+\.\d+\.\d+)\.(dev\d{8})', output)
+        date_to_version = {}
+        for ver, dev in matches:
+            # Higher version wins for the same date.  Compare numerically by
+            # (major, minor, patch) so e.g. "2.10.0" correctly outranks
+            # "2.9.0" (a plain string compare would order them incorrectly).
+            def _ver_key(v):
+                return tuple(int(p) for p in v.split("."))
+            if dev not in date_to_version or \
+                    _ver_key(ver) > _ver_key(date_to_version[dev]):
+                date_to_version[dev] = ver
+        return date_to_version
     except Exception as err:
-        print(f"  Warning: Could not resolve latest nightly for {package} from pip: {err}")
-        return None
+        print(f"  Warning: Could not query nightlies for {package} from pip: {err}")
+        return {}
 
 
 def patch_torch_versions(executorch_dir: Path) -> bool:
@@ -99,12 +86,13 @@ def patch_torch_versions(executorch_dir: Path) -> bool:
     print("Patching PyTorch version pins...")
 
     TORCH_NIGHTLY_URL = "https://download.pytorch.org/whl/nightly/cpu"
-    FALLBACK_NIGHTLY_VERSION = "dev20260415"
-    FALLBACK_TORCHVISION_VERSION = "0.27.0"
-    FALLBACK_TORCHAUDIO_VERSION = "2.12.0"
+    FALLBACK_TORCH_VERSION = "2.13.0"
+    FALLBACK_NIGHTLY_VERSION = "dev20260525"
+    FALLBACK_TORCHVISION_VERSION = "0.28.0"
+    FALLBACK_TORCHAUDIO_VERSION = "2.11.0"
 
-    # Read the upstream-pinned TORCH_VERSION from torch_pin.py so we never
-    # jump to a newer major/minor than ExecuTorch was tested against.
+    # Read the upstream-pinned TORCH_VERSION from torch_pin.py so we prefer
+    # the same major/minor that ExecuTorch was tested against.
     torch_pin_file = executorch_dir / "torch_pin.py"
     PINNED_TORCH_VERSION = None
     if torch_pin_file.exists():
@@ -115,40 +103,129 @@ def patch_torch_versions(executorch_dir: Path) -> bool:
 
     if PINNED_TORCH_VERSION:
         print(f"  Upstream-pinned torch version: {PINNED_TORCH_VERSION}")
-        print(f"  Querying PyTorch nightly index for latest {PINNED_TORCH_VERSION} build...")
-        torch_result = _resolve_latest_nightly_version("torch", TORCH_NIGHTLY_URL, version_prefix=PINNED_TORCH_VERSION)
-        if not torch_result:
-            print(f"  No {PINNED_TORCH_VERSION} nightly found, trying latest available nightly...")
-            torch_result = _resolve_latest_nightly_version("torch", TORCH_NIGHTLY_URL)
-    else:
-        print(f"  Could not read upstream torch_pin.py, querying latest torch nightly...")
-        torch_result = _resolve_latest_nightly_version("torch", TORCH_NIGHTLY_URL)
 
-    if torch_result:
-        TARGET_TORCH_VERSION, TARGET_NIGHTLY_VERSION = torch_result
-        print(f"  Resolved torch: {TARGET_TORCH_VERSION}.{TARGET_NIGHTLY_VERSION}")
+    # Query the nightly index for all three packages.  We then pick the
+    # latest nightly DATE for which torchvision AND torchaudio are both
+    # published, and resolve the torch nightly from the torchvision wheel's
+    # declared dependency (which is often a date a day or two earlier than
+    # the tv/ta date itself).
+    # This is critical because the per-day builds are often partial:
+    # e.g. torch dev20260526 can exist while torchvision/torchaudio for
+    # that same date are not yet published, and stale dates get purged
+    # from PyPI over time.
+    print(f"  Querying PyTorch nightly index for torch / torchvision / torchaudio...")
+    torch_nightlies = _query_available_nightlies("torch", TORCH_NIGHTLY_URL)
+    tv_nightlies = _query_available_nightlies("torchvision", TORCH_NIGHTLY_URL)
+    ta_nightlies = _query_available_nightlies("torchaudio", TORCH_NIGHTLY_URL)
+
+    # Restrict torch candidates to the upstream-pinned major.minor when
+    # possible, so we don't unexpectedly jump to a newer torch series.
+    torch_candidates = torch_nightlies
+    if PINNED_TORCH_VERSION:
+        pinned_only = {d: v for d, v in torch_nightlies.items()
+                       if v == PINNED_TORCH_VERSION}
+        if pinned_only:
+            torch_candidates = pinned_only
+        else:
+            print(f"  No nightly available for pinned torch {PINNED_TORCH_VERSION}; "
+                  f"falling back to any available torch nightly.")
+
+    # Latest dates with torchvision AND torchaudio published.  We try these
+    # newest-first; pip will then pull whatever torch nightly the
+    # tv/ta wheels actually depend on (usually published a day or two
+    # earlier than tv/ta).
+    tv_ta_common_dates = sorted(
+        set(tv_nightlies) & set(ta_nightlies),
+        reverse=True,
+    )
+
+    # For each candidate date (newest first), download just the torchvision
+    # wheel (~2 MB) and read its METADATA to discover the exact torch
+    # nightly it depends on.  We then verify that the corresponding torch
+    # nightly is actually available before accepting the triplet.
+    resolved = None
+    import subprocess as _sp
+    import tempfile
+    import zipfile
+    for candidate_date in tv_ta_common_dates[:10]:
+        cand_tv = tv_nightlies[candidate_date]
+        cand_ta = ta_nightlies[candidate_date]
+        tv_spec = f"torchvision=={cand_tv}.{candidate_date}"
+        print(f"  Probing tv/ta date {candidate_date} via {tv_spec} wheel metadata...")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                dl = _sp.run(
+                    [sys.executable, "-m", "pip", "download", "--no-deps",
+                     "-d", tmpdir, tv_spec,
+                     "--extra-index-url", TORCH_NIGHTLY_URL],
+                    capture_output=True, text=True, timeout=180,
+                )
+                if dl.returncode != 0:
+                    print(f"    -> download failed, trying older date")
+                    continue
+                whl_files = [f for f in os.listdir(tmpdir) if f.endswith(".whl")]
+                if not whl_files:
+                    print(f"    -> no wheel produced, trying older date")
+                    continue
+                torch_req = None
+                with zipfile.ZipFile(os.path.join(tmpdir, whl_files[0])) as zf:
+                    for name in zf.namelist():
+                        if name.endswith("METADATA"):
+                            meta = zf.read(name).decode("utf-8", "replace")
+                            for line in meta.splitlines():
+                                if line.startswith("Requires-Dist:") and \
+                                        re.search(r'\btorch\b', line):
+                                    torch_req = line
+                                    break
+                            break
+                if not torch_req:
+                    print(f"    -> no torch Requires-Dist in metadata, "
+                          f"trying older date")
+                    continue
+                # Examples we need to handle:
+                #   "Requires-Dist: torch (==2.13.0.dev20260524)"
+                #   "Requires-Dist: torch==2.13.0.dev20260524"
+                tm = re.search(
+                    r'torch\s*\(?==\s*(\d+\.\d+\.\d+)\.(dev\d{8})',
+                    torch_req,
+                )
+                if not tm:
+                    print(f"    -> could not parse torch pin from "
+                          f"{torch_req!r}, trying older date")
+                    continue
+                cand_torch_version = tm.group(1)
+                cand_torch_date = tm.group(2)
+                # Verify the torch nightly actually exists in the index and
+                # matches the upstream-pinned torch series (torch_candidates).
+                if cand_torch_date not in torch_candidates or \
+                        torch_candidates[cand_torch_date] != cand_torch_version:
+                    print(f"    -> required torch "
+                          f"{cand_torch_version}.{cand_torch_date} not "
+                          f"available, trying older date")
+                    continue
+                resolved = (candidate_date, cand_torch_version,
+                            cand_torch_date, cand_tv, cand_ta)
+                break
+            except Exception as err:
+                print(f"    -> probe error: {err}")
+
+    if resolved:
+        TV_TA_DATE, TARGET_TORCH_VERSION, TARGET_NIGHTLY_VERSION, \
+            TARGET_TORCHVISION_VERSION, TARGET_TORCHAUDIO_VERSION = resolved
+        print(f"  Resolved:")
+        print(f"    torch       = {TARGET_TORCH_VERSION}.{TARGET_NIGHTLY_VERSION}")
+        print(f"    torchvision = {TARGET_TORCHVISION_VERSION}.{TV_TA_DATE}")
+        print(f"    torchaudio  = {TARGET_TORCHAUDIO_VERSION}.{TV_TA_DATE}")
     else:
-        TARGET_TORCH_VERSION = PINNED_TORCH_VERSION or "2.12.0"
+        TARGET_TORCH_VERSION = FALLBACK_TORCH_VERSION
         TARGET_NIGHTLY_VERSION = FALLBACK_NIGHTLY_VERSION
-        print(f"  Could not resolve torch nightly, falling back to {TARGET_TORCH_VERSION}.{TARGET_NIGHTLY_VERSION}")
-
-    print(f"  Querying PyTorch nightly index for torchvision matching {TARGET_NIGHTLY_VERSION}...")
-    tv_result = _resolve_latest_nightly_version("torchvision", TORCH_NIGHTLY_URL, TARGET_NIGHTLY_VERSION)
-    if tv_result:
-        TARGET_TORCHVISION_VERSION = tv_result[0]
-        print(f"  Resolved torchvision: {TARGET_TORCHVISION_VERSION}.{TARGET_NIGHTLY_VERSION}")
-    else:
+        TV_TA_DATE = FALLBACK_NIGHTLY_VERSION
         TARGET_TORCHVISION_VERSION = FALLBACK_TORCHVISION_VERSION
-        print(f"  Could not resolve torchvision nightly, falling back to {TARGET_TORCHVISION_VERSION}")
-
-    print(f"  Querying PyTorch nightly index for torchaudio matching {TARGET_NIGHTLY_VERSION}...")
-    ta_result = _resolve_latest_nightly_version("torchaudio", TORCH_NIGHTLY_URL, TARGET_NIGHTLY_VERSION)
-    if ta_result:
-        TARGET_TORCHAUDIO_VERSION = ta_result[0]
-        print(f"  Resolved torchaudio: {TARGET_TORCHAUDIO_VERSION}.{TARGET_NIGHTLY_VERSION}")
-    else:
         TARGET_TORCHAUDIO_VERSION = FALLBACK_TORCHAUDIO_VERSION
-        print(f"  Could not resolve torchaudio nightly, falling back to {TARGET_TORCHAUDIO_VERSION}")
+        print(f"  Could not resolve nightly via dry-run; falling back to "
+              f"torch={TARGET_TORCH_VERSION}.{TARGET_NIGHTLY_VERSION}, "
+              f"torchvision={TARGET_TORCHVISION_VERSION}.{TV_TA_DATE}, "
+              f"torchaudio={TARGET_TORCHAUDIO_VERSION}.{TV_TA_DATE}.")
 
     # Patch torch_pin.py using regex for robustness
     torch_pin_file = executorch_dir / "torch_pin.py"
@@ -188,23 +265,40 @@ def patch_torch_versions(executorch_dir: Path) -> bool:
 
         original_content = content
 
-        # Match torchvision==X.Y.Z.{NIGHTLY_VERSION}
+        # torchvision/torchaudio nightlies are typically published one day
+        # later than the torch nightly they depend on, so we hardcode a
+        # specific tv/ta date here (TV_TA_DATE) which may differ from
+        # NIGHTLY_VERSION (used for torch).  This decouples the two.
+        # Replace 'X.Y.Z.{NIGHTLY_VERSION}' with 'A.B.C.devYYYYMMDD'.
         content = re.sub(
             r'torchvision==(\d+\.\d+\.\d+)\.\{NIGHTLY_VERSION\}',
-            f'torchvision=={TARGET_TORCHVISION_VERSION}.{{NIGHTLY_VERSION}}',
+            f'torchvision=={TARGET_TORCHVISION_VERSION}.{TV_TA_DATE}',
             content
         )
-        # Match torchaudio==X.Y.Z.{NIGHTLY_VERSION}
         content = re.sub(
             r'torchaudio==(\d+\.\d+\.\d+)\.\{NIGHTLY_VERSION\}',
-            f'torchaudio=={TARGET_TORCHAUDIO_VERSION}.{{NIGHTLY_VERSION}}',
+            f'torchaudio=={TARGET_TORCHAUDIO_VERSION}.{TV_TA_DATE}',
+            content
+        )
+        # Also handle the case where a previous patch already hardcoded
+        # the date (so re-running is idempotent and picks up newer dates).
+        content = re.sub(
+            r'torchvision==(\d+\.\d+\.\d+)\.dev\d{8}',
+            f'torchvision=={TARGET_TORCHVISION_VERSION}.{TV_TA_DATE}',
+            content
+        )
+        content = re.sub(
+            r'torchaudio==(\d+\.\d+\.\d+)\.dev\d{8}',
+            f'torchaudio=={TARGET_TORCHAUDIO_VERSION}.{TV_TA_DATE}',
             content
         )
 
         if content != original_content:
             with open(install_req_file, 'w') as f:
                 f.write(content)
-            print(f"  ✓ Updated install_requirements.py: torchvision={TARGET_TORCHVISION_VERSION}, torchaudio={TARGET_TORCHAUDIO_VERSION}")
+            print(f"  ✓ Updated install_requirements.py: "
+                  f"torchvision={TARGET_TORCHVISION_VERSION}.{TV_TA_DATE}, "
+                  f"torchaudio={TARGET_TORCHAUDIO_VERSION}.{TV_TA_DATE}")
         else:
             print(f"  ✓ install_requirements.py already up to date or pattern not found")
     else:
