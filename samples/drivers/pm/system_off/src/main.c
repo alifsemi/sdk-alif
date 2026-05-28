@@ -8,7 +8,6 @@
  *
  */
 
-#include "aipm.h"
 #include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
@@ -19,36 +18,10 @@
 #include <zephyr/sys/poweroff.h>
 #endif
 #include <zephyr/drivers/counter.h>
-#include <se_service.h>
 #include <zephyr/sys/util.h>
 
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
-
-#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE) || !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-/**
- * As per the application requirements, it can remove the memory blocks which are not in use.
- */
-#if defined(CONFIG_SOC_SERIES_E1C) || defined(CONFIG_SOC_SERIES_B1)
-	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | \
-					SRAM5_1_MASK | SRAM5_2_MASK | SRAM5_3_MASK | SRAM5_4_MASK |\
-					SRAM5_5_MASK
-	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK
-#else
-	#define APP_RET_MEM_BLOCKS SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK
-	#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
-#endif
-#endif /* CONFIG_ALIF_SE_DTS_RUN_PROFILE || CONFIG_ALIF_SE_DTS_OFF_PROFILE */
-
-#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
-	#define SE_OFFP_EWIC_CFG EWIC_RTC_A
-	#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
-#elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
-	#define SE_OFFP_EWIC_CFG EWIC_VBAT_TIMER
-	#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
-#endif
-#endif /* CONFIG_ALIF_SE_DTS_OFF_PROFILE */
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
 	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
@@ -123,182 +96,6 @@ BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
 	"SOFT_OFF sleep duration should be greater than STOP sleep duration");
 #endif
 
-#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE)
-/**
- * Set the RUN profile parameters for this application.
- */
-static int app_set_run_params(void)
-{
-	run_profile_t runp;
-	int ret;
-
-	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
-	runp.dcdc_voltage  = 825;
-	runp.dcdc_mode     = DCDC_MODE_PWM;
-	runp.aon_clk_src   = CLK_SRC_LFXO;
-	runp.run_clk_src   = CLK_SRC_PLL;
-	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-	runp.ip_clock_gating = 0;
-	runp.phy_pwr_gating = 0;
-#if defined(CONFIG_RTSS_HP)
-	runp.cpu_clk_freq  = CLOCK_FREQUENCY_400MHZ;
-#else
-	runp.cpu_clk_freq  = CLOCK_FREQUENCY_160MHZ;
-#endif
-
-	runp.memory_blocks = MRAM_MASK;
-
-	ret = se_service_set_run_cfg(&runp);
-	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
-
-	return ret;
-}
-/*
- * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
- *
- * Priority 46 ensures this runs:
- *   - AFTER SE Services (priority 45) - SE must be ready for set_run_cfg()
- *   - BEFORE Power Domain (priority 47) - Power domain needs SYSTOP enabled
- *   - BEFORE UART and peripherals (priority 50+) - Peripherals need SYSTOP ON
- *
- * On cold boot: SYSTOP is already ON by default, safe to call.
- * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
- */
-SYS_INIT(app_set_run_params, PRE_KERNEL_1, 46);
-#endif /* CONFIG_ALIF_SE_DTS_RUN_PROFILE */
-
-#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-static int app_set_off_params(enum pm_state state, uint8_t substate_id)
-{
-	int ret;
-	off_profile_t offp;
-
-	offp.dcdc_voltage  = 825;
-	offp.dcdc_mode     = DCDC_MODE_OFF;
-	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
-	offp.aon_clk_src   = CLK_SRC_LFXO;
-	offp.stby_clk_src  = CLK_SRC_HFRC;
-	offp.vtor_address  = SCB->VTOR;
-	offp.ip_clock_gating = 0;
-	offp.phy_pwr_gating = 0;
-	offp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-	offp.ewic_cfg      = SE_OFFP_EWIC_CFG;
-	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
-	offp.memory_blocks = MRAM_MASK;
-
-
-#if defined(CONFIG_RTSS_HE)
-	/*
-	 * HE core retention configuration:
-	 * - TCM boot (VTOR = 0): Enable TCM retention (SERAM + APP_RET_MEM_BLOCKS)
-	 * - MRAM boot (VTOR >= 0x80000000): Only SERAM retention needed
-	 */
-	if (!IS_BOOTING_FROM_MRAM()) {
-		/* TCM boot: enable full retention including TCM memory blocks */
-		offp.memory_blocks |= APP_RET_MEM_BLOCKS | SERAM_MEMORY_BLOCKS_IN_USE;
-	} else {
-		/* MRAM boot */
-		offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
-	}
-#else
-	/*
-	 * HP core: Retention is not possible with HP-TCM
-	 */
-	__ASSERT(IS_BOOTING_FROM_MRAM(), "HP TCM Retention is not possible - VTOR is set to TCM");
-#endif
-
-	switch (state) {
-	case PM_STATE_SUSPEND_TO_RAM:
-		if (substate_id == 0) {
-			offp.power_domains = PD_SSE700_AON_MASK;
-		} else if (substate_id == 1) {
-			offp.power_domains = PD_VBAT_AON_MASK;
-
-		}
-		break;
-	case PM_STATE_SOFT_OFF:
-		offp.memory_blocks = MRAM_MASK | SERAM_MEMORY_BLOCKS_IN_USE;
-		offp.power_domains = PD_VBAT_AON_MASK;
-		break;
-	default:
-		break;
-	}
-
-	ret = se_service_set_off_cfg(&offp);
-	__ASSERT(ret == 0, "SE: set_off_cfg failed = %d", ret);
-
-	return ret;
-}
-
-/**
- * PM Notifier callback for power state entry
- */
-static void pm_notify_state_entry(enum pm_state state)
-{
-	const struct pm_state_info *next_state = pm_state_next_get(0);
-	uint8_t substate_id = next_state ? next_state->substate_id : 0;
-	int ret;
-
-	switch (state) {
-	case PM_STATE_SUSPEND_TO_IDLE:
-		/* No action needed */
-		break;
-	case PM_STATE_SUSPEND_TO_RAM:
-	case PM_STATE_SOFT_OFF:
-		ret = app_set_off_params(state, substate_id);
-		__ASSERT(ret == 0, "app_set_off_params failed = %d", ret);
-		break;
-	default:
-		__ASSERT(false, "Entering unknown power state %d", state);
-		break;
-	}
-}
-#endif /* CONFIG_ALIF_SE_DTS_OFF_PROFILE */
-
-#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE)
-/**
- * PM Notifier callback called BEFORE devices are resumed
- *
- * This restores SE run configuration when resuming from S2RAM states.
- * Note: For SOFT_OFF, the system resets completely and app_set_run_params()
- * runs during normal PRE_KERNEL_1 initialization, so this callback is not needed.
- */
-static void pm_notify_pre_device_resume(enum pm_state state)
-{
-	int ret;
-
-	switch (state) {
-	case PM_STATE_SUSPEND_TO_RAM:
-		ret = app_set_run_params();
-		__ASSERT(ret == 0, "app_set_run_params failed = %d", ret);
-		break;
-	case PM_STATE_SUSPEND_TO_IDLE:
-		/* No action needed - IWIC keeps power, no restoration required */
-		break;
-	case PM_STATE_SOFT_OFF:
-		/* No action needed - SOFT_OFF causes reset, not resume */
-		break;
-	default:
-		__ASSERT(false, "Pre-resume for unknown power state %d", state);
-		break;
-	}
-}
-#endif
-
-#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE) || !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-/**
- * PM Notifier structure
- */
-static struct pm_notifier app_pm_notifier = {
-#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-	.state_entry = pm_notify_state_entry,
-#endif
-#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE)
-	.pre_device_resume = pm_notify_pre_device_resume,
-#endif
-};
-#endif
-
 /**
  * Helper function to lock/unlock deeper power states.
  * @param lock true → lock all deep states (allow RUNTIME_IDLE only)
@@ -348,11 +145,6 @@ static int app_pre_kernel_init(void)
 {
 	/* Lock deeper power states to allow only RUNTIME_IDLE */
 	app_pm_lock_deeper_states(true);
-
-#if !defined(CONFIG_ALIF_SE_DTS_RUN_PROFILE) || !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-	/* Register PM notifier callbacks */
-	pm_notifier_register(&app_pm_notifier);
-#endif
 
 	return 0;
 }
@@ -529,11 +321,6 @@ int main(void)
 	} else {
 		LOG_INF("Wakeup alarm set for %u seconds", POWEROFF_WAKEUP_USEC / 1000000);
 	}
-
-	/* Configure OFF profile for wakeup capability */
-#if !defined(CONFIG_ALIF_SE_DTS_OFF_PROFILE)
-	app_set_off_params(PM_STATE_SOFT_OFF, 0);
-#endif
 
 	LOG_INF("Calling sys_poweroff() - system will power off permanently");
 	sys_poweroff();
