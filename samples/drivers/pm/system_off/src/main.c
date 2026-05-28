@@ -32,6 +32,13 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 #endif
 
 
+/*
+ * Sleep duration constants for each PM state.
+ *
+ * Upper bound: at 400 MHz, ticks to cycles calculation in PM driver
+ * overflows uint32 max for values > 10.7s (2^32 / 400). All deep-sleep
+ * durations and overlay min-residency-us values must stay below this ceiling.
+ */
 /* Sleep duration for PM_STATE_RUNTIME_IDLE */
 #define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
@@ -46,55 +53,44 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 #define POWEROFF_WAKEUP_USEC (10 * 1000 * 1000)
 
 /*
- * Upper bound: at 400 MHz, ticks to cycles calculation in PM driver
- * overflows uint32 max for values > 10.7s (2^32 / 400). All deep-sleep
- * durations and overlay min-residency-us values must stay below this ceiling.
- */
-
-/*
  * MRAM base address - used to determine boot location
  * TCM boot: VTOR = 0x0
  * MRAM boot: VTOR >= 0x80000000
  */
 #define MRAM_BASE_ADDRESS 0x80000000
 
-/*
- * Helper macro to check if booting from MRAM
- */
 #define IS_BOOTING_FROM_MRAM() (SCB->VTOR >= MRAM_BASE_ADDRESS)
 
 /*
- * PM_STATE_SUSPEND_TO_RAM (S2RAM) support:
- * - HP core: NOT supported (no retention capability)
- * - HE core + TCM boot: SUPPORTED (TCM retention keeps code and context)
+ * True when the DTS chosen zephyr,sram points at sram0. The snippet overlay
+ * is responsible for ensuring SRAM0 has retention support on the target board.
  */
-#if defined(CONFIG_RTSS_HE)
-#define S2RAM_SUPPORTED (!IS_BOOTING_FROM_MRAM())
+#if DT_NODE_EXISTS(DT_NODELABEL(sram0))
+#define IS_SRAM0_CONFIGURED_AS_RAM() \
+	DT_SAME_NODE(DT_CHOSEN(zephyr_sram), DT_NODELABEL(sram0))
 #else
-#define S2RAM_SUPPORTED 0
+#define IS_SRAM0_CONFIGURED_AS_RAM() 0
 #endif
 
 /*
- * PM_STATE_SOFT_OFF support:
- * - HP core: Always supported (no retention, must use SOFT_OFF)
- * - HE core + MRAM boot: Supported (MRAM preserved, wakeup possible)
- * - HE core + TCM boot: Skip (use S2RAM with retention instead)
+ * S2RAM_SUPPORTED — retention-capable sleep is possible when:
+ *   - SRAM0 is the configured data RAM (HE or HP, E8 only), OR
+ *   - HE core booting from TCM (TCM has hardware retention)
+ *
+ * SOFT_OFF_SUPPORTED — mutually exclusive with S2RAM: used when no
+ * retained RAM is available (HP-TCM, HE-MRAM boot without SRAM0).
  */
-#if defined(CONFIG_RTSS_HP)
-#define SOFT_OFF_SUPPORTED 1
-#elif defined(CONFIG_RTSS_HE)
-#define SOFT_OFF_SUPPORTED IS_BOOTING_FROM_MRAM()
-#else
-#define SOFT_OFF_SUPPORTED 0
-#endif
+#define S2RAM_SUPPORTED \
+	(IS_SRAM0_CONFIGURED_AS_RAM() || \
+	 (IS_ENABLED(CONFIG_RTSS_HE) && !IS_BOOTING_FROM_MRAM()))
 
-#if defined(CONFIG_RTSS_HE)
-/* Additional validation for power state sleep durations */
-BUILD_ASSERT((S2RAM_STOP_SLEEP_USEC > S2RAM_STANDBY_SLEEP_USEC),
-	"STOP sleep duration should be greater than STANDBY sleep duration");
-BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
-	"SOFT_OFF sleep duration should be greater than STOP sleep duration");
-#endif
+#define SOFT_OFF_SUPPORTED (!S2RAM_SUPPORTED)
+
+/* Validate ordering of deep-sleep durations at compile time */
+BUILD_ASSERT(S2RAM_STOP_SLEEP_USEC > S2RAM_STANDBY_SLEEP_USEC,
+	"STOP sleep duration must be greater than STANDBY sleep duration");
+BUILD_ASSERT(SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC,
+	"SOFT_OFF sleep duration must be greater than STOP sleep duration");
 
 /**
  * Helper function to lock/unlock deeper power states.
@@ -103,39 +99,21 @@ BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
  */
 static void app_pm_lock_deeper_states(bool lock)
 {
-#if defined(CONFIG_RTSS_HP)
-	/*
-	 * HP core: only SOFT_OFF is ever used (no S2RAM support).
-	 * Lock SUSPEND_TO_RAM unconditionally so PM policy never selects it.
-	 */
 	if (lock) {
-		pm_policy_state_lock_get(PM_STATE_SOFT_OFF,       PM_ALL_SUBSTATES);
-		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-	} else {
-		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-		/* SUSPEND_TO_RAM stays locked - HP never uses S2RAM */
-	}
-
-#elif defined(CONFIG_RTSS_HE)
-	/*
-	 * HE core: lock both states at init; on unlock, release only the
-	 * applicable one based on boot location:
-	 * - TCM boot → S2RAM supported; SOFT_OFF stays locked
-	 * - MRAM boot → SOFT_OFF only; SUSPEND_TO_RAM stays locked
-	 */
-	if (lock) {
+		/*
+		 * Lock both deep states unconditionally so PM policy cannot
+		 * accidentally enter them during the RUNTIME_IDLE phase, where
+		 * the 18 s sleep exceeds the reduced min-residency values.
+		 */
 		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
 		pm_policy_state_lock_get(PM_STATE_SOFT_OFF,       PM_ALL_SUBSTATES);
 	} else if (S2RAM_SUPPORTED) {
 		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-		/* SOFT_OFF stays locked for TCM boot */
+		/* SOFT_OFF stays locked for the entire demo */
 	} else {
 		pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
-		/* SUSPEND_TO_RAM stays locked for MRAM boot */
+		/* S2RAM stays locked for the entire demo */
 	}
-#else
-	#error "Unknown core type"
-#endif
 }
 
 /*
@@ -238,23 +216,15 @@ int main(void)
 	__ASSERT(device_is_ready(cons), "%s: device not ready", cons->name);
 	__ASSERT(device_is_ready(wakeup_dev), "%s: device not ready", wakeup_dev->name);
 
-#if defined(CONFIG_RTSS_HE)
-	/* Boot location determines which PM states are available */
-	bool is_mram_boot = IS_BOOTING_FROM_MRAM();
-
-	if (is_mram_boot) {
-		LOG_INF("%s RTSS_HE (MRAM boot): PM states demo "
-			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)",
+	if (S2RAM_SUPPORTED) {
+		LOG_INF("%s (S2RAM): PM states demo "
+			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)",
 			CONFIG_BOARD);
 	} else {
-		LOG_INF("%s RTSS_HE (TCM boot): PM states demo "
-			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)",
+		LOG_INF("%s (SOFT_OFF): PM states demo "
+			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)",
 			CONFIG_BOARD);
 	}
-#else
-	LOG_INF("%s RTSS_HP: PM states demo "
-		"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)", CONFIG_BOARD);
-#endif
 
 	ret = counter_start(wakeup_dev);
 	__ASSERT(!ret || ret == -EALREADY, "Failed to start counter (err %d)", ret);
@@ -264,25 +234,15 @@ int main(void)
 	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
 	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
 	LOG_INF("  3. Power off (sys_poweroff)");
-#elif defined(CONFIG_RTSS_HE)
-	/* HE core: sequence depends on boot location */
+#else
 	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
 	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
-	if (!is_mram_boot) {
-		/* TCM boot: S2RAM works (TCM retention) */
+	if (S2RAM_SUPPORTED) {
 		LOG_INF("  3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)");
 		LOG_INF("  4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)");
-		LOG_INF("  5. (SOFT_OFF skipped - TCM boot, using retention)");
 	} else {
-		/* MRAM boot: Enable Only SOFT_OFF */
-		LOG_INF("  3. (S2RAM skipped - MRAM boot)");
-		LOG_INF("  4. PM_STATE_SOFT_OFF");
+		LOG_INF("  3. PM_STATE_SOFT_OFF");
 	}
-#else
-	/* HP core: no retention, only SOFT_OFF supported */
-	LOG_INF("  1. PM_STATE_RUNTIME_IDLE");
-	LOG_INF("  2. PM_STATE_SUSPEND_TO_IDLE");
-	LOG_INF("  3. PM_STATE_SOFT_OFF");
 #endif
 
 	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
@@ -333,8 +293,6 @@ int main(void)
 	/* Unlock deeper power states to allow S2RAM and/or SOFT_OFF */
 	app_pm_lock_deeper_states(false);
 
-#if defined(CONFIG_RTSS_HE)
-	/* HE core: S2RAM only if booting from TCM */
 	if (S2RAM_SUPPORTED) {
 		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
 			S2RAM_STANDBY_SLEEP_USEC);
@@ -343,7 +301,6 @@ int main(void)
 
 		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
 
-		/* Verify main thread is running properly */
 		for (int i = 0; i < 3; i++) {
 			LOG_INF("Main thread running - iteration %d - tick: %llu",
 				i, k_uptime_ticks());
@@ -357,31 +314,13 @@ int main(void)
 
 		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===");
 
-		/* Verify main thread is running properly */
 		for (int i = 0; i < 3; i++) {
 			LOG_INF("Main thread running - iteration %d - tick: %llu",
 				i, k_uptime_ticks());
 			k_sleep(K_SECONDS(2));
 		}
-	} else {
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
 	}
-#endif /* CONFIG_RTSS_HE */
 
-	/* PM_STATE_SOFT_OFF (deepest sleep with wake capability) */
-#if defined(CONFIG_RTSS_HP)
-	/* HP core: always SOFT_OFF */
-	LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
-	LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
-	ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
-	__ASSERT(ret == 0, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
-
-	/* Should never reach here - SOFT_OFF causes full reset on wakeup */
-	LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
-	__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
-
-#elif defined(CONFIG_RTSS_HE)
-	/* HE core: only SOFT_OFF when booting from MRAM */
 	if (SOFT_OFF_SUPPORTED) {
 		LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
 		LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
@@ -391,10 +330,7 @@ int main(void)
 		/* Should never reach here - SOFT_OFF causes full reset on wakeup */
 		LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
 		__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
-	} else {
-		LOG_INF("Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)");
 	}
-#endif
 
 	LOG_INF("=== POWER STATE SEQUENCE COMPLETED ===");
 
