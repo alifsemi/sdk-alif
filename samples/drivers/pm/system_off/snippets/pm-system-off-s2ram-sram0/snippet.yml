@@ -1,0 +1,10 @@
+name: pm-system-off-s2ram-sram0
+append:
+  EXTRA_CONF_FILE: ../pm_s2ram_common.conf
+boards:
+  /.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_sram0_he.overlay
+  /.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_sram0_hp.overlay
