@@ -72,11 +72,7 @@ Console UART (debug output):
 
     UART DMA Echo Test
     Enabling UART RX DMA
-    RX buffer request
     Type anything on Shell UART and press ENTER!
-    DMA TX done
-    DMA TX done
-    DMA TX done
 
 Shell UART (DMA) terminal:
 
