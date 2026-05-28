@@ -1,0 +1,32 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * PM SOFT_OFF overlay for HE core booting from MRAM.
+ * Uses RTC as wakeup source and idle timer.
+ */
+
+#include "pm_mram_common.overlay"
+
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+&off_profile_soft_off {
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg      = <ALIF_EWIC_RTC_A>;
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+	};
+};

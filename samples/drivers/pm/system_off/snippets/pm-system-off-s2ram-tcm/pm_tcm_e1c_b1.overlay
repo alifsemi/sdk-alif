@@ -9,20 +9,25 @@
  */
 
 /*
- * PM off-profile overlay for Ensemble (E1/E3/E5/E7) and Ensemble Gen2
- * (E4/E6/E8) SoCs.
+ * PM off-profile overlay for Ensemble E1C and Balletto B1 SoCs.
  */
 
-#include "pm_off_common.overlay"
+#include "pm_tcm_common.overlay"
 
 &off_profile_standby {
 	memory-blocks = <(ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
+			  ALIF_SRAM4_3_MASK | ALIF_SRAM4_4_MASK |
 			  ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
+			  ALIF_SRAM5_3_MASK | ALIF_SRAM5_4_MASK |
+			  ALIF_SRAM5_5_MASK |
 			  ALIF_SERAM_MASK | ALIF_MRAM_MASK)>;
 };
 
 &off_profile_stop {
 	memory-blocks = <(ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
+			  ALIF_SRAM4_3_MASK | ALIF_SRAM4_4_MASK |
 			  ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
+			  ALIF_SRAM5_3_MASK | ALIF_SRAM5_4_MASK |
+			  ALIF_SRAM5_5_MASK |
 			  ALIF_SERAM_MASK | ALIF_MRAM_MASK)>;
 };
