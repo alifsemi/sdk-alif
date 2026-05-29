@@ -9,7 +9,7 @@
 menuconfig I2S_SYNC
 	bool "Alif I2S sync driver"
 	default y
-	depends on I2S && DT_HAS_ALIF_I2S_SYNC_ENABLED
+	depends on I2S && DT_HAS_ALIF_I2S_SYNC_ENABLED && CLOCK_CONTROL
 	help
 		Enable Alif I2S driver with synchronisation
 
