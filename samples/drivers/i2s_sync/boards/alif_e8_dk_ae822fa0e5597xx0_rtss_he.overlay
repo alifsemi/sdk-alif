@@ -1,0 +1,81 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+#include <dt-bindings/pinctrl/ensemble-e4-e6-e8-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+#define I2S3_IRQ_NUM  144
+#define I2S3_IRQ_PRIO 3
+
+#define I2S3_DMA_RX_CH  2
+#define I2S3_DMA_RX_REQ 27
+#define I2S3_DMA_TX_CH  3
+#define I2S3_DMA_TX_REQ 31
+
+#define AUDIO_DMA_ENABLED 1
+
+/ {
+	aliases {
+		audio-codec = &wm8904;
+		i2s-bus = &i2s3;
+	};
+};
+
+&evtrtr0 {
+	status = "okay";
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&i2c1 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	status = "okay";
+
+	wm8904: wm8904@1a {
+		compatible = "cirrus,wm8904";
+		reg = <0x1a>;
+		status = "okay";
+	};
+};
+
+&i2s3 {
+	/delete-property/ clock-frequency;
+	/delete-property/ driver-instance;
+	compatible = "alif,i2s-sync";
+	interrupts = <I2S3_IRQ_NUM I2S3_IRQ_PRIO>;
+	bit-depth = <16>;
+	sample-rate = <48000>;
+	status = "okay";
+#if AUDIO_DMA_ENABLED
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(I2S3_DMA_RX_CH, 1, 1) I2S3_DMA_RX_REQ>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(I2S3_DMA_TX_CH, 1, 1) I2S3_DMA_TX_REQ>;
+	dma-names = "rxdma", "txdma";
+#endif
+};
+
+&pinctrl_i2c1 {
+	group0 {
+		pinmux = <PIN_P7_2__I2C1_SDA_C>,
+			 <PIN_P7_3__I2C1_SCL_C>;
+	};
+};
+
+&pinctrl_i2s3 {
+	group0 {
+		pinmux = <PIN_P9_0__I2S3_SDI_B>,
+			 <PIN_P9_3__I2S3_SDO_A>,
+			 <PIN_P8_7__I2S3_WS_B>,
+			 <PIN_P8_6__I2S3_SCLK_B>;
+	};
+};
