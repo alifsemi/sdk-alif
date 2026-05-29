@@ -12,6 +12,7 @@
 #include <zephyr/sys/__assert.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/device.h>
+#include <zephyr/drivers/clock_control.h>
 #include <zephyr/drivers/pinctrl.h>
 #include <zephyr/drivers/dma.h>
 #include <zephyr/pm/device.h>
@@ -67,6 +68,8 @@ struct i2s_sync_dma_ch {
 
 struct i2s_sync_config_priv {
 	struct i2s_t *paddr;
+	const struct device *clk_dev;
+	clock_control_subsys_t clkid;
 	void (*irq_config)(const struct device *dev);
 #ifdef CONFIG_PINCTRL
 	const struct pinctrl_dev_config *pincfg;
@@ -475,9 +478,6 @@ static int get_wss_cycles(size_t const bit_depth)
 
 static int enable_clock(struct i2s_t *i2s, size_t const wss_clock)
 {
-	i2s_select_clock_source(i2s);
-	i2s_enable_sclk_aon(i2s);
-	i2s_enable_module_clk(i2s);
 	i2s_global_enable(i2s);
 	i2s_disable_clk(i2s);
 	i2s_configure_clk(i2s, wss_clock);
@@ -528,6 +528,27 @@ static int i2s_sync_configure_impl(const struct device *dev, struct i2s_sync_con
 	struct i2s_sync_data *const dev_data = dev->data;
 	struct i2s_t *i2s = dev_cfg->paddr;
 
+
+	/* check device availability */
+	if (!device_is_ready(dev_cfg->clk_dev)) {
+		LOG_ERR("clock controller device not ready");
+		return -ENODEV;
+	}
+
+	/* Configure I2S clock sources */
+	ret = clock_control_configure(dev_cfg->clk_dev, dev_cfg->clkid, NULL);
+	if (ret != 0) {
+		LOG_ERR("Unable to configure clock: err:%d", ret);
+		return ret;
+	}
+
+	/* Enable I2S clock from clock manager */
+	ret = clock_control_on(dev_cfg->clk_dev, dev_cfg->clkid);
+	if (ret != 0) {
+		LOG_ERR("Unable to turn on clock: err:%d", ret);
+		return ret;
+	}
+
 	/* Disable RX and TX channels (enabled by default) */
 	i2s_rx_channel_disable(i2s);
 	i2s_tx_channel_disable(i2s);
@@ -571,13 +592,6 @@ static int i2s_sync_init(const struct device *dev)
 	int ret;
 	const struct i2s_sync_config_priv *dev_cfg = dev->config;
 	struct i2s_t *i2s = dev_cfg->paddr;
-
-	/* Configure clocks to avoid stall in configure method */
-	ret = enable_clock(i2s, dev_cfg->bit_depth);
-	if (ret) {
-		LOG_ERR("Failed to enable clock, err %d", ret);
-		return ret;
-	}
 
 #ifdef CONFIG_PINCTRL
 	/* Set up pincfg if present */
@@ -864,6 +878,8 @@ static int i2s_sync_pm_action(const struct device *dev, enum pm_device_action ac
 	static struct i2s_sync_data i2s_sync_data_##inst;                                          \
 	static const struct i2s_sync_config_priv i2s_sync_config_##inst = {                        \
 		.paddr = (struct i2s_t *)DT_INST_REG_ADDR(inst),                                   \
+		.clk_dev = DEVICE_DT_GET(DT_INST_CLOCKS_CTLR(inst)),		\
+		.clkid = (clock_control_subsys_t) DT_INST_CLOCKS_CELL_BY_IDX(inst, 0, clkid),	\
 		.irq_config = i2s_sync_irq_config_func_##inst,                                     \
 		IF_ENABLED(DT_INST_NODE_HAS_PROP(inst, pinctrl_0),                                 \
 			   (.pincfg = PINCTRL_DT_INST_DEV_CONFIG_GET(inst),))                      \
