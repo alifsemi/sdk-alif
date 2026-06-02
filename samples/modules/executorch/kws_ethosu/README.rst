@@ -125,24 +125,20 @@ For a fresh project, follow these steps:
    # 6. Setup executorch (installs dependencies, applies Alif overrides)
    west executorch-setup
 
-.. note::
-   **EULA Acceptance Required**
-
-   During the ``west executorch-setup`` process, you will be prompted to accept
-   Arm's End User License Agreement (EULA) for the Corstone Fixed Virtual Platform (FVP).
-
-   The setup will pause and ask: "Do you want to continue and review the EULA? (yes/no)"
-
-   - Type ``yes`` or ``y`` to proceed with FVP setup and review the EULA
-   - Type ``no`` or ``n`` to skip FVP setup (some ARM features may not be available)
-
 This ``west executorch-setup`` command automatically:
 
 - Initializes executorch git submodules
 - Installs executorch Python package to virtual environment
-- Runs ARM-specific setup scripts (requires EULA acceptance for FVP tools)
-- Applies Alif-specific modifications (memory sections, KWS model registration)
+- Applies Alif-specific modifications (KWS model registration, CMakeLists)
 - Copies KWS model files to both source and installed package locations
+
+.. note::
+   The Arm Corstone FVP simulator is **not required** for running on real Alif
+   hardware and is skipped by default. To install it (for FVP simulation only):
+
+   .. code-block:: console
+
+      west executorch-setup --fvp
 
 Building the Model
 ******************
