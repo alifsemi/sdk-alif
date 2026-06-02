@@ -35,13 +35,17 @@ class ExecutorchSetup(WestCommand):
             self.name,
             help=self.help,
             description=self.description)
+        parser.add_argument(
+            '--fvp',
+            action='store_true',
+            default=False,
+            help='Also install Arm Corstone FVP tools (examples/arm/setup.sh). '
+                 'Not needed for kws_ethosu on real Alif hardware.')
         return parser
 
     def do_run(self, args, unknown_args):
-        # Check if running in a virtual environment
-        self._check_virtual_environment()
+        self._ensure_venv_west()
 
-        # Get the workspace root (where .west directory is located)
         workspace_root = Path(self.topdir)
         executorch_path = workspace_root / 'modules' / 'lib' / 'executorch'
 
@@ -52,7 +56,7 @@ class ExecutorchSetup(WestCommand):
 
         log.inf(f'Setting up executorch at: {executorch_path}')
 
-        # Step 1: Initialize git submodules recursively
+        # Step 1: Initialize git submodules
         log.inf('Initializing git submodules...')
         try:
             subprocess.run(
@@ -66,8 +70,10 @@ class ExecutorchSetup(WestCommand):
             log.err(f'Failed to initialize git submodules: {e}')
             return 1
 
-        # Step 2: Apply Alif-specific overrides (including torch version patches)
-        log.inf('Applying Alif-specific overrides...')
+        # Step 2: Apply Alif overrides to the ExecuTorch *source* tree.
+        # This must happen before install_executorch.sh so that the patched
+        # examples/models/__init__.py is present when the package is built.
+        log.inf('Applying Alif-specific overrides to source tree...')
         try:
             result = apply_executorch_overrides.apply_overrides(workspace_root)
             if result != 0:
@@ -78,7 +84,9 @@ class ExecutorchSetup(WestCommand):
             log.err(f'Failed to apply Alif overrides: {e}')
             return 1
 
-        # Step 3: Run install_executorch.sh
+        # Step 3: Install the executorch Python package into the venv.
+        # install_executorch.sh installs the stable torch==2.12.0 and builds
+        # the executorch wheel; we must NOT modify torch_pin.py before this.
         install_script = executorch_path / 'install_executorch.sh'
         if install_script.exists():
             log.inf('Running install_executorch.sh...')
@@ -96,53 +104,69 @@ class ExecutorchSetup(WestCommand):
         else:
             log.wrn(f'install_executorch.sh not found at {install_script}')
 
-        # Step 4: Run examples/arm/setup.sh with user EULA acceptance
+        # Step 4: Copy KWS files into the now-installed venv package so that
+        # 'python -m ...aot_arm_compiler --model_name=kws' works without
+        # needing PYTHONPATH tricks.
+        try:
+            apply_executorch_overrides.copy_kws_to_venv(workspace_root)
+        except Exception as e:
+            log.wrn(f'Could not copy KWS files to installed package: {e}')
+
+        # Step 5: Install Arm backend runtime deps via examples/arm/setup.sh.
+        # This is ALWAYS required for aot_arm_compiler to work (e.g. generating
+        # .pte files with --delegate -t ethos-u55-128).  It installs:
+        #   - tosa_serializer  (built from tosa-tools/serialization, not on PyPI)
+        #   - ethos-u-vela     (Ethos-U compiler, needed for --delegate)
+        # We pass --disable-ethos-u-deps to skip FVP/toolchain downloads, then
+        # --enable-vela to re-enable only the vela+tosa pieces.
         arm_setup_script = executorch_path / 'examples' / 'arm' / 'setup.sh'
         if arm_setup_script.exists():
-            log.wrn('=' * 70)
-            log.wrn('IMPORTANT: Arm Corstone FVP EULA Acceptance Required')
-            log.wrn('=' * 70)
-            log.inf('')
-            log.inf('The next step will download and install Arm\'s Corstone Fixed')
-            log.inf('Virtual Platform (FVP), which requires accepting Arm\'s EULA.')
-            log.inf('')
-            log.inf('The EULA will be displayed during installation.')
-            log.inf('You must review and accept it to proceed.')
-            log.inf('')
-
-            # Prompt user for acceptance
-            while True:
-                response = input('Do you want to continue and review the EULA? (yes/no): ').strip().lower()
-                if response in ['yes', 'y']:
-                    log.inf('')
-                    log.inf('Proceeding with setup...')
-                    try:
-                        subprocess.run(
-                            ['bash', str(arm_setup_script), '--i-agree-to-the-contained-eula'],
-                            cwd=executorch_path / 'examples' / 'arm',
-                            check=True,
-                            capture_output=False
-                        )
-                        log.inf('examples/arm/setup.sh completed successfully')
-                    except subprocess.CalledProcessError as e:
-                        log.err(f'Failed to run examples/arm/setup.sh: {e}')
-                        return 1
-                    break
-                elif response in ['no', 'n']:
-                    log.inf('')
-                    log.wrn('EULA declined. Skipping Arm FVP setup.')
-                    log.wrn('Note: Some ExecutorTorch ARM features may not be available.')
-                    break
-                else:
-                    log.wrn('Please answer "yes" or "no".')
+            log.inf('Running examples/arm/setup.sh (tosa_serializer + ethos-u-vela)...')
+            try:
+                subprocess.run(
+                    [
+                        'bash', str(arm_setup_script),
+                        '--disable-ethos-u-deps',
+                        '--enable-vela',
+                    ],
+                    cwd=executorch_path / 'examples' / 'arm',
+                    check=True,
+                    capture_output=False
+                )
+                log.inf('ARM backend deps installed successfully')
+            except subprocess.CalledProcessError as e:
+                log.err(f'Failed to install ARM backend deps: {e}')
+                return 1
         else:
             log.wrn(f'examples/arm/setup.sh not found at {arm_setup_script}')
+
+        # Step 6: Run examples/arm/setup.sh with FVP/baremetal toolchain (OPTIONAL).
+        # Only needed for simulation with Arm Corstone FVP, not for real hardware.
+        if getattr(args, 'fvp', False):
+            if arm_setup_script.exists():
+                log.inf('Running examples/arm/setup.sh (FVP tools)...')
+                try:
+                    subprocess.run(
+                        ['bash', str(arm_setup_script), '--i-agree-to-the-contained-eula'],
+                        cwd=executorch_path / 'examples' / 'arm',
+                        check=True,
+                        capture_output=False
+                    )
+                    log.inf('examples/arm/setup.sh (FVP) completed successfully')
+                except subprocess.CalledProcessError as e:
+                    log.err(f'Failed to run examples/arm/setup.sh (FVP): {e}')
+                    return 1
+            else:
+                log.wrn(f'examples/arm/setup.sh not found at {arm_setup_script}')
+        else:
+            log.inf('Skipping Arm FVP setup (not needed for real hardware).')
+            log.inf('Re-run with --fvp to install Arm Corstone FVP tools.')
 
         log.inf('Executorch setup completed successfully!')
         return 0
 
-    def _check_virtual_environment(self):
-        """Check if running in a virtual environment and if west is installed in it."""
+    def _ensure_venv_west(self):
+        """Warn if not in a venv; auto-install west into the venv if missing."""
         venv_path = os.environ.get('VIRTUAL_ENV')
 
         if not venv_path:

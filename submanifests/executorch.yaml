@@ -12,7 +12,15 @@ manifest:
   projects:
     - name: executorch
       remote: pytorch
-      revision: 7fbbcb5fe2de3f565d8d31bcf7161154144bac0d
+      # Pinned to the ExecuTorch commit that re-applies the *stable* PyTorch
+      # 2.12.0 pin (PR #19699, "Reapply PyTorch 2.12 pin with CI fixes").
+      # Using a stable torch release (instead of a nightly) is deliberate:
+      # nightly wheels are purged from the PyTorch index after a few weeks,
+      # which previously forced the override script to chase the "latest"
+      # nightly and silently break ABI/op-schema compatibility with the
+      # ExecuTorch source (e.g. aten.transpose.Dimname errors). Stable
+      # releases are permanent, so this pairing never goes stale.
+      revision: 45fe55c49c70a5fc741833eeb99fb023ffb4646f
       path: modules/lib/executorch
       groups:
         - executorch

@@ -1,15 +1,18 @@
 # Copyright (c) Meta Platforms, Inc. and affiliates.
 # All rights reserved.
-# Copyright 2024-2025 Arm Limited and/or its affiliates.
+# Copyright 2024-2026 Arm Limited and/or its affiliates.
 # Copyright 2026 Alif Semiconductor - Modified for Alif SDK compatibility
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 #
-# This file was modified from the original ExecutorTorch source to work with
-# Alif Semiconductor Zephyr SDK. Changes include:
-# - Added Kws model enum entry for keyword spotting
-# - Added KWS model registration to MODEL_NAME_TO_MODEL
+# This file was modified from the original ExecuTorch source to work with
+# Alif Semiconductor Zephyr SDK. The ONLY Alif-specific changes are:
+# - Added `Kws = "kws"` to the Model enum (keyword spotting)
+# - Added the KWS model registration to MODEL_NAME_TO_MODEL
+# Everything else is kept in sync with the upstream pinned ExecuTorch
+# commit (see submanifests/executorch.yaml) so re-running the override
+# does not silently drop newly added upstream models.
 
 from enum import Enum
 
@@ -22,7 +25,7 @@ class Model(str, Enum):
     Softmax = "softmax"
     Conv1d = "conv1d"
     Dl3 = "dl3"
-    Kws = "kws"
+    Kws = "kws"  # Alif: keyword spotting model
     Edsr = "edsr"
     EmformerTranscribe = "emformer_transcribe"
     EmformerPredict = "emformer_predict"
@@ -47,6 +50,10 @@ class Model(str, Enum):
     Phi4Mini = "phi_4_mini"
     SmolLM2 = "smollm2"
     DeiTTiny = "deit_tiny"
+    DeepAutoEncoder = "deep_autoencoder"
+    DSCNN = "ds_cnn"
+    MobileNetV1025 = "mobilenet_v1_025"
+    ResNet8 = "resnet8"
     Sdpa = "sdpa"
 
     def __str__(self) -> str:
@@ -71,7 +78,7 @@ MODEL_NAME_TO_MODEL = {
     str(Model.Softmax): ("toy_model", "SoftmaxModule"),
     str(Model.Conv1d): ("toy_model", "Conv1dModule"),
     str(Model.Dl3): ("deeplab_v3", "DeepLabV3ResNet50Model"),
-    str(Model.Kws): ("kws", "KWSModel"),
+    str(Model.Kws): ("kws", "KWSModel"),  # Alif: keyword spotting model
     str(Model.Edsr): ("edsr", "EdsrModel"),
     str(Model.EmformerTranscribe): ("emformer_rnnt", "EmformerRnntTranscriberModel"),
     str(Model.EmformerPredict): ("emformer_rnnt", "EmformerRnntPredictorModel"),
@@ -98,6 +105,16 @@ MODEL_NAME_TO_MODEL = {
     str(Model.Phi4Mini): ("phi_4_mini", "Phi4MiniModel"),
     str(Model.SmolLM2): ("smollm2", "SmolLM2Model"),
     str(Model.DeiTTiny): ("deit_tiny", "DeiTTinyModel"),
+    str(Model.DeepAutoEncoder): (
+        "mlperf_tiny.deep_autoencoder",
+        "DeepAutoEncoderModel",
+    ),
+    str(Model.DSCNN): ("mlperf_tiny.ds_cnn", "DSCNNKWSModel"),
+    str(Model.MobileNetV1025): (
+        "mlperf_tiny.mobilenet_v1_025",
+        "MobileNetV1025Model",
+    ),
+    str(Model.ResNet8): ("mlperf_tiny.resnet8", "ResNet8Model"),
     str(Model.Sdpa): ("toy_model", "SdpaModule"),
 }
 
