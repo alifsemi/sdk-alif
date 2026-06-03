@@ -1,0 +1,55 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+
+mainmenu "MHU Doorbell Sample Configuration"
+
+choice
+	prompt "MHU doorbell test case"
+	default APSS_R
+	help
+	  Select which inter-processor communication test case to build.
+	  Exactly one test case is built per image.
+
+config APSS_R
+	bool "APSS (A32) shared memory & doorbell responder"
+	help
+	  Build the APSS (A32) responder for messages initiated by M55.
+
+config HE_HP_S
+	bool "RTSS-HE (M55) to RTSS-HP (M55) initiator/sender"
+	help
+	  Build the RTSS-HE (M55) to RTSS-HP (M55) shared memory &
+	  doorbell initiator/sender.
+
+config HP_HE_R
+	bool "RTSS-HP (M55) to RTSS-HE (M55) responder"
+	help
+	  Build the RTSS-HP (M55) to RTSS-HE (M55) shared memory &
+	  doorbell responder.
+
+config HE_A32_S
+	bool "RTSS-HE (M55) to APSS (A32) initiator/sender"
+	help
+	  Build the RTSS-HE (M55) to APSS (A32) shared memory &
+	  doorbell initiator/sender.
+
+endchoice
+
+config USE_MHU1
+	bool "Use MHU1 instead of MHU0 for inter-core communication"
+	default n
+	help
+	  Select MHU1 channel for communication between M55 cores.
+	  Default is MHU0.
+
+source "Kconfig.zephyr"
+
+# Automatically enable power management when one of the pm-system-off-*
+# snippets is applied. Those snippets enable the aipm-off DTS node, so the
+# default build (without the snippet) is unaffected.
+config PM
+	default y if $(dt_nodelabel_enabled,aipm_off)
+
+config COUNTER
+	default y if $(dt_nodelabel_enabled,aipm_off)
