@@ -1,0 +1,37 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	current-speed = <115200>;
+	dlf = <13>;
+	/*/delete-property/ dlf;*/
+	status = "okay";
+	/delete-property/ pinctrl-1; // = <&pinctrl_lpuart_sleep>;
+	pinctrl-names = "default";
+};
+
+&pinctrl {
+	pinctrl_lpuart: pinctrl_lpuart {
+		group0 {
+			pinmux = < PIN_P9_1__LPUART_RX_B >,
+				 < PIN_P9_2__LPUART_TX_B >;
+		};
+	};
+};
+/ {
+	chosen {
+		zephyr,console = &lpuart;
+		zephyr,shell-uart = &lpuart;
+		zephyr,uart-mcumgr = &lpuart;
+	};
+};
