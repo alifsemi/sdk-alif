@@ -1,0 +1,14 @@
+# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+
+mainmenu "MHUv2 Sample Configuration"
+
+config USE_MHU1
+	bool "Use MHU1 instead of MHU0 for inter-core communication"
+	default n
+	help
+	  Select MHU1 channel for communication between M55 cores.
+	  Default is MHU0.
+
+source "Kconfig.zephyr"

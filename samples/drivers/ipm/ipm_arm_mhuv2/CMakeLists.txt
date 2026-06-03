@@ -7,19 +7,25 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
-
-if("${BOARD}" STREQUAL "alif_e7_dk/ae722f80f55d5xx/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_e1c_dk/ae1c1f4051920hh/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_b1_dk/ab1c1f4m51820hh/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_e8_dk/ae822fa0e5597xx0/rtss_he" OR
-	"${BOARD}" STREQUAL "alif_e7_ak/ae722f80f55d5xx/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_e8_ak/ae822fa0e5597xx0/rtss_he")
-        add_subdirectory(rtss_he)
-elseif("${BOARD}" STREQUAL "alif_e7_dk/ae722f80f55d5xx/rtss_hp"  OR
-	"${BOARD}" STREQUAL "alif_e7_ak/ae722f80f55d5xx/rtss_hp"  OR
-	"${BOARD}" STREQUAL "alif_e8_dk/ae822fa0e5597xx0/rtss_hp" OR
-	"${BOARD}" STREQUAL "alif_e8_ak/ae822fa0e5597xx0/rtss_hp")
-        add_subdirectory(rtss_hp)
-endif()
-
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(mhuv2)
+
+option(SE_SERVICES "Build SE services test case" ON)
+option(APSS_R "Build APSS (A32) shared MHU test case responder" OFF)
+option(HE_HP_S "Build RTSS-HE (M55) to RTSS-HP (M55) MHU test case initiator/sender" OFF)
+option(HP_HE_R "Build RTSS-HP (M55) to RTSS-HE (M55) shared MHU test case responder" OFF)
+option(HE_A32_S "Build RTSS-HE (M55) to APSS (A32) shared MHU test case initiator/sender" OFF)
+
+if(APSS_R)
+	target_sources(app PRIVATE src/m55_to_a32_responder.c)
+elseif(HE_HP_S)
+	target_sources(app PRIVATE src/m55he_to_m55hp_initiator.c)
+elseif(HP_HE_R)
+	target_sources(app PRIVATE src/m55hp_to_m55he_responder.c)
+elseif(HE_A32_S)
+	target_sources(app PRIVATE src/m55he_to_a32_initiator.c)
+elseif(SE_SERVICES)
+	target_sources(app PRIVATE src/se_service_test.c)
+else()
+	target_sources(app PRIVATE src/se_service_test.c)
+endif()
