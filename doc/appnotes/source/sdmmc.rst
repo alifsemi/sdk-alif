@@ -60,7 +60,7 @@ Zephyr repository, please refer to the `ZAS User Guide`_.
 .. note::
 
    ``sd-vsel`` (``gpio_6_3``) is used for run-time voltage selection
-   (1.8 V ↔ 3.3 V) and is multiplexed with UART2. Therefore, do not use
+   (1.8 V <-> 3.3 V) and is multiplexed with UART2. Therefore, do not use
    UART2 together with the SD application on E8.
 
    If SD card functionality does not work with the default configuration,
