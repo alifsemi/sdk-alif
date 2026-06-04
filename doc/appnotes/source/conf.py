@@ -1,7 +1,6 @@
-import os
-import sys
-from pathlib import Path
 import shutil
+from pathlib import Path
+from typing import Any
 
 # -- Path setup --------------------------------------------------------------
 # If extensions (or modules to document with autodoc) are in another directory,
@@ -82,12 +81,14 @@ latex_domain_indices = False
 
 # -- Custom setup ------------------------------------------------------------
 
-def setup(app):
-    app.add_css_file("css/custom.css")
-    def copy_static_files(app, exception):
-        if not exception:
-            static_dir = Path(app.builder.srcdir) / '_static'
-            latex_dir = Path(app.builder.outdir)
+def setup(sphinx_app: Any) -> None:
+    sphinx_app.add_css_file("css/custom.css")
+
+    def copy_static_files(build_app: Any, exception: Exception | None) -> None:
+        if exception is None:
+            static_dir = Path(build_app.builder.srcdir) / '_static'
+            latex_dir = Path(build_app.builder.outdir)
             if static_dir.exists():
-                shutil.copytree(str(static_dir), str(latex_dir / '_static'), dirs_exist_ok=True)
-    app.connect('build-finished', copy_static_files)
+                shutil.copytree(static_dir, latex_dir / '_static', dirs_exist_ok=True)
+
+    sphinx_app.connect('build-finished', copy_static_files)
