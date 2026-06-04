@@ -30,6 +30,28 @@ K_THREAD_STACK_DEFINE(thread_stack, 1024);
 LOG_MODULE_REGISTER(video_app, LOG_LEVEL_INF);
 const struct device *video;
 
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+uint8_t current_sensor_main;
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
+#if ISP_ENABLED
+enum logging_level {
+	LOGGING_LEVEL_NONE = 0,
+	LOGGING_LEVEL_ERR,
+	LOGGING_LEVEL_WARN,
+	LOGGING_LEVEL_INFO,
+	LOGGING_LEVEL_DEBUG,
+	LOGGING_LEVEL_VERBOSE,
+};
+
+#define LIB_LOG_LEVEL LOGGING_LEVEL_NONE
+
+int log_level(void)
+{
+	return LIB_LOG_LEVEL;
+}
+#endif
+
 /*
  * Test Case to Capture Image
  */
@@ -45,9 +67,7 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 	int i;
 	int ret;
 	int loop_ctr;
-	#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
-		uint8_t current_sensor;
-	#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
 	/* `video` is acquired and validated by manual_suite_before(). */
 	TC_PRINT("- Device name: %s\n", video->name);
 	for (loop_ctr = NUM_CAMS - 1; loop_ctr >= 0; loop_ctr--) {
@@ -57,16 +77,12 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 		 */
 		i = 0;
 		memset(&fmt, 0, sizeof(fmt));
-	#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
-		ret = video_get_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM, &current_sensor);
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		ret = video_get_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM, &current_sensor_main);
 		zassert_equal(ret, 0, "Failed to get current camera: %d", ret);
-		LOG_INF("Selected camera: %s", (current_sensor) ? "Standard" : "Selfie");
-	#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
-		if (IS_ENABLED(ISP_ENABLED)) {
-			ep = VIDEO_EP_IN;
-		} else {
-			ep = VIDEO_EP_OUT;
-		}
+		LOG_INF("Selected camera: %s", (current_sensor_main) ? "Standard" : "Selfie");
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+		ep = CAPTURE_EP;
 	/* Get capabilities error check*/
 	zassert_false(video_get_caps(video, ep, &caps[loop_ctr]),
 					"Unable to retrieve video capabilities");
@@ -94,34 +110,19 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 	}
 
 	zassert_not_equal(fmt.pixelformat, 0, "Desired Pixel format is not supported.");
-	ret = video_set_format(video, ep, &fmt);
-	zassert_equal(ret, 0, "video_set_format on ep=%d failed: %d", ep, ret);
-	#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+	ret = video_set_capture_format(video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 		if (NUM_CAMS > 1) {
-			current_sensor ^= 1;
+			current_sensor_main ^= 1;
 			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
-					&current_sensor);
+					&current_sensor_main);
 			if (ret) {
 				LOG_ERR("Unable to switch camera!");
 			}
 		}
-	#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	}
-		#if (ISP_ENABLED)
-		/*
-		 * Set Output Endpoint format. Ensure that ISP EP-out
-		 * format is set while allocating the buffers used to
-		 * capture images.
-		 */
-		fmt.pixelformat = OUTPUT_FORMAT;
-		fmt.width = 480;
-		fmt.height = 480;
-		fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
-
-		ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
-		zassert_equal(ret, 0,
-			"ISP EP_OUT video_set_format failed: %d", ret);
-	#endif /*ISP_ENABLED */
 #if (ISP_ENABLED)
 	zassert_false(fmt.pixelformat != OUTPUT_FORMAT, "Unsupported pixel format. fmt - %c%c%c%c",
 		(char)fmt.pixelformat,
@@ -148,24 +149,22 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 	TC_PRINT("Width - %d, Pitch - %d, Height - %d, Buff size - %d\n",
 			fmt.width, fmt.pitch, fmt.height, bsize);
 
-	#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
 		if (NUM_CAMS > 1) {
-			current_sensor = 0;
+			current_sensor_main = 0;
 			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
-					&current_sensor);
+					&current_sensor_main);
 			if (ret) {
 				LOG_ERR("Unable to switch camera!");
 			}
 		}
-	#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 	/* Alloc video buffers and enqueue for capture */
 
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
 		buffers[i] = video_buffer_alloc(bsize, K_NO_WAIT);
-		if (buffers[i] == NULL) {
-			LOG_ERR("Unable to alloc video buffer");
-			return;
-		}
+		zassert_not_null(buffers[i],
+				"Unable to alloc video buffer %d", i);
 
 		/* Allocated Buffer Information */
 
@@ -218,16 +217,16 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 	 * synchronously so the K_NO_WAIT dequeue loop below sees every
 	 * buffer.
 	 */
-	video_flush(video, VIDEO_EP_OUT, false);
-	LOG_INF("Calling video flush done.");
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
 		struct video_buffer *drained = NULL;
 
-		video_dequeue(video, VIDEO_EP_OUT, &drained, K_NO_WAIT);
+		ret = video_dequeue(video, VIDEO_EP_OUT, &drained, K_NO_WAIT);
+		zassert_equal(ret, 0, "video_dequeue failed: %d", ret);
 		if (drained) {
 			video_buffer_release(drained);
 		}
 	}
+	k_msleep(500);
 }
 
 #ifdef CONFIG_POLL
@@ -290,7 +289,7 @@ ZTEST(cpi_manual_testcase, video_api_set_signal)
  */
 ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
 {
-	struct video_buffer *buffers[CONFIG_VIDEO_BUFFER_POOL_NUM_MAX], *vbuf;
+	struct video_buffer *buffers_z[CONFIG_VIDEO_BUFFER_POOL_NUM_MAX], *vbuf;
 	struct video_format fmt = { 0 };
 	struct video_caps caps;
 	enum video_endpoint_id ep;
@@ -301,12 +300,15 @@ ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
 	unsigned int frame = 0;
 
 	/* `video` is acquired and validated by manual_suite_before(). */
+	TC_PRINT("- Device name: %s\n", video->name);
+	ep = CAPTURE_EP;
 
-	if (IS_ENABLED(ISP_ENABLED)) {
-		ep = VIDEO_EP_IN;
-	} else {
-		ep = VIDEO_EP_OUT;
-	}
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		ret = video_get_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM, &current_sensor_main);
+		zassert_equal(ret, 0,
+				"video_get_ctrl(VIDEO_CID_ALIF_CSI_CURR_CAM) failed: %d", ret);
+		LOG_INF("Selected camera: %s", (current_sensor_main) ? "Standard" : "Selfie");
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
 	zassert_false(video_get_caps(video, ep, &caps),
 		"Unable to retrieve video capabilities");
@@ -324,25 +326,69 @@ ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
 	}
 	zassert_not_equal(fmt.pixelformat, 0, "Desired pixel format not supported.");
 
-	ret = video_set_format(video, ep, &fmt);
-	zassert_equal(ret, 0, "video_set_format failed: %d", ret);
+	ret = video_set_capture_format(video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
 
-#if ISP_ENABLED
-	fmt.pixelformat = OUTPUT_FORMAT;
-	fmt.width = 480;
-	fmt.height = 480;
-	fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
-	ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
-	zassert_equal(ret, 0, "ISP EP_OUT set_format failed: %d", ret);
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		if (NUM_CAMS > 1) {
+			current_sensor_main ^= 1;
+			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
+					&current_sensor_main);
+			if (ret) {
+				LOG_ERR("Unable to switch camera!");
+			}
+		}
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+#if (ISP_ENABLED)
+	zassert_false(fmt.pixelformat != OUTPUT_FORMAT, "Unsupported pixel format. fmt - %c%c%c%c",
+		(char)fmt.pixelformat,
+		(char)(fmt.pixelformat >> 8),
+		(char)(fmt.pixelformat >> 16),
+		(char)(fmt.pixelformat >> 24));
+#else
+	zassert_false(fmt.pixelformat != PIPELINE_FORMAT, "Unsupported pixel format. fmt "
+		" - %c%c%c%c",
+		(char)fmt.pixelformat,
+		(char)(fmt.pixelformat >> 8),
+		(char)(fmt.pixelformat >> 16),
+		(char)(fmt.pixelformat >> 24));
 #endif
+	TC_PRINT("- format: %c%c%c%c %ux%u\n", (char)fmt.pixelformat,
+	       (char)(fmt.pixelformat >> 8),
+	       (char)(fmt.pixelformat >> 16),
+	       (char)(fmt.pixelformat >> 24),
+	       fmt.width, fmt.height);
+
+	/* Size to allocate for each buffer */
 
 	bsize = fmt.pitch * fmt.height;
+	TC_PRINT("Width - %d, Pitch - %d, Height - %d, Buff size - %d\n",
+			fmt.width, fmt.pitch, fmt.height, bsize);
 
-	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
-		buffers[i] = video_buffer_alloc(bsize, K_NO_WAIT);
-		zassert_not_null(buffers[i], "Unable to alloc video buffer %d", i);
-		memset(buffers[i]->buffer, 0, bsize);
-		ret = video_enqueue(video, VIDEO_EP_OUT, buffers[i]);
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		if (NUM_CAMS > 1) {
+			current_sensor_main = 0;
+			ret = video_set_ctrl(video, VIDEO_CID_ALIF_CSI_CURR_CAM,
+					&current_sensor_main);
+			if (ret) {
+				LOG_ERR("Unable to switch camera!");
+			}
+		}
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+	/* Alloc video buffers and enqueue for capture */
+
+	for (i = 0; i < ARRAY_SIZE(buffers_z); i++) {
+		buffers_z[i] = video_buffer_alloc(bsize, K_NO_WAIT);
+		zassert_not_null(buffers_z[i], "Unable to alloc video buffer %d", i);
+
+		/* Allocated Buffer Information */
+		LOG_INF("- addr - 0x%x, size - %d, bytesused - %d",
+			(uint32_t)buffers_z[i]->buffer,
+			bsize,
+			buffers_z[i]->bytesused);
+
+		memset(buffers_z[i]->buffer, 0, bsize);
+		ret = video_enqueue(video, VIDEO_EP_OUT, buffers_z[i]);
 		zassert_equal(ret, 0, "Enqueue failed for buffer %d: %d", i, ret);
 	}
 
@@ -378,7 +424,7 @@ ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
 	ret = video_flush(video, VIDEO_EP_OUT, false);
 	zassert_equal(ret, 0, "video_flush failed: %d", ret);
 
-	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
+	for (i = 0; i < ARRAY_SIZE(buffers_z); i++) {
 		struct video_buffer *drained = NULL;
 
 		ret = video_dequeue(video, VIDEO_EP_OUT, &drained, K_NO_WAIT);
@@ -395,17 +441,18 @@ ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
  */
 static int app_set_parameters(void)
 {
-#if (CONFIG_VIDEO_MIPI_CSI2_DW)
 	run_profile_t runp;
 	int ret;
 
+#if (CONFIG_VIDEO_MIPI_CSI2_DW)
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_select), okay))
 	const struct gpio_dt_spec sel =
 		GPIO_DT_SPEC_GET(DT_NODELABEL(camera_select), select_gpios);
 
 	gpio_pin_configure_dt(&sel, GPIO_OUTPUT);
 	gpio_pin_set_dt(&sel, 1);
-#endif /* (DT_NODE_HAS_STATUS(DT_NODELABEL(camera_sensor), okay)) */
+#endif /* DT_NODE_HAS_STATUS(DT_NODELABEL(camera_sensor), okay) */
+#endif
 
 	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
 #if defined(CONFIG_SOC_SERIES_E8)
@@ -414,7 +461,7 @@ static int app_set_parameters(void)
 	sys_set_bits(CGU_CLK_ENA, BIT(23) | BIT(21));
 #endif /* defined (CONFIG_SOC_SERIES_E7) */
 
-	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
+	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK | PD_DBSS_MASK;
 	runp.dcdc_voltage  = 825;
 	runp.dcdc_mode     = DCDC_MODE_PWM;
 	runp.aon_clk_src   = CLK_SRC_LFXO;
@@ -443,6 +490,7 @@ static int app_set_parameters(void)
 	 * TODO: parse this clock from DTS and set on board from camera
 	 * controller driver.
 	 */
+#if defined(CONFIG_VIDEO_MIPI_CSI2_DW)
 	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
 #endif
 
