@@ -65,3 +65,14 @@ tests:
       - cpi
       - isp
       - csi2
+
+  # ARX3A0 standard camera (no ISP, direct memory output)
+  drivers.video.cpi.arx3a0_standard:
+    extra_args:
+      - "DTC_OVERLAY_FILE=boards/serial_camera_arx3a0_standard.overlay"
+    filter: dt_compat_enabled("alif,cam") and dt_compat_enabled("onnn,arx3a0")
+    tags:
+      - drivers
+      - video
+      - cpi
+      - csi2
