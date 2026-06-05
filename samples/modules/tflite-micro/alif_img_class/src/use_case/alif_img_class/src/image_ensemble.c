@@ -39,6 +39,14 @@ LOG_MODULE_REGISTER(image_ensemble, LOG_LEVEL_INF);
 #define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
 #if ISP_ENABLED
 #define OUTPUT_FORMAT	VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE
+
+#define LOGGING_LEVEL_NONE 0
+
+extern "C" int log_level(void)
+{
+	return LOGGING_LEVEL_NONE;
+}
+
 #endif
 
 #if defined(CONFIG_SOC_SERIES_E8)
