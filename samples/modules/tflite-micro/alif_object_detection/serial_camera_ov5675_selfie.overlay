@@ -64,7 +64,7 @@
 				port {
 					ov5675_csi2_ep_out0: endpoint {
 						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
-						link-frequencies = < 400000000 >;
+						link-frequencies = < 450000000 >;
 						data-lanes = <1 2>;
 						clock-lane = <0>;
 
