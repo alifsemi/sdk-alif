@@ -150,7 +150,7 @@ int set_current_off_profile(void)
 	return ret;
 }
 
-int set_off_profile(const enum pm_state_mode_type pm_mode)
+int set_off_profile_configuration(const enum pm_state_mode_type pm_mode)
 {
 	/* Set default for stop mode with RTC wakeup support */
 	current_offp.power_domains = PD_VBAT_AON_MASK;
@@ -209,6 +209,13 @@ int set_off_profile(const enum pm_state_mode_type pm_mode)
 	current_offp.vtor_address = SCB->VTOR;
 	current_offp.vtor_address_ns = SCB->VTOR;
 
+	return 0;
+}
+
+int set_off_profile(const enum pm_state_mode_type pm_mode)
+{
+
+	set_off_profile_configuration(pm_mode);
 	return set_current_off_profile();
 }
 

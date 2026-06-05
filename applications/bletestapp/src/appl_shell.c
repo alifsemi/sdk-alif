@@ -211,7 +211,9 @@ static int cmd_set_offprofile(const struct shell *shell, size_t argc, char **arg
 		}
 		shell_print(shell, "Off profile set to STOP");
 	} else if (!strcmp(argv[1], "IDLE")) {
-		ret = set_off_profile(PM_STATE_MODE_IDLE_1);
+		set_off_profile_configuration(PM_STATE_MODE_IDLE_1);
+		current_offp.power_domains |= PD_SESS_MASK;
+		ret = set_current_off_profile();
 
 		if (ret) {
 			shell_error(shell, "Failed to set off profile: %d", ret);
