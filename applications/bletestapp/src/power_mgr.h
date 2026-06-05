@@ -27,6 +27,9 @@ enum pm_state_mode_type {
 	PM_STATE_MODE_STOP_4,
 	PM_STATE_MODE_STOP_5
 };
+extern run_profile_t current_runp;
+extern off_profile_t current_offp;
+extern int16_t power_profile;
 
 int select_timer_source(enum lp_counter_source source);
 void app_sleep_start(uint32_t time_s);
@@ -34,5 +37,6 @@ void get_default_run_cfg(run_profile_t *runp);
 void get_default_off_cfg(off_profile_t *offp);
 int set_current_off_profile(void);
 int set_off_profile(const enum pm_state_mode_type pm_mode);
+int set_off_profile_configuration(const enum pm_state_mode_type pm_mode);
 int app_set_run_params(void);
 void app_prevent_off(void);

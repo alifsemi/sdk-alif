@@ -19,10 +19,6 @@
 #include "power_defines.h"
 #include "power_shell.h"
 
-extern run_profile_t current_runp;
-extern off_profile_t current_offp;
-extern int16_t power_profile;
-
 LOG_MODULE_REGISTER(power_shell, CONFIG_MAIN_LOG_LEVEL);
 
 static int16_t get_power_profile(const char *power_profile)
