@@ -19,6 +19,13 @@ There is also separate thread which updates LVGL graphics.
 Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
 Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
 
+## Prerequisites (TensorFlow Lite for Microcontrollers)
+To build the sample, you first need to pull in the optional dependencies by running the following commands:
+
+```
+west config manifest.group-filter -- +optional
+west update
+```
 
 ## Building OV5675 non-ISP configurations
 E7 does not have ISP.
