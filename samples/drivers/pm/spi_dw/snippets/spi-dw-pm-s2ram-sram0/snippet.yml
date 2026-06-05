@@ -1,0 +1,10 @@
+name: spi-dw-pm-s2ram-sram0
+append:
+  EXTRA_CONF_FILE: ../pm_s2ram_common.conf
+boards:
+  /alif_e8.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e8_he.overlay
+  /alif_e8.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e8_hp.overlay

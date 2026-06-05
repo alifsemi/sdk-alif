@@ -1,0 +1,48 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * B1 HE: LPSPI0 (master) + SPI1 (slave), DMA2, evtrtr2.
+ * PM: TCM boot S2RAM (E1C/B1 memory masks).
+ */
+
+#include "pm_tcm_e1c_b1.overlay"
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+/ {
+	aliases {
+		master-spi = &lpspi0;
+		slave-spi = &spi1;
+	};
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&evtrtr2 {
+	status = "okay";
+};
+
+&lpspi0 {
+	status = "okay";
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 1, 1) 13>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(1, 1, 1) 12>;
+	dma-names = "txdma", "rxdma";
+};
+
+&spi1 {
+	status = "okay";
+	serial-target;
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(2, 2, 1) 21>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(3, 2, 1) 17>;
+	dma-names = "txdma", "rxdma";
+};
