@@ -1,0 +1,48 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * E7 HP: SPI1 (master) + SPI0 (slave), DMA0, evtrtr0.
+ * PM: MRAM boot SOFT_OFF (HP, LPTIMER0 wakeup).
+ */
+
+#include "pm_mram_hp.overlay"
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+/ {
+	aliases {
+		master-spi = &spi1;
+		slave-spi = &spi0;
+	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&evtrtr0 {
+	status = "okay";
+};
+
+&spi1 {
+	status = "okay";
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 2, 1) 21>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(1, 2, 1) 17>;
+	dma-names = "txdma", "rxdma";
+};
+
+&spi0 {
+	status = "okay";
+	serial-target;
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(2, 2, 1) 20>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(3, 2, 1) 16>;
+	dma-names = "txdma", "rxdma";
+};

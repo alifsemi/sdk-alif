@@ -1,0 +1,22 @@
+name: spi-dw-pm-mram
+append:
+  EXTRA_CONF_FILE: prj.conf
+boards:
+  /alif_e1c.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e1c.overlay
+  /alif_b.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_b1.overlay
+  /alif_e7.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e7_he.overlay
+  /alif_e7.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e7_hp.overlay
+  /alif_e8.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e8_he.overlay
+  /alif_e8.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_dw_e8_hp.overlay
