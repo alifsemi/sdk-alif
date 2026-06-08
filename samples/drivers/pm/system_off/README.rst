@@ -131,30 +131,43 @@ Sample Output
 HE Core — TCM boot (S2RAM STANDBY → STOP)
 ==========================================
 
+The output below is from an E7 DK HE core TCM-boot run (``APP_PM_WAKEUP_DEBUG 0``,
+the default). Setting ``APP_PM_WAKEUP_DEBUG 1`` in ``main.c`` additionally prints
+``PM wakeup: NVIC ISPR[x] = 0x...`` lines on each resume.
+
 .. code-block:: console
 
-   *** Booting Zephyr OS build v4.1.0 ***
-   [00:00:00.004,000] <inf> pm_system_off: alif_e7_dk (S2RAM): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
-   [00:00:00.016,000] <inf> pm_system_off: POWER STATE SEQUENCE:
-   [00:00:00.022,000] <inf> pm_system_off:   1. PM_STATE_RUNTIME_IDLE
-   [00:00:00.029,000] <inf> pm_system_off:   2. PM_STATE_SUSPEND_TO_IDLE
-   [00:00:00.036,000] <inf> pm_system_off:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
-   [00:00:00.044,000] <inf> pm_system_off:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
-   [00:00:00.062,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
-   [00:00:18.071,000] <inf> pm_system_off: Exited from RUNTIME_IDLE sleep
-   [00:00:18.077,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_IDLE for (4000 microseconds)
-   [00:00:18.092,000] <inf> pm_system_off: Exited from PM_STATE_SUSPEND_TO_IDLE
-   [00:00:18.099,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
-   [00:00:24.115,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
-   [00:00:24.125,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 24125
-   [00:00:26.135,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 26135
-   [00:00:28.145,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 28145
-   [00:00:30.154,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
-   [00:00:39.169,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
-   [00:00:39.178,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 39178
-   [00:00:41.188,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 41188
-   [00:00:43.198,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 43198
-   [00:00:45.207,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===
+   *** Booting Zephyr OS build v4.1.0-607-g7fafce9cf3ee ***
+   [00:00:00.000,000] <inf> pm_system_off: alif_e7_dk (S2RAM): PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+   [00:00:00.000,000] <inf> pm_system_off: POWER STATE SEQUENCE:
+   [00:00:00.000,000] <inf> pm_system_off:   1. PM_STATE_RUNTIME_IDLE
+   [00:00:00.000,000] <inf> pm_system_off:   2. PM_STATE_SUSPEND_TO_IDLE
+   [00:00:00.000,000] <inf> pm_system_off:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+   [00:00:00.000,000] <inf> pm_system_off:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+   [00:00:00.000,000] <inf> pm_system_off: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+   [00:00:18.001,000] <inf> pm_system_off: Exited from RUNTIME_IDLE sleep
+   [00:00:18.001,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_IDLE for (10000 microseconds)
+   [00:00:18.002,000] <inf> pm_system_off: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:18.002,000] <inf> pm_system_off: PM wakeup: SUSPEND_TO_IDLE (substate 0)
+   [00:00:18.002,000] <inf> pm_system_off: PM exit:  SUSPEND_TO_IDLE (substate 0)
+   [00:00:18.012,000] <inf> pm_system_off: Exited from PM_STATE_SUSPEND_TO_IDLE
+   [00:00:18.012,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+   [00:00:18.130,000] <inf> pm_system_off: PM enter: SUSPEND_TO_RAM (substate 0)
+   [00:00:18.130,000] <inf> pm_system_off: PM wakeup: SUSPEND_TO_RAM (substate 0)
+   [00:00:18.130,000] <inf> pm_system_off: PM exit:  SUSPEND_TO_RAM (substate 0)
+   [00:00:24.077,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:24.077,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 24077
+   [00:00:26.078,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 26078
+   [00:00:28.079,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 28079
+   [00:00:30.080,000] <inf> pm_system_off: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+   [00:00:30.121,000] <inf> pm_system_off: PM enter: SUSPEND_TO_RAM (substate 1)
+   [00:00:30.121,000] <inf> pm_system_off: PM wakeup: SUSPEND_TO_RAM (substate 1)
+   [00:00:30.121,000] <inf> pm_system_off: PM exit:  SUSPEND_TO_RAM (substate 1)
+   [00:00:39.098,000] <inf> pm_system_off: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:00:39.098,000] <inf> pm_system_off: Main thread running - iteration 0 - tick: 39098
+   [00:00:41.099,000] <inf> pm_system_off: Main thread running - iteration 1 - tick: 41099
+   [00:00:43.100,000] <inf> pm_system_off: Main thread running - iteration 2 - tick: 43100
+   [00:00:45.101,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===
 
 HP Core — MRAM boot (SOFT_OFF)
 ===============================
@@ -190,7 +203,7 @@ Notes
   400 MHz):
 
   * RUNTIME_IDLE: 18 s (WFI, not subject to overflow)
-  * SUSPEND_TO_IDLE: 4 ms
+  * SUSPEND_TO_IDLE: 10 ms
   * S2RAM STANDBY: 6 s
   * S2RAM STOP: 9 s
   * SOFT_OFF: 10 s
