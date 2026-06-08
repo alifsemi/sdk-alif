@@ -23,6 +23,9 @@
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 
+/* Set to 1 to dump full NVIC ISPR state on wakeup */
+#define APP_PM_WAKEUP_DEBUG 0
+
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
 	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
@@ -42,7 +45,7 @@ LOG_MODULE_REGISTER(pm_system_off, LOG_LEVEL_INF);
 /* Sleep duration for PM_STATE_RUNTIME_IDLE */
 #define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
-#define SUSPEND_IDLE_SLEEP_USEC (4 * 1000)
+#define SUSPEND_IDLE_SLEEP_USEC (10 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
 #define S2RAM_STANDBY_SLEEP_USEC (6 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
@@ -207,6 +210,68 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 }
 #endif /* !CONFIG_POWEROFF */
 
+/* PM state name lookup for notifier logging */
+static const char * const pm_state_names[] = {
+	[PM_STATE_ACTIVE]          = "ACTIVE",
+	[PM_STATE_RUNTIME_IDLE]    = "RUNTIME_IDLE",
+	[PM_STATE_SUSPEND_TO_IDLE] = "SUSPEND_TO_IDLE",
+	[PM_STATE_STANDBY]         = "STANDBY",
+	[PM_STATE_SUSPEND_TO_RAM]  = "SUSPEND_TO_RAM",
+	[PM_STATE_SUSPEND_TO_DISK] = "SUSPEND_TO_DISK",
+	[PM_STATE_SOFT_OFF]        = "SOFT_OFF",
+};
+
+#define PM_STATE_STR(s) \
+	((s) < ARRAY_SIZE(pm_state_names) ? pm_state_names[(s)] : "UNKNOWN")
+
+static void pm_notify_entry(enum pm_state state)
+{
+	const struct pm_state_info *info = pm_state_next_get(0);
+
+	LOG_INF("PM enter: %s (substate %u)", PM_STATE_STR(state), info->substate_id);
+}
+
+/*
+ * With CONFIG_LOG_MODE_DEFERRED, LOG_INF here only writes to the ring buffer
+ * — no UART access — so this is safe even before devices are resumed.
+ */
+static void pm_notify_pre_resume(enum pm_state state)
+{
+	const struct pm_state_info *info = pm_state_next_get(0);
+	uint32_t active_exc = SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk;
+
+	if (active_exc >= 16U) {
+		LOG_INF("PM wakeup: %s (substate %u) IRQ %u",
+			PM_STATE_STR(state), info->substate_id, active_exc - 16U);
+	} else if (active_exc != 0U) {
+		LOG_INF("PM wakeup: %s (substate %u) exception %u",
+			PM_STATE_STR(state), info->substate_id, active_exc);
+	} else {
+		LOG_INF("PM wakeup: %s (substate %u)",
+			PM_STATE_STR(state), info->substate_id);
+	}
+#if APP_PM_WAKEUP_DEBUG
+	for (int i = 0; i < 16; i++) {
+		if (NVIC->ISPR[i]) {
+			LOG_INF("PM wakeup: NVIC ISPR[%d] = 0x%08x", i, NVIC->ISPR[i]);
+		}
+	}
+#endif
+}
+
+static void pm_notify_exit(enum pm_state state)
+{
+	const struct pm_state_info *info = pm_state_next_get(0);
+
+	LOG_INF("PM exit:  %s (substate %u)", PM_STATE_STR(state), info->substate_id);
+}
+
+static struct pm_notifier app_pm_notifier = {
+	.state_entry       = pm_notify_entry,
+	.pre_device_resume = pm_notify_pre_resume,
+	.state_exit        = pm_notify_exit,
+};
+
 int main(void)
 {
 	const struct device *const cons = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
@@ -215,6 +280,8 @@ int main(void)
 
 	__ASSERT(device_is_ready(cons), "%s: device not ready", cons->name);
 	__ASSERT(device_is_ready(wakeup_dev), "%s: device not ready", wakeup_dev->name);
+
+	pm_notifier_register(&app_pm_notifier);
 
 	if (S2RAM_SUPPORTED) {
 		LOG_INF("%s (S2RAM): PM states demo "
@@ -259,6 +326,7 @@ int main(void)
 		SUSPEND_IDLE_SLEEP_USEC);
 	k_sleep(K_USEC(SUSPEND_IDLE_SLEEP_USEC));
 	LOG_INF("Exited from PM_STATE_SUSPEND_TO_IDLE");
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 #else
 	/* Lock SUSPEND_TO_IDLE when LPM timer support is not configured */
 	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
