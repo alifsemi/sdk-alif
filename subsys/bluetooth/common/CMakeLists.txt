@@ -17,7 +17,7 @@ zephyr_library_sources(central_itf.c)
 zephyr_library_sources_ifdef(CONFIG_GPIO ble_gpio.c)
 zephyr_library_sources_ifdef(CONFIG_SETTINGS ble_storage.c)
 
-if(pm-ble IN_LIST SNIPPET)
+if(pm-ble IN_LIST SNIPPET AND CONFIG_PM)
     message("BLE PM is enabled, including power_mgr.c in common sources.")
     zephyr_library_sources(power_mgr.c)
     zephyr_library_compile_options(-DSNIPPET_PM_BLE_USED=1)
