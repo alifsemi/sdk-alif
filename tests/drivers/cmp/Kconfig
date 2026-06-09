@@ -1,0 +1,31 @@
+config HY36
+	bool "Enable the testcase to test Hysteresis with value 36mV"
+	default n
+config HY30
+	bool "Enable the testcase to test Hysteresis with value 30mV"
+	default n
+config HY24
+	bool "Enable the testcase to test Hysteresis with value 24mV"
+	default n
+config HY18
+	bool "Enable the testcase to test Hysteresis with value 18mV"
+	default n
+config HY12
+	bool "Enable the testcase to test Hysteresis with value 12mV"
+	default n
+config HY6
+	bool "Enable the testcase to test Hysteresis with value 6mV"
+	default n
+
+config REF_DAC6
+	bool "Enable CMP reference source test for DAC6"
+	default n
+
+config REF_VREF
+	bool "Enable CMP reference source test for internal Vref"
+	default n
+
+config REF_EXT
+	bool "Enable CMP reference source test for external pin"
+	default n
+source "Kconfig.zephyr"
