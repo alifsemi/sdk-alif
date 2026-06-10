@@ -1,0 +1,40 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/ {
+	aliases {
+		qdec0 = &qdec;
+		qenca = &gpio_a;
+		qencb = &gpio_b;
+	};
+
+	encoder-emulate {
+		compatible = "gpio-leds";
+		gpio_a: gpio_a {
+			gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>;
+		};
+		gpio_b: gpio_b {
+			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};
+
+&utimer1 {
+	status = "okay";
+
+	qdec: qdec {
+		pinctrl-0 = <&pinctrl_ut1>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};
+
+&gpio2 {
+	status = "okay";
+};
