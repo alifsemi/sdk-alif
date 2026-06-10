@@ -51,6 +51,15 @@ int central_get_service_uuid_str(char *p_uuid, uint8_t max_len);
 int central_set_send_interval(uint32_t interval);
 
 /**
+ * Set data sender
+ *
+ * @param[in] dir Data sender direction
+ *
+ * @return 0 in case of success, otherwise -1
+ */
+int central_set_data_sender(enum tp_data_send_direction dir);
+
+/**
  * Get connection parameters
  *
  * @param[out] p_params Connection parameters

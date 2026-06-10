@@ -25,10 +25,6 @@ config BLE_TP_DEVICE_NAME
 	string "Default BLE throughput device name"
 	default "ALIF-TP"
 
-config BLE_TP_BIDIRECTIONAL_TEST
-	bool "Bidirectional throughput test"
-	default y
-
 config ALIF_TP_SHELL_THREAD_PRIORITY
 	int "Priority for thread running the throughput"
 	default 0
