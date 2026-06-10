@@ -54,6 +54,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define BOOT_PARAM_ID_LPCLK_DRIFT               0x07
 #define BOOT_PARAM_ID_ACTCLK_DRIFT              0x09
 #define BOOT_PARAM_ID_CONFIGURATION             0xD1
+#define BOOT_PARAM_ID_CONFIGURATION2            0xD2
 
 #define BOOT_PARAM_LEN_LE_CODED_PHY_500          1
 #define BOOT_PARAM_LEN_DFT_SLAVE_MD              1
@@ -74,9 +75,11 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define BOOT_PARAM_LEN_LPCLK_DRIFT               2
 #define BOOT_PARAM_LEN_ACTCLK_DRIFT              1
 #define BOOT_PARAM_LEN_CONFIGURATION             4
+#define BOOT_PARAM_LEN_CONFIGURATION2            4
 
 #define CONFIGURATION_RF_TYPE_HPA		 1
 #define CONFIGURATION_SOC_TYPE_CSP		 2
+#define CONFIGURATION_LIMIT_TX_POWER		 4
 
 #define ES0_PM_ERROR_NO_ERROR             0
 #define ES0_PM_ERROR_TOO_MANY_USERS       -1
@@ -212,7 +215,21 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 	*ptr++ = 'D';
 	*ptr++ = 'S';
 
+	uint32_t edge_config = 0;
 	uint32_t config = hpa_setup ? CONFIGURATION_RF_TYPE_HPA : 0;
+
+	/* Only use the limit when it is not the maximum */
+	if (CONFIG_ALIF_TX_MAX_POWER < CONFIG_ALIF_TX_MAX) {
+		config |= CONFIGURATION_LIMIT_TX_POWER;
+		config |= ((CONFIG_ALIF_TX_MAX_POWER << 4) & 0xff0);
+	}
+
+	if (IS_ENABLED(CONFIG_ALIF_EDGE_LIMIT_ON)) {
+		edge_config = 0x01;
+		edge_config |= (CONFIG_ALIF_EDGE_CHANNEL_POWER_LIMIT << 8);
+		edge_config |= ((CONFIG_ALIF_EDGE_LOW_CHANNEL + 1) << 16);
+		edge_config |= ((CONFIG_ALIF_EDGE_HIGH_CHANNEL + 1) << 24);
+	}
 
 	if (IS_ENABLED(CONFIG_SOC_AB1C1F1M41820HH0) || IS_ENABLED(CONFIG_SOC_AB1C1F4M51820HH0)) {
 		config |= CONFIGURATION_SOC_TYPE_CSP;
@@ -261,6 +278,8 @@ static int cmd_start(const struct shell *shell, size_t argc, char **argv)
 			    BOOT_PARAM_LEN_ACTCLK_DRIFT);
 	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_CONFIGURATION, config,
 			    BOOT_PARAM_LEN_CONFIGURATION);
+	ptr = write_tlv_int(ptr, BOOT_PARAM_ID_CONFIGURATION2, edge_config,
+			    BOOT_PARAM_LEN_CONFIGURATION2);
 
 	/* UART input clock can be configured as 16/24/48Mhz */
 	if (min_uart_clk_freq > 16000000) {
