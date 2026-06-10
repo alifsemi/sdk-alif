@@ -45,6 +45,13 @@ enum app_state {
 	APP_STATE_DISCONNECTED,
 };
 
+enum tp_data_send_direction {
+	TP_DATA_SENDER_CENTRAL = 1,
+	TP_DATA_SENDER_PERIPHERAL,
+	TP_DATA_SENDER_BOTH,
+};
+
+
 enum tp_client_ctrl_type {
 	TP_CLIENT_CTRL_TYPE_RESET = 1,
 };
@@ -53,6 +60,7 @@ struct tp_client_ctrl {
 	enum tp_client_ctrl_type type;
 	uint32_t test_duration_ms;
 	uint32_t send_interval_ms;
+	enum tp_data_send_direction data_sender;
 };
 
 void app_transition_to(enum app_state state);

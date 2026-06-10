@@ -158,6 +158,32 @@ static int32_t param_get_int(size_t const argc, char **argv, char *p_param, int 
 	return def_value;
 }
 
+static int cmd_set_data_sender(const struct shell *sh, size_t argc, char **argv)
+{
+	if (argc < 2) {
+		LOG_ERR("Invalid number of arguments");
+		return -EINVAL;
+	}
+
+	if (get_device_role() != GAP_ROLE_LE_CENTRAL) {
+		LOG_ERR("Only central device could define data sender");
+		return -EINVAL;
+	}
+
+	if (strcmp(argv[1], "central") == 0) {
+		(void)central_set_data_sender(TP_DATA_SENDER_CENTRAL);
+	} else if (strcmp(argv[1], "peripheral") == 0) {
+		(void)central_set_data_sender(TP_DATA_SENDER_PERIPHERAL);
+	} else if (strcmp(argv[1], "both") == 0) {
+		(void)central_set_data_sender(TP_DATA_SENDER_BOTH);
+	} else {
+		LOG_ERR("Invalid data sender: %s (use central, peripheral or both)", argv[1]);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int cmd_set_conn_interval(const struct shell *shell, size_t const argc, char **argv)
 {
 	if (argc < 2) {
@@ -204,6 +230,8 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(peripheral, NULL, "Peripheral config", cmd_peripheral_start, 1, 10),
 	SHELL_CMD_ARG(central, NULL, "Central config", cmd_central_start, 1, 10),
 	SHELL_CMD_ARG(run, NULL, "Run throughput test: <duration_s>", cmd_tp_test_start, 1, 10),
+	SHELL_CMD_ARG(data-sender, NULL, "Set data sender: central|peripheral|both",
+		      cmd_set_data_sender, 2, 1),
 	SHELL_SUBCMD_SET_END /* Array terminated. */
 );
 
