@@ -1,0 +1,60 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * Keep the cross-core shared heap (SRAM1) powered AND keep the VBAT_AON power
+ * domain (which hosts the LPRTC idle-timer) alive when the pm-system-off-*
+ * snippets are applied.
+ *
+ * The HE<->HP doorbell protocol exchanges data through a struct sys_heap that
+ * lives in SRAM1 (0x027DC000 / 0x027DC800), and HE uses the LPRTC
+ * (rtc0 = lprtc@42000000, chosen zephyr,cortex-m-idle-timer) to wake itself
+ * from PM_STATE_SUSPEND_TO_IDLE for each timed k_sleep().
+ *
+ * The Secure Enclave only lowers a power domain / drops a memory block when
+ * ALL participating cores vote for it. The pm-system-off-* snippets set the
+ * run profile to:
+ *   - retain ONLY MRAM (memory-blocks = <ALIF_MRAM_MASK>)
+ *   - keep ONLY SSE700_AON + SYST powered (power-domains = 0x44), dropping
+ *     VBAT_AON.
+ * The LPRTC at 0x42000000 lives in the VBAT_AON domain. When only one core is
+ * PM-managed the other (fully-on) core keeps both SRAM1 and VBAT_AON alive, so
+ * the protocol works. As soon as BOTH cores run a snippet, neither votes to
+ * keep VBAT_AON powered -> the SE gates it -> the LPRTC stops counting -> HE's
+ * very first k_sleep() never wakes and the system HANGS. (The same applies to
+ * SRAM1 retention for the shared heap.)
+ *
+ * Override the run profile to (a) retain SRAM1 and (b) keep VBAT_AON powered.
+ * This must be applied AFTER the snippet overlay. Only a command-line
+ * EXTRA_DTC_OVERLAY_FILE is applied after the snippet (the app's
+ * boards/<board>.overlay and any overlay appended from CMakeLists before
+ * find_package are applied BEFORE the snippet and lose to it). So pass this
+ * file explicitly on the west command line, e.g.:
+ *   HE: -DEXTRA_DTC_OVERLAY_FILE="he_lpuart_console.overlay;lpm_shared_sram1.overlay"
+ *   HP: -DEXTRA_DTC_OVERLAY_FILE=lpm_shared_sram1.overlay
+ */
+
+&aipm_run_default {
+	/* Retain the shared heap (SRAM1) in addition to MRAM. */
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SRAM1_MASK)>;
+	/* Keep VBAT_AON powered so the LPRTC idle-timer keeps ticking and can
+	 * wake HE from SUSPEND_TO_IDLE; SSE700_AON + SYST as per the snippet.
+	 */
+	aipm-power-domains = <(ALIF_PD_VBAT_AON_MASK |
+			       ALIF_PD_SSE700_AON_MASK |
+			       ALIF_PD_SYST_MASK)>;
+};
+
+/* Both cores idle into PM_STATE_SUSPEND_TO_IDLE during the protocol. The
+ * pm-system-off-he snippet already enables this node; the pm-system-off-hp
+ * snippet does not, so enable it here for HP. Suspend-to-idle uses the IWIC,
+ * which wakes on the MHU RX IRQ (and, on HE, the rtc0 idle-timer), so no extra
+ * wake configuration is needed.
+ */
+&suspend_idle {
+	status = "okay";
+};
