@@ -30,7 +30,6 @@ LOG_MODULE_REGISTER(alif_spi_bnd, LOG_LEVEL_INF);
 
 #define BND_MAX_BUF           1024
 #define BND_DEFAULT_FREQ      SPI_FREQ_MHZ
-#define BND_ASYNC_TIMEOUT_MS  500
 
 static const struct device *const controller_dev =
 	DEVICE_DT_GET(SPI_CONTROLLER_NODE);
@@ -44,6 +43,8 @@ static int bnd_xfer(const struct spi_config *cfg,
 		    bool async)
 {
 	int ret;
+	size_t tx_len = 0U;
+	size_t rx_len = 0U;
 
 	if (!async) {
 		return spi_transceive(controller_dev, cfg, tx, rx);
@@ -57,9 +58,23 @@ static int bnd_xfer(const struct spi_config *cfg,
 	if (ret != 0) {
 		return ret;
 	}
-	ret = k_poll(&bnd_async_evt, 1, K_MSEC(BND_ASYNC_TIMEOUT_MS));
+
+	if ((tx != NULL) && (tx->buffers != NULL)) {
+		for (size_t i = 0U; i < tx->count; i++) {
+			tx_len += tx->buffers[i].len;
+		}
+	}
+	if ((rx != NULL) && (rx->buffers != NULL)) {
+		for (size_t i = 0U; i < rx->count; i++) {
+			rx_len += rx->buffers[i].len;
+		}
+	}
+
+	ret = k_poll(&bnd_async_evt, 1,
+		     spi_test_transfer_timeout(MAX(tx_len, rx_len),
+					       cfg->frequency));
 	if (ret != 0) {
-		LOG_ERR("boundary async poll timeout");
+		LOG_ERR("boundary async poll timeout @%u Hz", cfg->frequency);
 		return -ETIMEDOUT;
 	}
 	return bnd_async_sig.result;
@@ -385,7 +400,7 @@ ZTEST(test_spi_boundary, test_boundary_async)
 
 static void boundary_suite_before(void *fixture)
 {
-	ARG_UNUSED(fixture);
+	test_before_func(fixture);
 
 	k_poll_signal_init(&bnd_async_sig);
 	k_poll_event_init(&bnd_async_evt, K_POLL_TYPE_SIGNAL,

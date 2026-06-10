@@ -8,20 +8,20 @@
  */
 
 /* DMA overlay for SPI1/SPI0.  Stack with boards/spi.overlay.
- * HP boards use dma1; HE / A5 / E1C / B1 use dma2.
+ * SPI instances are shared peripherals, use dma0 for both HP and HE.
  */
 #include "board_common.overlay"
 
-&DMA_CTRL {
+&dma0 {
 	status = "okay";
 };
 
 &spi1 {
-	dmas = <&DMA_CTRL 0 21>, <&DMA_CTRL 1 17>;
+	dmas = <&dma0 0 21>, <&dma0 1 17>;
 	dma-names = "txdma", "rxdma";
 };
 
 &spi0 {
-	dmas = <&DMA_CTRL 2 20>, <&DMA_CTRL 3 16>;
+	dmas = <&dma0 2 20>, <&dma0 3 16>;
 	dma-names = "txdma", "rxdma";
 };
