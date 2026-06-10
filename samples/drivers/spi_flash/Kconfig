@@ -1,0 +1,8 @@
+# Copyright (C) Alif Semiconductor.
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Alif OSPI flash sample"
+
+rsource "src/Kconfig"
+
+source "Kconfig.zephyr"
