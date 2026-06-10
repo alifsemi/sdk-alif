@@ -1,0 +1,17 @@
+config TEST_PERF
+	bool "Enable OSPI flash performance test suite"
+	default n
+	help
+	  Enable performance benchmarking test cases for the Alif OSPI flash
+	  driver on the Zephyr test harness. When enabled, the build includes
+	  the test suite defined in test_ospi_perf_tests.c, which performs
+	  repeated erase/write/read operations across a configurable region
+	  of the attached flash device. Each iteration measures elapsed time
+	  using k_uptime_get() and accumulates totals so that average latency
+	  and throughput (KBPS) for erase, write, and read can be reported
+	  through LOG_INF. These metrics help validate driver performance
+	  regressions and characterize the OSPI bus at different clock speeds.
+	  Leave this disabled for functional-only test runs as the performance
+	  suite extends execution time significantly.
+
+source "Kconfig.zephyr"
