@@ -67,6 +67,8 @@ struct service_env {
 	uint8_t init_actv_idx;
 	/* Connection index */
 	uint8_t conidx;
+	/* Data sender */
+	enum tp_data_send_direction data_sender;
 	/* Used to know if peripheral found */
 	bool periph_found;
 };
@@ -77,6 +79,7 @@ static struct service_env env = {
 	.supervision_to = SUPERVISION_TIMEOUT_DEFAULT,
 	.scan_actv_idx = GAP_INVALID_ACTV_IDX,
 	.init_actv_idx = GAP_INVALID_ACTV_IDX,
+	.data_sender = TP_DATA_SENDER_BOTH,
 };
 
 struct tp_data transmit_throughput_results;
@@ -613,7 +616,8 @@ int central_app_exec(uint32_t const app_state)
 		printk(" >>> TRASMIT RESULT: ");
 		pretty_print_result(&transmit_throughput_results);
 
-		if (IS_ENABLED(CONFIG_BLE_TP_BIDIRECTIONAL_TEST)) {
+		if (env.data_sender == TP_DATA_SENDER_BOTH ||
+			env.data_sender == TP_DATA_SENDER_PERIPHERAL) {
 			printk("\r\n <<< Reception test starts\r\n");
 		}
 
@@ -637,6 +641,7 @@ int central_app_exec(uint32_t const app_state)
 			.type = TP_CLIENT_CTRL_TYPE_RESET,
 			.test_duration_ms = env.test_duration_ms,
 			.send_interval_ms = env.send_interval_ms,
+			.data_sender = env.data_sender,
 		};
 
 		memset(&tp_stats, 0, sizeof(tp_stats));
@@ -644,9 +649,14 @@ int central_app_exec(uint32_t const app_state)
 		gatt_client_write_noack(service_handle, (void *)&command, sizeof(command));
 
 		last_tp_read = current_ms;
-
-		app_transition_to(APP_STATE_DATA_TRANSMIT);
-		printk(" >>> Transmit test starts\r\n");
+		if (env.data_sender == TP_DATA_SENDER_BOTH ||
+			env.data_sender == TP_DATA_SENDER_CENTRAL) {
+			app_transition_to(APP_STATE_DATA_TRANSMIT);
+			printk(" >>> Transmit test starts\r\n");
+		} else {
+			printk("\r\n <<< Reception test starts\r\n");
+			app_transition_to(APP_STATE_CENTRAL_READY);
+		}
 		break;
 	}
 
@@ -684,6 +694,13 @@ int central_get_service_uuid_str(char *p_uuid, uint8_t max_len)
 int central_set_send_interval(uint32_t const interval)
 {
 	env.send_interval_ms = interval;
+
+	return 0;
+}
+
+int central_set_data_sender(enum tp_data_send_direction dir)
+{
+	env.data_sender = dir;
 
 	return 0;
 }
@@ -759,8 +776,8 @@ int central_connection_params_set(struct central_conn_params const *const p_para
 
 int central_set_test_duration(uint32_t const duration_s)
 {
-	if (duration_s < 2 || duration_s > (60 * 60)) {
-		LOG_ERR("Test duration maximum is an hour!");
+	if (duration_s < 2 || duration_s > (60 * 60 * 3)) {
+		LOG_ERR("Test duration must be between 2 seconds and 3 hours!");
 		return -EINVAL;
 	}
 

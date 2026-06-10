@@ -82,6 +82,7 @@ static struct service_env {
 	uint16_t mtu;
 	uint32_t total_len;
 	uint16_t cnt;
+	enum tp_data_send_direction data_sender;
 } env;
 
 static uint8_t service_uuid[] = SERVICE_UUID;
@@ -126,7 +127,9 @@ static void on_att_read_get(uint8_t const conidx, uint8_t const user_lid, uint16
 		}
 
 		memcpy(p_buf->buf + p_buf->head_len, &env.resp_data, att_val_len);
-		if (IS_ENABLED(CONFIG_BLE_TP_BIDIRECTIONAL_TEST)) {
+
+		if (env.data_sender == TP_DATA_SENDER_BOTH ||
+			env.data_sender == TP_DATA_SENDER_PERIPHERAL) {
 			app_transition_to(APP_STATE_PERIPHERAL_PREPARE_SENDING);
 		} else {
 			app_transition_to(APP_STATE_STANDBY);
@@ -228,14 +231,15 @@ static void on_att_val_set(uint8_t const conidx, uint8_t const user_lid, uint16_
 
 		/* Check if the control message was received */
 		if (data_len == sizeof(struct tp_client_ctrl)) {
-			struct tp_client_ctrl *p_ctrl =
-				(struct tp_client_ctrl *)co_buf_data(p_data);
+			/* Copy into an aligned local struct to avoid unaligned access fault */
+			struct tp_client_ctrl p_ctrl;
 
-			if (p_ctrl->type == TP_CLIENT_CTRL_TYPE_RESET) {
-				printk(" >>> Reception starts\r\n");
+			memcpy(&p_ctrl, co_buf_data(p_data), sizeof(p_ctrl));
 
-				env.test_duration_ms = p_ctrl->test_duration_ms;
-				env.send_interval_ms = p_ctrl->send_interval_ms;
+			if (p_ctrl.type == TP_CLIENT_CTRL_TYPE_RESET) {
+				env.test_duration_ms = p_ctrl.test_duration_ms;
+				env.send_interval_ms = p_ctrl.send_interval_ms;
+				env.data_sender = p_ctrl.data_sender;
 
 				env.accumulated_time_ns = 0;
 				env.resp_data.write_count = 0;
@@ -243,7 +247,14 @@ static void on_att_val_set(uint8_t const conidx, uint8_t const user_lid, uint16_
 				env.resp_data.write_rate = 0;
 
 				clock_cycles_last = cycle_now;
-				app_transition_to(APP_STATE_PERIPHERAL_RECEIVING);
+
+				if (env.data_sender == TP_DATA_SENDER_BOTH ||
+					env.data_sender == TP_DATA_SENDER_CENTRAL) {
+					printk(" >>> Reception starts\r\n");
+					app_transition_to(APP_STATE_PERIPHERAL_RECEIVING);
+				} else {
+					app_transition_to(APP_STATE_PERIPHERAL_PREPARE_SENDING);
+				}
 				break;
 			}
 		}
@@ -494,6 +505,10 @@ int peripheral_app_exec(uint32_t const app_state)
 		break;
 	}
 	case APP_STATE_PERIPHERAL_SENDING: {
+		if (env.send_interval_ms) {
+			k_sleep(K_MSEC(env.send_interval_ms));
+		}
+
 		notification_send();
 		break;
 	}
