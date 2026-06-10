@@ -575,7 +575,7 @@ The following are the output logs observed on minicom:
    [00:00:00.327,000] <inf> disp:  curr_pix_fmt - 0
    [00:00:00.327,000] <inf> disp: FB0 - 0x02000000, size - 1152000
 
-.. figure:: _static/serial_display_output.png
+.. figure:: _static/serial_lane_2_display_output.png
    :alt: Serial Display Output
    :align: center
 
@@ -607,7 +607,7 @@ The following are the output logs observed on minicom:
    [00:00:00.272,000] <inf> disp:  curr_pix_fmt - 0
    [00:00:00.272,000] <inf> disp: FB0 - 0x20040000, size - 307200
 
-.. figure:: _static/Serial_display_output.png
+.. figure:: _static/serial_lane_1_display_output.png
    :align: center
 
    1-lane Serial Display Output
