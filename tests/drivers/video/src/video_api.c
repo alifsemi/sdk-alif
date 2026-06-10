@@ -25,6 +25,10 @@
 
 static const struct device *api_video;
 
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+	uint8_t current_sensor;
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
 /*
  * Probe VIDEO_EP_IN and VIDEO_EP_OUT at runtime to find an endpoint that the
  * driver does not support (video_get_caps returns -EINVAL). This keeps the
@@ -171,24 +175,12 @@ ZTEST(cpi_api_testcase, api_set_format_valid)
 	ret = api_get_default_fmt(&fmt);
 	zassert_equal(ret, 0, "api_get_default_fmt failed: %d", ret);
 
-	ret = video_set_format(api_video, CAPTURE_EP, &fmt);
-	zassert_equal(ret, 0, "video_set_format on CAPTURE_EP with valid fmt failed: %d", ret);
+	ret = video_set_capture_format(api_video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
 	TC_PRINT("api_set_format_valid: fmt=%c%c%c%c %ux%u pitch=%u ret=%d\n",
 		(char)fmt.pixelformat, (char)(fmt.pixelformat >> 8),
 		(char)(fmt.pixelformat >> 16), (char)(fmt.pixelformat >> 24),
 		fmt.width, fmt.height, fmt.pitch, ret);
-
-#if ISP_ENABLED
-	/* ISP also requires an output-side format (OUTPUT_FORMAT on EP_OUT). */
-	struct video_format out_fmt = {
-		.pixelformat = OUTPUT_FORMAT,
-		.width       = 480,
-		.height      = 480,
-		.pitch       = fourcc_to_pitch(OUTPUT_FORMAT, 480),
-	};
-	ret = video_set_format(api_video, VIDEO_EP_OUT, &out_fmt);
-	zassert_equal(ret, 0, "ISP EP_OUT set_format failed: %d", ret);
-#endif
 }
 
 /* -------------------------------------------------------------------------
@@ -206,7 +198,7 @@ ZTEST(cpi_api_testcase, api_set_format_invalid_pixelformat)
 	uintptr_t regs = DEVICE_MMIO_GET(api_video);
 	int ret;
 
-	ret = video_set_format(api_video, VIDEO_EP_OUT, &fmt);
+	ret = video_set_format(api_video, CAPTURE_EP, &fmt);
 	TC_PRINT("api_set_format_invalid_pixelformat: ret=%d\n", ret);
 	zassert_true(ret == -EINVAL || ret == -ENOTSUP,
 		"Expected -EINVAL or -ENOTSUP for bad pixelformat, got %d", ret);
@@ -315,10 +307,14 @@ ZTEST(cpi_api_testcase, api_enqueue_valid)
 
 	ret = api_get_default_fmt(&fmt);
 	zassert_equal(ret, 0, "api_get_default_fmt failed: %d", ret);
-	bsize = fmt.pitch * fmt.height;
 
-	ret = video_set_format(api_video, VIDEO_EP_OUT, &fmt);
-	zassert_equal(ret, 0, "set_format failed: %d", ret);
+	ret = video_set_capture_format(api_video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
+
+	/* fmt now describes what EP_OUT expects (PIPELINE on direct-CAM,
+	 * OUTPUT_FORMAT on ISP), so the buffer-size math is correct on both.
+	 */
+	bsize = fmt.pitch * fmt.height;
 
 	vbuf = video_buffer_alloc(bsize, K_NO_WAIT);
 	zassert_not_null(vbuf, "video_buffer_alloc returned NULL");
@@ -457,10 +453,11 @@ ZTEST(cpi_api_testcase, api_flush_cancel)
 
 	ret = api_get_default_fmt(&fmt);
 	zassert_equal(ret, 0, "api_get_default_fmt failed: %d", ret);
-	bsize = fmt.pitch * fmt.height;
 
-	ret = video_set_format(api_video, VIDEO_EP_OUT, &fmt);
-	zassert_equal(ret, 0, "set_format failed: %d", ret);
+	ret = video_set_capture_format(api_video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
+
+	bsize = fmt.pitch * fmt.height;
 
 	for (i = 0; i < 2; i++) {
 		bufs[i] = video_buffer_alloc(bsize, K_NO_WAIT);
@@ -497,10 +494,11 @@ ZTEST(cpi_api_testcase, api_flush_no_cancel_stopped)
 
 	ret = api_get_default_fmt(&fmt);
 	zassert_equal(ret, 0, "api_get_default_fmt failed: %d", ret);
-	bsize = fmt.pitch * fmt.height;
 
-	ret = video_set_format(api_video, VIDEO_EP_OUT, &fmt);
-	zassert_equal(ret, 0, "set_format failed: %d", ret);
+	ret = video_set_capture_format(api_video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
+
+	bsize = fmt.pitch * fmt.height;
 
 	vbuf = video_buffer_alloc(bsize, K_NO_WAIT);
 	zassert_not_null(vbuf, "video_buffer_alloc returned NULL");
@@ -568,10 +566,45 @@ ZTEST(cpi_api_testcase, api_stream_start_stop_roundtrip)
 
 	ret = api_get_default_fmt(&fmt);
 	zassert_equal(ret, 0, "api_get_default_fmt failed: %d", ret);
+
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		ret = video_get_ctrl(api_video, VIDEO_CID_ALIF_CSI_CURR_CAM, &current_sensor);
+		zassert_equal(ret, 0,
+				"video_get_ctrl(VIDEO_CID_ALIF_CSI_CURR_CAM) failed: %d", ret);
+		TC_PRINT("Selected camera: %s\n", (current_sensor) ? "Standard" : "Selfie");
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
+	ret = video_set_capture_format(api_video, &fmt);
+	zassert_equal(ret, 0, "video_set_capture_format failed: %d", ret);
+
 	bsize = fmt.pitch * fmt.height;
 
-	ret = video_set_format(api_video, VIDEO_EP_OUT, &fmt);
-	zassert_equal(ret, 0, "set_format failed: %d", ret);
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		if (NUM_CAMS > 1) {
+			current_sensor ^= 1;
+			ret = video_set_ctrl(api_video, VIDEO_CID_ALIF_CSI_CURR_CAM,
+					&current_sensor);
+			if (ret) {
+				TC_PRINT("Unable to switch camera!");
+			}
+		}
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
+	/* video_set_capture_format() above already handled the ISP EP_OUT
+	 * configuration when ISP_ENABLED, so no extra set_format is needed
+	 * here regardless of build variant.
+	 */
+
+#if (CONFIG_VIDEO_ALIF_CAM_EXTENDED && CONFIG_VIDEO_MIPI_CSI2_DW)
+		if (NUM_CAMS > 1) {
+			current_sensor = 0;
+			ret = video_set_ctrl(api_video, VIDEO_CID_ALIF_CSI_CURR_CAM,
+					&current_sensor);
+			if (ret) {
+				TC_PRINT("Unable to switch camera!");
+			}
+		}
+#endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
 
 	vbuf = video_buffer_alloc(bsize, K_NO_WAIT);
 	zassert_not_null(vbuf, "video_buffer_alloc returned NULL");
@@ -602,7 +635,7 @@ ZTEST(cpi_api_testcase, api_stream_start_stop_roundtrip)
 	TC_PRINT("api_stream_start_stop_roundtrip: stream stopped\n");
 
 	/* Drain any remaining buffers before release. */
-	video_flush(api_video, VIDEO_EP_OUT, true);
+	video_flush(api_video, VIDEO_EP_OUT, false);
 
 	struct video_buffer *out = NULL;
 

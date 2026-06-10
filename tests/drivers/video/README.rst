@@ -1,12 +1,12 @@
-.. _alif-cpi-sample:
+.. _alif-video-tests:
 
-Alif CPI Sample
-###############
+Alif Video Tests
+################
 
 Overview
 ********
 
-This test exercises the Alif Camera Parallel Interface (CPI) / MIPI Camera
+This test exercises the Alif Camera Parallel Interface (CPI) and MIPI Camera
 Serial Interface (CSI-2) video capture pipeline via the Zephyr
 :dtcompatible:`alif,cam` driver. It validates the generic Zephyr ``video``
 API (``video_get_caps``, ``video_set_format``, ``video_get_format``,
@@ -39,10 +39,12 @@ The pipeline format is selected at compile time from the device tree:
 +================================+===========================+================+
 | ``aptina,mt9m114``             | Parallel CPI              | ``GREY``       |
 +--------------------------------+---------------------------+----------------+
+| ``onnn,arx3a0``                | MIPI CSI-2                | ``RAW10``      |
++--------------------------------+---------------------------+----------------+
 
 When ``CONFIG_USE_ALIF_ISP_LIB=y`` is enabled (see ``boards/isp.conf``),
-the output format is forced to ``RGB888_PLANAR_PRIVATE`` and frames flow
-through the ISP (``vsi,isp-pico``).
+the ARX3A0 RAW10 output is processed by the ISP (``vsi,isp-pico``) and
+converted to ``RGB888_PLANAR_PRIVATE`` format.
 
 Building and Running
 ********************
@@ -50,32 +52,48 @@ Building and Running
 The application only builds for targets whose device tree enables a
 :dtcompatible:`alif,cam` node.
 
-Parallel CPI + MT9M114 (RTSS-HP, E8 DK)
+Replace ``<board>`` with your target board (e.g., ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp``)
+and ``<test_path>`` with the path to the test directory.
+
+CPI + MT9M114 Parallel
+======================
+
+.. code-block:: console
+
+   west build -p -b <board> \
+       <test_path> \
+       -- -DDTC_OVERLAY_FILE=boards/cpi_mt9m114.overlay
+
+LP-CPI + MT9M114 Parallel (RTSS-HE only)
+=========================================
+
+.. note::
+   LP-CPI is only supported on RTSS-HE targets.
+
+.. code-block:: console
+
+   west build -p -b <board> \
+       <test_path> \
+       -- -DDTC_OVERLAY_FILE=boards/lpcpi_mt9m114.overlay
+
+MIPI CSI-2 + ARX3A0 + ISP (Selfie Camera)
+==========================================
+
+.. code-block:: console
+
+   west build -p -b <board> \
+       <test_path> \
+       -- -DDTC_OVERLAY_FILE=boards/serial_camera_arx3a0_selfie.overlay \
+          -DEXTRA_CONF_FILE=boards/isp.conf
+
+MIPI CSI-2 + ARX3A0 (Standard Camera)
 =======================================
 
 .. code-block:: console
 
-   west build -p -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-       ../alif/tests/drivers/video/ \
-       -- -DDTC_OVERLAY_FILE="$PWD/../alif/tests/drivers/video/boards/cpi_mt9m114.overlay"
-
-Parallel CPI + MT9M114 (RTSS-HE)
-================================
-
-.. code-block:: console
-
-   west build -p -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-       ../alif/tests/drivers/video/ \
-       -- -DDTC_OVERLAY_FILE="$PWD/../alif/tests/drivers/video/boards/cpi_mt9m114.overlay"
-
-LP-CPI + MT9M114 (RTSS-HE)
-==========================
-
-.. code-block:: console
-
-   west build -p -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-       ../alif/tests/drivers/video/ \
-       -- -DDTC_OVERLAY_FILE="$PWD/../alif/tests/drivers/video/boards/lpcpi_mt9m114.overlay"
+   west build -p -b <board> \
+       <test_path> \
+       -- -DDTC_OVERLAY_FILE=boards/serial_camera_arx3a0_standard.overlay
 
 Flash and open a serial console at 115200 8N1 to observe the test output.
 
