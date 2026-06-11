@@ -124,7 +124,22 @@ def test(String pytest_test){
         """
 
 }
-
+def get_all_alif_boards (){
+    sh '''#!/bin/bash -xe
+        env
+        cd /root/alif
+        all_alif_boards=()
+        echo ****$all_alif_boards*****
+        while read -r name qualifiers; do
+            IFS=',' read -ra qlist <<< "$qualifiers"
+            for q in "${qlist[@]}"; do
+                all_alif_boards+=("$name/$q")
+            done
+        done < <(west boards -n alif --format '{name} {qualifiers}')
+        echo ----$all_alif_boards----
+        return $all_alif_boards
+        '''
+}
 
 
 return [

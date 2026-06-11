@@ -1,11 +1,12 @@
 def common_funcs
-def samples1 = ['le_periph_blps', 'le_periph_cgms','le_periph_cpps','le_periph_cscps','le_periph_mics','le_periph_vcp']
-def samples2 = ['le_central_batt','le_periph','le_periph_batt','le_periph_blinky','le_multiprofile','le_periph_ots']
-def samples3 = ['le_periph_glps', 'le_periph_hello','le_periph_hr','le_periph_htpt','le_periph_anps','le_periph_pacs']
-def samples4 = [ 'le_periph_past','le_periph_plxp','le_periph_pm','le_periph_prxp','le_throughput','le_periph_ccp']
-def samples5 = ['le_periph_rscps','le_periph_ws','mesh_light_bulb','smp_svr', 'le_periph_haps','le_periph_tips']
-def samples6 = ['auracast','broadcast_mode_switch','unicast_acceptor','unicast_initiator']
-def samples7 =['testapp']
+def samples1 = ['le_periph_blps' , 'le_periph_cgms' , 'le_periph_cpps', 'le_periph_cscps' , 'le_periph_mics' , 'le_periph_vcp' ]
+def samples2 = ['le_central_batt', 'le_periph'      , 'le_periph_batt', 'le_periph_blinky', 'le_multiprofile', 'le_periph_ots' ]
+def samples3 = ['le_periph_glps' , 'le_periph_hello', 'le_periph_hr'  , 'le_periph_htpt'  , 'le_periph_anps' , 'le_periph_pacs']
+def samples4 = ['le_periph_past' , 'le_periph_plxp' , 'le_periph_pm'  , 'le_periph_prxp'  , 'le_throughput'  , 'le_periph_ccp' ]
+def samples5 = ['le_periph_rscps', 'le_periph_ws'   , 'mesh_light_bulb','smp_svr'         , 'le_periph_haps' , 'le_periph_tips']
+def samples6 = ['auracast'       , 'broadcast_mode_switch','unicast_acceptor','unicast_initiator']
+def samples7 = ['testapp']
+def samples8 = ['']
 
 pipeline {
     agent any
@@ -41,6 +42,20 @@ pipeline {
         }
         stage('Pr_Build For Parallel') {
             parallel {
+                stage('board_test') {
+                    agent { label 'zas20' }
+                    options { skipDefaultCheckout() }
+                    steps {
+                        script {
+                            common_funcs.get_all_alif_boards()
+                        }
+                    }
+                    post {
+                        success {
+                            archiveArtifacts artifacts: '*.tar', fingerprint: true
+                        }
+                    }
+                }
                 stage('BLE samples stage 1') {
                     agent { label 'zas20' }
                     options { skipDefaultCheckout() }
