@@ -21,6 +21,7 @@
 #include <inttypes.h>
 #include <string>
 #include <stdio.h>
+#include <stdlib.h>
 #include <vector>
 #include <zephyr/kernel.h>
 
@@ -28,14 +29,32 @@ static K_THREAD_STACK_DEFINE(ethosu_stack, CONFIG_ALIF_ETHOSU_SHELL_THREAD_STACK
 static struct k_thread ethosu_thread;
 static k_sem ethosu_sem;
 static atomic_t ethosu_running = 0;
+static atomic_t ethosu_verbose = CONFIG_ETHOSU_VERBOSE_LEVEL;
 
 __attribute__((section(".bss.tflm_arena"),
 	       aligned(16))) static uint8_t tensor_arena[TENSOR_ARENA_SIZE];
+
+static unsigned int verbose_to_cnt()
+{
+	if (atomic_get(&ethosu_verbose) == 1) {
+		return 100;
+	} else if (atomic_get(&ethosu_verbose) == 2) {
+		return 1000;
+	} else if (atomic_get(&ethosu_verbose) == 3) {
+		return 5000;
+	} else if (atomic_get(&ethosu_verbose) == 4) {
+		return 10000;
+	} else {
+		return 50000;
+	}
+}
 
 static void ethosu_worker(void *, void *, void *)
 {
 	InferenceProcess::InferenceProcess npu(tensor_arena, TENSOR_ARENA_SIZE);
 	uint32_t jobcnt = 0;
+	uint32_t last_print_jobcnt = 0;
+	int64_t last_print_ms = k_uptime_get();
 	bool status;
 
 	while (true) {
@@ -56,9 +75,21 @@ static void ethosu_worker(void *, void *, void *)
 		status = npu.runJob(job);
 		jobcnt++;
 
-		if ((jobcnt % 100) == 0) {
-			printk("%s jobcnt=%u status=%s\n", modelName, jobcnt,
-			       status ? "failed" : "ok");
+		if (atomic_get(&ethosu_verbose) && (jobcnt % verbose_to_cnt()) == 0) {
+			int64_t now_ms = k_uptime_get();
+			uint32_t delta_jobs = jobcnt - last_print_jobcnt;
+			uint32_t jobs_per_sec = 0;
+
+			if (now_ms > last_print_ms) {
+				jobs_per_sec = (uint32_t)((delta_jobs * 1000ULL) /
+							  (uint64_t)(now_ms - last_print_ms));
+			}
+
+			printk("jobcnt=%u status=%s rate=%u jobs/s\n", jobcnt,
+			       status ? "failed" : "ok", jobs_per_sec);
+
+			last_print_jobcnt = jobcnt;
+			last_print_ms = now_ms;
 		}
 	}
 }
@@ -76,7 +107,8 @@ static int cmd_start(const struct shell *shell, size_t, char **)
 			ethosu_worker, NULL, NULL, NULL, CONFIG_ALIF_ETHOSU_SHELL_THREAD_PRIORITY,
 			0, K_NO_WAIT);
 
-	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start Ethos-U55 inferencing\n");
+	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Start Ethos-U55 inferencing - model %s\n",
+		      modelName);
 	return 0;
 }
 
@@ -94,8 +126,31 @@ static int cmd_stop(const struct shell *shell, size_t, char **)
 	return 0;
 }
 
+static int cmd_verbose(const struct shell *shell, size_t argc, char **argv)
+{
+	char *end = NULL;
+	long level;
+
+	if (argc < 2) {
+		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "Usage: ethosu verbose <0-5>\n");
+		return -1;
+	}
+
+	level = strtol(argv[1], &end, 10);
+	if ((end == argv[1]) || (*end != '\0') || (level < 0) || (level > 5)) {
+		shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT,
+			      "Invalid verbose level, expected 0-5\n");
+		return -1;
+	}
+
+	atomic_set(&ethosu_verbose, (atomic_val_t)level);
+	shell_fprintf(shell, SHELL_VT100_COLOR_DEFAULT, "verbose=%ld\n", level);
+	return 0;
+}
+
 SHELL_STATIC_SUBCMD_SET_CREATE(sub_cmds, SHELL_CMD_ARG(start, NULL, "start", cmd_start, 1, 10),
 			       SHELL_CMD_ARG(stop, NULL, "stop", cmd_stop, 1, 10),
+			       SHELL_CMD_ARG(verbose, NULL, "verbose <0-5>", cmd_verbose, 2, 0),
 			       SHELL_SUBCMD_SET_END);
 
 SHELL_CMD_REGISTER(ethosu, &sub_cmds, "Ethos-U55 commands", NULL);
