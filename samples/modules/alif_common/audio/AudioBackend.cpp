@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -49,7 +49,7 @@ BUILD_ASSERT(CONFIG_SAMPLE_CNT % 4 == 0, "CONFIG_SAMPLE_CNT must be a multiple o
 #define PDM_GAIN            0x00000F00
 #define PDM_PEAK_DETECT_TH  0x00060002
 #define PDM_PEAK_DETECT_ITV 0x0004002D
-#define PDM_READ_TIMEOUT    5000
+#define PDM_READ_TIMEOUT    500
 #define SAMPLE_BIT_WIDTH    16
 #define START               true
 #define STOP                false
@@ -71,6 +71,14 @@ static struct k_sem rx_start;
 static struct k_sem rx_ready;
 static int16_t *user_ptr;
 static int user_len;
+/* Set by audio_uninit() to ask the worker thread to stop. Volatile because it
+ * is written from the caller's context and read from the worker thread. */
+static volatile bool audio_stop_requested = false;
+/* Result of the last capture attempt, published by the worker and returned to
+ * the caller via wait_for_audio(). 0 means a chunk is ready; a negative value
+ * means the worker stopped (mic start/read error). Volatile because it is
+ * written by the worker and read by the caller's thread. */
+static volatile int audio_status = 0;
 
 static int mix_mono_output(int16_t *in, size_t in_size, int16_t *out, size_t out_size)
 {
@@ -94,7 +102,16 @@ static int mix_mono_output(int16_t *in, size_t in_size, int16_t *out, size_t out
 static int trigger_audio(bool start)
 {
 #if I2S_MICS
-	return i2s_trigger(mic, I2S_DIR_RX, (start ? I2S_TRIGGER_START : I2S_TRIGGER_DROP));
+	/* Use DROP rather than STOP to stop reception. The DW I2S driver only
+	 * accepts STOP from the RUNNING state, but on an RX overrun (the app
+	 * falling behind while reception is still active) the driver auto-
+	 * transitions the stream to ERROR and disables RX on its own. A
+	 * subsequent STOP is then rejected with -EIO ("STOP trigger: invalid
+	 * state"). DROP is accepted from any active state (RUNNING or ERROR),
+	 * always returns the stream to READY, and so also guarantees the next
+	 * i2s_configure() succeeds. */
+	return i2s_trigger(mic, I2S_DIR_RX,
+			   (start ? I2S_TRIGGER_START : I2S_TRIGGER_DROP));
 #else
 	return dmic_trigger(mic, (start ? DMIC_TRIGGER_START : DMIC_TRIGGER_STOP));
 #endif
@@ -112,6 +129,17 @@ static int audio_handle_rx(void)
 #else
 		int rc = dmic_read(mic, 0, &buffer, &size, PDM_READ_TIMEOUT);
 #endif
+		/* audio_uninit() sets audio_stop_requested while the mic is still
+		 * running, so this read returns a valid buffer. Release it and
+		 * exit promptly instead of finishing the chunk; otherwise the
+		 * buffer is leaked and the slab is eventually exhausted, which
+		 * makes a later mic start fail and the next session hang. */
+		if (audio_stop_requested) {
+			if (rc == 0 && buffer != NULL) {
+				k_mem_slab_free(&mem_slab, buffer);
+			}
+			return 0;
+		}
 		if (rc != 0) {
 			LOG_ERR("mic read failed: %i", rc);
 			return rc;
@@ -133,32 +161,46 @@ static int audio_handle_rx(void)
 
 static void audio_worker_thread(void *, void *, void *)
 {
+	/* Start the mic here, immediately before the first read, to keep the
+	 * window between START and the first read as short as possible. The mic
+	 * free-runs into a limited set of slab buffers, so starting it too early
+	 * (e.g. in audio_init(), before the caller requests the first chunk) can
+	 * overrun and push the I2S stream into ERROR before the first read. */
 	int rc = trigger_audio(START);
 	if (rc < 0) {
-		LOG_ERR("mic_trigger error\n");
-		return;
-	}
+		LOG_ERR("mic start failed: %d", rc);
+		audio_status = rc;
+	} else {
+		while (1) {
+			k_sem_take(&rx_start, K_FOREVER);
 
-	while (1) {
-		k_sem_take(&rx_start, K_FOREVER);
-		if (user_ptr == NULL) {
-			LOG_ERR("usr_ptr error");
-			break;
+			if (audio_stop_requested) {
+				break;
+			}
+
+			if (user_ptr == NULL) {
+				LOG_ERR("user_ptr is NULL");
+				audio_status = -EINVAL;
+				break;
+			}
+
+			rc = audio_handle_rx();
+			if (rc < 0) {
+				audio_status = rc;
+				break;
+			}
+
+			k_sem_give(&rx_ready);
 		}
-
-		rc = audio_handle_rx();
-		if (rc < 0) {
-			LOG_ERR("audio_handle_rx failed: %i", rc);
-			break;
-		}
-
-		k_sem_give(&rx_ready);
 	}
 
-	rc = trigger_audio(STOP);
-	if (rc < 0) {
-		LOG_ERR("trigger_audio failed: %i", rc);
-	}
+	/* Always wake a thread that may be blocked in wait_for_audio() so it can
+	 * observe audio_status instead of blocking forever - a stranded waiter
+	 * would leave every thread blocked and idle the whole system. On a clean
+	 * stop this extra give is harmless; audio_uninit() resets the semaphore.
+	 * The mic is stopped in audio_uninit() after this thread is joined, so
+	 * the worker never stops the mic itself. */
+	k_sem_give(&rx_ready);
 }
 
 #if I2S_MICS
@@ -263,6 +305,19 @@ int audio_init(int sampling_rate)
 		return -ENODEV;
 	}
 #if I2S_MICS
+	/* Force the stream back to READY before configuring. If a previous
+	 * session ended in the I2S ERROR state (e.g. an RX overrun), the stream
+	 * is still in ERROR and i2s_configure() - which only accepts READY or
+	 * NOT_READY - would otherwise fail and break every subsequent session.
+	 * Skip this on the very first init: the device is still NOT_READY then,
+	 * the one state from which DROP is rejected ("DROP trigger: invalid
+	 * state"). */
+	static bool i2s_configured_once = false;
+
+	if (i2s_configured_once) {
+		(void)trigger_audio(STOP);
+	}
+	i2s_configured_once = true;
 	i2s_config(sampling_rate);
 #else
 	int ret = pdm_ch_config(mic, sampling_rate);
@@ -270,6 +325,14 @@ int audio_init(int sampling_rate)
 		return -1;
 	}
 #endif
+	/* Reset session state. audio_stop_requested must be cleared so the
+	 * freshly created worker does not see a stale 'stop' from a previous
+	 * session and exit immediately. */
+	audio_stop_requested = false;
+	audio_status = 0;
+	user_ptr = NULL;
+	user_len = 0;
+
 	k_sem_init(&rx_start, 0, 1);
 	k_sem_init(&rx_ready, 0, 1);
 
@@ -284,10 +347,29 @@ int audio_init(int sampling_rate)
 
 void audio_uninit(void)
 {
-	user_ptr = NULL;
-	user_len = 0;
+	/* Ask the worker to stop and wake it if it is waiting for the next
+	 * get_audio_data(). The mic is deliberately left running here: a worker
+	 * blocked inside a mic read is only unblocked by the next buffer being
+	 * delivered, so the read returns promptly, the worker sees the stop
+	 * request, releases the buffer and exits. Stopping the mic first would
+	 * instead halt the data flow and leave that read blocked forever,
+	 * deadlocking the join below. */
+	audio_stop_requested = true;
 	k_sem_give(&rx_start);
 	k_thread_join(&audio_thread, K_FOREVER);
+
+	/* The worker has exited, so it is now safe to stop the mic and clear the
+	 * shared state. trigger_audio() uses DROP for I2S, which returns the
+	 * stream to READY from any active state (RUNNING or ERROR) and frees any
+	 * buffers still queued by the driver. */
+	int rc = trigger_audio(STOP);
+	if (rc < 0) {
+		LOG_ERR("mic stop failed: %d", rc);
+	}
+	user_ptr = NULL;
+	user_len = 0;
+	k_sem_reset(&rx_start);
+	k_sem_reset(&rx_ready);
 }
 
 int get_audio_data(int16_t *data, int len)
@@ -303,7 +385,7 @@ int wait_for_audio(void)
 {
 	k_sem_take(&rx_ready, K_FOREVER);
 
-	return 0;
+	return audio_status;
 }
 
 void audio_preprocessing(int16_t *data, int len)

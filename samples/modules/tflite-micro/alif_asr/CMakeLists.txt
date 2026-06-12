@@ -1,4 +1,4 @@
-# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -7,6 +7,10 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
+
+if(NOT ospi-flash IN_LIST SNIPPET)
+  set(SNIPPET ospi-flash ${SNIPPET} CACHE STRING "" FORCE)
+endif()
 
 # Locate the alif-mlek west module. Its Zephyr port lives in a sub-directory,
 # so the module is not auto-discovered and must be registered explicitly. Ask
@@ -31,13 +35,15 @@ list(APPEND ZEPHYR_EXTRA_MODULES ${MLEK_ROOT}/source/lib/ports/zephyr)
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
-project(alif_kws)
+project(alif_asr)
 
 # Silence "changed in GCC 7.1" warnigns from C++ headers
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-psabi")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-psabi")
 
 set(PLATFORM_DRIVERS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/hal/source/platform/zephyr)
+
+set(ML_FRAMEWORK TensorFlowLiteMicro)
 
 # ---------------------------------------------------------------------------
 # Build-time model and labels generation from MLEK resources
@@ -52,6 +58,9 @@ set(SRC_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/src)
 set(INC_GEN_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/include)
 file(MAKE_DIRECTORY ${SRC_GEN_DIR} ${INC_GEN_DIR})
 
+message(STATUS "Using SRC_GEN_DIR:    ${SRC_GEN_DIR}")
+message(STATUS "Using INC_GEN_DIR:    ${INC_GEN_DIR}")
+
 # Determine NPU config ID based on Zephyr Kconfig
 if (CONFIG_ARM_ETHOS_U55_256)
     set(ETHOS_U_NPU_CONFIG_ID "H256")
@@ -60,59 +69,67 @@ else()
 endif()
 
 # Model file path
-set(KWS_MODEL_PATH ${RESOURCES_PATH}/kws/kws_micronet_m_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite
-    CACHE FILEPATH "Path to the KWS TFLite model (Vela-compiled)")
+set(ASR_MODEL_PATH ${RESOURCES_PATH}/asr/wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite
+    CACHE FILEPATH "Path to the ASR TFLite model (Vela-compiled)")
 
-if (NOT EXISTS ${KWS_MODEL_PATH})
+if (NOT EXISTS ${ASR_MODEL_PATH})
     message(FATAL_ERROR
-        "KWS model not found at ${KWS_MODEL_PATH}\n"
+        "ASR model not found at ${ASR_MODEL_PATH}\n"
         "Run set_up_default_resources.py first:\n"
         "  python3 ${MLEK_ROOT}/set_up_default_resources.py\n")
 endif()
 
-# Generate model C array and parameter constants
 set(EXTRA_MODEL_CODE
-    "/* Model parameters for alif_kws */"
-    "extern const int   g_FrameLength    = 640"
-    "extern const int   g_FrameStride    = 320"
-    "extern const int   g_AudioRate      = 16000"
-    "extern const float g_ScoreThreshold = 0.5"
-)
+	"/* Model parameters for ${use_case} */"
+	"extern const int   g_FrameLength    = 512"
+	"extern const int   g_FrameStride    = 160"
+	"extern const int   g_ctxLen         = 98"
+	"extern const float g_ScoreThreshold = 0.5"
+	)
 
+# Generate model file
 generate_model_code(
-    MODEL_PATH  ${KWS_MODEL_PATH}
+    MODEL_PATH  ${ASR_MODEL_PATH}
     DESTINATION ${SRC_GEN_DIR}
     EXPRESSIONS ${EXTRA_MODEL_CODE}
-    NAMESPACE   "arm" "app" "kws"
-)
+    NAMESPACE   "arm" "app" "asr")
 
 # Generate labels C++ code
-set(KWS_LABELS_FILE ${MLEK_ROOT}/resources/kws/labels/micronet_kws_labels.txt)
+set(ASR_LABELS_FILE ${MLEK_ROOT}/resources/asr/labels/labels_wav2letter.txt)
 
+# Generate labels file
+set(ASR_LABELS_CPP_FILE Labels)
 generate_labels_code(
-    INPUT           ${KWS_LABELS_FILE}
+    INPUT           "${ASR_LABELS_FILE}"
     DESTINATION_SRC ${SRC_GEN_DIR}
     DESTINATION_HDR ${INC_GEN_DIR}
-    OUTPUT_FILENAME Labels
+    OUTPUT_FILENAME "${ASR_LABELS_CPP_FILE}"
 )
 
 # Collect the generated source files
-file(GLOB KWS_GENERATED_SOURCES ${SRC_GEN_DIR}/*.cc)
+file(GLOB ASR_GENERATED_SOURCES ${SRC_GEN_DIR}/*.cc)
 
-# ---------------------------------------------------------------------------
+# Create static library
+add_library(asr_iface INTERFACE)
+
+## Common include directories - public
+target_include_directories(asr_iface
+    INTERFACE
+	src/application/main/include)
+
 
 target_include_directories(app PRIVATE
     src/application/main/include
-    src/use_case/alif_kws/include
-    src/application/api/use_case/kws/include
-    src/generated/kws
-    ../../alif_common
-    ../../alif_common/audio
-    ../../alif_common/audio/include
-    ${INC_GEN_DIR}
+    src/use_case/alif_asr/include
+	src/power
+	../../alif_common
+	../../alif_common/audio
+	../../alif_common/audio/include
+	 ${INC_GEN_DIR}
 )
 
 target_compile_definitions(app PRIVATE ACTIVATION_BUF_SZ=CONFIG_ACTIVATION_BUF_SZ)
+
 
 if (CONFIG_USE_APP_MENU)
 target_compile_definitions(app PRIVATE USE_APP_MENU)
@@ -120,12 +137,25 @@ endif()
 
 target_sources(app PRIVATE
     src/application/main/Main.cc
-    src/use_case/alif_kws/src/MainLoop.cc
-    src/use_case/alif_kws/src/UseCaseHandler.cc
-    ../../alif_common/audio/AudioBackend.cpp
-    ${KWS_GENERATED_SOURCES}
+    src/use_case/alif_asr/src/MainLoop.cc
+	src/use_case/alif_asr/src/UseCaseHandlerTflm.cc
+	src/power/power_mgr.c
+	../../alif_common/audio/AudioBackend.cpp
+	${ASR_GENERATED_SOURCES}
 )
 
+set(SRC_MAIN "src/application/main/Main.cc")
+
+list(APPEND SRC_MAIN_DEFS
+    "PRJ_VER_STR=\"${CMAKE_PROJECT_VERSION}\""
+    "PRJ_DES_STR=\"${CMAKE_PROJECT_DESCRIPTION}\""
+    "PRJ_COMPILER=\"${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}\"")
+
+set_source_files_properties(${SRC_MAIN}
+    PROPERTIES COMPILE_DEFINITIONS
+    "${SRC_MAIN_DEFS}")
+
 target_link_libraries(app PRIVATE
-    mlek::kws_impl
+	asr_iface
+    mlek::asr_impl
 )
