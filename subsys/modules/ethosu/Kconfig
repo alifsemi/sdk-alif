@@ -23,3 +23,7 @@ config ALIF_ETHOSU_SHELL_THREAD_PRIORITY
 config ALIF_ETHOSU_SHELL_THREAD_STACKSIZE
 	int "Stack size for thread running the NPU inference"
 	default 1024
+
+config ETHOSU_VERBOSE_LEVEL
+	int
+	default 1
