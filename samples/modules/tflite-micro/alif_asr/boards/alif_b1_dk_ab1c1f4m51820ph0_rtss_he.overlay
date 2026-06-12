@@ -1,0 +1,116 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+/ {
+	aliases {
+		pdm-audio = &lppdm;
+		spi-flash0 = &ospi_flash;
+		i2s-output = &i2s0;
+		audio-codec = &wm8904;
+	};
+};
+
+&lppdm {
+	status = "okay";
+};
+
+&i2s0 {
+	status = "okay";
+};
+
+/ {
+	ext_flash_xip: memory@b0000000 {
+		compatible = "zephyr,memory-region";
+		reg = <0xb0000000 DT_SIZE_M(64)>;
+		zephyr,memory-region = "OSPI0";
+	};
+};
+
+
+&ospi0 {
+	bus-speed = <80000000>;
+	status = "okay";
+};
+
+&ospi_flash {
+	status = "okay";
+};
+
+&ethosu0 {
+	status = "okay";
+};
+
+/ {
+	/* Compile-time assertion: ethosu0 must exist */
+	ethosu_u55_check {
+		compatible = "vnd,ethosu-u55-check";
+		ethosu-node = <&ethosu0>;
+	};
+};
+
+
+&pinctrl_lpgpio {
+	group0 {
+		pinmux = <PIN_P15_0__LPGPIO>,
+			 <PIN_P15_1__LPGPIO>;
+		read-enable = <1>;
+		driver-state-control = <1>;
+		drive-strength = <8>;
+	};
+};
+
+&lpgpio {
+	pinctrl-0 = < &pinctrl_lpgpio >;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/ {
+	wakeup_pins: wakeup_pins {
+		compatible = "lpgpio-wakeup-pin";
+		lpgpios = <&lpgpio 0 GPIO_ACTIVE_LOW>,
+			  <&lpgpio 1 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&pinctrl_uart2 {
+	group0 {
+		pinmux = <PIN_P5_2__UART2_RX_B>,
+				 <PIN_P5_3__UART2_TX_B>;
+		read-enable = <0x1>;
+		driver-state-control = <1>; /* pull-up: initialize RX active-high */
+	};
+};
+
+&pinctrl_i2s0 {
+	group0 {
+		pinmux = <PIN_P2_4__I2S0_SDI_B>,
+			 <PIN_P2_5__I2S0_SDO_B>,
+			 <PIN_P1_6__I2S0_SCLK_A>,
+			 <PIN_P1_7__I2S0_WS_A>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+	wm8904: wm8904@1a {
+		compatible = "cirrus,wm8904";
+		reg = <0x1a>;
+		status = "okay";
+	};
+};
+
+&uart_ahi {
+	status = "disabled";
+};
+
+&uart_hci {
+	status = "disabled";
+};
