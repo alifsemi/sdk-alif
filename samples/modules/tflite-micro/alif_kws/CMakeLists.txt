@@ -26,6 +26,9 @@ target_include_directories(app PRIVATE
     src/use_case/alif_kws/include
     src/application/api/use_case/kws/include
     src/generated/kws
+	../alif_common
+	../alif_common/audio
+	../alif_common/audio/include
 )
 
 target_compile_definitions(app PRIVATE ACTIVATION_BUF_SZ=CONFIG_ACTIVATION_BUF_SZ)
@@ -38,7 +41,7 @@ target_sources(app PRIVATE
     src/application/main/Main.cc
     src/use_case/alif_kws/src/MainLoop.cc
     src/use_case/alif_kws/src/UseCaseHandler.cc
-    src/use_case/alif_kws/src/AudioBackend.cpp
+    ../alif_common/audio/AudioBackend.cpp
     src/generated/kws/Labels.cc
 )
 

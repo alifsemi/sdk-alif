@@ -1,0 +1,139 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+/ {
+	aliases {
+		i2s-mic = &i2s4;
+		i2s-output = &i2s3;
+		pdm-audio = &lppdm;
+		audio-codec = &wm8904;
+		spi-flash0 = &ospi_flash;
+	};
+};
+
+&i2s3 {
+	status = "okay";
+};
+
+&i2s4 {
+	status = "okay";
+};
+
+/ {
+	ext_flash_xip: memory@c0000000 {
+		compatible = "zephyr,memory-region";
+		reg = <0xc0000000 DT_SIZE_M(64)>;
+		zephyr,memory-region = "OSPI1";
+	};
+};
+
+&ospi1 {
+	pinctrl-0 = <&pinctrl_flash>;
+	status = "okay";
+};
+
+&ospi_flash {
+	status = "okay";
+};
+
+&ethosu0 {
+	status = "okay";
+};
+
+/ {
+	/* Compile-time assertion: ethosu0 must exist */
+	ethosu_u55_check {
+		compatible = "vnd,ethosu-u55-check";
+		ethosu-node = <&ethosu0>;
+	};
+};
+
+&pinctrl_lpgpio {
+	group0 {
+		pinmux = <PIN_P15_4__LPGPIO>;
+		read-enable = <1>;
+		driver-state-control = <1>;
+		drive-strength = <8>;
+	};
+};
+
+&lpgpio {
+	pinctrl-0 = < &pinctrl_lpgpio >;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/ {
+	wakeup_pins: wakeup_pins {
+		compatible = "lpgpio-wakeup-pin";
+		lpgpios = <&lpgpio 4 GPIO_ACTIVE_LOW>;
+	};
+};
+
+&pinctrl_uart2 {
+	group0 {
+		pinmux = <PIN_P1_0__UART2_RX_A>,
+				 <PIN_P1_1__UART2_TX_A>;
+		read-enable = <0x1>;
+		driver-state-control = <1>; /* pull-up: initialize RX active-high */
+	};
+};
+
+&pinctrl {
+	pinctrl_flash:pinctrl_flash {
+		group0 {
+			pinmux = <PIN_P5_5__OSPI1_SCLK_C>,
+				 <PIN_P5_7__OSPI1_SS0_C>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+		group1 {
+			pinmux = <PIN_P9_5__OSPI1_D0_C>,
+				 <PIN_P9_6__OSPI1_D1_C>,
+				 <PIN_P9_7__OSPI1_D2_C>,
+				 <PIN_P10_0__OSPI1_D3_C>,
+				 <PIN_P10_1__OSPI1_D4_C>,
+				 <PIN_P10_2__OSPI1_D5_C>,
+				 <PIN_P10_3__OSPI1_D6_C>,
+				 <PIN_P10_4__OSPI1_D7_C>,
+				 <PIN_P10_7__OSPI1_RXDS0_C>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+	};
+};
+
+&i2c1 {
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	status = "okay";
+	wm8904: wm8904@1a {
+		compatible = "cirrus,wm8904";
+		reg = <0x1a>;
+		status = "okay";
+	};
+};
+
+&pinctrl_i2c1 {
+	group0 {
+		pinmux = <PIN_P7_2__I2C1_SDA_C>,
+				<PIN_P7_3__I2C1_SCL_C>;
+	};
+};
+
+&pinctrl_i2s3 {
+	group0 {
+		pinmux = <PIN_P9_0__I2S3_SDI_B>,
+		<PIN_P9_3__I2S3_SDO_A>,
+		<PIN_P8_7__I2S3_WS_B>,
+		<PIN_P8_6__I2S3_SCLK_B>;
+	};
+};
