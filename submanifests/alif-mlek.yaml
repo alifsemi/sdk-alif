@@ -1,0 +1,19 @@
+# alif-mlek module manifest for Zephyr RTOS
+# This file enables fetching the alif-mlek module using west
+# Usage:
+#   west config manifest.project-filter -- +alif-mlek
+#   west update
+
+manifest:
+  remotes:
+    - name: alif
+      url-base: https://github.com/alifsemi
+
+  projects:
+    - name: alif-mlek
+      remote: alif
+      repo-path: alif_ml-embedded-evaluation-kit
+      revision: 0b6ce72c495265501f7a12eaed8e6ea71ef4bf15
+      path: modules/alif-mlek
+      groups:
+        - alif-mlek
