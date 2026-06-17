@@ -1,109 +1,115 @@
-.. zephyr:code-sample:: alif-uart
-	name: Universal Asynchronous Receiver/Transmitter (UART)
+UART driver tests
+#################
 
-	Verify UART driver functionality including loopback modes, baud rates, and RTS/CTS flow control.
-
-#########
 Overview
-#########
+********
 
-This test suite validates the UART driver for Alif Semiconductor devices. It covers internal/external loopback modes, multiple baud rates, and RTS/CTS flow control testing.
+This ztest suite validates the UART driver for Alif Semiconductor devices.
 
 The tests verify:
-* **Internal Loopback**: Self-testing mode with various data types (ASCII, binary, numbers, strings) across multiple baud rates.
-* **External Loopback**: Physical loopback testing requiring TX-RX connection.
-* **Baud Rate Testing**: Verification across standard rates (300 to 2.5 Mbps).
-* **RTS/CTS Flow Control**: Hardware handshaking verification.
 
-Building and Running
-********************
+* **Internal loopback**: self-test with ASCII, binary, numbers, and strings.
+  Baud rates from 300 to 2.5 Mbps are applied at runtime with
+  ``uart_configure()`` (no per-baud overlay).
+* **External loopback**: physical TX-RX connection between the two chosen nodes.
+* **RTS/CTS flow control**: hardware handshaking when snippet ``uart0-rts-cts``
+  is applied.
+* **DMA async API**: DMA TX/RX via the Zephyr async UART API (buffer
+  request/release, TX abort, RX timeout).
 
-The application will build only when the devicetree defines the chosen nodes ``zephyr,devnode1`` and ``zephyr,devnode2``.
+Board names and supported DevKit variants are listed in the Alif user guide.
+Use ``-b <board>`` from that list.
 
-Manual Build Instructions
-*************************
+Chosen nodes
+************
 
-To build the UART tests for specific configurations, use the following manual build approach.
+* ``zephyr,devnode1`` is required for every suite. Apply
+  ``boards/alif_uart.overlay`` (or ``boards/alif_lpuart.overlay``), or
+  ``-S alif-uart-dma`` for the DMA suite.
+* ``zephyr,devnode2`` is required only for ``CONFIG_TEST_EXTERNAL_LB``.
 
-**Basic build (Default UART):**
+Configuration
+*************
 
-.. code-block:: console
+All suite Kconfig flags default to ``n``. ``prj.conf`` enables
+``CONFIG_TEST_INTERNAL_LB`` for the default (non-DMA) build.
 
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart.overlay"
+* ``CONFIG_TEST_INTERNAL_LB=y``: builds ``src/uart_internal_loopback.c``
+  and registers ``uart_internal_loopback``.
+* ``CONFIG_TEST_EXTERNAL_LB=y``: builds ``src/uart_external_loopback.c``.
+* ``CONFIG_TEST_UART_RTSCTS=y``: builds the RTS/CTS case in
+  ``src/uart_internal_loopback.c`` and registers ``uart_RTSCTS_suite``.
+  Also pass ``-S uart0-rts-cts``.
+* ``CONFIG_TEST_UART_DMA=y``: builds ``src/uart_dma_tests.c``. Pass
+  ``-DEXTRA_CONF_FILE=dma.conf`` (async API + DMA +
+  ``CONFIG_TEST_INTERNAL_LB=n``) and ``-S alif-uart-dma``. Do not enable
+  this flag alone.
 
-**Available Configuration Flags (Kconfig):**
+Overlays and snippets
+*********************
 
-Specify these using ``-DCONFIG_<FLAG>=y``:
+Files in ``boards/`` (non-DMA suites):
 
-* ``CONFIG_TEST_INTERNAL_LB=y``: Enables Internal Loopback test suite.
-* ``CONFIG_TEST_EXTERNAL_LB=y``: Enables External Loopback test suite (requires physical TX-RX connection).
-* ``CONFIG_TEST_UART_RTSCTS=y``: Enables RTS/CTS flow control tests.
+* ``alif_uart.overlay``: ``zephyr,devnode1`` = uart0, ``zephyr,devnode2`` = uart1.
+* ``alif_lpuart.overlay``: same tests on the LP-UART instance (devnode1).
 
-**Overlay Files:**
+Snippets:
 
-All helper files are located in the ``boards/`` directory.
+* ``-S uart0-rts-cts``: sdk-alif snippet that enables UART0 RTS/CTS pins
+  (per-board overlay). Combine with ``boards/alif_uart.overlay``.
+* ``-S alif-uart-dma``: test-local snippet (same pattern as
+  ``samples/drivers/uart/echo_dma``). Selects the DMA overlay by board:
+  E7/E8 use uart0 request IDs 8/16 on dma0; B1/E1C use uart2 request IDs
+  10/18 on dma2 and move the console to lpuart.
 
-*   **Base UART Overlays**:
-    *   ``alif_uart.overlay``: Standard UART (Default, 115200 baud).
-    *   ``alif_lpuart.overlay``: Run the same UART tests using the LP-UART instance.
-
-*   **RTS/CTS Overlays (Flow Control)**:
-    *   ``$PWD/../../../boards/arm/alif_e7_devkit/alif_e7_dk_rtss_he_hp_UART0_RTS_CTS.overlay``: E7 DevKit RTS/CTS overlay.
-    *   ``$PWD/../../../boards/arm/alif_b1_devkit/alif_b1_dk_rtss_he_UART0_RTS_CTS.overlay``: B1 DevKit RTS/CTS overlay.
-
-*   **Baud Rate Overlays** (Standard UART):
-    *   ``alif_uart_300.overlay``: 300 baud.
-    *   ``alif_uart_9600.overlay``: 9600 baud.
-    *   ``alif_uart_19200.overlay``: 19200 baud.
-    *   ``alif_uart_38400.overlay``: 38400 baud.
-    *   ``alif_uart_57600.overlay``: 57600 baud.
-    *   ``alif_uart_921600.overlay``: 921600 baud.
-    *   ``alif_uart_2500000.overlay``: 2.5 Mbps.
-
-*   **Baud Rate Overlays** (LP-UART):
-    *   ``alif_lpuart_300.overlay``: 300 baud.
-    *   ``alif_lpuart_9600.overlay``: 9600 baud.
-    *   ``alif_lpuart_19200.overlay``: 19200 baud.
-    *   ``alif_lpuart_38400.overlay``: 38400 baud.
-    *   ``alif_lpuart_57600.overlay``: 57600 baud.
-    *   ``alif_lpuart_921600.overlay``: 921600 baud.
-    *   ``alif_lpuart_2500000.overlay``: 2.5 Mbps.
-
-**Example Build Commands:**
+Build examples
+**************
 
 .. code-block:: console
 
-   # Internal Loopback Test
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart.overlay" -DCONFIG_TEST_INTERNAL_LB=y
+   # Internal loopback (default prj.conf)
+   west build -p always -b <board> tests/drivers/uart \
+     -DDTC_OVERLAY_FILE="boards/alif_uart.overlay"
 
-   # External Loopback Test (requires physical TX-RX connection)
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart.overlay" -DCONFIG_TEST_EXTERNAL_LB=y
+   # External loopback (physical TX-RX required)
+   west build -p always -b <board> tests/drivers/uart \
+     -DDTC_OVERLAY_FILE="boards/alif_uart.overlay" \
+     -DCONFIG_TEST_EXTERNAL_LB=y
 
-   # High-Speed Test (2.5 Mbps) - Use specific overlay for baud rate
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart_2500000.overlay"
+   # RTS/CTS flow control
+   west build -p always -b <board> tests/drivers/uart \
+     -S uart0-rts-cts \
+     -DDTC_OVERLAY_FILE="boards/alif_uart.overlay" \
+     -DCONFIG_TEST_UART_RTSCTS=y
 
-   # RTS/CTS Flow Control Test (Example for E7/E8)
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart.overlay;boards/alif_UART0_RTS_CTS.overlay" -DCONFIG_TEST_UART_RTSCTS=y
+   # Internal loopback on LP-UART
+   west build -p always -b <board> tests/drivers/uart \
+     -DDTC_OVERLAY_FILE="boards/alif_lpuart.overlay"
 
-   # Internal Loopback Test on LP-UART
-   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_lpuart.overlay" -DCONFIG_TEST_INTERNAL_LB=y
+   # DMA async API (overlay chosen per board by the snippet)
+   west build -p always -b <board> tests/drivers/uart \
+     -S alif-uart-dma -DEXTRA_CONF_FILE=dma.conf
 
-Sample Output
-=============
+Twister
+*******
 
-**Internal Loopback Test:**
+``testcase.yaml`` defines ``drivers.uart``, ``drivers.uart.rtscts``, and
+``drivers.uart.dma``.
+
+Sample output
+*************
 
 .. code-block:: console
 
-	*** Booting Zephyr OS build ZAS-v4.1.0 ***
-	Running TESTSUITE uart_Internalloopback
-	===================================================================
-	START - test_Interrupt_InternalloopbackAsciiData
-	uart@49019000 UART device is ready
-	Configuration passed
-	Complete transmission is completed
+   *** Booting Zephyr OS build ZAS-v4.1.0 ***
+   Running TESTSUITE uart_internal_loopback
+   ===================================================================
+   START - test_interrupt_internal_loopback_ascii_data
+   uart@49019000 UART device is ready
+   Configuration passed
+   Complete transmission is completed
 
-	Internal Loop back test for Ascii with baudrate 115200 has PASSED
-	 PASS - test_Interrupt_InternalloopbackAsciiData in 4.092 seconds
-	===================================================================
-	TESTSUITE uart_Internalloopback succeeded
+   Internal Loop back test for Ascii with baudrate 115200 has PASSED
+    PASS - test_interrupt_internal_loopback_ascii_data in 4.092 seconds
+   ===================================================================
+   TESTSUITE uart_internal_loopback succeeded
