@@ -1,0 +1,18 @@
+common:
+  tags:
+    - drivers
+    - video
+    - jpeg
+  depends_on: video
+  harness: ztest
+  harness_config:
+    fixture: fixture_jpeg
+  platform_allow:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+tests:
+  drivers.video.jpeg.hantro_vc9000e:
+    filter: dt_compat_enabled("verisilicon,hantro-vc9000e-jpeg")
