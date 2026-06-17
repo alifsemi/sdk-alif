@@ -1,17 +1,23 @@
+mainmenu "UART Test Suite Configuration"
+
+source "Kconfig.zephyr"
+
 config TEST_INTERNAL_LB
-	bool "Enable internal loopback test suite"
-	default n
+	bool "Enable UART internal loopback test suite"
+	default y
 
 config TEST_EXTERNAL_LB
-	bool "Enable external loopback test suite"
+	bool "Enable UART external loopback test suite"
 	default n
 
 config TEST_UART_RTSCTS
-	bool "Enable RTS/CTS flow control test suite"
+	bool "Enable UART RTS/CTS flow control test suite"
 	default n
 
 config TEST_LPUART
-	bool "Enable LP-UART test suite"
+	bool "Enable LPUART test suite"
 	default n
 
-source "Kconfig.zephyr"
+config TEST_UART_DMA
+	bool "Enable UART DMA async API test suite"
+	default n
