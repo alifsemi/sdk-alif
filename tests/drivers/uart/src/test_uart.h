@@ -1,4 +1,4 @@
-/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -21,8 +21,13 @@
 #include <zephyr/ztest.h>
 #include <zephyr/sys/util.h>
 
-#if !DT_HAS_CHOSEN(zephyr_devnode1) || !DT_HAS_CHOSEN(zephyr_devnode2)
-#error "UART test requires DT chosen nodes zephyr,devnode1 and zephyr,devnode2. " \
+#if !DT_HAS_CHOSEN(zephyr_devnode1)
+#error "UART test requires DT chosen node zephyr,devnode1. " \
+	"Apply boards/alif_uart.overlay or boards/alif_lpuart.overlay, or -S alif-uart-dma for the DMA suite."
+#endif
+
+#if !DT_HAS_CHOSEN(zephyr_devnode2) && CONFIG_TEST_EXTERNAL_LB
+#error "External loopback test requires DT chosen node zephyr,devnode2. " \
 	"Apply boards/alif_uart.overlay (or pass -DDTC_OVERLAY_FILE=boards/alif_uart.overlay)."
 #endif
 
@@ -71,8 +76,8 @@ struct uart_cb_ctx {
 };
 
 typedef enum {
-	UART_BAUD_9600,
 	UART_BAUD_300,
+	UART_BAUD_9600,
 	UART_BAUD_19200,
 	UART_BAUD_38400,
 	UART_BAUD_57600,

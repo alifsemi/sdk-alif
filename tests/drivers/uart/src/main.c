@@ -1,4 +1,4 @@
-/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -115,10 +115,10 @@ int set_baudrate(const struct device *uart_dev, uint32_t test_baudrate)
 int check_baud(int num)
 {
 	switch (num) {
-	case UART_BAUD_9600:
-		return 9600;
 	case UART_BAUD_300:
 		return 300;
+	case UART_BAUD_9600:
+		return 9600;
 	case UART_BAUD_19200:
 		return 19200;
 	case UART_BAUD_38400:
@@ -255,6 +255,8 @@ int uart_irq_cb(int ret)
 			return -1;
 		}
 	}
+
+	return 0;
 }
 
 /*
@@ -283,3 +285,9 @@ ZTEST_SUITE(uart_internal_loopback, NULL, NULL, NULL, NULL, NULL);
  */
 ZTEST_SUITE(uart_RTSCTS_suite, NULL, NULL, NULL, NULL, NULL);
 #endif
+
+/*
+ * The DMA async-API suite (uart_dma) is declared in uart_dma_tests.c
+ * because it uses before/after hooks for per-test setup and buffer
+ * release.
+ */

@@ -1,4 +1,4 @@
-/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -66,7 +66,7 @@ static int test_internal_loopback_with_interrupt(const uint8_t *tx_buf, int size
 	ctx.buf = tx_buf;
 	ctx.size = size;
 
-	for (i = UART_BAUD_9600; i <= UART_BAUD_2500000; i++) {
+	for (i = UART_BAUD_300; i <= UART_BAUD_2500000; i++) {
 		char_sent1 = 0;
 		tx_data_idx1 = 0;
 		data_transmitted_auto = false;
@@ -174,17 +174,11 @@ ZTEST(uart_RTSCTS_suite, test_interrupt_internal_loopback_flowctrl_rts_cts)
 	if (!DT_NODE_HAS_PROP(DT_CHOSEN(zephyr_devnode1), hw_flow_control) ||
 	    !DT_PROP(DT_CHOSEN(zephyr_devnode1), hw_flow_control)) {
 		TC_PRINT("RTS/CTS hardware flow control not configured in device tree\n");
-		TC_PRINT("================================================================\n");
-		TC_PRINT("RTS/CTS overlay is MISSING!\n");
-		TC_PRINT("To enable RTS/CTS, add overlay to your build command:\n");
-		TC_PRINT("  -DDTC_OVERLAY_FILE=\"boards/alif_uart.overlay;\"\n");
-		TC_PRINT("  \"boards/alif_UART0_RTS_CTS.overlay\"\n");
-		TC_PRINT("or use board-specific overlay:\n");
-		TC_PRINT("  -DDTC_OVERLAY_FILE=\"boards/alif_uart.overlay;\"\n");
-		TC_PRINT("  \"../../../boards/arm/alif_e7_devkit/\"\n");
-		TC_PRINT("  \"alif_e7_dk_rtss_he_hp_UART0_RTS_CTS.overlay\"\n");
-		TC_PRINT("================================================================\n");
-		TC_PRINT("Test skipped: RTS/CTS overlay not applied\n");
+		TC_PRINT("Apply the uart0-rts-cts snippet and the UART chosen overlay:\n");
+		TC_PRINT("  west build -b <board> tests/drivers/uart -S uart0-rts-cts \\\n");
+		TC_PRINT("    -DDTC_OVERLAY_FILE=boards/alif_uart.overlay \\\n");
+		TC_PRINT("    -DCONFIG_TEST_UART_RTSCTS=y\n");
+		TC_PRINT("Test skipped: RTS/CTS snippet not applied\n");
 		ztest_test_skip();
 		return;
 	}
