@@ -16,7 +16,7 @@ def initialize() {
             git pull
         fi
         cd ..
-        west update
+        west update -n
     '''
 }
 
@@ -39,10 +39,6 @@ def verify_checkpatch(){
             else
                 echo "Checkpatch passed successfully"
             fi
-        else
-            git checkout main
-            git reset --hard origin/main
-            git pull
         fi
         '''
 
@@ -60,17 +56,13 @@ def verify_gitlint (){
             git branch -D pr-${CHANGE_ID} || true
             git fetch origin pull/${CHANGE_ID}/head:pr-${CHANGE_ID}
             git checkout pr-${CHANGE_ID}
-        else
-            git checkout main
-            git reset --hard origin/main
-            git pull
+            cd ..
+            west update -n
+            cd /root/alif/alif/
+            pip install gitlint
+            git rev-list origin/main..HEAD | xargs -n1 gitlint --commit
+            exit $?
         fi
-        cd ..
-        west update
-        cd /root/alif/alif/
-        pip install gitlint
-        git rev-list origin/main..HEAD | xargs -n1 gitlint --commit
-        exit $?
         '''
 }
 def build_ble (String build_dir, String sample, String board, String conf_file=null){
@@ -122,7 +114,6 @@ def test(String pytest_test){
         sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
         pytest $pytest_test --root-logdir=pytest-logs
         """
-
 }
 
 
