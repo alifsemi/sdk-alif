@@ -1,0 +1,23 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+#include "pm_tcm_ensemble.overlay"
+
+/*
+ * I2S_0 => Speaker Output
+ * I2S_4(LPI2S) => Mic Input
+ */
+
+i2s_tx: &i2s0 {
+	status = "okay";
+};
+
+i2s_rx: &i2s4 {
+	status = "okay";
+};
