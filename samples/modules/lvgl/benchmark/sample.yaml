@@ -1,0 +1,27 @@
+sample:
+  name: LVGL D/AVE 2D Benchmark
+  description: >
+    LVGL lv_demo_benchmark rendered through the D/AVE 2D GPU on the
+    Alif Ensemble E8 DevKit MW405 display.
+common:
+  modules:
+    - lvgl
+  tags:
+    - display
+    - lvgl
+    - gui
+    - dave2d
+    - gpu2d
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "All scenes avg"
+  depends_on: display
+tests:
+  sample.modules.lvgl.benchmark.dave2d:
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
