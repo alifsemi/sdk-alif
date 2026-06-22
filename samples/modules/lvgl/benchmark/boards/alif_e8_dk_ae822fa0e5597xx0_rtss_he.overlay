@@ -1,0 +1,5 @@
+/*
+ * SPDX-FileCopyrightText: Copyright Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#include "alif_ensemble_dk.overlay"
