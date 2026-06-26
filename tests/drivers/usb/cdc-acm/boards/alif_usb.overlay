@@ -7,6 +7,12 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
 ns: &ns {
 	status = "okay";
 };
