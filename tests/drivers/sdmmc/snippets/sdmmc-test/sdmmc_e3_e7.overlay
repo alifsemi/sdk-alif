@@ -21,6 +21,7 @@ ns: &ns {
 
 sdhc: &sdhc {
 	status = "okay";
+	max-bus-freq = <25000000U>;
 
 	mmc {
 		status = "okay";
