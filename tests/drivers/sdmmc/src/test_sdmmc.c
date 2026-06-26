@@ -1100,6 +1100,8 @@ ZTEST(sd_card, test_sd_large_file_write)
 	len = fs_write(&file, large_wr, LARGE_BUF_SIZE);
 	zassert_equal(len, LARGE_BUF_SIZE,
 			"Large write failed (%d)", (int)len);
+	ret = fs_sync(&file);
+	zassert_equal(ret, 0, "Large file sync failed (%d)", ret);
 	fs_close(&file);
 
 	/* Read back and verify */
@@ -1233,6 +1235,9 @@ ZTEST(sd_card, test_sd_stress_health_monitor)
 		ret = fs_write(&file, expected, strlen(expected));
 		zassert_equal(ret, (int)strlen(expected),
 				"Health write iter %d (%d)", i, ret);
+		ret = fs_sync(&file);
+		zassert_equal(ret, 0,
+				"Health sync iter %d (%d)", i, ret);
 		fs_close(&file);
 
 		/* Seek-from-end and read */
@@ -1282,6 +1287,11 @@ ZTEST(sd_card, test_sd_stress_raw_sector_rw)
 		zassert_equal(ret, 0,
 				"Raw stress write iter %d (%d)", i, ret);
 
+		ret = disk_access_ioctl(SD_DISK_NAME,
+					DISK_IOCTL_CTRL_SYNC, NULL);
+		zassert_equal(ret, 0,
+				"Raw stress sync iter %d (%d)", i, ret);
+
 		memset(sector_rd, 0, SECTOR_SIZE);
 		ret = disk_access_read(SD_DISK_NAME, sector_rd, sector, 1);
 		zassert_equal(ret, 0,
@@ -1323,6 +1333,9 @@ ZTEST(sd_card, test_sd_stress_file_create_delete)
 		ret = fs_write(&file, "tmp", 3);
 		zassert_equal(ret, 3,
 				"Write iter %d (%d)", i, ret);
+		ret = fs_sync(&file);
+		zassert_equal(ret, 0,
+				"Create-del sync iter %d (%d)", i, ret);
 		fs_close(&file);
 
 		ret = fs_unlink(path);
