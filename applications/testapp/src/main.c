@@ -76,8 +76,7 @@ SYS_INIT(app_set_run_params, PRE_KERNEL_1, 3);
 
 int main(void)
 {
-	printk("Type \"help\" for supported commands.\n");
-	printk("Type \"cert\" for certification information.\n");
+	printk("Type \"help\" for supported commands.");
 
 	while (1) {
 		k_sleep(K_SECONDS(1));
