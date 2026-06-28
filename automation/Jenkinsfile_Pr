@@ -1,11 +1,31 @@
 def common_funcs
-def samples1 = ['le_periph_blps', 'le_periph_cgms','le_periph_cpps','le_periph_cscps','le_periph_mics','le_periph_vcp']
-def samples2 = ['le_central_batt','le_periph','le_periph_batt','le_periph_blinky','le_multiprofile','le_periph_ots']
-def samples3 = ['le_periph_glps', 'le_periph_hello','le_periph_hr','le_periph_htpt','le_periph_anps','le_periph_pacs']
-def samples4 = [ 'le_periph_past','le_periph_plxp','le_periph_pm','le_periph_prxp','le_throughput','le_periph_ccp']
-def samples5 = ['le_periph_rscps','le_periph_ws','mesh_light_bulb','smp_svr', 'le_periph_haps','le_periph_tips']
-def samples6 = ['auracast','broadcast_mode_switch','unicast_acceptor','unicast_initiator']
-def samples7 =['testapp']
+def samples1 = ['le_periph_blps' , 'le_periph_cgms' , 'le_periph_cpps', 'le_periph_cscps' , 'le_periph_mics' , 'le_periph_vcp' ]
+def samples2 = ['le_central_batt', 'le_periph'      , 'le_periph_batt', 'le_periph_blinky', 'le_multiprofile', 'le_periph_ots' ]
+def samples3 = ['le_periph_glps' , 'le_periph_hello', 'le_periph_hr'  , 'le_periph_htpt'  , 'le_periph_anps' , 'le_periph_pacs']
+def samples4 = ['le_periph_past' , 'le_periph_plxp' , 'le_periph_pm'  , 'le_periph_prxp'  , 'le_throughput'  , 'le_periph_ccp' ]
+def samples5 = ['le_periph_rscps', 'le_periph_ws'   , 'mesh_light_bulb','smp_svr'         , 'le_periph_haps' , 'le_periph_tips']
+def samples6 = ['auracast'       , 'broadcast_mode_switch','unicast_acceptor','unicast_initiator']
+def samples7 = ['testapp']
+
+def all_ble_samples = [ [baseDir: 'samples/bluetooth', samples: samples1], [baseDir: 'samples/bluetooth',    samples: samples2],
+    [baseDir: 'samples/bluetooth',    samples: samples3], [baseDir: 'samples/bluetooth', samples: samples4],
+    [baseDir: 'samples/bluetooth', samples: samples5], [baseDir: 'samples/bluetooth/le_audio', samples: samples6],
+    [baseDir: 'applications', samples: samples7]
+]
+
+def testAppList1 = [
+    ['I2C' , 'samples/drivers/i2c_dw -S alif-dk'], ['LPI2C' , 'samples/drivers/lpi2c'], ['CRC' , 'samples/drivers/crc'],
+    ['ADC' , 'samples/drivers/adc -S alif-adc' ],  ['DAC', 'samples/drivers/dac']
+]
+def testAppList2 = [
+    ['HelloWorld' , '../zephyr/samples/hello_world'], ['EchoBot' , '../zephyr/samples/drivers/uart/echo_bot'],
+    ['Blinky' , '../zephyr/samples/basic/blinky' ],   ['Entropy', '../zephyr/tests/drivers/entropy/api'],
+    ['Input_Dump', '../zephyr/samples/subsys/input/input_dump -S alif-ak-dk']
+]
+
+def gAllRecipientEmails     = ""
+def gAlif_all_boards_list   = []
+def allTestApps             = [testAppList1, testAppList2]
 
 pipeline {
     agent any
@@ -21,213 +41,125 @@ pipeline {
                 }
             }
         }
-        stage('verify_checkpatch') {
+        stage('Verify') {
             agent { label 'zas20' }
-            options { skipDefaultCheckout() }
+            options {
+                skipDefaultCheckout()
+            }
+
             steps {
                 script {
-                    common_funcs.verify_checkpatch()
+                    common_funcs.initialize()
+
+                    parallel(
+                        checkpatch: {
+                            common_funcs.verify_checkpatch()
+                        },
+                        gitlint: {
+                            common_funcs.verify_gitlint()
+                        },
+                        Get_alif_all_board_list: {
+                            gAlif_all_boards_list = common_funcs.get_all_alif_boards()
+                            gAlif_all_boards_list.eachWithIndex { board, idx ->
+                                echo "Board_No._${idx} -> '${board}'"
+                            }
+                        }
+                        //, failFast: true
+                    )
                 }
             }
         }
-        stage('verify_gitlint') {
-            agent { label 'zas20' }
-            options { skipDefaultCheckout() }
-            steps {
-                script {
-                    common_funcs.verify_gitlint()
-                }
-            }
-        }
+
         stage('Pr_Build For Parallel') {
-            parallel {
-                stage('BLE samples stage 1') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples1.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "samples/bluetooth/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script {
+                        def parallelStages = [:]
+                        all_ble_samples.eachWithIndex { group, idx ->
+                            def stageName = "BLE samples stage ${idx + 1}"
+                            def currentGroup = group      // avoid Groovy closure issue
+                            parallelStages[stageName] = {
+                                stage(stageName) {
+                                    node('zas20') {
+                                        def failedSamples = []
+                                        echo "Starting ${stageName}"
+                                        currentGroup.samples.each { sample ->
+                                            boolean ok = common_funcs.build_ble(
+                                                "${currentGroup.baseDir}/${sample}",
+                                                "build-b1-${sample}",
+                                                "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
+                                            )
+                                            if (!ok) {
+                                                failedSamples << sample
+                                            }
+                                        }
+                                        archiveArtifacts(artifacts: "*.tar", allowEmptyArchive: true)
+                                        if (!failedSamples.isEmpty()) {
+                                            echo "Failed Samples"
+                                            failedSamples.each { echo "  ❌ ${it}"}
+                                            error("${failedSamples.size()} BLE sample(s) failed.")
+                                        }
+                                        echo "${stageName} Summary"
+                                        echo "Total Samples : ${currentGroup.samples.size()} \
+                                              Passed        : ${currentGroup.samples.size() - failedSamples.size()} \
+                                              Failed        : ${failedSamples.size()}"
+                                        echo "Completed ${stageName}"
+                                    }
+                                }
                             }
                         }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
-                    }
-                }
-                stage('BLE samples stage 2') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples2.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "samples/bluetooth/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
-                    }
-                }
-                stage('BLE samples stage 3') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples3.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "samples/bluetooth/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
-                    }
-                }
-                stage('BLE samples stage 4') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples4.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "samples/bluetooth/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
-                    }
-                }
-                stage('BLE samples stage 5') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples5.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "samples/bluetooth/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
-                    }
-                }
-                stage('BLE samples stage 6') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples6.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "samples/bluetooth/le_audio/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
-                    }
-                }
-                stage('BLE samples stage 7') {
-                    agent { label 'zas20' }
-                    options { skipDefaultCheckout() }
-                    steps {
-                        script {
-                            common_funcs.initialize()
-                            samples7.each { sample ->
-                                echo "Building sample: ${sample}"
-                                common_funcs.build_ble(
-                                    "applications/${sample}",
-                                    "build-b1-${sample}",
-                                    "alif_b1_dk/ab1c1f4m51820ph0/rtss_he"
-                                )
-                            }
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: '*.tar', fingerprint: true
-                        }
+                        parallel parallelStages
                     }
                 }
             }
         }
-        stage('Pr_Flash and test for parallel') {
-            parallel {
-                stage('Flash&Test_testapp') {
-                    agent { label 'lasse' }
-                    steps {
-                        script {
-                            unstash name: 'build-b1-testapp.bin'
-                            common_funcs.flash_test()
-                            common_funcs.test('tests')
+        stage('BuildAll_FlashThroughputTestBLE') {
+            agent none
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script {
+                        def allJobs = [:]
+                        allTestApps.eachWithIndex { testAppList, idx ->
+                            def buildJobs = common_funcs.build_test_apps(
+                                gAlif_all_boards_list, testAppList)
+
+                            if (!buildJobs || buildJobs.isEmpty()) {
+                                error "build_test_apps returned empty stages!"
+                            }
+
+                            // Merge build jobs into one parallel map
+                            allJobs.putAll(buildJobs)
                         }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: 'automation/pytest/pytest-logs/**', fingerprint: true
+
+                        // Flash/TestApp
+                        allJobs["Flash&Test_testapp"] = {
+                            node("lasse") {
+                                unstash "build-b1-testapp.bin"
+                                common_funcs.flash_test()
+                                common_funcs.test("tests")
+
+                                archiveArtifacts(artifacts: 'automation/pytest/pytest-logs/**',
+                                    fingerprint: true, allowEmptyArchive: true)
                             }
                         }
-                }
-                stage('Flash&Test_throughput') {
-                    agent { label 'AB1' }
-                    steps {
-                        script {
-                            unstash name: 'build-b1-le_throughput.bin'
-                            common_funcs.flash_test()
-                            common_funcs.test('tests/throughbut_between_two_devices.py')
-                        }
-                    }
-                    post {
-                        success {
-                            archiveArtifacts artifacts: 'automation/pytest/pytest-logs/**', fingerprint: true
+
+                        // Flash/Throughput
+                        allJobs["Flash&Test_throughput"] = {
+                            node("AB1") {
+                                unstash "build-b1-le_throughput.bin"
+                                common_funcs.flash_test()
+                                common_funcs.test("tests/throughbut_between_two_devices.py")
+
+                                archiveArtifacts(artifacts: 'automation/pytest/pytest-logs/**',
+                                    fingerprint: true, allowEmptyArchive: true)
                             }
                         }
+                        // Run EVERYTHING in parallel
+                        parallel allJobs
+
+                        archiveArtifacts(artifacts: '*.tar',
+                            fingerprint: true, allowEmptyArchive: true)
+                    }
                 }
             }
         }
@@ -235,9 +167,9 @@ pipeline {
     post {
         always{
             recordIssues(
-            tools: [gcc()],
-            qualityGates: [[threshold: 1, type: 'NEW', failure: true]],
-            enabledForFailure: true
+                tools: [gcc()],
+                qualityGates: [[threshold: 1, type: 'NEW', failure: true]],
+                enabledForFailure: true
             )
         }
     }
