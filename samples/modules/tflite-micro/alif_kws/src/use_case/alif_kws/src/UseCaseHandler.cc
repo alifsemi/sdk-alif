@@ -16,11 +16,10 @@
  */
 #include "UseCaseHandler.hpp"
 #include "AudioBackend.hpp"
-#include "KwsClassifier.hpp"
-#include "MicroNetKwsModel.hpp"
-#include "AudioUtils.hpp"
-#include "KwsResult.hpp"
-#include "KwsProcessing.hpp"
+#include "mlek/use_case/kws/KwsClassifier.hpp"
+#include "mlek/fwk/tflm/MicroNetKwsModel.hpp"
+#include "mlek/use_case/kws/KwsResult.hpp"
+#include "mlek/use_case/kws/KwsProcessing.hpp"
 
 #include <vector>
 #include <zephyr/kernel.h>
@@ -33,8 +32,8 @@ using arm::app::ClassificationResult;
 using arm::app::KwsClassifier;
 using arm::app::KwsPostProcess;
 using arm::app::KwsPreProcess;
-using arm::app::MicroNetKwsModel;
-using arm::app::Model;
+using arm::app::fwk::tflm::MicroNetKwsModel;
+using arm::app::fwk::iface::Model;
 
 #define AUDIO_SAMPLES  CONFIG_AUDIO_SAMPLES
 #define AUDIO_STRIDE   CONFIG_AUDIO_STRIDE
@@ -84,21 +83,21 @@ bool ClassifyAudioHandler(ApplicationContext &ctx, bool oneshot)
 	}
 
 	/* Get Input and Output tensors for pre/post processing. */
-	TfLiteTensor *inputTensor = model.GetInputTensor(0);
-	TfLiteTensor *outputTensor = model.GetOutputTensor(0);
-	if (!inputTensor->dims) {
+	auto inputTensor = model.GetInputTensor(0);
+	auto outputTensor = model.GetOutputTensor(0);
+	const auto inputShape = inputTensor->Shape();
+	if (inputShape.empty()) {
 		LOG_ERR("Invalid input tensor dims");
 		return false;
-	} else if (inputTensor->dims->size < minTensorDims) {
+	} else if (inputShape.size() < minTensorDims) {
 		LOG_ERR("Input tensor dimension should be >= %d", minTensorDims);
 		return false;
 	}
 
 	/* Get input shape for feature extraction. */
-	TfLiteIntArray *inputShape = model.GetInputShape(0);
-	const uint32_t numMfccFeatures = inputShape->data[MicroNetKwsModel::ms_inputColsIdx];
+	const uint32_t numMfccFeatures = inputShape[MicroNetKwsModel::ms_inputColsIdx];
 	const uint32_t numMfccFrames =
-		inputShape->data[arm::app::MicroNetKwsModel::ms_inputRowsIdx];
+		inputShape[MicroNetKwsModel::ms_inputRowsIdx];
 
 	/* We expect to be sampling 1 second worth of data at a time.
 	 *  NOTE: This is only used for time stamp calculation. */

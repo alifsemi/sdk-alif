@@ -17,7 +17,7 @@
  */
 
 
-#include "TensorFlowLiteMicro.hpp" /* our inference logic api */
+#include "mlek/fwk/tflm/TensorFlowLiteMicro.hpp" /* our inference logic api */
 
 #include <cstdio>
 #include <new>
@@ -54,8 +54,8 @@ int main()
 
 	print_application_intro();
 
-	/* Check the version of TensorFlow Lite Micro. */
-	PrintTensorFlowVersion();
+	/* Enable TensorFlow Lite Micro logging. */
+	arm::app::fwk::tflm::EnableTFLMLog();
 
 	std::set_new_handler(out_of_heap);
 

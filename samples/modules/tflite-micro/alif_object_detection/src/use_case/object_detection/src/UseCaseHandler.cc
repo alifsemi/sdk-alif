@@ -22,9 +22,9 @@
  */
 #include "UseCaseHandler.hpp"
 
-#include "DetectorPostProcessing.hpp"
-#include "DetectorPreProcessing.hpp"
-#include "YoloFastestModel.hpp"
+#include "mlek/use_case/object_detection/DetectorPostProcessing.hpp"
+#include "mlek/use_case/object_detection/DetectorPreProcessing.hpp"
+#include "mlek/fwk/tflm/YoloFastestModel.hpp"
 
 #include "ScreenLayout.hpp"
 #include "image_ensemble.h"
@@ -155,29 +155,28 @@ namespace app {
     /* Object detection inference handler. */
     bool ObjectDetectionHandler(ApplicationContext& ctx)
     {
-        auto& model = ctx.Get<Model&>("model");
+        auto& model = ctx.Get<fwk::iface::Model&>("model");
         if (!model.IsInited()) {
             LOG_ERR("Model is not initialised! Terminating processing.");
             return false;
         }
 
-        TfLiteTensor* inputTensor = model.GetInputTensor(0);
-        TfLiteTensor* outputTensor0 = model.GetOutputTensor(0);
-        TfLiteTensor* outputTensor1 = model.GetOutputTensor(1);
+        auto inputTensor = model.GetInputTensor(0);
+        auto outputTensor0 = model.GetOutputTensor(0);
+        auto outputTensor1 = model.GetOutputTensor(1);
 
-        if (!inputTensor->dims) {
+        const auto inputShape = inputTensor->Shape();
+        if (inputShape.empty()) {
             LOG_ERR("Invalid input tensor dims");
             return false;
-        } else if (inputTensor->dims->size < 3) {
+        } else if (inputShape.size() < 3) {
             LOG_ERR("Input tensor dimension should be >= 3");
             return false;
         }
 
         /* Get input shape for displaying the image. */
-        TfLiteIntArray* inputShape = model.GetInputShape(0);
-
-        const int inputImgCols = inputShape->data[YoloFastestModel::ms_inputColsIdx];
-        const int inputImgRows = inputShape->data[YoloFastestModel::ms_inputRowsIdx];
+        const int inputImgCols = inputShape[fwk::tflm::YoloFastestModel::ms_inputColsIdx];
+        const int inputImgRows = inputShape[fwk::tflm::YoloFastestModel::ms_inputRowsIdx];
 
         /* Set up pre and post-processing. */
         DetectorPreProcess preProcess = DetectorPreProcess(inputTensor, true, model.IsDataSigned());
@@ -213,7 +212,7 @@ namespace app {
 
         k_mutex_unlock(&lvgl_mutex);
 
-        const size_t copySz = inputTensor->bytes;
+        const size_t copySz = inputTensor->Bytes();
 
         /* Run the pre-processing, inference and post-processing. */
         if (!preProcess.DoPreProcess(imageDataPtr, copySz)) {

@@ -23,7 +23,7 @@
  */
 
 
-#include "TensorFlowLiteMicro.hpp" /* our inference logic api */
+#include "mlek/fwk/tflm/TensorFlowLiteMicro.hpp" /* our inference logic api */
 
 #include <cstdio>
 #include <new>

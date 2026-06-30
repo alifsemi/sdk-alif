@@ -20,9 +20,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "Classifier.hpp"           /* Classifier. */
+#include "mlek/common/Classifier.hpp"  /* Classifier. */
 #include "Labels.hpp"               /* For label strings. */
-#include "MobileNetModel.hpp"       /* Model class for running inference. */
+#include "mlek/fwk/tflm/MobileNetModel.hpp" /* Model class for running inference. */
 #include "UseCaseHandler.hpp"       /* Handlers for different user options. */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 #include <zephyr/logging/log.h>
@@ -43,7 +43,7 @@ using ImgClassClassifier = arm::app::Classifier;
 
 void main_loop()
 {
-    arm::app::MobileNetModel model;  /* Model wrapper object. */
+    arm::app::fwk::tflm::MobileNetModel model;  /* Model wrapper object. */
 
     if (!alif::app::ClassifyImageInit()) {
         LOG_ERR("Failed to initialise use case handler");
@@ -51,17 +51,18 @@ void main_loop()
     }
 
     /* Load the model. */
-    if (!model.Init(arm::app::tensorArena,
-                    sizeof(arm::app::tensorArena),
-                    arm::app::img_class::GetModelPointer(),
-                    arm::app::img_class::GetModelLen())) {
+    arm::app::fwk::iface::MemoryRegion computeMem{arm::app::tensorArena,
+                                                   sizeof(arm::app::tensorArena)};
+    arm::app::fwk::iface::MemoryRegion modelMem{arm::app::img_class::GetModelPointer(),
+                                                 arm::app::img_class::GetModelLen()};
+    if (!model.Init(computeMem, modelMem)) {
         LOG_ERR("Failed to initialise model");
         return;
     }
 
     /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
-    caseContext.Set<arm::app::Model&>("model", model);
+    caseContext.Set<arm::app::fwk::iface::Model&>("model", model);
 
     ImgClassClassifier classifier;  /* Classifier wrapper object. */
     caseContext.Set<arm::app::Classifier&>("classifier", classifier);
