@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Alif SDIO WiFi Zperf Test Suite">
+
+<details>WiFi Zperf Test Suite for the Alif AIROC CYW55500 SDIO/WiFi driver.
+Tests WiFi connectivity, DHCP, TCP/UDP throughput via zperf, stability,
+and negative cases (unreachable server, zero-duration upload).
+
+Target boards: Alif E8 AppKit (ae822fa0e5597xx0/rtss_hp).
+Preconditions:
+  - WiFi AP running with SSID/PSK matching Kconfig defaults.
+  - iperf server running on WIFI_ZPERF_SERVER_IP:WIFI_ZPERF_SERVER_PORT
+    (default 10.0.0.76:5001) with firewall allowing TCP/UDP inbound.
+</details>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-001: WiFi Connectivity and DHCP                          -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_connect">
+  <summary>REQ-ZPERF-001: Verify WiFi is connected and DHCP IP acquired in suite setup.</summary>
+  <preconditions>
+    1. WiFi driver initialized (firmware loaded, interface up).
+    2. Configured AP reachable.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Suite setup waits for interface up, then calls wifi_connect() with configured SSID/PSK.</actions>
+      <expectedresults>Connect succeeds, state is WIFI_STATE_COMPLETED.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Suite setup calls wait_for_dhcp(15).</actions>
+      <expectedresults>DHCP lease acquired within 15 seconds. IPv4 unicast address is non-zero.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Test verifies iface state and IPv4 config.</actions>
+      <expectedresults>State == WIFI_STATE_COMPLETED, IPv4 config non-null, IP address non-zero.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Connect" />
+    <keyword name="DHCP" />
+    <keyword name="Functional" />
+    <keyword name="REQ-ZPERF-001" />
+  </keywords>
+  <requirement>REQ-ZPERF-001: WiFi connection and DHCP must succeed before throughput tests</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-002: TCP Upload Throughput                               -->
+<!-- APIs: zperf_tcp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_tcp_upload">
+  <summary>REQ-ZPERF-002: Verify TCP upload throughput meets minimum threshold.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+    2. iperf TCP server listening on configured IP:port.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Configure upload params: pkt_size=WIFI_ZPERF_TCP_PACKET_SIZE (256), rate=0 (unlimited), duration=10s.</actions>
+      <expectedresults>Params struct populated correctly.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Call zperf_tcp_upload(&amp;params, &amp;results).</actions>
+      <expectedresults>Returns 0. If server unreachable, test skips gracefully.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Calculate throughput_kbps from results.</actions>
+      <expectedresults>Throughput &gt;= WIFI_ZPERF_MIN_TCP_THROUGHPUT_KBPS (default 5000 kbps).</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="TCP" />
+    <keyword name="Upload" />
+    <keyword name="Throughput" />
+    <keyword name="REQ-ZPERF-002" />
+  </keywords>
+  <requirement>REQ-ZPERF-002: TCP upload throughput must meet minimum threshold</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-003: TCP Upload Large Packet                             -->
+<!-- APIs: zperf_tcp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_tcp_upload_large_packet">
+  <summary>REQ-ZPERF-003: Verify TCP upload with 1024-byte packets meets throughput threshold.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+    2. iperf TCP server listening.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Configure upload params: pkt_size=1024, rate=0, duration=10s.</actions>
+      <expectedresults>Params struct populated correctly.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Call zperf_tcp_upload().</actions>
+      <expectedresults>Returns 0, or skips if server unreachable.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Calculate throughput.</actions>
+      <expectedresults>Throughput &gt;= WIFI_ZPERF_MIN_TCP_THROUGHPUT_KBPS.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="TCP" />
+    <keyword name="Upload" />
+    <keyword name="Large_Packet" />
+    <keyword name="REQ-ZPERF-003" />
+  </keywords>
+  <requirement>REQ-ZPERF-003: TCP upload with 1024-byte packets must meet throughput</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-004: UDP Upload Throughput                               -->
+<!-- APIs: zperf_udp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_udp_upload">
+  <summary>REQ-ZPERF-004: Verify UDP upload throughput meets minimum threshold.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+    2. iperf UDP server listening on configured IP:port.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Configure upload params: pkt_size=256, rate=10000 kbps, duration=10s.</actions>
+      <expectedresults>Params struct populated correctly.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Call zperf_udp_upload(&amp;params, &amp;results).</actions>
+      <expectedresults>Returns 0. If server unreachable, test skips gracefully.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Calculate throughput_kbps from results.nb_packets_sent * packet_size.</actions>
+      <expectedresults>Throughput &gt;= WIFI_ZPERF_MIN_UDP_THROUGHPUT_KBPS (default 3000 kbps).</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="UDP" />
+    <keyword name="Upload" />
+    <keyword name="Throughput" />
+    <keyword name="REQ-ZPERF-004" />
+  </keywords>
+  <requirement>REQ-ZPERF-004: UDP upload throughput must meet minimum threshold</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-005: UDP Upload Large Packet                             -->
+<!-- APIs: zperf_udp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_udp_upload_large_packet">
+  <summary>REQ-ZPERF-005: Verify UDP upload with 1024-byte packets meets throughput threshold.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+    2. iperf UDP server listening.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Configure upload params: pkt_size=1024, rate=10000 kbps, duration=10s.</actions>
+      <expectedresults>Params struct populated correctly.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Call zperf_udp_upload().</actions>
+      <expectedresults>Returns 0, or skips if server unreachable.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Calculate throughput.</actions>
+      <expectedresults>Throughput &gt;= WIFI_ZPERF_MIN_UDP_THROUGHPUT_KBPS.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="UDP" />
+    <keyword name="Upload" />
+    <keyword name="Large_Packet" />
+    <keyword name="REQ-ZPERF-005" />
+  </keywords>
+  <requirement>REQ-ZPERF-005: UDP upload with 1024-byte packets must meet throughput</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-006: TCP Throughput Stability                            -->
+<!-- APIs: zperf_tcp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_tcp_throughput_stability">
+  <summary>REQ-ZPERF-006: Verify TCP throughput stability across multiple runs.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+    2. iperf TCP server listening.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Run zperf_tcp_upload() for WIFI_ZPERF_STABILITY_ITERATIONS (default 3) times.</actions>
+      <expectedresults>Each run returns 0, or test skips on first unreachable.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Record throughput for each run; compute avg, min, max.</actions>
+      <expectedresults>Avg throughput &gt;= WIFI_ZPERF_MIN_TCP_THROUGHPUT_KBPS. Min throughput &gt;= half of threshold.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="TCP" />
+    <keyword name="Stability" />
+    <keyword name="Throughput" />
+    <keyword name="REQ-ZPERF-006" />
+  </keywords>
+  <requirement>REQ-ZPERF-006: TCP throughput must remain stable across consecutive runs</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-007: UDP Packet Loss                                     -->
+<!-- APIs: zperf_udp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_udp_packet_loss">
+  <summary>REQ-ZPERF-007: Verify UDP packet loss is within acceptable bounds.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+    2. iperf UDP server listening.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Run zperf_udp_upload() with standard params (pkt=256, rate=10000 kbps, 10s).</actions>
+      <expectedresults>Returns 0. If server unreachable, test skips.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Calculate loss_pct = (nb_packets_lost * 100) / nb_packets_sent.</actions>
+      <expectedresults>If loss_pct &gt; 100 (server report corrupted), test skips. Otherwise loss_pct &lt;= 30%.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="UDP" />
+    <keyword name="Packet_Loss" />
+    <keyword name="REQ-ZPERF-007" />
+  </keywords>
+  <requirement>REQ-ZPERF-007: UDP packet loss must not exceed 30%</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-008: Negative – Unreachable TCP Server                   -->
+<!-- APIs: zperf_tcp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_tcp_upload_invalid_server">
+  <summary>REQ-ZPERF-008: Negative test – TCP upload to unreachable server must not transfer data.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Set params to unreachable IP (192.168.255.254:59999), pkt=256, duration=5s.</actions>
+      <expectedresults>Params populated correctly.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Call zperf_tcp_upload().</actions>
+      <expectedresults>Returns error (e.g., -116 ETIMEDOUT), or returns 0 with results.total_len == 0.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="TCP" />
+    <keyword name="Negative" />
+    <keyword name="Unreachable" />
+    <keyword name="REQ-ZPERF-008" />
+  </keywords>
+  <requirement>REQ-ZPERF-008: TCP upload to unreachable server must fail or transfer zero bytes</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-009: Negative – Zero Duration UDP Upload                 -->
+<!-- APIs: zperf_udp_upload()                                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_udp_upload_zero_duration">
+  <summary>REQ-ZPERF-009: Negative test – UDP upload with zero duration completes immediately.</summary>
+  <preconditions>
+    1. WiFi connected, DHCP acquired.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Set standard UDP params but duration_ms = 0.</actions>
+      <expectedresults>Params populated correctly.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Call zperf_udp_upload().</actions>
+      <expectedresults>Completes immediately with minimal or zero packets sent. No hang.</expectedresults>
+    </step>
+  </steps>
+  <importance>medium</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="UDP" />
+    <keyword name="Negative" />
+    <keyword name="Zero_Duration" />
+    <keyword name="REQ-ZPERF-009" />
+  </keywords>
+  <requirement>REQ-ZPERF-009: Zero-duration UDP upload must complete without hang</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-ZPERF-010: WiFi Disconnect Cleanup                             -->
+<!-- APIs: net_mgmt(NET_REQUEST_WIFI_DISCONNECT)                        -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_disconnect">
+  <summary>REQ-ZPERF-010: Verify WiFi disconnect at end of suite succeeds.</summary>
+  <preconditions>
+    1. WiFi is currently connected.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call wifi_disconnect().</actions>
+      <expectedresults>Returns 0.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Wait for NET_EVENT_WIFI_DISCONNECT_RESULT via k_sem_take(10s).</actions>
+      <expectedresults>Event received with status 0 within timeout.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>If not connected at start, test skips gracefully.</actions>
+      <expectedresults>ztest_test_skip() called; no hard failure.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Disconnect" />
+    <keyword name="Cleanup" />
+    <keyword name="REQ-ZPERF-010" />
+  </keywords>
+  <requirement>REQ-ZPERF-010: Suite teardown disconnect must succeed or skip gracefully</requirement>
+</testcase>
+
+</testsuite>

@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Alif SDIO WiFi Shell Test Suite">
+
+<details>WiFi Shell Test Suite for the Alif AIROC CYW55500 SDIO/WiFi driver.
+Tests WiFi station (STA) scanning, connection, status query, ICMP ping,
+stress cycling, performance timing, and negative cases.
+
+Target boards: Alif E8 AppKit (ae822fa0e5597xx0/rtss_hp).
+Preconditions: WiFi AP running with SSID/PSK matching Kconfig defaults.
+</details>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-001: WiFi Scanning                                        -->
+<!-- APIs: net_mgmt(NET_REQUEST_WIFI_SCAN)                              -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_scan">
+  <summary>REQ-WIFI-001: Verify WiFi scan discovers at least one AP.</summary>
+  <preconditions>
+    1. WiFi driver initialized (firmware loaded, interface up).
+    2. At least one WiFi AP is active within RF range.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call net_mgmt(NET_REQUEST_WIFI_SCAN) with active scan type.</actions>
+      <expectedresults>Request accepted (returns 0). EAGAIN or -119 retried internally.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Wait for NET_EVENT_WIFI_SCAN_DONE via k_sem_take().</actions>
+      <expectedresults>Scan completes within WIFI_SHELL_SCAN_TIMEOUT_SEC seconds.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Check ctx.scan_result_count.</actions>
+      <expectedresults>At least one AP found (scan_result_count &gt; 0).</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Scan" />
+    <keyword name="Functional" />
+    <keyword name="REQ-WIFI-001" />
+  </keywords>
+  <requirement>REQ-WIFI-001: WiFi scanning must discover available APs</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-002: WiFi Connect                                         -->
+<!-- APIs: net_mgmt(NET_REQUEST_WIFI_CONNECT)                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_connect">
+  <summary>REQ-WIFI-002: Verify WiFi connect to configured SSID succeeds.</summary>
+  <preconditions>
+    1. WiFi interface up and driver ready.
+    2. Configured AP (WIFI_SHELL_TEST_SSID / WIFI_SHELL_TEST_PSK) is reachable.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call wifi_connect() with configured SSID/PSK (WPA2-PSK).</actions>
+      <expectedresults>Request accepted (returns 0). EAGAIN retried internally.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Wait for NET_EVENT_WIFI_CONNECT_RESULT via k_sem_take().</actions>
+      <expectedresults>Connect completes within WIFI_SHELL_CONNECT_TIMEOUT_SEC seconds with status 0.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Call wifi_iface_state().</actions>
+      <expectedresults>Returns WIFI_STATE_COMPLETED.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Connect" />
+    <keyword name="Functional" />
+    <keyword name="REQ-WIFI-002" />
+  </keywords>
+  <requirement>REQ-WIFI-002: WiFi connect to configured network must succeed</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-003: WiFi Status Query                                    -->
+<!-- APIs: net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS)                      -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_status">
+  <summary>REQ-WIFI-003: Verify WiFi status query returns valid connected state.</summary>
+  <preconditions>
+    1. WiFi is connected (test_wifi_connect or prior state).
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call net_mgmt(NET_REQUEST_WIFI_IFACE_STATUS) to populate struct wifi_iface_status.</actions>
+      <expectedresults>Returns 0 (success).</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Check status.state, status.ssid_len, status.rssi.</actions>
+      <expectedresults>state == WIFI_STATE_COMPLETED, ssid_len &gt; 0, RSSI is a valid negative dBm value.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Status" />
+    <keyword name="Functional" />
+    <keyword name="REQ-WIFI-003" />
+  </keywords>
+  <requirement>REQ-WIFI-003: WiFi status query must report connected state with valid SSID/RSSI</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-004: ICMP Ping Gateway                                    -->
+<!-- APIs: net_icmp_init_ctx(), net_icmp_send_echo_request()            -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_ping_gateway">
+  <summary>REQ-WIFI-004: Verify ICMP echo request to default gateway succeeds.</summary>
+  <preconditions>
+    1. WiFi connected and DHCP acquired (gateway address known).
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Query gateway via net_if_ipv4_get_gw().</actions>
+      <expectedresults>Gateway address is non-zero.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Initialize ICMP context (NET_ICMPV4_ECHO_REPLY) with reply handler.</actions>
+      <expectedresults>net_icmp_init_ctx returns 0.</expectedresults>
+    </step>
+    <step>
+      <step_number>3</step_number>
+      <actions>Send echo request to gateway, wait for reply with retry.</actions>
+      <expectedresults>At least one ICMP reply received within timeout.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Ping" />
+    <keyword name="ICMP" />
+    <keyword name="Gateway" />
+    <keyword name="REQ-WIFI-004" />
+  </keywords>
+  <requirement>REQ-WIFI-004: ICMP ping to default gateway must succeed</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-005: WiFi Disconnect                                      -->
+<!-- APIs: net_mgmt(NET_REQUEST_WIFI_DISCONNECT)                        -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_disconnect">
+  <summary>REQ-WIFI-005: Verify WiFi disconnect from connected AP succeeds.</summary>
+  <preconditions>
+    1. WiFi is currently connected.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call wifi_disconnect().</actions>
+      <expectedresults>Returns 0.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Wait for NET_EVENT_WIFI_DISCONNECT_RESULT via k_sem_take().</actions>
+      <expectedresults>Disconnect completes within WIFI_SHELL_DISCONNECT_TIMEOUT_SEC seconds with status 0.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Disconnect" />
+    <keyword name="Functional" />
+    <keyword name="REQ-WIFI-005" />
+  </keywords>
+  <requirement>REQ-WIFI-005: WiFi disconnect must complete successfully</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-006: WiFi Reconnect                                       -->
+<!-- APIs: net_mgmt(NET_REQUEST_WIFI_CONNECT)                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_wifi_reconnect">
+  <summary>REQ-WIFI-006: Verify WiFi reconnect after explicit disconnect succeeds.</summary>
+  <preconditions>
+    1. WiFi is currently disconnected.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call wifi_connect() after ensuring disconnected.</actions>
+      <expectedresults>Request accepted (0), or -EALREADY/-120 if already connected (treated as pass).</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Wait for connect result with retry.</actions>
+      <expectedresults>Connect succeeds (status 0) within timeout. State is WIFI_STATE_COMPLETED.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Reconnect" />
+    <keyword name="Functional" />
+    <keyword name="REQ-WIFI-006" />
+  </keywords>
+  <requirement>REQ-WIFI-006: WiFi reconnect must succeed after disconnect</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-007: Stress – Repeated Scan                               -->
+<!-- ================================================================== -->
+
+<testcase name="test_stress_repeated_scan">
+  <summary>REQ-WIFI-007: Stress test – consecutive WiFi scans without reset.</summary>
+  <preconditions>
+    1. WiFi driver ready. At least one AP in range.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Loop WIFI_SHELL_STRESS_SCAN_ITERATIONS times: request scan, wait for done, verify APs found.</actions>
+      <expectedresults>Every scan completes successfully and finds at least one AP. No firmware crash or hang.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Stress" />
+    <keyword name="Scan" />
+    <keyword name="REQ-WIFI-007" />
+  </keywords>
+  <requirement>REQ-WIFI-007: Repeated scan stress must not crash or degrade</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-008: Stress – Connect/Disconnect Cycles                   -->
+<!-- ================================================================== -->
+
+<testcase name="test_stress_connect_disconnect">
+  <summary>REQ-WIFI-008: Stress test – repeated connect/disconnect cycles.</summary>
+  <preconditions>
+    1. WiFi driver ready. Configured AP reachable.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Loop WIFI_SHELL_STRESS_CONN_ITERATIONS times: connect (with retry), verify COMPLETED, disconnect, verify timeout/disconnect event.</actions>
+      <expectedresults>Every cycle connects and disconnects successfully. Firmware remains functional.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Stress" />
+    <keyword name="Connect" />
+    <keyword name="Disconnect" />
+    <keyword name="REQ-WIFI-008" />
+  </keywords>
+  <requirement>REQ-WIFI-008: Repeated connect/disconnect stress must not crash</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-009: Performance – Scan Timing                            -->
+<!-- ================================================================== -->
+
+<testcase name="test_perf_scan_timing">
+  <summary>REQ-WIFI-009: Performance benchmark – measure WiFi scan duration.</summary>
+  <preconditions>
+    1. WiFi driver ready.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Run 3 scans, timing each from request to scan-done event.</actions>
+      <expectedresults>All scans complete successfully. Average scan time printed.</expectedresults>
+    </step>
+  </steps>
+  <importance>medium</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Performance" />
+    <keyword name="Scan" />
+    <keyword name="Timing" />
+    <keyword name="REQ-WIFI-009" />
+  </keywords>
+  <requirement>REQ-WIFI-009: Scan timing benchmark for regression tracking</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-010: Performance – Connect Timing                          -->
+<!-- ================================================================== -->
+
+<testcase name="test_perf_connect_timing">
+  <summary>REQ-WIFI-010: Performance benchmark – measure WiFi connect duration.</summary>
+  <preconditions>
+    1. WiFi currently disconnected.
+    2. Configured AP reachable.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Time connect request from send to COMPLETED state.</actions>
+      <expectedresults>Connect succeeds. Elapsed time printed for regression tracking.</expectedresults>
+    </step>
+  </steps>
+  <importance>medium</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Performance" />
+    <keyword name="Connect" />
+    <keyword name="Timing" />
+    <keyword name="REQ-WIFI-010" />
+  </keywords>
+  <requirement>REQ-WIFI-010: Connect timing benchmark for regression tracking</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-011: Performance – Ping Latency                           -->
+<!-- ================================================================== -->
+
+<testcase name="test_perf_ping_latency">
+  <summary>REQ-WIFI-011: Performance benchmark – measure ICMP ping latency.</summary>
+  <preconditions>
+    1. WiFi connected and DHCP acquired with gateway set.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Send 5 ICMP echo requests to gateway, timing each round-trip.</actions>
+      <expectedresults>At least 3/5 pings succeed. Min/avg/max latency printed.</expectedresults>
+    </step>
+  </steps>
+  <importance>medium</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Performance" />
+    <keyword name="Ping" />
+    <keyword name="Latency" />
+    <keyword name="REQ-WIFI-011" />
+  </keywords>
+  <requirement>REQ-WIFI-011: Ping latency benchmark for regression tracking</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-012: Negative – Wrong SSID                                -->
+<!-- ================================================================== -->
+
+<testcase name="test_neg_connect_wrong_ssid">
+  <summary>REQ-WIFI-012: Negative test – connect with non-existent SSID must fail.</summary>
+  <preconditions>
+    1. WiFi disconnected.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Attempt connect with SSID "NONEXISTENT_SSID_12345" and dummy PSK.</actions>
+      <expectedresults>Either request rejected immediately, or connect result event reports non-zero failure status.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Check iface state.</actions>
+      <expectedresults>State is not WIFI_STATE_COMPLETED.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Negative" />
+    <keyword name="Connect" />
+    <keyword name="Wrong_SSID" />
+    <keyword name="REQ-WIFI-012" />
+  </keywords>
+  <requirement>REQ-WIFI-012: Connect with wrong SSID must fail gracefully</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-013: Negative – Disconnect Not Connected                  -->
+<!-- ================================================================== -->
+
+<testcase name="test_neg_disconnect_not_connected">
+  <summary>REQ-WIFI-013: Negative test – disconnect when not connected must not crash.</summary>
+  <preconditions>
+    1. WiFi is currently disconnected.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Call wifi_disconnect() while already disconnected.</actions>
+      <expectedresults>Returns 0 or error code. No crash, no hang. System remains functional.</expectedresults>
+    </step>
+    <step>
+      <step_number>2</step_number>
+      <actions>Verify iface state.</actions>
+      <expectedresults>State is not WIFI_STATE_COMPLETED.</expectedresults>
+    </step>
+  </steps>
+  <importance>high</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Negative" />
+    <keyword name="Disconnect" />
+    <keyword name="Not_Connected" />
+    <keyword name="REQ-WIFI-013" />
+  </keywords>
+  <requirement>REQ-WIFI-013: Disconnect when not connected must not crash</requirement>
+</testcase>
+
+<!-- ================================================================== -->
+<!-- REQ-WIFI-014: Negative – Wrong PSK (Destructive)                   -->
+<!-- ================================================================== -->
+
+<testcase name="test_neg_connect_wrong_psk">
+  <summary>REQ-WIFI-014: Negative test – connect with valid SSID but wrong PSK must fail.</summary>
+  <preconditions>
+    1. WiFi disconnected.
+    2. NOTE: On some firmware (CYW43439), wrong PSK may cause a firmware trap.
+       This test runs in a separate destructive suite.
+  </preconditions>
+  <steps>
+    <step>
+      <step_number>1</step_number>
+      <actions>Attempt connect with correct SSID but PSK "WrongPassword123!".</actions>
+      <expectedresults>Either request rejected, or connect result reports non-zero failure. State is not COMPLETED.</expectedresults>
+    </step>
+  </steps>
+  <importance>medium</importance>
+  <keywords>
+    <keyword name="WiFi" />
+    <keyword name="Negative" />
+    <keyword name="Connect" />
+    <keyword name="Wrong_PSK" />
+    <keyword name="Destructive" />
+    <keyword name="REQ-WIFI-014" />
+  </keywords>
+  <requirement>REQ-WIFI-014: Connect with wrong PSK must fail (destructive test)</requirement>
+</testcase>
+
+</testsuite>
