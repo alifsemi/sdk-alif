@@ -19,9 +19,14 @@ Building and Running
 
 This sample is located at :zephyr_file:`samples/modules/tflite-micro/alif_kws` in the sdk-alif tree.
 
-To build the sample, you first need to pull in the optional dependencies by running the following commands:
+To build the sample, you first need to pull in the optional dependencies and set up MLEK resources:
 
 .. code-block:: console
 
    west config manifest.group-filter -- +optional
+   west config manifest.project-filter -- +alif-mlek
    west update
+   python3 modules/alif-mlek/set_up_default_resources.py
+
+The last command downloads the ML models and compiles them with Vela for the Ethos-U NPU.
+The generated model and labels source code is produced automatically at CMake configure time.

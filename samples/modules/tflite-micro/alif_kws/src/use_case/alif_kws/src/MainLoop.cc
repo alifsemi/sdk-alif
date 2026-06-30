@@ -14,11 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "KwsClassifier.hpp"      /* Classifier. */
-#include "MicroNetKwsModel.hpp"   /* Model class for running inference. */
-#include "Labels.hpp"             /* For label strings. */
-#include "UseCaseHandler.hpp"     /* Handlers for different user options. */
-#include "BufAttributes.hpp"      /* Buffer attributes to be applied */
+#include "mlek/use_case/kws/KwsClassifier.hpp"  /* Classifier. */
+#include "mlek/fwk/tflm/MicroNetKwsModel.hpp"   /* Model class for running inference. */
+#include "Labels.hpp"                            /* For label strings. */
+#include "UseCaseHandler.hpp"                    /* Handlers for different user options. */
+#include "BufAttributes.hpp"                     /* Buffer attributes to be applied */
 
 #include <zephyr/console/console.h>
 #include <zephyr/logging/log.h>
@@ -56,11 +56,15 @@ static void DisplayMenu()
 
 void main_loop()
 {
-	arm::app::MicroNetKwsModel model; /* Model wrapper object. */
+	arm::app::fwk::tflm::MicroNetKwsModel model; /* Model wrapper object. */
+
+	arm::app::fwk::iface::MemoryRegion computeMem{arm::app::tensorArena,
+							sizeof(arm::app::tensorArena)};
+	arm::app::fwk::iface::MemoryRegion modelMem{arm::app::kws::GetModelPointer(),
+							arm::app::kws::GetModelLen()};
 
 	/* Load the model. */
-	if (!model.Init(arm::app::tensorArena, sizeof(arm::app::tensorArena),
-			arm::app::kws::GetModelPointer(), arm::app::kws::GetModelLen())) {
+	if (!model.Init(computeMem, modelMem)) {
 		LOG_ERR("Failed to initialise model");
 		return;
 	}
@@ -68,7 +72,7 @@ void main_loop()
 	/* Instantiate application context. */
 	arm::app::ApplicationContext caseContext;
 
-	caseContext.Set<arm::app::Model &>("model", model);
+	caseContext.Set<arm::app::fwk::iface::Model &>("model", model);
 	caseContext.Set<int>("frameLength", arm::app::kws::g_FrameLength);
 	caseContext.Set<int>("frameStride", arm::app::kws::g_FrameStride);
 	caseContext.Set<int>("audioRate", arm::app::kws::g_AudioRate);

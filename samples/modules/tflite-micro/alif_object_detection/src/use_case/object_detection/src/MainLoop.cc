@@ -21,7 +21,7 @@
  * limitations under the License.
  */
 
-#include "YoloFastestModel.hpp"     /* Model class for running inference. */
+#include "mlek/fwk/tflm/YoloFastestModel.hpp" /* Model class for running inference. */
 #include "UseCaseHandler.hpp"       /* Handlers for different user options. */
 #include "BufAttributes.hpp"        /* Buffer attributes to be applied */
 #include <zephyr/logging/log.h>
@@ -42,7 +42,7 @@ namespace app {
 
 void main_loop()
 {
-    arm::app::YoloFastestModel model;  /* Model wrapper object. */
+    arm::app::fwk::tflm::YoloFastestModel model;  /* Model wrapper object. */
 
     if (!alif::app::ObjectDetectionInit()) {
         LOG_ERR("Failed to initialise use case handler");
@@ -50,10 +50,11 @@ void main_loop()
     }
 
     /* Load the model. */
-    if (!model.Init(arm::app::tensorArena,
-                    sizeof(arm::app::tensorArena),
-                    arm::app::object_detection::GetModelPointer(),
-                    arm::app::object_detection::GetModelLen())) {
+    arm::app::fwk::iface::MemoryRegion computeMem{arm::app::tensorArena,
+                                                   sizeof(arm::app::tensorArena)};
+    arm::app::fwk::iface::MemoryRegion modelMem{arm::app::object_detection::GetModelPointer(),
+                                                 arm::app::object_detection::GetModelLen()};
+    if (!model.Init(computeMem, modelMem)) {
         LOG_ERR("Failed to initialise model");
         return;
     }
@@ -61,7 +62,7 @@ void main_loop()
     LOG_INF("model.Init done");
     /* Instantiate application context. */
     arm::app::ApplicationContext caseContext;
-    caseContext.Set<arm::app::Model&>("model", model);
+    caseContext.Set<arm::app::fwk::iface::Model&>("model", model);
 
     LOG_INF("Entering main loop");
     /* Loop. */

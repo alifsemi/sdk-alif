@@ -22,11 +22,11 @@
  */
 #include "UseCaseHandler.hpp"
 
-#include "Classifier.hpp"
-#include "MobileNetModel.hpp"
-#include "ImageUtils.hpp"
+#include "mlek/common/Classifier.hpp"
+#include "mlek/fwk/tflm/MobileNetModel.hpp"
+#include "mlek/common/ImageUtils.hpp"
 #include "ScreenLayout.hpp"
-#include "ImgClassProcessing.hpp"
+#include "mlek/use_case/img_class/ImgClassProcessing.hpp"
 #include "image_ensemble.h"
 
 #include <cinttypes>
@@ -146,30 +146,30 @@ namespace app {
     /* Image classification inference handler. */
     bool ClassifyImageHandler(ApplicationContext& ctx)
     {
-        auto& model = ctx.Get<Model&>("model");
+        auto& model = ctx.Get<fwk::iface::Model&>("model");
 
         if (!model.IsInited()) {
             LOG_ERR("Model is not initialised! Terminating processing.");
             return false;
         }
 
-        TfLiteTensor* inputTensor = model.GetInputTensor(0);
-        TfLiteTensor* outputTensor = model.GetOutputTensor(0);
-        if (!inputTensor->dims) {
+        auto inputTensor = model.GetInputTensor(0);
+        auto outputTensor = model.GetOutputTensor(0);
+        const auto inputShape = inputTensor->Shape();
+        if (inputShape.empty()) {
             LOG_ERR("Invalid input tensor dims");
             return false;
-        } else if (inputTensor->dims->size < 4) {
+        } else if (inputShape.size() < 4) {
             LOG_ERR("Input tensor dimension should be = 4");
             return false;
         }
 
         /* Get input shape for displaying the image. */
-        TfLiteIntArray* inputShape = model.GetInputShape(0);
-        const uint32_t nCols       = inputShape->data[arm::app::MobileNetModel::ms_inputColsIdx];
-        const uint32_t nRows       = inputShape->data[arm::app::MobileNetModel::ms_inputRowsIdx];
+        const uint32_t nCols       = inputShape[arm::app::fwk::tflm::MobileNetModel::ms_inputColsIdx];
+        const uint32_t nRows       = inputShape[arm::app::fwk::tflm::MobileNetModel::ms_inputRowsIdx];
 
         /* Set up pre and post-processing. */
-        ImgClassPreProcess preProcess = ImgClassPreProcess(inputTensor, model.IsDataSigned());
+        ImgClassPreProcess preProcess = ImgClassPreProcess(inputTensor);
 
         std::vector<ClassificationResult> results;
         ImgClassPostProcess postProcess = ImgClassPostProcess(outputTensor,
@@ -197,7 +197,7 @@ namespace app {
 
         k_mutex_unlock(&lvgl_mutex);
 
-        const size_t imgSz = inputTensor->bytes;
+        const size_t imgSz = inputTensor->Bytes();
 
         /* Run the pre-processing, inference and post-processing. */
         if (!preProcess.DoPreProcess(image_data, imgSz)) {
