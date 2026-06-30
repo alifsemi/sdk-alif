@@ -1,0 +1,10 @@
+tests:
+  net.wifi_zperf:
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    harness: ztest
+    depends_on: wifi
+    timeout: 600
+    filter: CONFIG_WIFI_AIROC
