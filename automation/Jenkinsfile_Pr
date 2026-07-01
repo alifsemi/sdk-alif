@@ -1,4 +1,6 @@
 def common_funcs
+def utils
+def pr_labels= [ "BUILD_AWAITING", "BUILD_FAILED", "BUILD_PASSED", "CHECKPATCH_FAILED"]
 def samples1 = ['le_periph_blps' , 'le_periph_cgms' , 'le_periph_cpps', 'le_periph_cscps' , 'le_periph_mics' , 'le_periph_vcp' ]
 def samples2 = ['le_central_batt', 'le_periph'      , 'le_periph_batt', 'le_periph_blinky', 'le_multiprofile', 'le_periph_ots' ]
 def samples3 = ['le_periph_glps' , 'le_periph_hello', 'le_periph_hr'  , 'le_periph_htpt'  , 'le_periph_anps' , 'le_periph_pacs']
@@ -27,38 +29,102 @@ def gAllRecipientEmails     = ""
 def gAlif_all_boards_list   = []
 def allTestApps             = [testAppList1, testAppList2]
 def gDocsOnlyChange         = false
+def zephyr_pr_number        = null
+def isManifestUpdate        = 0
+def job_config = [
+    github_creds_id : "27c5d944-f190-4ab7-8c37-23cc43c7ce11"
+]
 
 pipeline {
     agent any
+
+    environment {
+        GITHUB_USER_OR_ORG_NAME = sh(script: 'echo ${CHANGE_URL:-alifsemi} | sed -E "s#https://github.com/([^/]+)/([^/]+)/.*#\\1#"', returnStdout: true).trim()
+        GITHUB_REPO_NAME        = sh(script: 'echo ${CHANGE_URL:-sdk-alif} | sed -E "s#https://github.com/([^/]+)/([^/]+)/.*#\\2#"', returnStdout: true).trim()
+        CHANGE_TARGET           = sh(script: 'echo ${CHANGE_TARGET:-main}', returnStdout: true).trim()
+        GITHUB_TOKEN            = credentials('27c5d944-f190-4ab7-8c37-23cc43c7ce11')
+        PATH                    = "${env.PATH}:$HOME/.local/bin"
+    }
+
     options {
         disableConcurrentBuilds(abortPrevious: true)
     }
-    stages {
+
+   stages {
+        stage('Install Dependencies') {
+            steps {
+                script {
+                    job_config.owner  = "${GITHUB_USER_OR_ORG_NAME}"
+                    job_config.user   = "${GITHUB_TOKEN_USR}"
+                    job_config.repo   = "${GITHUB_REPO_NAME}"
+                    job_config.branch = "${CHANGE_TARGET}"
+                    job_config.token  = GITHUB_TOKEN_PSW
+                    job_config.pr_repo        = "${GITHUB_REPO_NAME}"
+                    job_config.changeId       = "${CHANGE_ID}"
+                    job_config.zephyr_repo    = "zephyr_alif"
+
+                    sh '''#!/bin/bash -xe
+                    if ! command -v gitlint >/dev/null 2>&1; then
+                        echo "gitlint not found. Installing gitlint..."
+                        python3 -m pip install --user -q gitlint
+                    fi
+                    #jq download code will be deprecated soon and will be removed
+                    if ! command -v jq >/dev/null 2>&1; then
+                        echo "jq not found. Installing..."
+
+                        mkdir -p "$HOME/.local/bin" && wget --tries=5 --timeout=30 --waitretry=5 \
+                            --retry-connrefused --https-only -q -O "$HOME/.local/bin/jq" \
+                            "https://github.com/jqlang/jq/releases/latest/download/jq-linux-amd64" && \
+                        chmod 755 "$HOME/.local/bin/jq"
+                    fi
+                    git config --list
+                    [ -n "$(git config --global --get user.name)" ]  || git config --global user.name "Alif-CI"
+                    [ -n "$(git config --global --get user.email)" ] || git config --global user.email "alif-ci@alifsemi.com"
+                    '''
+                }
+            }
+        }
+
         stage('Checkout') {
             steps {
+                //cleanWs()
                 checkout scm
                 script {
                     common_funcs = load 'automation/ble_samples.groovy'
+                    job_config.repo = "."
+                    utils = load "automation/utils/Utils.groovy"
+                    utils.init(job_config)
                     stash name: 'automation', includes: 'automation/**'
                 }
             }
         }
+
         stage('Verify') {
             agent { label 'zas20' }
             options {
                 skipDefaultCheckout()
             }
-
             steps {
                 script {
                     common_funcs.initialize()
+                    withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
+                        usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                        job_config.repo = "${GITHUB_REPO_NAME}"
+                        for (String label : pr_labels) {
+                            echo "remove existing build label [$label]"
+                            job_config.label = label
+                            utils.github.removeLabel(job_config)
+                        }
+                    }
 
+                    def checkpatch_result = 0
+                    def gitlint_result    = 0
                     parallel(
                         checkpatch: {
-                            common_funcs.verify_checkpatch()
+                            checkpatch_result = common_funcs.verify_checkpatch()
                         },
                         gitlint: {
-                            common_funcs.verify_gitlint()
+                            gitlint_result = common_funcs.verify_gitlint()
                         },
                         Get_alif_all_board_list: {
                             gAlif_all_boards_list = common_funcs.get_all_alif_boards()
@@ -68,10 +134,21 @@ pipeline {
                         }
                         //, failFast: true
                     )
+                    echo "Checkpatch result: ${checkpatch_result}"
+                    echo "Gitlint result: ${gitlint_result}"
 
                     gDocsOnlyChange = common_funcs.is_docs_only_change()
                     if (gDocsOnlyChange) {
                         echo "Documentation-only PR detected -> build & test stages will be skipped."
+                    }
+
+                    if ( checkpatch_result != 0 || gitlint_result != 0 ) {
+                        withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
+                            usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                            job_config.label = pr_labels[3]
+                            echo "Add label  => ${job_config.label}"
+                            utils.github.addLabel(job_config)
+                        }
                     }
                 }
             }
@@ -123,6 +200,7 @@ pipeline {
                 }
             }
         }
+
         stage('BuildAll_FlashThroughputTestBLE') {
             agent none
             when {
@@ -179,6 +257,7 @@ pipeline {
             }
         }
     }
+
     post {
         always{
             recordIssues(
@@ -186,6 +265,179 @@ pipeline {
                 qualityGates: [[threshold: 1, type: 'NEW', failure: true]],
                 enabledForFailure: true
             )
+            script {
+                withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
+                    usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                        job_config.repo      = job_config.pr_repo
+                        job_config.changeId  = "${CHANGE_ID}"
+                        def pr_response  = utils.github.getPullRequestBody(job_config)
+                        if (pr_response?.contains('/pull/')) {
+                            def temp = pr_response.split('/pull/')[1]
+                            zephyr_pr_number = temp.split(/[^0-9]/)[0].toInteger()
+                            echo "Zephyr PR Number: ${zephyr_pr_number}"
+                        } else {
+                            echo "Zephyr PR number not able to find, no web link in PR body"
+                        }
+                        if(zephyr_pr_number) {
+                            job_config.repo      = job_config.zephyr_repo
+                            job_config.changeId  = zephyr_pr_number
+                            for (String label : pr_labels) {
+                                echo "remove existing build label [$label]"
+                                job_config.label = label
+                                utils.github.removeLabel(job_config)
+                            }
+                        }
+                        isManifestUpdate = common_funcs.checkManifestUpdate()
+                }
+            }
+        }
+        failure {
+            echo "🚫 Build failed..."
+            script {
+                withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
+                    usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                        job_config.label     = pr_labels[1]
+                        job_config.repo      = job_config.pr_repo
+                        job_config.changeId  = "${CHANGE_ID}"
+                        echo "Add labels => ${job_config.label}"
+                        utils.github.addLabel(job_config)
+                        if(zephyr_pr_number) {
+                            job_config.repo      = job_config.zephyr_repo
+                            job_config.changeId  = zephyr_pr_number
+                            echo "Add labels => ${job_config.label}"
+                            utils.github.addLabel(job_config)
+                        }
+                }
+            }
+        }
+        success {
+            script {
+                withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
+                    usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                    job_config.label     = pr_labels[2]
+                    job_config.repo      = job_config.pr_repo
+                    job_config.changeId  = "${CHANGE_ID}"
+                    echo "Add labels =>  ${job_config.label}"
+                    utils.github.addLabel(job_config)
+
+                    if(zephyr_pr_number) {
+                        job_config.repo      = job_config.zephyr_repo
+                        job_config.changeId  = zephyr_pr_number
+                        echo "Add labels => ${job_config.label}"
+                        utils.github.addLabel(job_config)
+                    }
+
+                    if (fileExists("west.yml") && isManifestUpdate && zephyr_pr_number) {
+                        echo "updating SHA id in west.yml file"
+                        job_config.repo      = job_config.zephyr_repo
+                        job_config.changeId  = zephyr_pr_number
+                        def merge_commit_sha = utils.github.getPullRequestMergeSHA(job_config)
+                        echo "merge commit SHA : ${merge_commit_sha}"
+
+                        def gitAuth = sh(script: ''' printf "%s:%s" "$GITHUB_TOKEN_USR" "$GITHUB_TOKEN" | base64 -w0
+                            ''', returnStdout: true).trim()
+
+                        job_config.repo     = job_config.pr_repo
+                        job_config.changeId = "${CHANGE_ID}"
+                        def remoteName      = "pr_fork_${CHANGE_ID}"
+                        def prBranch        = "${CHANGE_BRANCH}"
+                        def forkUser        = "${CHANGE_FORK}"
+                        def forkUrl         = "https://github.com/${forkUser}/${job_config.pr_repo}.git"
+
+                        if (utils.git.customCmd(" remote get-url ${remoteName}") == 0) {
+                            echo "Removing existing remote: ${remoteName}"
+                            if (utils.git.customCmd(" remote remove ${remoteName}") != 0) {
+                                echo "Failed to remove remote ${remoteName}"
+                            }
+                        }
+
+                        if (utils.git.customCmd(" remote add ${remoteName} ${forkUrl}") != 0) {
+                            echo "Failed to add remote ${remoteName}"
+                        }
+
+                        def prHeadSha = sh(script: """ git ls-remote ${remoteName} \
+                                    refs/heads/${prBranch} | awk '{print \$1}'
+                                """, returnStdout: true ).trim()
+
+                        if (!prHeadSha) {
+                            echo("Could not find ${forkUser}/${prBranch}")
+                        } else {
+                            echo "Actual PR HEAD: ${prHeadSha}"
+                        }
+
+                        if (utils.git.customCmd(" fetch ${remoteName} ${prHeadSha}") != 0) {
+                            echo "Unable to fetch PR HEAD ${prHeadSha}"
+                        }
+
+                        def checkoutSha = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                        echo "Jenkins checkout SHA: ${checkoutSha}"
+
+                        if (utils.git.customCmd(" checkout --detach ${prHeadSha}") != 0) {
+                            echo  "Unable to checkout PR HEAD ${prHeadSha}"
+                        }
+
+                        def originalPrSha = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                        echo "PR commit being modified: ${originalPrSha}"
+
+                        if (checkoutSha != prHeadSha) {
+                            echo("PR branch changed after Jenkins checkout.\n" +
+                            "Jenkins SHA : ${checkoutSha}\n" +
+                            "Remote SHA  : ${prHeadSha}\n Refusing to force-push.")
+                        } else {
+                            echo "PR SHA verification successful."
+                        }
+
+                        def pullReqString = "pull/${zephyr_pr_number}/head"
+                        sh(script: """sed -i 's|${pullReqString}|${merge_commit_sha}|g' west.yml""")
+
+                        utils.git.customCmd(" add -u ")
+                        utils.git.customCmd(" commit --amend --no-edit ")
+                        utils.git.customCmd(" reflog --oneline -6 ")
+                        def stagedChanges = sh(script: "git diff --cached --quiet", returnStatus: true)
+                        if (stagedChanges == 0) {
+                            echo "No changes detected. Nothing to amend."
+                        }
+
+                        def amendedSha = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+
+                        echo "Original SHA : ${checkoutSha}"
+                        echo "Amended SHA  : ${amendedSha}"
+
+                        if (checkoutSha == amendedSha) {
+                            echo ("Amended SHA is identical to original SHA, Expected a new commit.")
+                        }
+
+                        def pushCommand ="push --force-with-lease=refs/heads/${prBranch}:${originalPrSha} " +
+                                "${remoteName} HEAD:refs/heads/${prBranch}"
+
+                        echo "Pushing amended commit..."
+
+                        if (utils.git.customCmd(pushCommand, gitAuth) != 0) {
+                            echo ("Force push failed.\nThe PR branch may have changed.")
+                        }
+
+                        if (utils.git.customCmd(" fetch ${remoteName} ${prBranch}") != 0) {
+                            echo ("Failed to verify pushed commit")
+                        }
+
+                        def finalRemoteSha = sh(script: """ git ls-remote ${remoteName} \
+                                refs/heads/${prBranch} | awk '{print \$1}'""", returnStdout: true).trim()
+
+                        echo "Expected remote SHA: ${amendedSha}"
+                        echo "Actual remote SHA  : ${finalRemoteSha}"
+
+                        if (finalRemoteSha != amendedSha) {
+                            echo("Push verification failed.\nExpected: ${amendedSha}\n" +
+                                "Remote:   ${finalRemoteSha}")
+                        }
+
+                        echo("SUCCESS: PR branch ${prBranch} updated from ${checkoutSha} " +
+                            "to ${amendedSha}")
+                    } else {
+                        echo "west.yml file is not existed"
+                    }
+                }
+            }
         }
     }
 }

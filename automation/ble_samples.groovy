@@ -21,7 +21,7 @@ def initialize() {
 }
 
 def verify_checkpatch(){
-     sh '''#!/bin/bash -xe
+    int status = sh(script: '''#!/bin/bash -xe
         cd /root/alif/alif/
         if [[ -v CHANGE_ID ]]; then
             ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
@@ -32,11 +32,15 @@ def verify_checkpatch(){
                 echo "Checkpatch passed successfully"
             fi
         fi
-        '''
+        ''',
+        returnStatus: true
+    )
+
+    return status
 }
 
 def verify_gitlint (){
-    sh '''#!/bin/bash -xe
+    int status = sh(script: '''#!/bin/bash -xe
         env
         cd /root/alif/alif/
         if [[ -v CHANGE_ID ]]; then
@@ -44,7 +48,11 @@ def verify_gitlint (){
             git rev-list origin/main..HEAD | xargs -r -n1 gitlint --commit
         fi
         exit $?
-        '''
+        ''',
+        returnStatus: true
+    )
+
+    return status
 }
 
 def is_docs_only_change() {
@@ -154,7 +162,6 @@ def test(String pytest_test){
         sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
         pytest $pytest_test --root-logdir=pytest-logs
         """
-
 }
 
 def get_all_alif_boards (){
@@ -234,7 +241,7 @@ def build_test_apps(boards, samples, args = null) {
                         build_result=\$?
 
                         if [[ \$build_result -eq 0 ]]; then
-                            echo "📌 ✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
+                            echo "📌✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
                             runCnt=\$((runCnt + 1))
                         else
                             echo "❌🚫 Build failed (code: \$build_result) for board: \$boardName, sample: ${appName}"
@@ -253,14 +260,46 @@ def build_test_apps(boards, samples, args = null) {
     return stages
 }
 
-return [
-    initialize: this.&initialize,
-    verify_checkpatch: this.&verify_checkpatch,
-    verify_gitlint: this.&verify_gitlint,
-    is_docs_only_change: this.&is_docs_only_change,
-    build_ble: this.&build_ble,
-    flash_test: this.&flash_test,
-    test: this.&test,
-    get_all_alif_boards: this.&get_all_alif_boards,
-    build_test_apps: this.&build_test_apps
-]
+def checkManifestUpdate() {
+    return sh(
+        script: '''#!/bin/bash
+            set -e
+            #cd /root/alif/alif || exit 99
+
+            last_commiter_email=$(git log -1 --format='%ae')
+            automation_email=$(git config user.email)
+
+            file_count=$(git diff-tree --no-commit-id --name-only -r HEAD | wc -l)
+            changed_file_list=$(git diff-tree --no-commit-id --name-only -r HEAD)
+
+            if printf '%s\n' "$changed_file_list" | grep -Fq "west.yml"; then
+                is_west_updated=1
+            else
+                is_west_updated=0
+            fi
+
+            echo "Last committer email: $last_commiter_email"
+            echo "Automation email: $automation_email"
+            echo "No. of files changed: $file_count"
+
+            if [ "$last_commiter_email" = "$automation_email" ] &&
+               [ "$file_count" -eq 1 ] &&
+               [ "$is_west_updated" -eq 1 ]; then
+                echo "only west.yml file updation with automation"
+                exit 1
+            elif [ "$file_count" -eq 1 ] &&
+                 [ "$is_west_updated" -eq 1 ]; then
+                echo "only west.yml file updation manually"
+                exit 2
+            elif [ "$is_west_updated" -eq 1 ]; then
+                echo "west.yml file updation found in last commit"
+                exit 3
+            else
+                exit 0
+            fi
+        ''',
+        returnStatus: true
+    )
+}
+
+return this
