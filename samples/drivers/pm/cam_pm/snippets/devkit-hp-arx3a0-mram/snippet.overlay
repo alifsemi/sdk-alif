@@ -1,0 +1,3 @@
+/* ARX3A0 on HP devkit */
+#include "../common/hp_platform.overlay"
+#include "../common/sensors/arx3a0_selfie.overlay"
