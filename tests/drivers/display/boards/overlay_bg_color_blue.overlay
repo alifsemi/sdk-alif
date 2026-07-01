@@ -1,0 +1,12 @@
+/* Overlay: Background color = Blue (0x0000FF)
+ * Visual check: Display background should appear blue
+ * Build: west build -b <board> <test_path> \
+ *          -- -DDTC_OVERLAY_FILE=boards/<board>.overlay;overlays/overlay_bg_color_blue.overlay
+ */
+
+&cdc200 {
+	bg-color = <0x0000FF>;
+	def-back-color-l1 = <0x000000>;
+	enable-l1 = <0>;
+	enable-l2 = <0>;
+};
