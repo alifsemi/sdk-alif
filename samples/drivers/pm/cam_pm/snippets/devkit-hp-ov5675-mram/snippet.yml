@@ -1,0 +1,4 @@
+name: devkit-hp-ov5675-mram
+append:
+  EXTRA_DTC_OVERLAY_FILE: snippet.overlay
+  EXTRA_CONF_FILE: prj.conf

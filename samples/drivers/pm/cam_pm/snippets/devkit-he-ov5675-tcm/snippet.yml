@@ -1,0 +1,4 @@
+name: devkit-he-ov5675-tcm
+append:
+  EXTRA_DTC_OVERLAY_FILE: snippet.overlay
+  EXTRA_CONF_FILE: prj.conf

@@ -1,0 +1,3 @@
+/* OV5675 on HE devkit */
+#include "../common/he_platform.overlay"
+#include "../common/sensors/ov5675_selfie.overlay"
