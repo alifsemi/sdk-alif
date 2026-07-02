@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SDIO WiFi Shell Test Suite -->
+<testsuite name="SDIO WiFi Shell Test Suite (wifi_shell_qa)">
+
+  <testcase name="test_build_and_wifi_kconfig">
+    <summary><![CDATA[Verify build and WiFi/SDIO-specific Kconfig options (WIFI, WIFI_AIROC, SDIO_STACK, SDHC_DWC, NET_OFFLOAD).]]></summary>
+    <preconditions><![CDATA[
+1. Zephyr SDK installed, west initialized.
+2. Supported board: alif_e8_dk with SDIO WiFi overlay.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[3]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Build with: west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp samples/net/wifi/shell. Verify Kconfig: WIFI=y, WIFI_AIROC=y, CYW55500=y, SDIO_STACK=y, SDHC_DWC=y, NET_OFFLOAD=y, WIFI_OFFLOAD=y.]]></actions>
+        <expectedresults><![CDATA[Console: "All WiFi Kconfig options verified". Build succeeds. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_sdio_wifi_init_and_device_ready">
+    <summary><![CDATA[SDIO stack init, SDHC probe, airoc-wifi device ready, WiFi reg-on GPIO toggle.]]></summary>
+    <preconditions><![CDATA[
+1. Firmware booted. SDIO WiFi module (CYW55500) present.
+2. GPIO14 pin 7 controls WiFi reg-on (active high).
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[3]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Boot firmware. Observe SDHC init logs. Verify airoc-wifi device binds successfully.]]></actions>
+        <expectedresults><![CDATA[SDHC init OK. airoc-wifi device ready. WiFi reg-on GPIO asserted.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Check shell prompt available. Type 'wifi --help' to list commands.]]></actions>
+        <expectedresults><![CDATA[Shell prompt responsive. wifi commands listed: scan, connect, disconnect, status, etc.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_wifi_scan">
+    <summary><![CDATA[WiFi scan command: request scan, parse results (SSID, channel, RSSI, security).]]></summary>
+    <preconditions><![CDATA[
+1. WiFi device ready. At least one AP within range.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[3]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Type 'wifi scan' in shell. Wait for scan completion.]]></actions>
+        <expectedresults><![CDATA[Console prints scan table: Num | SSID | Chan | RSSI | Sec. At least one entry found. "Scan request done" printed.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Verify scan result columns: SSID non-empty, Chan numeric, RSSI negative dBm, Sec field present.]]></actions>
+        <expectedresults><![CDATA[All fields populated correctly. No empty SSID in valid entries. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_wifi_connect_wpa2">
+    <summary><![CDATA[WiFi connect to WPA2-PSK AP: associate, authenticate, obtain IP via DHCP.]]></summary>
+    <preconditions><![CDATA[
+1. Known AP SSID and passphrase within range.
+2. AP configured for WPA2-PSK.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[3]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Type: wifi connect "<SSID>" <security_type> "<passphrase>". Wait for association.]]></actions>
+        <expectedresults><![CDATA[Console shows "Connection requested" then "Connected". Link status: UP.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Type 'net iface' to verify interface state. Check IPv4 address assigned.]]></actions>
+        <expectedresults><![CDATA[Interface state: UP. IPv4 address assigned (not 0.0.0.0). DHCP lease obtained.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[3]]></step_number>
+        <actions><![CDATA[Verify WiFi status: type 'wifi status'. Check SSID, band, channel, RSSI, security.]]></actions>
+        <expectedresults><![CDATA[SSID matches target. Security shows WPA2. RSSi present. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_wifi_disconnect">
+    <summary><![CDATA[WiFi disconnect: leave network, interface down, IP released.]]></summary>
+    <preconditions><![CDATA[
+1. WiFi connected to an AP.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[3]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Type 'wifi disconnect'. Wait for disconnect completion.]]></actions>
+        <expectedresults><![CDATA[Console shows "Disconnected". Interface state: DOWN.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Type 'net iface'. Verify IPv4 address cleared (0.0.0.0).]]></actions>
+        <expectedresults><![CDATA[IPv4 address unassigned. WiFi status shows disconnected. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_ping_to_gateway">
+    <summary><![CDATA[Network layer validation: ping gateway/AP IP after WiFi connect.]]></summary>
+    <preconditions><![CDATA[
+1. WiFi connected and DHCP IP obtained.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[3]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Type 'net ping <gateway_ip>' or use 'net ping' with default gateway. Send 4 packets.]]></actions>
+        <expectedresults><![CDATA[All 4 ping replies received. RTT values printed. 0% packet loss.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_wifi_reconnect">
+    <summary><![CDATA[WiFi reconnect after disconnect: reconnect to same AP, verify IP re-acquired.]]></summary>
+    <preconditions><![CDATA[
+1. Previously connected to AP and disconnected.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[2]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Type 'wifi connect "<SSID>" <security_type> "<passphrase>"'. Wait for connection.]]></actions>
+        <expectedresults><![CDATA[Connected successfully. DHCP IP obtained.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Verify ping to gateway succeeds after reconnect.]]></actions>
+        <expectedresults><![CDATA[Ping replies received. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_shell_net_commands">
+    <summary><![CDATA[Verify net_shell commands: net iface, net ping, net dns, net stats.]]></summary>
+    <preconditions><![CDATA[
+1. WiFi connected with valid IP.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[2]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Type 'net iface'. Verify interface details: name, index, state, MTU, IPv4 addr, gateway, netmask.]]></actions>
+        <expectedresults><![CDATA[All fields present and valid. MTU > 0. IPv4 not 0.0.0.0.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Type 'net stats'. Verify packet/byte RX/TX counters.]]></actions>
+        <expectedresults><![CDATA[Counters displayed. RX/TX bytes > 0 after ping.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[3]]></step_number>
+        <actions><![CDATA[Type 'net dns' to verify DNS resolver status.]]></actions>
+        <expectedresults><![CDATA[DNS server list printed. Resolver enabled. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_wifi_scan_connect_roaming">
+    <summary><![CDATA[Scan multiple APs, connect to strongest signal, verify band/channel selection.]]></summary>
+    <preconditions><![CDATA[
+1. Multiple APs with same SSID or different SSIDs within range.
+    ]]></preconditions>
+    <execution_type><![CDATA[2]]></execution_type>
+    <importance><![CDATA[2]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Run 'wifi scan'. Identify AP with best RSSI. Note channel and band.]]></actions>
+        <expectedresults><![CDATA[Scan results show multiple APs with varying RSSI values.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Connect to strongest AP. Verify 'wifi status' shows expected channel/band.]]></actions>
+        <expectedresults><![CDATA[Connected to target AP. Channel and band match scan result. Test PASSES.]]></expectedresults>
+        <execution_type><![CDATA[2]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+  <testcase name="test_manual_wifi_stress_and_power">
+    <summary><![CDATA[Manual: 10 connect/disconnect cycles, long-duration stability, WiFi module power cycle.]]></summary>
+    <preconditions><![CDATA[
+1. Physical access to board and WiFi module.
+2. Stable AP within range.
+    ]]></preconditions>
+    <execution_type><![CDATA[1]]></execution_type>
+    <importance><![CDATA[2]]></importance>
+    <steps>
+      <step>
+        <step_number><![CDATA[1]]></step_number>
+        <actions><![CDATA[Perform 10 connect/disconnect cycles. Verify each cycle completes without SDIO bus errors.]]></actions>
+        <expectedresults><![CDATA[All 10 cycles pass. No SDIO CRC or timeout errors.]]></expectedresults>
+        <execution_type><![CDATA[1]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[2]]></step_number>
+        <actions><![CDATA[Leave connected for 30 minutes. Verify periodic ping replies and no disconnection.]]></actions>
+        <expectedresults><![CDATA[Connection stable. No drops.]]></expectedresults>
+        <execution_type><![CDATA[1]]></execution_type>
+      </step>
+      <step>
+        <step_number><![CDATA[3]]></step_number>
+        <actions><![CDATA[Power cycle board. Verify auto-connect or manual reconnect works post-boot.]]></actions>
+        <expectedresults><![CDATA[WiFi module re-initializes correctly. Scan and connect work after power cycle.]]></expectedresults>
+        <execution_type><![CDATA[1]]></execution_type>
+      </step>
+    </steps>
+  </testcase>
+
+</testsuite>

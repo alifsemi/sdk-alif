@@ -1,0 +1,53 @@
+source "Kconfig.zephyr"
+
+config WIFI_ZPERF_TEST_SSID
+	string "WiFi SSID for zperf test"
+	default "Alif-Wireless"
+
+config WIFI_ZPERF_TEST_PSK
+	string "WiFi PSK for zperf test"
+	default "Alif$2o24$"
+
+config WIFI_ZPERF_SERVER_IP
+	string "iperf server IPv4 address"
+	default "10.0.0.76"
+
+config WIFI_ZPERF_SERVER_PORT
+	int "iperf server port"
+	default 5001
+
+config WIFI_ZPERF_TEST_DURATION_SEC
+	int "Upload test duration in seconds"
+	default 10
+
+config WIFI_ZPERF_TCP_PACKET_SIZE
+	int "TCP upload packet size in bytes"
+	default 256
+
+config WIFI_ZPERF_UDP_PACKET_SIZE
+	int "UDP upload packet size in bytes"
+	default 256
+
+config WIFI_ZPERF_UDP_RATE_KBPS
+	int "UDP upload target rate in kbps"
+	default 10000
+
+config WIFI_ZPERF_MIN_TCP_THROUGHPUT_KBPS
+	int "Minimum expected TCP throughput in kbps"
+	default 5000
+	help
+	  TCP upload must achieve at least this throughput to pass.
+
+config WIFI_ZPERF_MIN_UDP_THROUGHPUT_KBPS
+	int "Minimum expected UDP throughput in kbps"
+	default 3000
+	help
+	  UDP upload must achieve at least this throughput to pass.
+
+config WIFI_ZPERF_CONNECT_TIMEOUT_SEC
+	int "WiFi connect timeout in seconds"
+	default 30
+
+config WIFI_ZPERF_STABILITY_ITERATIONS
+	int "Number of iterations for throughput stability test"
+	default 3

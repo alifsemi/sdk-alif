@@ -1,0 +1,19 @@
+ns: &ns {
+	reg = <0x20028000 DT_SIZE_K(96)>;
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+sdhc: &sdhc {
+	compatible = "snps,dwc-sdhc";
+	status = "okay";
+	max-bus-freq = <25000000U>;
+
+	airoc-wifi {
+		compatible = "infineon,airoc-wifi";
+		status = "okay";
+	};
+};
