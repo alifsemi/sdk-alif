@@ -30,6 +30,20 @@ Example command to build:
    OR
    west build -b alif_b1_dk/ab1c1f4m51820hh/rtss_he ../alif/samples/drivers/spi_flash -p -- -DSNIPPET=ospi-flash
 
+Boot XiP Image from Flash
+*************************
+
+To boot an image from OSPI Flash using XiP mode, enable both configurations:
+
+.. code-block:: cfg
+
+   CONFIG_ALIF_OSPI_FLASH_XIP=y
+   CONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE=y
+
+When booting an XiP image from OSPI Flash, the application does not run the
+read, write, or erase test cases. This avoids modifying the flash contents that
+hold the bootable binary.
+
 Sample Output
 =============
 
@@ -85,4 +99,3 @@ Sample Output
 	Total errors after reading erased Sector 5 = 0
 
 	Multi-Sector Erase Test Succeeded !
-
