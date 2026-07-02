@@ -154,7 +154,6 @@ def test(String pytest_test){
         sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
         pytest $pytest_test --root-logdir=pytest-logs
         """
-
 }
 
 def get_all_alif_boards (){
@@ -234,7 +233,7 @@ def build_test_apps(boards, samples, args = null) {
                         build_result=\$?
 
                         if [[ \$build_result -eq 0 ]]; then
-                            echo "📌 ✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
+                            echo "📌✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
                             runCnt=\$((runCnt + 1))
                         else
                             echo "❌🚫 Build failed (code: \$build_result) for board: \$boardName, sample: ${appName}"
@@ -253,6 +252,42 @@ def build_test_apps(boards, samples, args = null) {
     return stages
 }
 
+def github_actions(String action, String msg = "") {
+    withCredentials([usernamePassword(credentialsId: '27c5d944-f190-4ab7-8c37-23cc43c7ce11',
+            usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+        sh """
+            case "${action}" in
+                GET)
+                    echo "get request"
+                    ;;
+                POST)
+                    echo "post request"
+                    curl -sS -o /dev/null -X POST \
+                    "https://api.github.com/repos/${GITHUB_USER_OR_ORG_NAME}/${GITHUB_REPO_NAME}/issues/${CHANGE_ID}/labels" \
+                      -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Content-Type: text/plain" -d '["$msg"]'
+                    ;;
+                remove_label)
+                    echo "label_remove request"
+                    for label in BUILD_AWAITING BUILD_FAILED BUILD_PASSED CHECKPATCH_FAILED ; do
+                        curl -sS -o /dev/null -X DELETE "https://api.github.com/repos/${GITHUB_USER_OR_ORG_NAME}/${GITHUB_REPO_NAME}/issues/${CHANGE_ID}/labels/\$label" \
+                              -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Content-Type: text/plain"
+                    done
+                    ;;
+                DELETE)
+                    echo "delete request"
+                    ;;
+                PATCH)
+                    echo "patch request"
+                    ;;
+                *)
+                echo "Unsupported action: ${action}"
+                exit 1
+                ;;
+            esac
+        """
+    }
+}
+
 return [
     initialize: this.&initialize,
     verify_checkpatch: this.&verify_checkpatch,
@@ -262,5 +297,6 @@ return [
     flash_test: this.&flash_test,
     test: this.&test,
     get_all_alif_boards: this.&get_all_alif_boards,
-    build_test_apps: this.&build_test_apps
+    build_test_apps: this.&build_test_apps,
+    github_actions: this.&github_actions
 ]

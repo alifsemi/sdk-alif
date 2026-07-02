@@ -30,6 +30,12 @@ def gDocsOnlyChange         = false
 
 pipeline {
     agent any
+    environment {
+        GITHUB_USER_OR_ORG_NAME = sh(script: 'echo ${CHANGE_URL:-alifsemi}    | sed -E "s#https://github.com/([^/]+)/([^/]+)/.*#\\1#"', returnStdout: true).trim()
+        GITHUB_REPO_NAME        = sh(script: 'echo ${CHANGE_URL:-zephyr_alif} | sed -E "s#https://github.com/([^/]+)/([^/]+)/.*#\\2#"', returnStdout: true).trim()
+        CHANGE_TARGET           = sh(script: 'echo ${CHANGE_TARGET:-main}', returnStdout: true).trim()
+        GITHUB_TOKEN            = credentials('27c5d944-f190-4ab7-8c37-23cc43c7ce11')
+    }
     options {
         disableConcurrentBuilds(abortPrevious: true)
     }
@@ -52,6 +58,7 @@ pipeline {
             steps {
                 script {
                     common_funcs.initialize()
+                    common_funcs.github_actions("remove_label")
 
                     parallel(
                         checkpatch: {
@@ -186,6 +193,17 @@ pipeline {
                 qualityGates: [[threshold: 1, type: 'NEW', failure: true]],
                 enabledForFailure: true
             )
+        }
+        failure {
+            echo "🚫 Build failed. Sending email..."
+            script {
+                common_funcs.github_actions("POST", "BUILD_FAILED")
+            }
+        }
+        success {
+            script {
+                common_funcs.github_actions("POST", "BUILD_PASSED")
+            }
         }
     }
 }
