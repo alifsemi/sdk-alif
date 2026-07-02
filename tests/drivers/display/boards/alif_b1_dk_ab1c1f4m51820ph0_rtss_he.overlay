@@ -1,0 +1,78 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/ {
+	chosen {
+		zephyr,console = &uart2;
+		zephyr,shell-uart = &uart2;
+	};
+};
+
+&pinctrl_uart2 {
+	group0 {
+		pinmux = <PIN_P8_4__UART2_RX_C>,
+			 <PIN_P8_5__UART2_TX_C>;
+	};
+};
+
+&uart2 {
+	status = "okay";
+};
+
+ns: &ns {
+	status = "okay";
+	reg = <0x20040000 DT_SIZE_K(768)>;
+};
+
+gpio8: &gpio8 {
+	status = "okay";
+};
+
+/ {
+	soc {
+		cdc200: cdc200@49031000 {
+	    width = <800>;
+	    height = <480>;
+	    hfront-porch = <210>;
+		hback-porch = <46>;
+	    hsync-len = <1>;
+	    vfront-porch = <22>;
+	    vback-porch = <23>;
+	    vsync-len = <1>;
+	    clock-frequency = <2779910>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <1>;
+			pixelclk-active = <0>;
+			bg-color = <0x5a5a5a>;
+			enable-l1 = <1>;
+			pixel-fmt-l1 = "rgb-565";
+	    def-back-color-l1 = <0x00ff00>;
+			win-x0-l1 = <0>;
+			win-y0-l1 = <0>;
+			//win-x1-l1 = <480>;
+			win-x1-l1 = <800>;
+	    win-y1-l1 = <480>;
+			//win-y1-l1 = <800>;
+			blend-factor1-l1 = <4>;
+			blend-factor2-l1 = <5>;
+			const-alpha-l1 = <0x7f>;
+	    enable-l2 = <0>;
+	    pixel-fmt-l2 = "argb-8888";
+	    win-x0-l2 = <500>;
+	    win-y0-l2 = <0>;
+	    win-x1-l2 = <800>;
+	    win-y1-l2 = <68>;
+	    blend-factor1-l2 = <4>;
+	    blend-factor2-l2 = <5>;
+	    const-alpha-l2 = <0xaf>;
+		};
+	};
+};

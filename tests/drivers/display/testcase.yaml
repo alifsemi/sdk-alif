@@ -1,0 +1,15 @@
+common:
+  tags:
+    - drivers
+    - display
+  depends_on: display
+  harness: ztest
+  platform_allow:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+tests:
+  drivers.display.cdc200:
+    filter: dt_compat_enabled("alif,cdc200")
