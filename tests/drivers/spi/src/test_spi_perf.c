@@ -13,7 +13,7 @@
 
 #include "test_spi_threads.h"
 
-LOG_MODULE_REGISTER(alif_spi_perf, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(spi_test_perf, LOG_LEVEL_INF);
 
 static void assert_mosi_perf_clean(const char *tag)
 {

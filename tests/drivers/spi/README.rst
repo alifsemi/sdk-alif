@@ -172,9 +172,24 @@ Top-level suite selection:
 
 Test tuning:
 
-- ``CONFIG_TEST_SPI_FREQUENCY``      Base SPI frequency in Hz (default 1 MHz)
+- ``CONFIG_TEST_SPI_FREQUENCY``      Base SPI frequency in Hz (default 1 MHz).
+  This is the **global base** used by all suites (loopback sweep multipliers,
+  boundary max-frequency, negative tests, and performance sweep multipliers).
 - ``CONFIG_TEST_SPI_WORD_SIZE``      Pinned word size for all suites (0 = sweep 8/16/32)
 - ``CONFIG_TEST_SPI_INTERNAL_LOOPBACK`` Use internal loopback mode
+
+Performance sweep (only when ``CONFIG_TEST_SPI_PERFORMANCE=y``):
+
+- ``CONFIG_TEST_SPI_PERF_FREQ_MIN_MHZ``   Start multiplier (default 1)
+- ``CONFIG_TEST_SPI_PERF_FREQ_MAX_MHZ``   End multiplier (default 50)
+- ``CONFIG_TEST_SPI_PERF_FREQ_STEP_MHZ``  Step increment (default 5)
+
+  The sweep evaluates frequencies from ``MIN * TEST_SPI_FREQUENCY`` up to
+  ``MAX * TEST_SPI_FREQUENCY`` in ``STEP`` increments.  The max point is always
+  tested even when it does not fall on a step boundary.
+
+  To test at a **single fixed frequency**, set ``MIN`` and ``MAX`` to the same
+  multiplier (``STEP`` is then ignored).
 
 Setting Kconfig options
 =====================

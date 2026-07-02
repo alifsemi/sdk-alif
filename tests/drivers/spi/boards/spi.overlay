@@ -36,12 +36,22 @@
 &spi1 {
 	status = "okay";
 	interrupts = <SPI1_IRQ 0>;
+	/* Controller samples MISO. At high SCLK the round-trip
+	 * (SCLK out -> target -> MISO back) exceeds one bit period,
+	 * so delay the RX sample point. Tune this for the test freq.
+	 * Units: ssi_clk (HCLK = 200 MHz) cycles. Default in DTS is 4.
+	 */
+	/*rx-delay = <8>;*/
 };
 
 &spi0 {
 	status = "okay";
 	serial-target;
 	interrupts = <SPI0_IRQ 1>;
+	/* Same-chip target RX at 50 MHz: sample on the clock edge
+	 * (no additional delay).  Default rx-delay=4 is too late.
+	 */
+	/*rx-delay = <0>;*/
 };
 
 &pinctrl_spi0 {
@@ -51,6 +61,8 @@
 			 < SPI0_SCLK >,
 			 < SPI0_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };
 
@@ -61,5 +73,7 @@
 			 < SPI1_SCLK >,
 			 < SPI1_SS0 >;
 		read-enable = < 0x1 >;
+		drive-strength = < 12 >;
+		slew-rate = < 1 >;
 	};
 };

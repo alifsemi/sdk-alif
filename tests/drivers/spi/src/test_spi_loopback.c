@@ -16,7 +16,7 @@
 
 #include "test_spi_common.h"
 
-LOG_MODULE_REGISTER(alif_spi_loop, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(spi_test_loop, LOG_LEVEL_INF);
 
 #define LB_DEFAULT_FREQ_HZ  SPI_FREQ_MHZ
 #define LB_BUF_MAX          64
