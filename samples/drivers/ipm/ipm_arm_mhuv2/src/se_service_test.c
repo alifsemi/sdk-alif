@@ -1,4 +1,4 @@
-/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -139,7 +139,6 @@ int thread1_start(void)
 
 	printk("!!!Board config read successfully!!!\n");
 	return 0;
-
 }
 
 
@@ -147,6 +146,7 @@ K_THREAD_DEFINE(thread0, STACK_SIZE, thread0_start,
 		NULL, NULL, NULL, PRIORITY, 0, 0);
 K_THREAD_DEFINE(thread1, STACK_SIZE, thread1_start,
 		NULL, NULL, NULL, PRIORITY, 0, 0);
+
 int main(void)
 {
 	k_thread_start(thread0);

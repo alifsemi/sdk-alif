@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -7,19 +7,13 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
-
-if("${BOARD}" STREQUAL "alif_e7_dk/ae722f80f55d5xx/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_e1c_dk/ae1c1f4051920hh/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_b1_dk/ab1c1f4m51820hh/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_e8_dk/ae822fa0e5597xx0/rtss_he" OR
-	"${BOARD}" STREQUAL "alif_e7_ak/ae722f80f55d5xx/rtss_he"  OR
-	"${BOARD}" STREQUAL "alif_e8_ak/ae822fa0e5597xx0/rtss_he")
-        add_subdirectory(rtss_he)
-elseif("${BOARD}" STREQUAL "alif_e7_dk/ae722f80f55d5xx/rtss_hp"  OR
-	"${BOARD}" STREQUAL "alif_e7_ak/ae722f80f55d5xx/rtss_hp"  OR
-	"${BOARD}" STREQUAL "alif_e8_dk/ae822fa0e5597xx0/rtss_hp" OR
-	"${BOARD}" STREQUAL "alif_e8_ak/ae822fa0e5597xx0/rtss_hp")
-        add_subdirectory(rtss_hp)
-endif()
-
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(mhuv2)
+
+target_include_directories(app PRIVATE include)
+
+target_sources_ifdef(CONFIG_SE_SERVICES app PRIVATE src/se_service_test.c)
+target_sources_ifdef(CONFIG_APSS_R      app PRIVATE src/m55_to_a32_responder.c)
+target_sources_ifdef(CONFIG_HE_HP_S     app PRIVATE src/m55he_to_m55hp_initiator.c)
+target_sources_ifdef(CONFIG_HP_HE_R     app PRIVATE src/m55hp_to_m55he_responder.c)
+target_sources_ifdef(CONFIG_HE_A32_S    app PRIVATE src/m55he_to_a32_initiator.c)

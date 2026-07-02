@@ -1,0 +1,9 @@
+---
+sample:
+  name: MHUv2 driver sample
+tests:
+  sample.drivers.ipm.arm_mhuv2:
+    tags: MHUv2
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he

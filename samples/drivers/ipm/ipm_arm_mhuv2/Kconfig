@@ -1,0 +1,49 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+
+mainmenu "MHUv2 Sample Configuration"
+
+choice
+	prompt "MHUv2 test case"
+	default SE_SERVICES
+	help
+	  Select which test case to build. Exactly one test case is built
+	  per image.
+
+config SE_SERVICES
+	bool "SE services test"
+	help
+	  Build the Secure Enclave (SE) services test case.
+
+config APSS_R
+	bool "M55 responder to APSS (A32) initiated MHU messages"
+	help
+	  Build the M55 responder that replies to MHU messages initiated by
+	  the APSS (A32) core.
+
+config HE_HP_S
+	bool "RTSS-HE (M55) to RTSS-HP (M55) initiator/sender"
+	help
+	  Build the RTSS-HE (M55) to RTSS-HP (M55) MHU initiator/sender.
+
+config HP_HE_R
+	bool "RTSS-HP (M55) to RTSS-HE (M55) responder"
+	help
+	  Build the RTSS-HP (M55) to RTSS-HE (M55) shared MHU responder.
+
+config HE_A32_S
+	bool "RTSS-HE (M55) to APSS (A32) initiator/sender"
+	help
+	  Build the RTSS-HE (M55) to APSS (A32) shared MHU initiator/sender.
+
+endchoice
+
+config USE_MHU1
+	bool "Use MHU1 instead of MHU0 for inter-core communication"
+	default n
+	help
+	  Select MHU1 channel for communication between M55 cores.
+	  Default is MHU0.
+
+source "Kconfig.zephyr"
