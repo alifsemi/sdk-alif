@@ -563,6 +563,11 @@ static void test_single_shot_alarm_instance(const struct device *dev, bool set_t
 		err = counter_set_channel_alarm(dev, 0, &cntr_alarm_cfg);
 		/* int ret1 = check_set_channel_alarm_return_status(err); */
 		cntr_alarm_cfg.ticks = ticks - 1;
+	} else {
+		cntr_alarm_cfg.ticks = ticks;
+		err = counter_set_channel_alarm(dev, 0, &cntr_alarm_cfg);
+		zassert_equal(0, err,
+			"%s:Counter set alarm failed (err:%d)", dev->name, err);
 	}
 
 	/* Wait for alarm with timeout */
@@ -1071,6 +1076,9 @@ static void test_counter_interrupt_fn(const struct device *counter_dev,
 	LOG_INF("!!! Alarm !!!\n");
 	LOG_INF("Now:%u\n", now_sec);
 
+	/* Signal the waiting test thread that the alarm fired */
+	k_sem_give(&alarm_cnt_sem);
+
 	/* Set a new alarm with a double length duration */
 	config->ticks = config->ticks * 2U;
 
@@ -1151,6 +1159,9 @@ static void test_counter_interrupt_cmfn(const struct device *counter_dev,
 
 	LOG_INF("!!! Alarm !!!\n");
 	LOG_INF("Now:%u\n", now_sec);
+
+	/* Signal the waiting test thread that the alarm fired */
+	k_sem_give(&alarm_cnt_sem);
 
 	/* Set a new alarm with a double length duration */
 	config->ticks = config->ticks * 2U;
