@@ -255,6 +255,8 @@ int uart_irq_cb(int ret)
 			return -1;
 		}
 	}
+
+	return 0;
 }
 
 /*
@@ -283,3 +285,9 @@ ZTEST_SUITE(uart_internal_loopback, NULL, NULL, NULL, NULL, NULL);
  */
 ZTEST_SUITE(uart_RTSCTS_suite, NULL, NULL, NULL, NULL, NULL);
 #endif
+
+/*
+ * The DMA async-API suite (uart_dma) is declared in uart_dma_tests.c
+ * because it uses before/after hooks for per-test setup and buffer
+ * release.
+ */

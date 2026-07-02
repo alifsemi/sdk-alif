@@ -1,0 +1,41 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * DMA overlay for E7/E8 DevKits.
+ * Uses uart0 (devnode1, DMA-capable) and uart1 (devnode2, DMA-capable).
+ * uart2 remains the console (PRE_KERNEL_1) to avoid init priority conflicts
+ * with the DMA event router (POST_KERNEL).
+ */
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+#define UART0_DMA_RX_REQ 8
+#define UART0_DMA_TX_REQ 16
+
+/ {
+	chosen {
+		zephyr,devnode1 = &uart0;
+	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&evtrtr0 {
+	status = "okay";
+};
+
+&uart0 {
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 0, 1) UART0_DMA_RX_REQ>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(1, 0, 1) UART0_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
