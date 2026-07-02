@@ -70,6 +70,38 @@ int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 	return pitch;
 }
 
+int video_set_capture_format(const struct device *dev, struct video_format *fmt)
+{
+	int ret;
+
+	ret = video_set_format(dev, CAPTURE_EP, fmt);
+	if (ret) {
+		LOG_ERR("video_set_format on CAPTURE_EP (ep=%d) failed: %d",
+			CAPTURE_EP, ret);
+		return ret;
+	}
+
+#if ISP_ENABLED
+	/* On ISP-enabled builds the application sees OUTPUT_FORMAT on EP_OUT,
+	 * not the raw sensor format on EP_IN. Rewrite *fmt so the caller's
+	 * buffer-size math (pitch * height) targets the ISP output, then set
+	 * that format on EP_OUT.
+	 */
+	fmt->pixelformat = OUTPUT_FORMAT;
+	fmt->width       = ISP_OUTPUT_WIDTH;
+	fmt->height      = ISP_OUTPUT_HEIGHT;
+	fmt->pitch       = fourcc_to_pitch(fmt->pixelformat, fmt->width);
+
+	ret = video_set_format(dev, VIDEO_EP_OUT, fmt);
+	if (ret) {
+		LOG_ERR("video_set_format on VIDEO_EP_OUT failed: %d", ret);
+		return ret;
+	}
+#endif /* ISP_ENABLED */
+
+	return 0;
+}
+
 void manual_suite_before(void *fixture)
 {
 	ARG_UNUSED(fixture);
