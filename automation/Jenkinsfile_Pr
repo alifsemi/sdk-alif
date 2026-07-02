@@ -323,7 +323,7 @@ pipeline {
                     if(zephyr_pr_number) {
                         job_config.repo      = job_config.zephyr_repo
                         job_config.changeId  = zephyr_pr_number
-                        echo "Add labels => ${job_config.label}"
+                        echo "Add labels     => ${job_config.label}"
                         utils.github.addLabel(job_config)
                     }
 
