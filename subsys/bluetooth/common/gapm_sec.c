@@ -105,8 +105,14 @@ static void on_le_encrypt_req(uint8_t conidx, uint32_t metainfo, uint16_t ediv,
 {
 	uint16_t err;
 
-	err = gapc_le_encrypt_req_reply(conidx, true, &stored_keys.ltk.key,
-					stored_keys.ltk.key_size);
+	/* Legacy pairing: use locally generated LTK.
+	 * SC pairing: on_ltk_req never called, fall back to stored peer key.
+	 */
+	bool use_generated = (generated_keys.valid_key_bf & GAP_KDIST_ENCKEY) != 0;
+	const gap_sec_key_t *ltk = use_generated ? &generated_keys.ltk.key : &stored_keys.ltk.key;
+	uint8_t key_size = use_generated ? generated_keys.ltk.key_size : stored_keys.ltk.key_size;
+
+	err = gapc_le_encrypt_req_reply(conidx, true, ltk, key_size);
 
 	if (err) {
 		LOG_ERR("Error during encrypt request reply %u", err);
