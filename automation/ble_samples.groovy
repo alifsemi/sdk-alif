@@ -116,7 +116,6 @@ def test(String pytest_test){
         sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
         pytest $pytest_test --root-logdir=pytest-logs
         """
-
 }
 
 def get_all_alif_boards (){
@@ -196,7 +195,7 @@ def build_test_apps(boards, samples, args = null) {
                         build_result=\$?
 
                         if [[ \$build_result -eq 0 ]]; then
-                            echo "📌 ✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
+                            echo "📌✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
                             runCnt=\$((runCnt + 1))
                         else
                             echo "❌🚫 Build failed (code: \$build_result) for board: \$boardName, sample: ${appName}"
