@@ -27,14 +27,14 @@ What it takes to accelerate LVGL with D/AVE 2D
      CONFIG_LV_USE_DRAW_DAVE2D=y
 
   ``CONFIG_DAVE2D`` exposes the D/AVE 2D ``d0``/``d1``/``d2`` headers globally and
-  the LVGL draw unit (``src/draw/renesas/dave2d``) is compiled in when
+  the LVGL D/AVE 2D draw unit is compiled in when
   ``LV_USE_DRAW_DAVE2D`` is set.
 
-* **hal_data.h shim** - LVGL's D/AVE 2D draw unit was written against the Renesas
-  FSP and includes ``hal_data.h``, from which it obtains the D/AVE 2D driver, the
-  framebuffer colour format (``g_display0_cfg``) and the D-cache configuration
+* **bsp_api.h shim** - since LVGL 9.5.0 the D/AVE 2D draw unit includes
+  ``bsp_api.h``, from which it obtains the D/AVE 2D driver,
+  the framebuffer colour format and the D-cache configuration
   (``BSP_CFG_DCACHE_ENABLED``). Zephyr does not provide this header, so the sample
-  ships a small compatibility shim in :file:`include/hal_data.h` that maps the TES
+  ships a small compatibility shim in :file:`include/bsp_api.h` that maps the TES
   D/AVE 2D driver headers, reports the framebuffer format that matches the LVGL
   colour depth, and enables the draw unit's cache maintenance. The shim is added
   to the global include path with ``zephyr_include_directories()`` so it is
@@ -47,9 +47,10 @@ What it takes to accelerate LVGL with D/AVE 2D
 * **Cache coherency** - the Alif Cortex-M55 runs with its D-cache enabled and the
   GPU buffers live in cacheable SRAM, so the CPU and the GPU must be kept
   coherent. The draw unit already performs the required clean/invalidate around
-  the GPU source and destination buffers, gated by ``BSP_CFG_DCACHE_ENABLED``;
-  the shim enables those paths, which use portable CMSIS (``SCB_*``) and the Alif
-  ``d1_cacheblockflush()`` helper.
+  the GPU source and destination buffers, gated by ``ARM_CORTEX_M55_M85`` and
+  ``BSP_CFG_DCACHE_ENABLED`` (both defined in the sample's CMakeLists.txt); the
+  shim provides the portable CMSIS (``SCB_*``) and Alif ``d1_cacheblockflush()``
+  helpers those paths use.
 
 * **Devicetree** - the GPU node is not part of the SoC devicetree, so the board
   overlays add it together with the ``d2-inst`` alias the D/AVE 2D ``d1`` layer

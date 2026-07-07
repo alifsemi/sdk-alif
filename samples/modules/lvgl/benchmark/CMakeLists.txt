@@ -16,10 +16,17 @@ set(LVGL_DIR ${ZEPHYR_LVGL_MODULE_DIR})
 
 target_sources(app PRIVATE src/main.c)
 
+# Shared demo entry helper (lv_demo_args_init) used by the LVGL demos; split out
+# into its own translation unit in LVGL 9.5.0. Needed by any enabled demo, so
+# gate on either the benchmark or the widgets demo being built.
+if(CONFIG_LV_USE_DEMO_WIDGETS OR CONFIG_LV_USE_DEMO_BENCHMARK)
+  target_sources(app PRIVATE ${LVGL_DIR}/demos/lv_demos.c)
+endif()
+
 target_include_directories(app PRIVATE ${LVGL_DIR}/demos/)
 
-# LVGL's upstream D/AVE 2D draw unit was written for the Renesas FSP and pulls in
-# "hal_data.h". The include/ directory provides a compatibility shim that maps
+# LVGL's upstream D/AVE 2D draw unit pulls in
+# "bsp_api.h". The include/ directory provides a compatibility shim that maps
 # the TES D/AVE 2D driver headers. It must be visible to the LVGL module library
 # build (not just the app), so it is added to the global include path.
 zephyr_include_directories(include)
@@ -40,13 +47,18 @@ target_sources_ifdef(CONFIG_LV_USE_DEMO_BENCHMARK app PRIVATE
     ${LVGL_DIR}/demos/benchmark/assets/img_benchmark_avatar.c
     ${LVGL_DIR}/demos/benchmark/assets/img_benchmark_lvgl_logo_argb.c
     ${LVGL_DIR}/demos/benchmark/assets/img_benchmark_lvgl_logo_rgb.c
-    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_12_compr_az.c.c
-    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_16_compr_az.c.c
-    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_28_compr_az.c.c
+    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_14_aligned.c
+    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_20_aligned.c
+    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_24_aligned.c
+    ${LVGL_DIR}/demos/benchmark/assets/lv_font_benchmark_montserrat_26_aligned.c
 )
 
 target_sources_ifdef(CONFIG_LV_USE_DEMO_WIDGETS app PRIVATE
     ${LVGL_DIR}/demos/widgets/lv_demo_widgets.c
+    ${LVGL_DIR}/demos/widgets/lv_demo_widgets_analytics.c
+    ${LVGL_DIR}/demos/widgets/lv_demo_widgets_components.c
+    ${LVGL_DIR}/demos/widgets/lv_demo_widgets_profile.c
+    ${LVGL_DIR}/demos/widgets/lv_demo_widgets_shop.c
     ${LVGL_DIR}/demos/widgets/assets/img_clothes.c
     ${LVGL_DIR}/demos/widgets/assets/img_demo_widgets_avatar.c
     ${LVGL_DIR}/demos/widgets/assets/img_demo_widgets_needle.c
