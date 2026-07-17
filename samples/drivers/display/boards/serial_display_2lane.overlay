@@ -8,6 +8,8 @@
  *
  */
 
+#include <dt-bindings/misc/alif_aipm_common.h>
+
 / {
 	soc {
 		cdc200: cdc200@49031000 {
@@ -54,4 +56,14 @@
 
 &gpio14 {
 	status = "okay";
+};
+
+&aipm_run_default {
+	phy-pwr-gating = <(ALIF_PHY_GATE_LDO_MASK |
+			ALIF_PHY_GATE_MIPI_TX_DPHY_MASK |
+			ALIF_PHY_GATE_MIPI_RX_DPHY_MASK |
+			ALIF_PHY_GATE_MIPI_PLL_DPHY_MASK)>;
+	ip-clock-gating = <(ALIF_IP_CLK_GATE_CDC200_MASK |
+			ALIF_IP_CLK_GATE_MIPI_DSI_MASK |
+			ALIF_IP_CLK_GATE_GPU_MASK)>;
 };
