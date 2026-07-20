@@ -136,7 +136,7 @@ int main(void)
 
 	if (channel_cfg.channel_id == ADC_CHANNEL_6) {
 		temp = get_temperature(buffer[0]);
-		if (temp == -1) {
+		if (temp == -255.0f) {
 			LOG_ERR(" Error: Temperature is outside range");
 		} else {
 			LOG_INF("Current temp %0.1f C", (double)temp);
