@@ -156,6 +156,15 @@ void led_worker_handler(struct k_work *work);
 
 static K_WORK_DELAYABLE_DEFINE(led_work, led_worker_handler);
 
+static bool led0_target_state;
+
+static void led0_worker_handler(struct k_work *work)
+{
+	ble_gpio_led_set(&led0, led0_target_state);
+}
+
+static K_WORK_DEFINE(led0_work, led0_worker_handler);
+
 /* Functions */
 
 static void update_led_state(void)
@@ -293,11 +302,8 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 			} else {
 				memcpy(&env.char1_val, co_buf_data(p_data), sizeof(env.char1_val));
 				LOG_DBG("TOGGLE LED, state %d", env.char1_val);
-				if (env.char1_val) {
-					ble_gpio_led_set(&led0, true);
-				} else {
-					ble_gpio_led_set(&led0, false);
-				}
+				led0_target_state = env.char1_val;
+				k_work_submit(&led0_work);
 			}
 			break;
 		}
