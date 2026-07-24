@@ -1,0 +1,20 @@
+common:
+  tags:
+    - net
+    - dhcpv4
+    - ethernet
+    - alif
+  depends_on: netif
+  harness: ztest
+  timeout: 900
+  # Real-hardware test: needs the board cabled to a LAN with an active
+  # DHCP server. Not runnable on emulation/CI, only on physical Alif DevKits.
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822f80f55d5xx/rtss_he
+    - alif_e8_dk/ae822f80f55d5xx/rtss_hp
+tests:
+  net.alif.ethernet.dhcpv4:
+    # Validates the real Alif DWMAC + RTL8201FR PHY DHCPv4 client path.
+    slow: true
