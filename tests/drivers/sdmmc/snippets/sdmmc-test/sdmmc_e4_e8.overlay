@@ -11,6 +11,10 @@ ns: &ns {
 	status = "okay";
 };
 
+&gpio3 {
+	status = "okay";
+};
+
 &gpio14 {
 	status = "okay";
 };
