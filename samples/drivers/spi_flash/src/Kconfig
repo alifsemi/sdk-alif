@@ -1,0 +1,9 @@
+# Copyright (C) 2026 Alif Semiconductor.
+# SPDX-License-Identifier: Apache-2.0
+
+config ALIF_OSPI_FLASH_BOOT_XIP_IMAGE
+	bool "Boot image from OSPI XIP"
+	depends on ALIF_OSPI_FLASH_XIP
+	help
+	  Boot or jump to an image stored in OSPI flash XIP address space.
+          This option is only for demonstration purposes.
