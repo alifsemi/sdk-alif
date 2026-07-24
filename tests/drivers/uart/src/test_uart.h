@@ -21,8 +21,13 @@
 #include <zephyr/ztest.h>
 #include <zephyr/sys/util.h>
 
-#if !DT_HAS_CHOSEN(zephyr_devnode1) || !DT_HAS_CHOSEN(zephyr_devnode2)
-#error "UART test requires DT chosen nodes zephyr,devnode1 and zephyr,devnode2. " \
+#if !DT_HAS_CHOSEN(zephyr_devnode1)
+#error "UART test requires DT chosen node zephyr,devnode1. " \
+	"Apply boards/alif_uart.overlay (or pass -DDTC_OVERLAY_FILE=boards/alif_uart.overlay)."
+#endif
+
+#if !DT_HAS_CHOSEN(zephyr_devnode2) && CONFIG_TEST_EXTERNAL_LB
+#error "External loopback test requires DT chosen node zephyr,devnode2. " \
 	"Apply boards/alif_uart.overlay (or pass -DDTC_OVERLAY_FILE=boards/alif_uart.overlay)."
 #endif
 

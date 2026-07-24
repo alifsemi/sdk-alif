@@ -14,6 +14,7 @@ The tests verify:
 * **External Loopback**: Physical loopback testing requiring TX-RX connection.
 * **Baud Rate Testing**: Verification across standard rates (300 to 2.5 Mbps).
 * **RTS/CTS Flow Control**: Hardware handshaking verification.
+* **DMA Async API**: DMA-based TX/RX using the Zephyr async UART API, including buffer request/release, TX abort, and RX timeout events.
 
 Building and Running
 ********************
@@ -38,6 +39,11 @@ Specify these using ``-DCONFIG_<FLAG>=y``:
 * ``CONFIG_TEST_INTERNAL_LB=y``: Enables Internal Loopback test suite.
 * ``CONFIG_TEST_EXTERNAL_LB=y``: Enables External Loopback test suite (requires physical TX-RX connection).
 * ``CONFIG_TEST_UART_RTSCTS=y``: Enables RTS/CTS flow control tests.
+* ``CONFIG_TEST_UART_DMA=y``: Enables DMA async API test suite. The DMA
+  test suite also needs the DMA / async-API Kconfig options, which are kept
+  in a dedicated ``dma.conf`` (which also sets ``CONFIG_TEST_UART_DMA=y``).
+  Pass it with ``-DEXTRA_CONF_FILE=dma.conf`` instead of enabling the flag
+  manually, so DMA options do not affect the non-DMA suites.
 
 **Overlay Files:**
 
@@ -69,6 +75,11 @@ All helper files are located in the ``boards/`` directory.
     *   ``alif_lpuart_921600.overlay``: 921600 baud.
     *   ``alif_lpuart_2500000.overlay``: 2.5 Mbps.
 
+*   **DMA Overlays** (both uart0 (devnode1) and uart1 (devnode2) are DMA-capable;
+    uart2 is kept as console to avoid init priority conflicts with the DMA event router):
+    *   ``alif_uart_dma.overlay``: E7/E8 DevKit DMA overlay (uart0 + uart1 on dma0/evtrtr0).
+    *   ``alif_uart_dma_b1.overlay``: B1 DevKit DMA overlay (uart2 + uart1 on dma2/evtrtr2).
+
 **Example Build Commands:**
 
 .. code-block:: console
@@ -87,6 +98,12 @@ All helper files are located in the ``boards/`` directory.
 
    # Internal Loopback Test on LP-UART
    west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_lpuart.overlay" -DCONFIG_TEST_INTERNAL_LB=y
+
+   # DMA Async API Test (E7/E8)
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart_dma.overlay" -DEXTRA_CONF_FILE=dma.conf
+
+   # DMA Async API Test (B1)
+   west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he tests/drivers/uart -DDTC_OVERLAY_FILE="boards/alif_uart_dma_b1.overlay" -DEXTRA_CONF_FILE=dma.conf
 
 Sample Output
 =============
