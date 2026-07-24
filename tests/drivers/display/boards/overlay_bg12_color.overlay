@@ -1,0 +1,13 @@
+/* Overlay: Background color = 0x002824
+ * Visual check: Display background should appear as configured
+ */
+
+&cdc200 {
+	bg-color = <0x002824>;
+	enable-l1 = <0>;
+	def-back-color-l1 = <0x005048>;
+	enable-l2 = <0>;
+	def-back-color-l2 = <0x00ffe7>;
+	const-alpha-l1 = <0x7f>;
+	const-alpha-l2 = <0xaf>;
+};
