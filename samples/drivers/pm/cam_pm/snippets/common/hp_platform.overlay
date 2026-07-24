@@ -1,0 +1,65 @@
+/* Common HP platform configuration for cam_pm sample */
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+/* === Wakeup Timer === */
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+/* === Peripheral enables/disables === */
+&lpgpio { status = "disabled"; };
+&uart4  { status = "okay"; };
+&uart2  { status = "disabled"; };
+
+/* === PM Power States === */
+&subsys_off {
+	min-residency-us = <8000000>;
+	status = "okay";
+};
+
+/* === AIPM Profiles === */
+&aipm_run_default {
+	aipm-power-domains = <(ALIF_PD_SSE700_AON_MASK | ALIF_PD_SYST_MASK | ALIF_PD_DBSS_MASK)>;
+	phy-pwr-gating = <(ALIF_PHY_GATE_MIPI_TX_DPHY_MASK | ALIF_PHY_GATE_MIPI_RX_DPHY_MASK |
+				ALIF_PHY_GATE_MIPI_PLL_DPHY_MASK | ALIF_PHY_GATE_LDO_MASK)>;
+	ip-clock-gating = <(ALIF_IP_CLK_GATE_CAMERA_MASK | ALIF_IP_CLK_GATE_MIPI_CSI_MASK |
+				ALIF_IP_CLK_GATE_MIPI_DSI_MASK)>;
+	memory-blocks   = <(ALIF_MRAM_MASK | ALIF_SRAM0_MASK)>;
+};
+
+&aipm_off {
+	status = "okay";
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK | ALIF_SRAM0_MASK)>;
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg      = <ALIF_EWIC_RTC_A>;
+};
+
+/* === Clocks === */
+&clk_38p4m { status = "okay"; };
+&clk_100m  { status = "okay"; };
+
+/* === GPIO === */
+&gpio7  { status = "okay"; };
+&gpio14 { status = "okay"; };
+
+/* === I2C === */
+&i2c1 { status = "okay"; };
+
+/* === Chosen / Aliases === */
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+		zephyr,console = &uart4;
+	};
+		aliases {
+			camera = &cam;
+		};
+};
