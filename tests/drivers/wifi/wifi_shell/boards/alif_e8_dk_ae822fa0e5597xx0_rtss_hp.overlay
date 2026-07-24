@@ -1,0 +1,28 @@
+ns: &ns {
+	reg = <0x20028000 DT_SIZE_K(96)>;
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+sdhc: &sdhc {
+	compatible = "snps,dwc-sdhc";
+	status = "okay";
+
+	airoc-wifi {
+		compatible = "infineon,airoc-wifi";
+		status = "okay";
+
+		wifi-reg-on-gpios    = <&gpio14 7 GPIO_ACTIVE_HIGH>;
+	};
+};

@@ -1,0 +1,27 @@
+tests:
+  net.wifi.shell.sdio.1yn:
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - OVERLAY_CONFIG="1yn.conf"
+    tags:
+      - net
+      - wifi
+      - sdio
+      - 1yn
+  net.wifi.shell.sdio.2fy:
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    extra_args:
+      - OVERLAY_CONFIG="2fy.conf"
+    tags:
+      - net
+      - wifi
+      - sdio
+      - 2fy
