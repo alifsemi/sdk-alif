@@ -5,13 +5,16 @@ Setting Up and Building Zephyr Applications
 
 This guide covers:
 
+- Setting up the host system.
+- Fetching and installing the Alif Zephyr SDK.
 - Building a sample application.
+- Flashing and debugging an application.
 
 .. note::
-   Examples in this document use the Ensemble E7 DevKit unless otherwise specified.
+   Examples in this document use the Alif E7 DevKit unless otherwise specified.
 
 Setting Up the Host System
-------------------------------
+--------------------------
 
 Follow these steps to install dependencies and configure the environment for the Alif SDK.
 
@@ -21,20 +24,19 @@ Follow these steps to install dependencies and configure the environment for the
 
       sudo apt update -y
 
-2. Install required dependencies using ``apt``:
+2. Install the required dependencies:
 
    .. code-block:: console
 
-     sudo apt install -y --no-install-recommends \
-     python3-dev python3-pip python3-venv \
-     git wget xz-utils file make \
-     python3-setuptools python3-wheel \
-     ninja-build build-essential cmake libmagic1
+      sudo apt install -y --no-install-recommends \
+         python3-dev python3-pip python3-venv \
+         git wget xz-utils file make \
+         python3-setuptools python3-wheel \
+         ninja-build build-essential cmake libmagic1
 
+3. Create and activate a Python virtual environment.
 
-3. Create and activate a Python virtual environment:
-
-   a. Create the virtual environment if not already set up:
+   a. Create the virtual environment:
 
       .. code-block:: console
 
@@ -46,67 +48,116 @@ Follow these steps to install dependencies and configure the environment for the
 
          source ~/zephyrproject/.venv/bin/activate
 
-      Your shell prompt will show ``(.venv)`` when activated.
+      Your shell prompt displays ``(.venv)`` when the environment is active.
 
       .. note::
-         Activate the virtual environment in every new terminal session before running
-         Python or ``west`` commands. Deactivate with ``deactivate`` when done.
 
-4. Install Python packages:
+         Activate the virtual environment in every new terminal session before
+         running Python or ``west`` commands. When finished, deactivate it by
+         running:
+
+         .. code-block:: console
+
+            deactivate
+
+4. Install the required Python packages:
 
    .. code-block:: console
 
       pip install west pyelftools
 
-Fetching and installing the Alif Zephyr SDK
-----------------------------------------------
 
-This section explains how to build Zephyr using the GCC toolchain. For details on
-toolchain selection, refer to Zephyr's documentation:
+Fetching and Installing the Alif Zephyr SDK
+-------------------------------------------
+
+This section explains how to fetch the Alif Zephyr SDK and install the required
+components for building Zephyr applications. For information about supported
+toolchains, refer to Zephyr's documentation:
 `Toolchain Selection <https://docs.zephyrproject.org/latest/develop/toolchains/index.html>`_.
 
-Fetch the SDK source from the ``main`` branch:
+1. Create a workspace:
 
-.. code-block:: console
+   .. code-block:: console
 
-   mkdir sdk-alif
-   cd sdk-alif
-   west init -m https://github.com/alifsemi/sdk-alif --mr ${revision}
-   west update
+      mkdir sdk-alif
+      cd sdk-alif
 
-Replace ``${revision}`` with the desired SDK revision (branch, tag, or commit SHA).
-Use ``main`` for the latest state, or specify a commit SHA or tag.
+2. Initialize the workspace:
 
-**Syntax:**
+   .. code-block:: console
 
-.. code-block:: console
+      west init -m https://github.com/alifsemi/sdk-alif --mr ${REVISION}
 
-   west init -m <URL> --mr <REVISION>
+   Replace ``${REVISION}`` with the required SDK revision (branch, tag, or
+   commit SHA). Use ``main`` for the latest development branch.
 
-**Example:**
+   **Syntax:**
 
-.. code-block:: console
+   .. code-block:: console
 
-   west init -m https://github.com/alifsemi/sdk-alif --mr v2.2.0-zas-branch
+      west init -m <URL> --mr <REVISION>
 
-**Install required Python packages for building:**
+   **Example:**
 
-.. code-block:: console
+   .. code-block:: console
 
-   pip install -r zephyr/scripts/requirements.txt
+      west init -m https://github.com/alifsemi/sdk-alif --mr v2.2-zas-branch
 
-**Install sdk:**
+   .. note::
 
-.. code-block:: console
+      If ``west init`` fails because an incorrect revision was specified,
+      the ``.west`` workspace may still be created. Remove it before retrying.
 
-   west sdk install
+      .. code-block:: console
+
+         rm -rf .west
+
+3. Fetch all dependency repositories defined in the west manifest:
+
+   .. code-block:: console
+
+      west update
+
+   .. note::
+
+      To switch to a different SDK branch after the workspace has been
+      initialized, navigate to the alif repository directory within the
+      workspace:
+
+      .. code-block:: console
+
+         cd alif
+         git fetch
+         git checkout <branch-name>
+         git pull
+         west update
+
+4. Install the Python packages required by Zephyr's build system.
+
+   These packages are used by Zephyr for building, flashing, and debugging.
+
+   .. code-block:: console
+
+      pip install -r zephyr/scripts/requirements.txt
+
+5. Install the Zephyr SDK.
+
+   This installs the GCC cross-compilation toolchain required to build Zephyr
+   applications.
+
+   .. code-block:: console
+
+      west sdk install
 
 
 Building an Application
 -----------------------
 
 Supported Board Targets as per new hardware model v2 (Zephyr v4.1.0 and onwards):
-<board name[@revision][/board qualifiers]>
+
+::
+
+   <board name[@revision][/board qualifiers]>
 
 - alif_e7_dk/ae722f80f55d5xx/rtss_he
 - alif_e7_dk/ae722f80f55d5xx/rtss_hp
@@ -133,14 +184,14 @@ a. Navigate to the Zephyr directory:
 
       cd zephyr
 
-b. Build the Hello World application:
+b. Build the Hello World application.
 
-   An application that prints a "Hello World" message along with the board name.
-   By default, code execution takes place from MRAM.
+   The Hello World application prints a greeting message along with the board
+   name. By default, the application executes from MRAM.
 
 **RTSS-HE**
 
-- Build for MRAM (Address: 0x80000000):
+- Build for MRAM (Address: ``0x80000000``):
 
   .. code-block:: console
 
@@ -157,10 +208,9 @@ b. Build the Hello World application:
        -DCONFIG_FLASH_LOAD_OFFSET=0 \
        -DCONFIG_FLASH_SIZE=256
 
-
 **RTSS-HP**
 
-- Build for MRAM (Address: 0x80200000):
+- Build for MRAM (Address: ``0x80200000``):
 
   .. code-block:: console
 
@@ -177,10 +227,14 @@ b. Build the Hello World application:
        -DCONFIG_FLASH_LOAD_OFFSET=0 \
        -DCONFIG_FLASH_SIZE=256
 
-
 .. note::
-   By default, Ninja is used. To switch to Unix Makefiles, add the following option:
-   ``-- -G "Unix Makefiles"``
+
+   Ninja is used as the default build system. To use Unix Makefiles instead,
+   append the following option to the ``west build`` command:
+
+   .. code-block:: console
+
+      -- -G "Unix Makefiles"
 
 
 Flashing the Application
@@ -222,6 +276,12 @@ for SE-UART device communication.
    .. code-block:: console
 
       export ALIF_SE_TOOLS_DIR=path/of/extracted/directory
+
+   **Example:**
+
+   .. code-block:: console
+
+      export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.111.00_DEV
 
 4. Set device permissions:
 
