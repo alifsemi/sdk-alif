@@ -40,9 +40,43 @@ config TEST_SPI_PERFORMANCE
 	bool "Performance tests"
 	help
 	  Enable the SPI performance test suite.  It runs back-to-back
-	  MOSI, MISO and full-duplex transceive tests across 8, 16 and
-	  32-bit word sizes while sweeping frequencies from 1x to 25x
-	  the base rate, reporting cycle counts and elapsed time.
+	  MOSI, MISO and full-duplex transceive tests while sweeping the
+	  frequency from TEST_SPI_PERF_FREQ_MIN_MHZ to
+	  TEST_SPI_PERF_FREQ_MAX_MHZ (defaults 1x..50x the base rate) in
+	  TEST_SPI_PERF_FREQ_STEP_MHZ increments, reporting cycle counts
+	  and elapsed time.
+
+# ---------------------------------------------------------------------------
+# Performance sweep range (multipliers of TEST_SPI_FREQUENCY)
+# ---------------------------------------------------------------------------
+
+config TEST_SPI_PERF_FREQ_MIN_MHZ
+	int "Performance sweep start frequency (x base)"
+	depends on TEST_SPI_PERFORMANCE
+	default 1
+	help
+	  First frequency multiplier of the performance sweep, in units
+	  of TEST_SPI_FREQUENCY (default base 1 MHz).  With the default
+	  base of 1 MHz this is the start frequency in MHz.
+
+config TEST_SPI_PERF_FREQ_MAX_MHZ
+	int "Performance sweep end frequency (x base)"
+	depends on TEST_SPI_PERFORMANCE
+	default 5
+	help
+	  Last frequency multiplier of the performance sweep, in units
+	  of TEST_SPI_FREQUENCY (default base 1 MHz).  With the default
+	  base of 1 MHz this is the end frequency in MHz.
+
+config TEST_SPI_PERF_FREQ_STEP_MHZ
+	int "Performance sweep step (x base)"
+	depends on TEST_SPI_PERFORMANCE
+	range 1 5
+	default 1
+	help
+	  Increment between consecutive sweep points, in units of
+	  TEST_SPI_FREQUENCY.  The endpoint TEST_SPI_PERF_FREQ_MAX_MHZ is
+	  always tested even if it does not fall on a step boundary.
 
 # ---------------------------------------------------------------------------
 # Test options

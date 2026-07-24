@@ -40,7 +40,7 @@
 
 #include "test_spi_threads.h"
 
-LOG_MODULE_REGISTER(alif_spi_stress, LOG_LEVEL_INF);
+LOG_MODULE_REGISTER(spi_test_stress, LOG_LEVEL_INF);
 
 #define STRESS_DEFAULT_ITERS    100
 #define STRESS_PATTERN_ITERS    50
