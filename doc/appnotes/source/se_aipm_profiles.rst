@@ -210,7 +210,7 @@ Example — Enabling the Off Profile for TCM in a Board Overlay
 
 .. code-block:: dts
 
-   /* Override vtor-address for TCM boot */
+   /* HE TCM boot: vtor-address = 0 (SRAM4/SRAM5 are ITCM/DTCM) */
    &aipm_off {
        vtor-address = <0x00000000>;
        status = "okay";
@@ -260,6 +260,92 @@ Example — Enabling the Off Profile for MRAM in a Board Overlay
    (safe default — no spurious wakeups). Always set them explicitly in the
    board overlay for the desired wakeup source.
 
+Example — SRAM0 Off Profile for HP Core (E8 / Ensemble Gen2 only)
+------------------------------------------------------------------
+
+The HP core uses SRAM0 as data RAM on E8 boards. A first-stage loader in
+MRAM powers up SRAM0 before the Zephyr image runs. The ``vtor-address``
+must point to the loader's address so the SE restores execution there on
+wakeup; ``0x80100000`` is an example — set it to match the actual loader
+placement.
+
+.. code-block:: dts
+
+   /* HP core SRAM0 boot: first-stage binary at 0x80100000 restores SRAM0 */
+   &aipm_off {
+       vtor-address = <0x80100000>;
+       status = "okay";
+   };
+
+   /* SUSPEND_TO_RAM substate 0 (STANDBY) — full SRAM0 retention */
+   &off_profile_standby {
+       status = "okay";
+       memory-blocks = <(ALIF_SRAM0_MASK       | ALIF_SRAM1_MASK |
+                         ALIF_MRAM_MASK         | ALIF_SERAM_MASK |
+                         ALIF_SRAM0_1_RET_MASK  | ALIF_SRAM0_2_RET_MASK |
+                         ALIF_SRAM0_3_RET_MASK  | ALIF_SRAM0_4_RET_MASK |
+                         ALIF_SRAM1_RET_MASK)>;
+       wakeup-events = <ALIF_WE_LPRTC>;
+       ewic-cfg      = <ALIF_EWIC_RTC_A>;
+       aon-clk-src   = "lfrc";
+   };
+
+   /* SUSPEND_TO_RAM substate 1 (STOP) — same retention */
+   &off_profile_stop {
+       status = "okay";
+       memory-blocks = <(ALIF_SRAM0_MASK       | ALIF_SRAM1_MASK |
+                         ALIF_MRAM_MASK         | ALIF_SERAM_MASK |
+                         ALIF_SRAM0_1_RET_MASK  | ALIF_SRAM0_2_RET_MASK |
+                         ALIF_SRAM0_3_RET_MASK  | ALIF_SRAM0_4_RET_MASK |
+                         ALIF_SRAM1_RET_MASK)>;
+       wakeup-events = <ALIF_WE_LPRTC>;
+       ewic-cfg      = <ALIF_EWIC_RTC_A>;
+       aon-clk-src   = "lfrc";
+   };
+
+   / {
+       chosen {
+           zephyr,sram = &sram0;
+       };
+   };
+
+.. note::
+   ``ALIF_SRAM0_*_RET_MASK`` constants are defined only in the Ensemble Gen2
+   (E8) DT-bindings header.
+
+Example — SOFT_OFF Off Profile (MRAM boot, HE or HP)
+-----------------------------------------------------
+
+For MRAM boot targets (no TCM/SRAM0 retention), ``PM_STATE_SOFT_OFF`` is
+used.  Only ``MRAM`` and ``SERAM`` are retained (the system resets on
+wakeup and re-runs from ``main()``).  Wakeup source differs by core:
+HE uses the RTC; HP uses LPTIMER0 (the RTC is not available to HP in this
+mode since it may be held by HE).
+
+.. code-block:: dts
+
+   /* Common: enable SOFT_OFF off-profile with minimum retention */
+   &aipm_off {
+       status = "okay";
+   };
+
+   &off_profile_soft_off {
+       status = "okay";
+       memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+   };
+
+   /* HE core — RTC as wakeup source */
+   &off_profile_soft_off {
+       wakeup-events = <ALIF_WE_LPRTC>;
+       ewic-cfg      = <ALIF_EWIC_RTC_A>;
+   };
+
+   /* HP core — LPTIMER0 as wakeup source */
+   &off_profile_soft_off {
+       wakeup-events = <ALIF_WE_LPTIMER0>;
+       ewic-cfg      = <ALIF_EWIC_VBAT_TIMER>;
+   };
+
 Memory Block Reference
 ======================
 
@@ -292,9 +378,14 @@ the SoC DTSI.
    per-SoC header pulled in by the SoC DTSI. No manual bit-width selection
    is needed.
 
-PM System Off Snippet
-======================
+PM Sample Snippets
+==================
 
-The ``pm-system-off-he`` snippet provides ready-to-use overlay files for the
-HE core. See the ``alif-pm-states-sample`` sample for build instructions
-and per-SoC overlay selection details.
+Ready-to-use overlay files are provided by these capability-based snippets:
+
+* ``pm-system-off-s2ram-tcm`` — HE core, TCM boot (S2RAM STANDBY/STOP)
+* ``pm-system-off-mram`` — HE or HP, MRAM boot (SOFT_OFF)
+* ``pm-system-off-s2ram-sram0`` — HE or HP, SRAM0 data RAM (E8 only, S2RAM STANDBY/STOP)
+
+See the :ref:`alif-pm-states-sample` sample for build instructions and
+per-SoC overlay selection details.
