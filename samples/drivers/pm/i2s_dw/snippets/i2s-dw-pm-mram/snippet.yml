@@ -1,0 +1,22 @@
+name: i2s-dw-pm-mram
+append:
+  EXTRA_CONF_FILE: prj.conf
+boards:
+  /alif_e1c.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_dw_b1_e1c.overlay
+  /alif_b.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_dw_b1_e1c.overlay
+  /alif_e7.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_dw_ensemble_he.overlay
+  /alif_e7.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_dw_ensemble_hp.overlay
+  /alif_e8.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_dw_ensemble_he.overlay
+  /alif_e8.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_dw_ensemble_hp.overlay
