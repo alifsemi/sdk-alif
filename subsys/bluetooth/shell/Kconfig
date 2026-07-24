@@ -221,4 +221,49 @@ module = BT_SHELL
 module-str = bt_shell
 source "subsys/logging/Kconfig.template.log_config"
 
+config ALIF_CERT_SHELL
+	bool "Certification info shell command"
+	help
+	  Enable the cert shell command to display board certification IDs.
+
+if ALIF_CERT_SHELL
+
+config ALIF_CERT_BRAND_NAME
+	string "Product brand name"
+	default ""
+	help
+	  Product brand name displayed by the cert shell command.
+
+config ALIF_CERT_MODEL_NAME
+	string "Product model name"
+	default ""
+	help
+	  Product model name displayed by the cert shell command.
+
+config ALIF_CERT_FCC_ID
+	string "FCC certification ID"
+	default ""
+	help
+	  FCC certification ID for this board.
+
+config ALIF_CERT_ISED_ID
+	string "ISED certification ID"
+	default ""
+	help
+	  ISED certification ID for this board.
+
+config ALIF_CERT_NCC_ID
+	string "NCC certification ID"
+	default ""
+	help
+	  NCC certification ID for this board.
+
+config ALIF_CERT_JP_ID
+	string "Japan certification ID"
+	default ""
+	help
+	  Japan certification ID for this board.
+
+endif # ALIF_CERT_SHELL
+
 endmenu
