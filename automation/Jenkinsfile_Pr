@@ -26,6 +26,7 @@ def testAppList2 = [
 def gAllRecipientEmails     = ""
 def gAlif_all_boards_list   = []
 def allTestApps             = [testAppList1, testAppList2]
+def gDocsOnlyChange         = false
 
 pipeline {
     agent any
@@ -67,11 +68,19 @@ pipeline {
                         }
                         //, failFast: true
                     )
+
+                    gDocsOnlyChange = common_funcs.is_docs_only_change()
+                    if (gDocsOnlyChange) {
+                        echo "Documentation-only PR detected -> build & test stages will be skipped."
+                    }
                 }
             }
         }
 
         stage('Pr_Build For Parallel') {
+            when {
+                expression { !gDocsOnlyChange }
+            }
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     script {
@@ -116,6 +125,9 @@ pipeline {
         }
         stage('BuildAll_FlashThroughputTestBLE') {
             agent none
+            when {
+                expression { !gDocsOnlyChange }
+            }
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     script {

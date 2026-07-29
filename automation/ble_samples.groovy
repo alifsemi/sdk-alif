@@ -47,6 +47,44 @@ def verify_gitlint (){
         '''
 }
 
+def is_docs_only_change() {
+    if (!env.CHANGE_ID) {
+        echo "Not a PR build (no CHANGE_ID) -> running full build/test."
+        return false
+    }
+
+    def changedFiles = sh(
+        script: '''#!/bin/bash -xe
+            cd /root/alif/alif/
+            # List files changed in the PR relative to the merge-base with main.
+            git diff --name-only origin/main...pr-${CHANGE_ID}
+        ''',
+        returnStdout: true
+    ).trim()
+
+    if (!changedFiles) {
+        echo "No changed files detected -> running full build/test."
+        return false
+    }
+
+    def files = changedFiles.readLines()
+    echo "Changed files in PR #${env.CHANGE_ID}:"
+    files.each { echo "  - ${it}" }
+
+    def docsOnly = files.every { f ->
+        f ==~ /(?i).*readme.*/ ||
+        f ==~ /(?i).*\.(md|rst)$/ ||
+        f.startsWith('doc/')
+    }
+
+    if (docsOnly) {
+        echo " Only documentation/README files changed -> skipping build & test."
+    } else {
+        echo " Non-doc files changed -> running full build/test."
+    }
+    return docsOnly
+}
+
 def build_ble(String buildDir, String sample, String board, String conf_file = null) {
     echo "Sample    : ${sample}"
     echo "Board     : ${board}"
@@ -158,7 +196,7 @@ def build_test_apps(boards, samples, args = null) {
                     sh """#!/bin/bash -x
                     cd /root/alif/alif
                     # Calculate optimal build parallelism
-                    CPU_COUNT=\$(nproc)
+                     CPU_COUNT=\$(nproc)
                     # Number of Jenkins executors configured on this node.
                     NODE_EXECUTORS=3
                     BUILD_THREADS=\$((CPU_COUNT / NODE_EXECUTORS))
@@ -219,6 +257,7 @@ return [
     initialize: this.&initialize,
     verify_checkpatch: this.&verify_checkpatch,
     verify_gitlint: this.&verify_gitlint,
+    is_docs_only_change: this.&is_docs_only_change,
     build_ble: this.&build_ble,
     flash_test: this.&flash_test,
     test: this.&test,
