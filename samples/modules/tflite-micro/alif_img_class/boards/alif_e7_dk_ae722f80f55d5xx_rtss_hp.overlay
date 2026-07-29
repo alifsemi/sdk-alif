@@ -8,8 +8,28 @@
  *
  */
 
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
 #include "common.overlay"
 
 &cam {
 	csi-halt-en;
+};
+
+/*
+ * The MW405 flat board's GT911 touch controller shares i2c1 with the camera
+ * sensor and defaults to 7-bit address 0x5D - the same address as the MT9M114.
+ * Touch is not used in this sample, so hold the GT911 in reset (E7-DK RESETn on
+ * gpio4.0, active-low) so it never drives the bus and cannot collide with the
+ * camera. output-high drives the active-low reset line to its active (reset)
+ * state.
+ */
+&gpio4 {
+	status = "okay";
+
+	gt911_touch_reset_hold {
+		gpio-hog;
+		gpios = <0 GPIO_ACTIVE_LOW>;
+		output-high;
+	};
 };

@@ -20,6 +20,8 @@
 #define RTE_ARX3A0_CAMERA_SENSOR_ENABLE 1
 #elif CONFIG_DT_HAS_OVTI_OV5675_ENABLED
 #define RTE_OV5675_CAMERA_SENSOR_ENABLE 1
+#elif CONFIG_DT_HAS_APTINA_MT9M114_ENABLED
+#define RTE_MT9M114_CAMERA_SENSOR_ENABLE 1
 #else
 #error "Unsupported camera"
 #endif
@@ -45,6 +47,19 @@
 #define CIMAGE_EXPOSURE_CALC    (0)
 #define CIMAGE_RGB_WIDTH_MAX    (800)
 #define CIMAGE_RGB_HEIGHT_MAX   (800)
+#define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
+#elif RTE_MT9M114_CAMERA_SENSOR_ENABLE // MT9M114 RTE
+/*
+ * With MIPI (CONFIG_MT9M114_PARALLEL_INIT=n) the largest advertised Y10P mode
+ * is 1288x728, which the pipeline selects. Crop a centered square (even offsets
+ * preserve the Bayer phase) before demosaicing.
+ */
+#define CIMAGE_X                (1288)
+#define CIMAGE_Y                (728)
+#define CIMAGE_COLOR_CORRECTION (0)
+#define CIMAGE_EXPOSURE_CALC    (0)
+#define CIMAGE_RGB_WIDTH_MAX    (560)
+#define CIMAGE_RGB_HEIGHT_MAX   (560)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
 #endif
 
