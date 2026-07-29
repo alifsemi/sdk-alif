@@ -1,0 +1,8 @@
+name: spi-pm-he
+boards:
+  /alif_(e7|e8)_(dk|ak)/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_pm_he_ensemble.overlay
+  /alif_b1_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_pm_he_balletto.overlay
