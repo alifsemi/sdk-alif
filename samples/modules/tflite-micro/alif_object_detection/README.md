@@ -17,23 +17,8 @@ There is also separate thread which updates LVGL graphics.
 
 ## Supported hardware
 Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
+Alif E7-DK HP & E8-DK HP & MT9M114 MIPI serial camera (+ISP on E8) & MW-405 display
 Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
-
-## Prerequisites (TensorFlow Lite for Microcontrollers)
-To build the sample, you first need to pull in the optional dependencies by running the following commands:
-
-```
-west config manifest.group-filter -- +optional
-west update
-```
-
-## Building OV5675 non-ISP configurations
-E7 does not have ISP.
-
-Also E8 non-ISP configuration can be useful to apply own image manipulation operations on the captured
-frames.
-
-Pass `ov5675.conf` via `-DOVERLAY_CONFIG` to set the required buffer pool size (see build commands below).
 
 ## Prerequisites
 Before building, set up the MLEK resources (downloads and Vela-compiles the ML models):
@@ -45,16 +30,39 @@ python3 modules/alif-mlek/set_up_default_resources.py
 ```
 The model source code is generated automatically at CMake configure time.
 
+## Building OV5675 non-ISP configurations
+E7 does not have ISP.
+
+Also E8 non-ISP configuration can be useful to apply own image manipulation operations on the captured
+frames.
+
+Pass `ov5675.conf` via `-DOVERLAY_CONFIG` to set the required buffer pool size (see build commands below).
+
 ## Building and running: E7-DK
-Build
+arx3a0:
 ```
 west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0.overlay serial_camera.overlay"
+```
+
+mt9m114:
+```
+west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera.overlay" -DOVERLAY_CONFIG="mt9m114.conf"
 ```
 
 ## Building and running: E8-DK
 arx3a0:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0_selfie.overlay serial_camera.overlay"
+```
+
+mt9m114:
+```
+west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera.overlay" -DOVERLAY_CONFIG="mt9m114.conf"
+```
+
+mt9m114 & ISP:
+```
+west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera_isp.overlay serial_camera_mt9m114_isp.overlay" -DOVERLAY_CONFIG="mt9m114.conf;isp.conf"
 ```
 
 arx3a0 & ISP:

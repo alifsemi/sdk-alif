@@ -1,0 +1,24 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+/*
+ * MT9M114-specific ISP crop. Apply this on top of serial_camera_isp.overlay
+ * for MT9M114 ISP builds (E8 only). Kept separate from the sensor overlay
+ * because the &isp node does not exist on E7.
+ *
+ * The MT9M114 Y10P input is 1288x728 (16:9) but the capture output is square,
+ * so without a crop the ISP would stretch the frame. crop-x0 removes
+ * (1288-728)/2 = 280 px from each side, yielding a centered 728x728 square ROI
+ * that the ISP then scales to the square output without distortion.
+ */
+
+&isp {
+	crop-x0 = <280>;
+};
