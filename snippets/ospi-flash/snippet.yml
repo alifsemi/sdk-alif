@@ -10,7 +10,9 @@ boards:
   /alif_(e3|e5|e7).*/:
     append:
       EXTRA_DTC_OVERLAY_FILE: e7_ospi1.overlay
-  /alif_(e4|e6|e8).*/:
+  /alif_(e4|e6|e8)_dk.*/:
     append:
       EXTRA_DTC_OVERLAY_FILE: e8_ospi1.overlay
-
+  /alif_(e4|e6|e8)_ak.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: e8_ak_ospi1.overlay
