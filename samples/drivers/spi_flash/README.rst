@@ -40,6 +40,34 @@ window, but its enable field must be zero:
    /* E8: 128-MB read-only XiP window, disabled */
    xip-config = <0 0x0 0x08000000 1>;
 
+One-byte read and write support
+===============================
+
+One-byte read and write operations are not supported in ``8S-8D-8D`` mode.
+The DDR data phase transfers on both clock edges, and the controller uses a
+minimum 16-bit data frame in this mode. Applications requiring one-byte
+transfers should use the upstream-supported ``1S-8S-8S`` SDR mode. This mode
+uses single-edge transmission and supports an 8-bit data frame.
+
+Configure the ISSI IS25 flash node as follows:
+
+.. code-block:: devicetree
+
+   mspi-io-mode = "MSPI_IO_MODE_OCTAL_1_8_8";
+   mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
+   mspi-dqs-enable;
+   write-block-size = <1>;
+   rx-dummy = <16>;
+   tx-dummy = <0>;
+   read-command = <0xcc>;
+   write-command = <0x8e>;
+   command-length = "INSTR_1_BYTE";
+   address-length = "ADDR_4_BYTE";
+
+In this configuration, the command is transferred on one data line, while
+the address and data phases use eight data lines. It is not a dual-edge
+transfer.
+
 XiP mode
 ========
 
