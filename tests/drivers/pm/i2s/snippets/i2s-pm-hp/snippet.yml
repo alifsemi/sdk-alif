@@ -1,0 +1,5 @@
+name: i2s-pm-hp
+boards:
+  /alif_e7.*/.*/rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_pm_hp_ensemble.overlay

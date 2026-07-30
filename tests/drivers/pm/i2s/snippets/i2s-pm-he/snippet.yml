@@ -1,0 +1,16 @@
+name: i2s-pm-he
+boards:
+  "/alif_b1_dk/.*/rtss_he/":
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_pm_he_balletto.overlay
+      EXTRA_CONF_FILE: prj.conf
+
+  "/alif_(e3|e5|e7)_(dk|ak)/.*/rtss_he/":
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_pm_he_ensemble.overlay
+      EXTRA_CONF_FILE: prj.conf
+
+  "/alif_(e4|e6|e8)_(dk|ak)/.*/rtss_he/":
+    append:
+      EXTRA_DTC_OVERLAY_FILE: i2s_pm_he_ensemble.overlay
+      EXTRA_CONF_FILE: prj.conf
