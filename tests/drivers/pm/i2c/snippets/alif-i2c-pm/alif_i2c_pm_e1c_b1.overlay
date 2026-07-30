@@ -1,0 +1,22 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * PM I2C overlay for Ensemble E1C and Balletto B1 SoCs.
+ */
+
+/ {
+	aliases {
+		i2c-instance = &i2c1;	/* change this to &i2c0, &i2c2, etc. as needed */
+	};
+};
+
+&i2c1 {
+	status = "okay";
+};
