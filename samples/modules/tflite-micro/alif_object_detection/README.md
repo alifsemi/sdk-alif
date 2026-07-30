@@ -1,6 +1,6 @@
 # Alif Zephyr port of Arm® Ethos™-U NPU Object Detection example
 
-## Description of the Arm® example 
+## Description of the Arm® example
 Object Detection is a classical computer vision use case in which specific objects need to be identified and located within a full frame. In this specific example the model was trained for face detection. The ML sample was developed using the YOLO Fastest model. To adopt the model for low power / low memory systems the input images to the model are monochrome images. The model was trained on the Wider dataset (after conversion from RGB to monochrome) and on Emza Visual-Sense dataset <www.emza-vs.com>. The model makes detection faces in size of 20x20 pixels and above.
 
 ## The port
@@ -50,6 +50,8 @@ west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/mod
 ```
 
 ## Building and running: E8-DK
+Note: The build commands below are for U55. To build the same examples for U85, replace `-S ethos-u55-enable` with `-S ethos-u85-enable` and add `-DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256` to the `west build` command.
+
 arx3a0:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0_selfie.overlay serial_camera.overlay"
