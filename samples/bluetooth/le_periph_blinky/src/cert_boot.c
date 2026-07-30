@@ -22,10 +22,10 @@ static int cert_boot_print(void)
 		printk("  IC ID:   " CONFIG_CERT_ISED_ID "\n");
 	}
 	if (sizeof(CONFIG_CERT_NCC_ID) > 1) {
-		printk("  NCC:     " CONFIG_CERT_NCC_ID "\n");
+		printk("  NCC ID:  " CONFIG_CERT_NCC_ID "\n");
 	}
 	if (sizeof(CONFIG_CERT_JP_ID) > 1) {
-		printk("  JP:      " CONFIG_CERT_JP_ID "\n");
+		printk("  MIC ID:  " CONFIG_CERT_JP_ID "\n");
 	}
 	printk("*************************************\n");
 	return 0;
