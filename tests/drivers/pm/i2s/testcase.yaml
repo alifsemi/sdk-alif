@@ -1,0 +1,37 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+#
+# Twister definitions for the Alif I2S power-management ztest.
+
+common:
+  tags:
+    - drivers
+    - i2s
+    - pm
+    - power
+    - rtc
+  harness: ztest
+  timeout: 600
+  depends_on:
+    - counter
+    - i2s
+
+tests:
+  drivers.pm.i2s.he:
+    extra_args:
+      - SNIPPET=i2s-pm-he
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+    integration_platforms:
+      - alif_e8_dk_rtss_he
+  drivers.pm.i2s.hp:
+    extra_args:
+      - SNIPPET=i2s-pm-hp
+    platform_allow:
+      - alif_e7_dk_rtss_hp
