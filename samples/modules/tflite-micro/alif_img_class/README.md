@@ -1,6 +1,6 @@
 # Alif Zephyr port of Arm® Ethos™-U NPU Image Classification example
 
-## Description of the Arm® example 
+## Description of the Arm® example
 This use-case example solves the classical computer vision problem of image classification. The ML sample was developed using the MobileNet v2 model that was trained on the ImageNet dataset.
 
 ## The port
@@ -46,6 +46,8 @@ west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/mod
 ```
 
 ## Building and running: E8-DK
+Note: The build commands below are for U55. To build the same examples for U85, replace `-S ethos-u55-enable` with `-S ethos-u85-enable` and add `-DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256` to the `west build` command.
+
 arx3a0:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0_selfie.overlay serial_camera.overlay"
