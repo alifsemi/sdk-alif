@@ -281,7 +281,7 @@ static void on_bap_bc_scan_cmp_evt(uint8_t cmd_type, uint16_t status, uint8_t pa
 
 static void on_bap_bc_scan_timeout(void)
 {
-#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	power_mgr_disable_sleep();
 #endif
 	LOG_INF("scan timeout");
@@ -622,7 +622,7 @@ int auracast_sink_start(void)
 	if (ret == -EALREADY) {
 		LOG_DBG("Auracast sink already configured");
 
-#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 		power_mgr_log_flush();
 		power_mgr_allow_sleep();
 #endif
@@ -652,7 +652,7 @@ int auracast_sink_start(void)
 		return err;
 	}
 
-#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	power_mgr_log_flush();
 	power_mgr_allow_sleep();
 #endif
@@ -675,7 +675,7 @@ void auracast_sink_stop(void)
 
 	stop_scanning();
 
-#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	power_mgr_disable_sleep();
 #endif
 }
@@ -714,7 +714,7 @@ int auracast_sink_select_stream(int const stream_index)
 		return -EIO;
 	}
 
-#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	power_mgr_log_flush();
 	power_mgr_allow_sleep();
 #endif

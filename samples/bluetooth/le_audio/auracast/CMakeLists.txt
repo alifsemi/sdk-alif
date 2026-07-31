@@ -21,6 +21,7 @@ target_sources(app PRIVATE
     src/audio_datapath.c
     src/auracast_shell.c
 )
+target_sources_ifdef(CONFIG_AURACAST_CONTROL_PROFILE app PRIVATE src/control_profile.c)
 target_sources_ifdef(CONFIG_AUDIO_DMIC app PRIVATE src/mic_source.c)
 
 add_subdirectory(auracast_source/)

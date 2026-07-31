@@ -67,6 +67,7 @@ static int cmd_info(const struct shell *shell, size_t argc, char **argv)
 
 	const char *role_strs[ROLE_MAX] = {
 		"None",
+		"BLE Config",
 		"Auracast Source",
 		"Auracast Sink",
 		"Auracast Scan Delegator",
@@ -116,64 +117,10 @@ static int cmd_start_source(const struct shell *shell, size_t const argc, char *
 	if (codec) {
 		LOG_DBG("Using '%s' codec configuration", codec);
 
-		if (strcmp(codec, "8_1") == 0) {
-			command.source.frame_rate_hz = 8000;
-			command.source.frame_duration_us = 7500;
-			command.source.octets_per_frame = 26;
-		} else if (strcmp(codec, "8_2") == 0) {
-			command.source.frame_rate_hz = 8000;
-			command.source.frame_duration_us = 10000;
-			command.source.octets_per_frame = 30;
-		} else if (strcmp(codec, "16_1") == 0) {
-			command.source.frame_rate_hz = 16000;
-			command.source.frame_duration_us = 7500;
-			command.source.octets_per_frame = 30;
-		} else if (strcmp(codec, "16_2") == 0) {
-			command.source.frame_rate_hz = 16000;
-			command.source.frame_duration_us = 10000;
-			command.source.octets_per_frame = 40;
-		} else if (strcmp(codec, "24_1") == 0) {
-			command.source.frame_rate_hz = 24000;
-			command.source.frame_duration_us = 7500;
-			command.source.octets_per_frame = 45;
-		} else if (strcmp(codec, "24_2") == 0) {
-			command.source.frame_rate_hz = 24000;
-			command.source.frame_duration_us = 10000;
-			command.source.octets_per_frame = 60;
-		} else if (strcmp(codec, "32_1") == 0) {
-			command.source.frame_rate_hz = 32000;
-			command.source.frame_duration_us = 7500;
-			command.source.octets_per_frame = 60;
-		} else if (strcmp(codec, "32_2") == 0) {
-			command.source.frame_rate_hz = 32000;
-			command.source.frame_duration_us = 10000;
-			command.source.octets_per_frame = 80;
-#if CODEC_44khz_SUPPORT_ENABLED
-		/* 44.1 kHz is not fully functional and need to be fixed */
-		} else if (strcmp(codec, "441_1") == 0) {
-			command.source.frame_rate_hz = 44100;
-			command.source.frame_duration_us = 7500;
-			command.source.octets_per_frame = 97;
-		} else if (strcmp(codec, "441_2") == 0) {
-			command.source.frame_rate_hz = 44100;
-			command.source.frame_duration_us = 10000;
-			command.source.octets_per_frame = 130;
-#endif
-		} else if (strncmp(codec, "48_", 3) == 0) {
-			command.source.frame_rate_hz = 48000;
-
-			const uint_fast8_t sub_ver = codec[3] - '0';
-			const uint8_t octets_map[] = {75, 100, 90, 120, 117, 155};
-
-			if (sub_ver >= ARRAY_SIZE(octets_map)) {
-				LOG_ERR("Invalid codec name '%s', use '48_0' to '48_5'", codec);
-				return -EINVAL;
-			}
-
-			command.source.frame_duration_us = (sub_ver & 1) ? 7500 : 10000;
-			command.source.octets_per_frame = octets_map[sub_ver];
-		} else {
-			LOG_ERR("Invalid codec name '%s', use 'standard' or 'high'", codec);
+		if (auracast_codec_config_from_name(codec, &command.source.octets_per_frame,
+						    &command.source.frame_rate_hz,
+						    &command.source.frame_duration_us) != 0) {
+			LOG_ERR("Invalid codec name '%s'", codec);
 			return -EINVAL;
 		}
 

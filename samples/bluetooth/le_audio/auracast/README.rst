@@ -12,7 +12,8 @@ Sample supports both Auracast source and Auracast sink roles.
 Scan delegator role is also supported to allow discovering and connecting to Auracast
 sources using e.g. mobile phone as a Auracast Assistant (phone must be paired and bonded to the device).
 
-Different roles can be selected using shell commands:
+Different roles can be selected using shell commands or via the custom Auracast
+control GATT profile (connectable advertising, enabled by default):
 
 .. code-block:: console
 
@@ -22,6 +23,62 @@ Different roles can be selected using shell commands:
     auracast sink [<stream_name> [<password>]]
     auracast delegator
     auracast stop
+
+BLE control profile
+*******************
+
+When :kconfig:option:`CONFIG_AURACAST_CONTROL_PROFILE` is enabled, the device
+advertises a custom GATT service that configures and selects the Auracast mode.
+
+Service UUID: ``0000AC00-0000-1000-8000-00805F9B34FB``
+
+.. list-table:: Control profile characteristics
+   :header-rows: 1
+   :widths: 2 3 2
+
+   * - Characteristic
+     - UUID
+     - Format
+   * - Mode (R/W)
+     - ``0000AC01-...``
+     - ``uint8`` mode select
+   * - Mode status (R/N)
+     - ``0000AC02-...``
+     - ``uint8`` current mode
+   * - Stream name (R/W)
+     - ``0000AC03-...``
+     - UTF-8 string, max 31 bytes (empty clears)
+   * - Encryption key (R/W)
+     - ``0000AC04-...``
+     - UTF-8 string, 4..16 bytes (empty disables)
+   * - Codec (R/W)
+     - ``0000AC05-...``
+     - UTF-8 preset name, e.g. ``48_2`` (empty clears)
+   * - SDU octets (R/W)
+     - ``0000AC06-...``
+     - ``uint16`` little-endian octets per frame
+   * - Frame duration (R/W)
+     - ``0000AC07-...``
+     - UTF-8 string: ``7.5ms`` or ``10ms`` (``7.5`` / ``10`` also accepted on write)
+   * - Frame rate (R/W)
+     - ``0000AC08-...``
+     - UTF-8 string in kHz: ``8``, ``16``, ``24``, ``32`` or ``48`` (``kHz`` suffix optional)
+
+Write a single byte to the Mode characteristic:
+
+* ``0`` - BLE config role (``ROLE_BLE_CONFIG``): stop Auracast activity and
+  stay connectable for further mode selection
+* ``1`` - Auracast source (uses stream name, encryption and codec/SDU/rate/duration)
+* ``2`` - Auracast sink (uses stream name and encryption filter if set)
+* ``3`` - Auracast scan delegator
+
+Writing a codec preset updates SDU, frame duration and rate to the matching BAP
+values. Writing SDU, duration or rate clears the codec preset string and uses the
+manual values instead.
+
+The Mode status characteristic reports the active mode and can notify on change.
+Peripheral advertising for this service remains available in all modes so a
+client can reconnect and switch roles again.
 
 For example start the Auracast source with 48_2 codec configuration:
 
