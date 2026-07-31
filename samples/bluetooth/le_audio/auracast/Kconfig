@@ -56,6 +56,15 @@ config INPUT_VOLUME_LEVEL
 config AURACAST_AUTOSTART_CMD
 	string "Auto start command"
 
+config AURACAST_CONTROL_PROFILE
+	bool "Auracast BLE control profile"
+	default y
+	help
+	  Expose a custom GATT service that lets a connected client select
+	  Auracast mode. Boot and "stop" use ROLE_BLE_CONFIG (connectable
+	  mode selection). GATT modes: config (0), source (1), sink (2),
+	  scan delegator (3).
+
 config AUDIO_L_CHANNEL
 	int "PDM audio left channel"
 	default 4
@@ -100,6 +109,10 @@ source "subsys/logging/Kconfig.template.log_config"
 
 module = AURACAST_SHELL
 module-str = auracast_shell
+source "subsys/logging/Kconfig.template.log_config"
+
+module = CONTROL_PROFILE
+module-str = control_profile
 source "subsys/logging/Kconfig.template.log_config"
 
 endmenu # "Logging"

@@ -30,6 +30,7 @@
 #include "auracast_source.h"
 #include "auracast_sink.h"
 #include "auracast_sd.h"
+#include "control_profile.h"
 
 LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
 
@@ -442,14 +443,23 @@ static void on_disconnection(uint8_t const conidx, uint32_t const metainfo, uint
 
 	app_con_info.conidx = GAP_INVALID_CONIDX;
 
-	/* Restart BASS solicitation */
-	int err = auracast_scan_delegator_start_solicitation();
+	if (IS_ENABLED(CONFIG_AURACAST_CONTROL_PROFILE)) {
+		int err = control_profile_restart_adv();
 
-	if (err != 0) {
-		LOG_ERR("Failed to restart BASS solicitation, err %d", err);
-		return;
+		if (err != 0) {
+			LOG_ERR("Failed to restart control advertising, err %d", err);
+		}
 	}
-	LOG_INF("BASS solicitation restarted after disconnection");
+
+	if (get_current_role() == ROLE_AURACAST_SCAN_DELEGATOR) {
+		int err = auracast_scan_delegator_start_solicitation();
+
+		if (err != 0) {
+			LOG_ERR("Failed to restart BASS solicitation, err %d", err);
+			return;
+		}
+		LOG_INF("BASS solicitation restarted after disconnection");
+	}
 }
 
 static void on_bond_data_updated(uint8_t const conidx, uint32_t const metainfo,
@@ -642,8 +652,7 @@ int configure_role(const enum role role)
 		return -EALREADY;
 	}
 
-	if (role != g_current_role && g_current_role != ROLE_NONE) {
-
+	if (g_current_role != ROLE_NONE && g_current_role < ROLE_MAX) {
 		switch (g_current_role) {
 		case ROLE_AURACAST_SOURCE:
 			auracast_source_stop();
@@ -654,11 +663,11 @@ int configure_role(const enum role role)
 		case ROLE_AURACAST_SCAN_DELEGATOR:
 			auracast_scan_delegator_deinit();
 			break;
+		case ROLE_BLE_CONFIG:
 		default:
 			break;
 		}
 
-		/* Reset GAPM to set address */
 		err = gapm_reset(META_RESET, on_gapm_process_complete);
 		if (err != GAP_ERR_NO_ERROR) {
 			LOG_ERR("gapm_reset error %u", err);
@@ -696,11 +705,21 @@ int configure_role(const enum role role)
 	};
 
 	switch (role) {
+	case ROLE_BLE_CONFIG:
+		/* Connectable peripheral for the Auracast control GATT profile */
+		gapm_cfg.role = GAP_ROLE_LE_PERIPHERAL;
+		break;
 	case ROLE_AURACAST_SOURCE:
 		gapm_cfg.role = GAP_ROLE_LE_BROADCASTER;
+		if (IS_ENABLED(CONFIG_AURACAST_CONTROL_PROFILE)) {
+			gapm_cfg.role |= GAP_ROLE_LE_PERIPHERAL;
+		}
 		break;
 	case ROLE_AURACAST_SINK:
 		gapm_cfg.role = GAP_ROLE_LE_OBSERVER;
+		if (IS_ENABLED(CONFIG_AURACAST_CONTROL_PROFILE)) {
+			gapm_cfg.role |= GAP_ROLE_LE_PERIPHERAL;
+		}
 		break;
 	case ROLE_AURACAST_SCAN_DELEGATOR:
 		gapm_cfg.role = GAP_ROLE_LE_PERIPHERAL | GAP_ROLE_LE_OBSERVER;
@@ -736,6 +755,17 @@ int configure_role(const enum role role)
 	if (role == ROLE_AURACAST_SCAN_DELEGATOR) {
 		LOG_INF("Configure security level");
 		gapm_le_configure_security_level(GAP_SEC1_SEC_CON_PAIR_ENC);
+	}
+
+	if (IS_ENABLED(CONFIG_AURACAST_CONTROL_PROFILE) &&
+	    (role == ROLE_BLE_CONFIG || role == ROLE_AURACAST_SOURCE ||
+	     role == ROLE_AURACAST_SINK || role == ROLE_AURACAST_SCAN_DELEGATOR)) {
+		err = control_profile_start();
+		if (err != 0) {
+			LOG_ERR("Failed to start control profile, err %d", err);
+			return err;
+		}
+		control_profile_notify_mode();
 	}
 
 	return 0;
@@ -859,6 +889,78 @@ int fill_auracast_encryption_key(gaf_bcast_code_t *const p_code)
 	return passwd_len;
 }
 
+int auracast_codec_config_from_name(const char *codec, uint32_t *octets_per_frame,
+				    uint32_t *frame_rate_hz, uint32_t *frame_duration_us)
+{
+	if (codec == NULL || codec[0] == '\0' || octets_per_frame == NULL ||
+	    frame_rate_hz == NULL || frame_duration_us == NULL) {
+		return -EINVAL;
+	}
+
+	if (strcmp(codec, "8_1") == 0) {
+		*frame_rate_hz = 8000;
+		*frame_duration_us = 7500;
+		*octets_per_frame = 26;
+	} else if (strcmp(codec, "8_2") == 0) {
+		*frame_rate_hz = 8000;
+		*frame_duration_us = 10000;
+		*octets_per_frame = 30;
+	} else if (strcmp(codec, "16_1") == 0) {
+		*frame_rate_hz = 16000;
+		*frame_duration_us = 7500;
+		*octets_per_frame = 30;
+	} else if (strcmp(codec, "16_2") == 0) {
+		*frame_rate_hz = 16000;
+		*frame_duration_us = 10000;
+		*octets_per_frame = 40;
+	} else if (strcmp(codec, "24_1") == 0) {
+		*frame_rate_hz = 24000;
+		*frame_duration_us = 7500;
+		*octets_per_frame = 45;
+	} else if (strcmp(codec, "24_2") == 0) {
+		*frame_rate_hz = 24000;
+		*frame_duration_us = 10000;
+		*octets_per_frame = 60;
+	} else if (strcmp(codec, "32_1") == 0) {
+		*frame_rate_hz = 32000;
+		*frame_duration_us = 7500;
+		*octets_per_frame = 60;
+	} else if (strcmp(codec, "32_2") == 0) {
+		*frame_rate_hz = 32000;
+		*frame_duration_us = 10000;
+		*octets_per_frame = 80;
+#if CODEC_44khz_SUPPORT_ENABLED
+	/* 44.1 kHz is not fully functional and need to be fixed */
+	} else if (strcmp(codec, "441_1") == 0) {
+		*frame_rate_hz = 44100;
+		*frame_duration_us = 7500;
+		*octets_per_frame = 97;
+	} else if (strcmp(codec, "441_2") == 0) {
+		*frame_rate_hz = 44100;
+		*frame_duration_us = 10000;
+		*octets_per_frame = 130;
+#endif
+	} else if (strncmp(codec, "48_", 3) == 0) {
+		const uint8_t octets_map[] = {75, 100, 90, 120, 117, 155};
+		uint_fast8_t preset = codec[3] - '0';
+
+		if (codec[3] == '\0' || codec[4] != '\0' || preset < 1 ||
+		    preset > ARRAY_SIZE(octets_map)) {
+			return -EINVAL;
+		}
+
+		preset -= 1U; /* convert to 0-based index */
+
+		*frame_rate_hz = 48000;
+		*frame_duration_us = (preset & 1) ? 7500 : 10000;
+		*octets_per_frame = octets_map[preset];
+	} else {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 K_QUEUE_DEFINE(ble_cmd_queue);
 
 int execute_shell_command(struct startup_params msg)
@@ -897,6 +999,16 @@ static void ble_worker(void *p1, void *p2, void *p3)
 		return;
 	}
 
+	if (IS_ENABLED(CONFIG_AURACAST_CONTROL_PROFILE)) {
+		ret = configure_role(ROLE_BLE_CONFIG);
+		if (ret != 0) {
+			LOG_ERR("Failed to start BLE config role, err %d", ret);
+			return;
+		}
+		LOG_INF("Connect over BLE to switch Auracast mode "
+			"(0=config 1=source 2=sink 3=delegator)");
+	}
+
 	LOG_INF("Type 'auracast help' to get started...");
 
 	while (1) {
@@ -922,7 +1034,9 @@ static void ble_worker(void *p1, void *p2, void *p3)
 			auracast_scan_delegator_init();
 			break;
 		case COMMAND_STOP:
-			configure_role(ROLE_NONE);
+			configure_role(IS_ENABLED(CONFIG_AURACAST_CONTROL_PROFILE)
+					       ? ROLE_BLE_CONFIG
+					       : ROLE_NONE);
 			break;
 		default:
 			break;
@@ -945,7 +1059,8 @@ int main(void)
 	k_thread_create(&ble_thread, ble_stack, K_THREAD_STACK_SIZEOF(ble_stack), ble_worker, NULL,
 			NULL, NULL, BLE_THREAD_PRIORITY, 0, K_NO_WAIT);
 
-#if PREKERNEL_DISABLE_SLEEP && DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && PREKERNEL_DISABLE_SLEEP && \
+	DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	/* Allow sleep here when LPUART is used. Otherwise system cannot be put into
 	 * sleep without losing a SHELL completely.
 	 */

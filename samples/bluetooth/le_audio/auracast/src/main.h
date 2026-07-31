@@ -24,6 +24,7 @@
 
 enum role {
 	ROLE_NONE,
+	ROLE_BLE_CONFIG, /* Connectable GATT control profile (mode selection) */
 	ROLE_AURACAST_SOURCE,
 	ROLE_AURACAST_SINK,
 	ROLE_AURACAST_SCAN_DELEGATOR,
@@ -125,6 +126,24 @@ int configure_role(enum role role);
  * @retval Current role
  */
 enum role get_current_role(void);
+
+/**
+ * @brief Resolve an LC3 codec preset name to its audio parameters
+ *
+ * Recognised names follow the "<rate_khz>_<n>" convention (e.g. "16_2",
+ * "48_4"). 44.1 kHz presets are only available when CODEC_44khz_SUPPORT_ENABLED
+ * is defined.
+ *
+ * @param codec             Codec preset name
+ * @param octets_per_frame  Output: octets per codec frame
+ * @param frame_rate_hz     Output: sampling rate in Hz
+ * @param frame_duration_us Output: frame duration in microseconds
+ *
+ * @retval 0 on success
+ * @retval -EINVAL if the codec name is NULL, empty or unknown
+ */
+int auracast_codec_config_from_name(const char *codec, uint32_t *octets_per_frame,
+				    uint32_t *frame_rate_hz, uint32_t *frame_duration_us);
 
 /**
  * @brief Execute a shell command in the BLE worker thread

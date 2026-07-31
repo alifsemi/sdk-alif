@@ -684,10 +684,11 @@ int auracast_scan_delegator_init(void)
 	}
 
 	LOG_INF("Broadcast delegator initialized");
-
+#if CONFIG_PM
 	power_mgr_log_flush();
 #if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	power_mgr_allow_sleep();
+#endif
 #endif
 	return 0;
 }
@@ -702,7 +703,7 @@ void auracast_scan_delegator_deinit(void)
 	/* Bring BIG down and wait */
 	sd_teardown_sink_and_wait();
 
-#if !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
+#if CONFIG_PM && !DT_SAME_NODE(DT_NODELABEL(lpuart), DT_CHOSEN(zephyr_console))
 	power_mgr_disable_sleep();
 #endif
 }
