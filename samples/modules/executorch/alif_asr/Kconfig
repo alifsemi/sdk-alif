@@ -1,0 +1,108 @@
+# Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+source "Kconfig.zephyr"
+
+config ENABLE_DISPLAY
+	bool "Enable LVGL display output"
+	select LVGL
+	select DISPLAY
+	help
+	  Enable the LVGL graphics library and display driver to show ASR
+	  results on the on-board display.
+
+config ACTIVATION_BUF_SECTION
+	string "Linker section where activation buffer (tensor arena) is placed"
+	default ".bss.activation_buf"
+
+config ACTIVATION_BUF_SZ
+	hex "Activation buffer size for the chosen model"
+	default 0x00108000
+
+config MODEL_IN_EXT_FLASH
+	bool "Put ML model to external flash"
+	select FLASH
+	select ALIF_OSPI_FLASH_XIP
+	help
+		Initialize OSPI controller to XIP mode. Initialize the onboard flash device. Link ML model data to external flash address space.
+		In addition to normal zephyr.bin output, ospi0/1.bin is generated. When enabled, the model memory section is set automatically (See BufAttributes.h)
+
+config MODEL_SECTION
+	string "Linker section where ML model is placed"
+	depends on !MODEL_IN_EXT_FLASH
+	default ".rodata.tflm_model"
+
+# The ExecuTorch Zephyr module builds executorch_delegate_ethos_u (the
+# EthosUBackend) only when CONFIG_ETHOS_U is set. That symbol is not defined
+# elsewhere in this tree (only the driver's ARM_ETHOS_U is), so define it here.
+config ETHOS_U
+	bool "Build the ExecuTorch Arm Ethos-U delegate backend"
+	depends on EXECUTORCH && ARM_ETHOS_U
+	help
+	  Selects EXECUTORCH_BUILD_ARM_BAREMETAL in the ExecuTorch Zephyr
+	  module so the Arm Ethos-U delegate (EthosUBackend) is compiled and
+	  linked. Without it the runtime reports
+	  "Backend EthosUBackend is not registered".
+
+config ETHOS_U_AXI0_ONLY
+	bool "Only use AXI0 port on the Ethos"
+	default false
+
+config AUDIO_SAMPLES
+	int "Number of audio samples to store"
+	default 16000
+
+config AUDIO_STRIDE
+	int "Number of audio samples in a single stride"
+	default 8000
+
+config AUDIO_CHANNELS
+	int "Number of input audio channels"
+	default 2
+
+config SAMPLE_CNT
+	int "Number of samples per slab buffer"
+	default 400
+
+config NUM_BUFFERS
+	int "Number of slab buffers to allocate"
+	default 4
+
+config I2S_GAIN
+	int "Fixed linear again applied to I2S samples (e.g 10 = 20dB gain)"
+	default 20
+
+config THREAD_STACK_SIZE
+	int "Stack size of audio thread"
+	default 1024
+
+config THREAD_PRIORITY
+	int "Priority of audio thread"
+	default 0
+
+config LPGPIO_M55_IRQ_ENABLED
+	depends on "$(dt_nodelabel_enabled,lpgpio)"
+	bool "LPGPIO M55 core IRQ enabled"
+	default y
+	help
+	  Configures LPGPIO to generate interrupt on M55 core when M55 is
+	  running.
+
+choice
+	depends on LPGPIO_M55_IRQ_ENABLED
+	prompt "LPGPIO IRQ edge trigger select"
+	default LPGPIO_M55_IRQ_EDGE_BOTH
+	help
+	  Select which signal edge will trigger the interrupt.
+	config LPGPIO_M55_IRQ_EDGE_RISING
+	bool "Rising edge"
+	config LPGPIO_M55_IRQ_EDGE_FALLING
+	bool "Falling edge"
+	config LPGPIO_M55_IRQ_EDGE_BOTH
+	bool "Rising and falling edges"
+endchoice

@@ -13,7 +13,7 @@ manifest:
     - name: alif-mlek
       remote: alif
       repo-path: alif_ml-embedded-evaluation-kit
-      revision: 0b6ce72c495265501f7a12eaed8e6ea71ef4bf15
+      revision: d7d06cd6f5e79a9183fa56e367fed20d03881f0d
       path: modules/alif-mlek
       groups:
         - alif-mlek
