@@ -37,9 +37,8 @@ static void xip_test(const struct device *dev)
 {
 	uint32_t i;
 	uint32_t xip_r[64] = { 0 }, fls_r[64] = { 0 }, cnt;
-	uint32_t *ptr = (uint32_t *)(DT_PROP_BY_IDX(
-			DT_PARENT(DT_ALIAS(spi_flash0)),
-			xip_base_address, 0) +
+	uint32_t *ptr = (uint32_t *)(DT_REG_ADDR_BY_NAME(
+			DT_PARENT(DT_ALIAS(spi_flash0)), xip) +
 			SPI_FLASH_TEST_REGION_OFFSET);
 	int32_t rc, e_count = 0;
 

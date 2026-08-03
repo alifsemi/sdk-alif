@@ -3,7 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include <errno.h>
 #include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -18,11 +20,17 @@ const struct flash_parameters *flash_param;
 
 void single_sector_test(const struct device *flash_dev)
 {
-	const uint8_t expected[] = {0x55, 0xaa, 0x66, 0x99};
-	const size_t len = ARRAY_SIZE(expected);
-	uint8_t buf[len];
 	int rc;
 	int i, e_count = 0;
+
+	uint8_t w_buf[BUFF_SIZE] = {0};
+	uint8_t r_buf[BUFF_SIZE] = {0};
+
+	const size_t len = ARRAY_SIZE(w_buf);
+
+	for (i = 0; i < BUFF_SIZE; i++) {
+		w_buf[i] =  i % 256;
+	}
 
 	printf("\nTest 1: Flash erase\n");
 
@@ -32,6 +40,7 @@ void single_sector_test(const struct device *flash_dev)
 	rc = flash_erase(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, SPI_FLASH_SECTOR_SIZE);
 	if (rc != 0) {
 		printf("Flash erase failed! %d\n", rc);
+		return;
 	} else {
 		printf("Flash erase succeeded!\n");
 	}
@@ -39,7 +48,7 @@ void single_sector_test(const struct device *flash_dev)
 	printf("\nTest 1: Flash write\n");
 
 	printf("Attempting to write %zu bytes\n", len);
-	rc = flash_write(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, expected, len);
+	rc = flash_write(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, w_buf, len);
 	if (rc != 0) {
 		printf("Flash write failed! %d\n", rc);
 		return;
@@ -47,17 +56,17 @@ void single_sector_test(const struct device *flash_dev)
 
 	printf("\nTest 1: Flash read\n");
 
-	memset(buf, 0, len);
-	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, buf, len);
+	memset(r_buf, 0, len);
+	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET, r_buf, len);
 	if (rc != 0) {
 		printf("Flash read failed! %d\n", rc);
 		return;
 	}
 
 	for (i = 0; i < len; i++) {
-		if (buf[i] != expected[i]) {
+		if (r_buf[i] != w_buf[i]) {
 			e_count++;
-			printf("Not matched at [%d] _w[%4x] _r[%4x]\n", i, expected[i], buf[i]);
+			printf("Not matched at [%d] _w[%4d] _r[%4d]\n", i, w_buf[i], r_buf[i]);
 		}
 	}
 
@@ -68,7 +77,7 @@ void single_sector_test(const struct device *flash_dev)
 	}
 }
 
-void erase_test(const struct device *dev, uint32_t len)
+void erase_test(const struct device *dev, size_t len)
 {
 	int ret = 0, i = 0, count = 0;
 	uint8_t r_buf[BUFF_SIZE] = {0};
@@ -306,41 +315,20 @@ void multi_sector_test(const struct device *flash_dev)
 	}
 }
 
-void xip_test(const struct device *flash_dev)
+void xip_test(void)
 {
-	uint8_t i;
-	uint32_t xip_r[64] = {0}, fls_r[64] = {0}, cnt;
-	uint32_t *ptr = (uint32_t *)DT_PROP_BY_IDX(DT_PARENT(DT_ALIAS(spi_flash0)),
-						xip_base_address, 0);
-	int32_t rc, e_count = 0;
+	const uintptr_t xip_addr = DT_REG_ADDR_BY_NAME(
+		DT_PARENT(DT_ALIAS(spi_flash0)), xip);
+	const uint8_t *xip = (const uint8_t *)xip_addr;
+	uint8_t data[16];
 
-	printf("\nTest 5: XiP Read\n");
+	printf("\nXiP Read Test\n");
 
-	memcpy(xip_r, ptr, sizeof(xip_r));
+	memcpy(data, xip, sizeof(data));
 
-	printf("Content Read from OSPI Flash in XiP Mode successfully\n\n");
-
-	cnt = ARRAY_SIZE(xip_r);
-
-	printf("Read from Flash cmd while XiP Mode turnned on\n\n");
-
-	rc = flash_read(flash_dev, SPI_FLASH_TEST_REGION_OFFSET,
-				fls_r, cnt * sizeof(uint32_t));
-	if (rc != 0) {
-		printf("Flash read failed! %d\n", rc);
-		return;
-	}
-
-	for (i = 0; i < cnt; i++)
-		if (fls_r[i] != xip_r[i]) {
-			e_count++;
-		}
-
-	if (!e_count) {
-		printf("XiP Read Test Succceeded !!\n\n");
-	} else {
-		printf("XiP Test Failed !"
-			" contents are NOT Matching : Err Count [%d]!!!\n", e_count);
+	printf("XiP data at 0x%08" PRIxPTR ":\n", xip_addr);
+	for (size_t i = 0; i < sizeof(data); i++) {
+		printf("%02x%c", data[i], (i == sizeof(data) - 1U) ? '\n' : ' ');
 	}
 }
 
@@ -348,6 +336,8 @@ void xip_test(const struct device *flash_dev)
 int main(void)
 {
 	const struct device *flash_dev = DEVICE_DT_GET(DT_ALIAS(spi_flash0));
+	uint64_t flash_size;
+	int rc;
 
 	if (!device_is_ready(flash_dev)) {
 		printk("%s: device not ready.\n", flash_dev->name);
@@ -358,32 +348,37 @@ int main(void)
 	printf("========================================\n");
 
 	flash_param = flash_get_parameters(flash_dev);
+	rc = flash_get_size(flash_dev, &flash_size);
+	if (rc != 0) {
+		printf("Flash size read failed! %d\n", rc);
+		return rc;
+	}
+	if (flash_size > SIZE_MAX) {
+		printf("Flash size too large for this platform: %" PRIu64 "\n", flash_size);
+		return -ERANGE;
+	}
 
 	printf("****Flash Configured Parameters******\n");
-	printf("* Num Of Sectors : %d\n", flash_param->num_of_sector);
-	printf("* Sector Size : %d\n", flash_param->sector_size);
-	printf("* Page Size : %d\n", flash_param->page_size);
 	printf("* Erase value : %d\n", flash_param->erase_value);
-	printf("* Write Blk Size: %d\n", flash_param->write_block_size);
-	printf("* Total Size in MB: %d\n",
-	       (flash_param->num_of_sector * flash_param->sector_size) / (1024 * 1024));
-
+	printf("* Write Blk Size: %zu\n", flash_param->write_block_size);
+	printf("* Total Size in MB: %" PRIu64 "\n", flash_size / (1024U * 1024U));
+#ifdef CONFIG_MSPI_XIP
+	printf("\nRunning XiP mode test\n");
+	xip_test();
+#else
+	printf("\nRunning indirect command-mode test cases\n");
 
 	/*Current RW support only on 16 DFS */
 	single_sector_test(flash_dev);
 
 	/* Erase Full and verify the content */
-	erase_test(flash_dev, flash_param->num_of_sector * flash_param->sector_size);
+	erase_test(flash_dev, (size_t)flash_size);
 
 	/* Multipage test */
 	multi_page_test(flash_dev);
 
 	/* Multi-Secot R/W and Erase test*/
 	multi_sector_test(flash_dev);
-
-#ifdef CONFIG_ALIF_OSPI_FLASH_XIP
-	xip_test(flash_dev);
 #endif
-
 	return 0;
 }

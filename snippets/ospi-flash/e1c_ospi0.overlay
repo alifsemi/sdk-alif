@@ -48,5 +48,6 @@
 };
 
 &ospi_flash {
+	xip-config = <1 0x0 0x04000000 1>;
 	status = "okay";
 };
