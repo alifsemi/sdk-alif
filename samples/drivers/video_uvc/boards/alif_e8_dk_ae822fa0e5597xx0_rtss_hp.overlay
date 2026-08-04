@@ -1,0 +1,204 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * E8 DK (RTSS-HP) UVC pipeline - common board plumbing shared by all sensors.
+ *
+ * This overlay is applied automatically for every E8 DK build (by board name),
+ * so it holds everything that is identical for the ARX3A0 / MT9M114 / OV5675
+ * pipelines: the USB device controller, the non-secure DTCM region, the AIPM
+ * run profile (PHY / clock gating), the ISP and camera (CPI) forwarding graph,
+ * the CSI receiver (minus the sensor-facing input endpoint), the i2c-mux that
+ * carries the camera I2C, the Hantro JPEG encoder and the UVC device.
+ *
+ * It deliberately wires NO sensor: the E8 DK has no default camera. Pick one by
+ * adding its sensor overlay with EXTRA_DTC_OVERLAY_FILE (arx3a0 / mt9m114 /
+ * ov5675 - see the README). That sensor overlay drops the sensor node into the
+ * i2c-mux channel (&cam_i2c_channel) and supplies the CSI input endpoint
+ * (&csi port@0) with the sensor's lane count, which is the only part of the CSI
+ * receiver that differs between the three sensors.
+ */
+
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+#include <zephyr/dt-bindings/clock/alif_ensemble_clocks.h>
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+/*
+ * AIPM run profile. On the Ensemble gen2 (E8) the SE run profile - including
+ * which PHYs are powered - is driven from this devicetree node, not only from
+ * the app-code se_service call. The default leaves phy-pwr-gating at 0, so the
+ * USB PHY is unpowered and the DWC3 controller cannot complete control
+ * transfers (the host sees a high-speed device but every GET_DESCRIPTOR fails).
+ * Power the USB PHY here, together with the MIPI D-PHY the CSI-2 link needs and
+ * the camera / CSI IP clocks, so both the camera pipeline and USB come up
+ * regardless of which mechanism is authoritative.
+ */
+&aipm_run_default {
+	phy-pwr-gating = <(ALIF_PHY_GATE_LDO_MASK |
+			   ALIF_PHY_GATE_USB_MASK |
+			   ALIF_PHY_GATE_MIPI_TX_DPHY_MASK |
+			   ALIF_PHY_GATE_MIPI_RX_DPHY_MASK |
+			   ALIF_PHY_GATE_MIPI_PLL_DPHY_MASK)>;
+	ip-clock-gating = <(ALIF_IP_CLK_GATE_CAMERA_MASK |
+			    ALIF_IP_CLK_GATE_MIPI_DSI_MASK |
+			    ALIF_IP_CLK_GATE_MIPI_CSI_MASK)>;
+};
+
+/*
+ * Enable the NON_SECURE0 region (DTCM). This is REQUIRED for USB: the DWC3
+ * controller is a bus master that issues non-secure accesses, so its DMA
+ * structures (event buffer, TRBs, setup packet, the UDC net_buf pool) must
+ * live in non-secure memory. The SoC linker fragment alif_ns.ld collects those
+ * USB/UDC buffers into NON_SECURE0 only when this node is enabled; leaving it
+ * disabled leaves them in secure DTCM, the controller cannot read/write them,
+ * and enumeration fails (host: descriptor read error -71 / -110).
+ *
+ * The video capture / JPEG buffers stay in SRAM0 (claimed there by sram.ld,
+ * which the ISP and JPEG masters can access), so the large NV12 + JPEG pool
+ * does not need to fit in this small DTCM window - only the USB buffers land
+ * here. NON_SECURE0 must remain in DTCM: the boot-time TGU setup
+ * (modules/hal/alif tgu.c) marks it non-secure using DTCM-relative block
+ * indices, so an SRAM base would corrupt the TGU LUT.
+ */
+&ns {
+	status = "okay";
+};
+
+/*
+ * USB device controller (DWC3). The E8 SoC devicetree already provides this
+ * node: it is inherited from e1.dtsi (via e3_e5_e7.dtsi -> e4_e6_e8.dtsi, which
+ * also overrides num-out-eps/num-in-eps to 5/11 for the E8), and is only left
+ * status = "disabled" by default. So, exactly like the E1C/B1 sample overlays,
+ * just enable it here and label it zephyr_udc0 so the USB device stack picks it
+ * up. The clocks are re-listed to add the SDC gate alongside the USB clock.
+ */
+zephyr_udc0: &usb {
+	clocks = <&clockctrl ALIF_SDC_CLK>, <&clockctrl ALIF_USB_CLK>;
+	status = "okay";
+};
+
+/*
+ * Camera I2C bus. Sensors that need Fast-mode I2C (MT9M114, OV5675) raise the
+ * speed in their own overlay; the ARX3A0 runs at the default Standard speed.
+ */
+&i2c1 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+/*
+ * GPIO-controlled I2C mux that fronts the camera bus. The sensor node is added
+ * to the mux channel (&cam_i2c_channel) by the sensor overlay; the mux and
+ * channel scaffolding are identical for every sensor.
+ */
+/ {
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		cam_i2c_channel: mux_i2c@0 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Sensor node is added here by the sensor overlay. */
+		};
+	};
+};
+
+&isp {
+	status = "okay";
+
+	port {
+		isp_ep_in: endpoint {
+			remote-endpoint-label = "cam_isp_ep_out";
+		};
+	};
+};
+
+&cam {
+	status = "okay";
+
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* MIPI CSI-2 bus endpoint. */
+		port@0 {
+			reg = <0>;
+			cam_csi2_ep_in: endpoint {
+				remote-endpoint-label = "csi2_ep_out";
+			};
+		};
+
+		/* ISP Interface. */
+		port@2 {
+			reg = <2>;
+			cam_isp_ep_out: endpoint {
+				remote-endpoint-label = "isp_ep_in";
+			};
+		};
+	};
+};
+
+&csi {
+	status = "okay";
+
+	/*
+	 * Selfie camera D-PHY. The sensor-facing input endpoint (port@0) is
+	 * supplied by the sensor overlay, because its data-lane count (and the
+	 * remote endpoint it links to) differ per sensor. port@2 (the parallel
+	 * hand-off to the CPI) is the same for every sensor and lives here.
+	 */
+	phy-if = <&dphy 0>;
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@2 {
+			reg = <2>;
+			csi2_ep_out: endpoint {
+				remote-endpoint-label = "cam_csi2_ep_in";
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+			};
+		};
+	};
+};
+
+/* Hantro VC9000E JPEG hardware encoder. */
+&jpeg0 {
+	status = "okay";
+	quality-factor = <75>;
+	max-burst-length = <64>;
+};
+
+/* In-tree USB Video Class webcam (streams the JPEG encoder's MJPEG output). */
+/ {
+	uvc: uvc {
+		compatible = "zephyr,uvc-device";
+	};
+};

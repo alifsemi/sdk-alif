@@ -1,0 +1,84 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * E8 DK (RTSS-HP) - OV5675 sensor overlay:
+ *   OV5675 (MIPI CSI-2, RAW10) -> ISP (NV12 1024x768) -> Hantro JPEG -> UVC.
+ *
+ * Merge this on top of the auto-applied board overlay
+ * alif_e8_dk_ae822fa0e5597xx0_rtss_hp.overlay with EXTRA_DTC_OVERLAY_FILE (see
+ * the README). The board overlay carries all the common E8 plumbing; this file
+ * adds the OV5675 sensor node, the CSI input endpoint (two data lanes) and the
+ * Fast-mode I2C tuning.
+ *
+ * Resolution: the OV5675 streams its 2x2-binned full-FOV 1296x972 RAW10 mode.
+ * The ISP debayers it and DOWNSCALES to 1024x768 NV12 (the app sets that as the
+ * ISP output/capture format in main.c; the ISP scaler resizes the full
+ * 1296x972 input down to it). 1024x768 keeps the sensor's native 4:3 aspect
+ * ratio, has both dimensions 16-pixel aligned (so the Hantro JPEG encoder,
+ * which encodes in 16x16 MCUs, needs no edge padding), and its NV12 buffers fit
+ * the SRAM0 video pool (see ov5675.conf). No crop is applied here
+ * (crop-x0/crop-y0 default to 0), so the full field of view is preserved.
+ */
+
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+/* The OV5675 needs Fast-mode I2C (the board overlay only enables i2c1). */
+&i2c1 {
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	/*
+	 * For Standard  speed LCNT=0  and HCNT=0
+	 * For Fast      speed LCNT=50 and HCNT=30
+	 * For Fast Plus speed LCNT=35 and HCNT=5
+	 */
+	hcnt-offset = <30>;
+	lcnt-offset = <50>;
+};
+
+/* OV5675 on the camera i2c-mux channel. */
+&cam_i2c_channel {
+	/* 0x10 for the compact module, 0x36 for the legacy one. */
+	ov5675_selfie: ov5675_selfie@10 {
+		compatible = "ovti,ov5675";
+		reg = <0x10>;
+
+		reset-gpios = <&gpio14 4 GPIO_ACTIVE_HIGH>;
+		power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+		status = "okay";
+
+		port {
+			ov5675_csi2_ep_out0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = < 400000000 >;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "csi2_ep_in0";
+			};
+		};
+	};
+};
+
+/* CSI input endpoint: the OV5675 uses two data lanes. */
+&csi {
+	ports {
+		port@0 {
+			reg = <0>;
+			csi2_ep_in0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "ov5675_csi2_ep_out0";
+			};
+		};
+	};
+};
