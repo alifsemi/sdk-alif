@@ -1,0 +1,17 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * E1C SK UVC pipeline: OV5640 (parallel) -> LP-CAM -> RGB565 480x272 -> UVC.
+ *
+ * The board-specific part is only the pinctrl header; the whole pipeline is
+ * shared with the B1 SK in lpcam_ov5640_uvc.dtsi (included below).
+ */
+
+#include <dt-bindings/pinctrl/ensemble-e1c-pinctrl.h>
+
+#include "lpcam_ov5640_uvc.dtsi"

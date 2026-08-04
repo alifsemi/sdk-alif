@@ -1,0 +1,60 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * E8 DK (RTSS-HP) - ARX3A0 sensor overlay:
+ *   ARX3A0 (MIPI CSI-2) -> ISP (NV12 560x560) -> Hantro JPEG encoder -> UVC.
+ *
+ * Merge this on top of the auto-applied board overlay
+ * alif_e8_dk_ae822fa0e5597xx0_rtss_hp.overlay with EXTRA_DTC_OVERLAY_FILE (see
+ * the README). That board overlay carries all the common E8 plumbing (USB,
+ * NON_SECURE0, AIPM, ISP/CPI graph, CSI receiver, i2c-mux, JPEG, UVC); this
+ * file only adds the ARX3A0 sensor node and the CSI input endpoint.
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+/* ARX3A0 (I2C 0x36) on the camera i2c-mux channel. */
+&cam_i2c_channel {
+	arx3a0_selfie: arx3a0_selfie@36 {
+		compatible = "onnn,arx3a0";
+		reg = <0x36>;
+
+		reset-gpios = <&gpio14 4 GPIO_ACTIVE_HIGH>;
+		power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+		status = "okay";
+
+		port {
+			arx3a0_csi2_ep_out0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = < 400000000 >;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "csi2_ep_in0";
+			};
+		};
+	};
+};
+
+/* CSI input endpoint: the ARX3A0 uses two data lanes. */
+&csi {
+	ports {
+		port@0 {
+			reg = <0>;
+			csi2_ep_in0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "arx3a0_csi2_ep_out0";
+			};
+		};
+	};
+};
