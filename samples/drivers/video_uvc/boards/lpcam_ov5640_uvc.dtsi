@@ -1,0 +1,141 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * Shared UVC pipeline for the E1C SK and B1 SK boards:
+ *   OV5640 (parallel DVP) -> LP-CAM -> RGB565 480x272 -> UVC.
+ *
+ * The E1C and B1 board overlays are identical apart from their
+ * board-specific pinctrl header, so the whole pipeline lives here and each
+ * board overlay just includes its pinctrl header (which supplies the
+ * PIN_P1_x__GPIO macros used below) followed by this file. Do not #include a
+ * pinctrl header here - the including overlay provides the right one.
+ */
+
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+/*
+ * DTCM is 1536K (0x20000000..0x20180000), split at 0x200C0000:
+ *
+ *   [0x20000000 .. 0x200C0000)  768K  Zephyr core (.data/.bss/heap/stacks)
+ *   [0x200C0000 .. 0x20180000)  768K  NON_SECURE0 (this node): USB DMA
+ *                                     buffers + video capture pool
+ *                                     (.alif_ns section, soc/.../alif_ns.ld)
+ *
+ * The video pool (camera DMA target) and the USB buffers must live in
+ * NON_SECURE0. The RGB565 480x272 capture buffer is only ~255K, so this 768K
+ * region has ample headroom; it is left the same size as the JPEG sample to
+ * keep the TGU alignment identical (see below).
+ *
+ * CRITICAL: the base AND size must be aligned to the DTCM TGU block size.
+ * At boot sau_tcm_ns_setup() (modules/hal/alif) marks this region non-secure
+ * in BOTH the SAU (exact, 32-byte granular) and the TGU (whole DTCM blocks,
+ * via integer division - see tgu.c). If the base is not block-aligned the
+ * TGU marks the partial block below it non-secure while the SAU keeps it
+ * secure; any secure access into that window then faults (BusFault/MemManage).
+ * The DTCM TGU block on E1C / B1 is >= 64K; 0x200C0000 is 256K-aligned, which
+ * is safe for any plausible block size. Do not give this an unaligned base.
+ *
+ * Keep in sync with CONFIG_VIDEO_BUFFER_POOL_SZ_MAX (.conf).
+ */
+ns: &ns {
+	status = "okay";
+	reg = < 0x200C0000 DT_SIZE_K(768)>;
+};
+
+/* USB */
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+/*
+ * Override gpio1 pinctrl to exclude P1_0 (JTAG_TMS), P1_1 (JTAG_TDI) and
+ * P1_2 (JTAG_TDO) which are connected to the JTAG debug connector on the
+ * E1C SK / B1 SK boards. The default pinctrl_gpio1 covers the full port and
+ * would remux those pads to GPIO, breaking the debug interface.
+ */
+&pinctrl {
+	pinctrl_gpio1_video: pinctrl_gpio1_video {
+		group0 {
+			pinmux = <PIN_P1_3__GPIO>,
+				 <PIN_P1_4__GPIO>,
+				 <PIN_P1_5__GPIO>,
+				 <PIN_P1_6__GPIO>,
+				 <PIN_P1_7__GPIO>;
+			read-enable = <0x1>;
+		};
+	};
+};
+
+&gpio1 {
+	pinctrl-0 = <&pinctrl_gpio1_video>;
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+&lpgpio {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	hcnt-offset = <10>;
+	lcnt-offset = <10>;
+
+	ov5640: ov5640@3c{
+		compatible = "ovti,ov5640";
+		reg = <0x3c>;
+		status = "okay";
+		reset-gpios = <&lpgpio 1 GPIO_ACTIVE_LOW>;
+		powerdown-gpios = <&gpio1 3 GPIO_ACTIVE_HIGH>;
+
+		port {
+			ov5640_ep_out: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+				remote-endpoint-label = "lpcam_ep_in";
+			};
+		};
+	};
+};
+
+&lpcam {
+	status = "okay";
+	cpi-interface = "parallel";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* Camera Input Endpoint. For LP-CAM it is only camera */
+		port@0 {
+			reg = <0>;
+			lpcam_ep_in: endpoint {
+				remote-endpoint-label = "ov5640_ep_out";
+			};
+		};
+
+		/* Video buffer output endpoint. */
+		port@1 {
+			reg = <1>;
+			cam_mem_ep_out: endpoint {
+				remote-endpoint-label = "application";
+			};
+		};
+	};
+};
+
+/* In-tree USB Video Class webcam (streams the LP-CAM RGB565 frames). */
+/ {
+	uvc: uvc {
+		compatible = "zephyr,uvc-device";
+	};
+};

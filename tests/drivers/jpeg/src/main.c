@@ -235,14 +235,22 @@ ZTEST(jpeg_hantro, test_jpeg_set_format_invalid)
 	zassert_equal(ret, -ENOTSUP,
 		      "RGB565 expected -ENOTSUP got %d", ret);
 
-	/* Wrong endpoint */
+	/*
+	 * EP_IN is a valid endpoint for the encoder: the uncompressed frame is
+	 * presented on the input side
+	 */
 	f = (struct video_format){
 		.pixelformat = VIDEO_PIX_FMT_NV12,
 		.width = 320, .height = 240, .pitch = 320,
 	};
 	ret = video_set_format(jpeg_dev, VIDEO_EP_IN, &f);
+	zassert_equal(ret, 0,
+		      "EP_IN set_format expected 0 got %d", ret);
+
+	/* Genuinely invalid endpoint */
+	ret = video_set_format(jpeg_dev, (enum video_endpoint_id)99, &f);
 	zassert_equal(ret, -EINVAL,
-		      "EP_IN set_format expected -EINVAL got %d", ret);
+		      "invalid endpoint set_format expected -EINVAL got %d", ret);
 }
 
 ZTEST(jpeg_hantro, test_jpeg_set_get_ctrl_quality)
