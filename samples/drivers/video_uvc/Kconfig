@@ -1,0 +1,7 @@
+# Copyright (C) 2026 Alif Semiconductor
+# SPDX-License-Identifier: Apache-2.0
+
+# Source common USB sample options used to initialize USB device stack.
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+source "Kconfig.zephyr"
