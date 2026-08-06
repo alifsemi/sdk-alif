@@ -193,7 +193,14 @@ int image_init(int req_output_width, int req_output_height)
 		       fcap->width_min, fcap->width_max, fcap->width_step,
 		       fcap->height_min, fcap->height_max, fcap->height_step);
 
-		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P) {
+		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P &&
+		    fcap->width_min == CIMAGE_X && fcap->height_min == CIMAGE_Y) {
+			/*
+			 * Select the exact resolution the image pipeline is built
+			 * for (CIMAGE_X x CIMAGE_Y). The downstream buffers, crop
+			 * math and RAW10->RAW8 conversion are dimensioned at compile
+			 * time, so no other resolution can be processed correctly.
+			 */
 			fmt.pixelformat = VIDEO_PIX_FMT_Y10P;
 			fmt.width = fcap->width_min;
 			fmt.height = fcap->height_min;
@@ -202,7 +209,8 @@ int image_init(int req_output_width, int req_output_height)
 	}
 
 	if (fmt.pixelformat == 0) {
-		LOG_ERR("Desired Pixel format is not supported.");
+		LOG_ERR("Sensor does not advertise the required Y10P %ux%u mode",
+			CIMAGE_X, CIMAGE_Y);
 		return -1;
 	}
 
