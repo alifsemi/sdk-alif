@@ -1,0 +1,8 @@
+sample:
+  name: LE Throughput
+tests:
+  sample.bt_custom.le_throughput:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

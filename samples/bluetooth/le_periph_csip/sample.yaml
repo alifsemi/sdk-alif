@@ -1,0 +1,9 @@
+sample:
+  name: LE Periph CSIP
+tests:
+  sample.bt_custom.le_periph_csip:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

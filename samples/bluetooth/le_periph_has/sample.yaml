@@ -1,0 +1,9 @@
+sample:
+  name: LE Periph HAS
+tests:
+  sample.bt_custom.le_periph_has:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

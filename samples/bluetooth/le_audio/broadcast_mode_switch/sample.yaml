@@ -1,0 +1,10 @@
+sample:
+  name: LE Audio Broadcast Mode Switch
+tests:
+  sample.bt_custom.le_audio.broadcast_mode_switch:
+    build_only: true
+    filter: dt_alias_exists("i2s_bus")
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

@@ -1,0 +1,9 @@
+sample:
+  name: LE Periph PM
+tests:
+  sample.bt_custom.le_periph_pm:
+    build_only: true
+    filter: dt_compat_enabled("snps,dw-apb-rtc") or dt_compat_enabled("snps,dw-timers")
+    tags:
+      - bluetooth
+      - bt_custom

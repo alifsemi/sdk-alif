@@ -1,0 +1,10 @@
+sample:
+  name: LE Periph VCP
+tests:
+  sample.bt_custom.le_periph_vcp:
+    build_only: true
+    filter: dt_alias_exists("ledgreen")
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

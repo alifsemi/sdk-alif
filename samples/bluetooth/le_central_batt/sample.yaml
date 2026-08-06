@@ -1,0 +1,8 @@
+sample:
+  name: LE Central Batt
+tests:
+  sample.bt_custom.le_central_batt:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

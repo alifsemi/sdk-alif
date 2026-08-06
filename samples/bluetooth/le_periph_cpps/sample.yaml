@@ -1,0 +1,8 @@
+sample:
+  name: LE Periph CPPS
+tests:
+  sample.bt_custom.le_periph_cpps:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

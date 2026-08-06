@@ -1,0 +1,8 @@
+sample:
+  name: SMP Svr
+tests:
+  sample.bt_custom.smp_svr:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

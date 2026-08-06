@@ -1,0 +1,8 @@
+sample:
+  name: Mesh Light Bulb
+tests:
+  sample.bt_custom.mesh_light_bulb:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom
