@@ -1,0 +1,8 @@
+sample:
+  name: LE Periph GLPS
+tests:
+  sample.bt_custom.le_periph_glps:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

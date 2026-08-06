@@ -1,0 +1,9 @@
+sample:
+  name: LE Periph PACS
+tests:
+  sample.bt_custom.le_periph_pacs:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

@@ -1,0 +1,8 @@
+sample:
+  name: LE Periph PRXP
+tests:
+  sample.bt_custom.le_periph_prxp:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

@@ -1,0 +1,10 @@
+sample:
+  name: LE Audio Unicast Initiator
+tests:
+  sample.bt_custom.le_audio.unicast_initiator:
+    build_only: true
+    filter: dt_nodelabel_enabled("gpio5")
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

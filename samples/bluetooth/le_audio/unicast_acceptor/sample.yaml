@@ -1,0 +1,10 @@
+sample:
+  name: LE Audio Unicast Acceptor
+tests:
+  sample.bt_custom.le_audio.unicast_acceptor:
+    build_only: true
+    filter: dt_alias_exists("i2s_bus") and dt_alias_exists("audio_codec")
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

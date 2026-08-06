@@ -1,0 +1,10 @@
+sample:
+  name: LE Central CSIP
+tests:
+  sample.bt_custom.le_central_csip:
+    build_only: true
+    filter: dt_nodelabel_enabled("gpio5")
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

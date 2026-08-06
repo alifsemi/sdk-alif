@@ -1,0 +1,10 @@
+sample:
+  name: LE Periph MICS
+tests:
+  sample.bt_custom.le_periph_mics:
+    build_only: true
+    filter: dt_alias_exists("ledred") and dt_alias_exists("ledblue")
+    tags:
+      - bluetooth
+      - bt_custom
+      - le_audio

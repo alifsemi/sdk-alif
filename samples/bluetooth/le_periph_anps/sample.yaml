@@ -1,0 +1,8 @@
+sample:
+  name: LE Periph ANPS
+tests:
+  sample.bt_custom.le_periph_anps:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

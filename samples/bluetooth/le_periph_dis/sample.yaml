@@ -1,0 +1,8 @@
+sample:
+  name: LE Periph DIS
+tests:
+  sample.bt_custom.le_periph_dis:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom

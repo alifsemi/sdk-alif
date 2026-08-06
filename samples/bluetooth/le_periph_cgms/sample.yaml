@@ -1,0 +1,8 @@
+sample:
+  name: LE Periph CGMS
+tests:
+  sample.bt_custom.le_periph_cgms:
+    build_only: true
+    tags:
+      - bluetooth
+      - bt_custom
