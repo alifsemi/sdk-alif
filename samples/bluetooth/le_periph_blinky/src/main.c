@@ -417,16 +417,10 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
 	if (has_changed & 1) {
-		if (!(button_state & 1)) {
-			if (env.char0_val) {
-				env.char0_val = 0;
-			} else {
-				env.char0_val = 1;
-			}
-			if ((conn_status == BT_CONN_STATE_CONNECTED) &&
-			    (env.ntf_cfg == PRF_CLI_START_NTF)) {
-				k_sem_give(&ntf_sem);
-			}
+		env.char0_val = !(button_state & 1);
+		if ((conn_status == BT_CONN_STATE_CONNECTED) &&
+		    (env.ntf_cfg == PRF_CLI_START_NTF)) {
+			k_sem_give(&ntf_sem);
 		}
 	}
 }
