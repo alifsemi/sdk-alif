@@ -1,0 +1,3 @@
+name: devkit-hp
+append:
+  EXTRA_DTC_OVERLAY_FILE: snippet.overlay

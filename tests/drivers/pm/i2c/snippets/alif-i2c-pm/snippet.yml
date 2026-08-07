@@ -1,0 +1,8 @@
+name: alif-i2c-pm
+boards:
+  /alif_(b|e1c).*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2c_pm_e1c_b1.overlay
+  /alif_(e3|e4|e5|e6|e7|e8).*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2c_pm_ensemble.overlay
