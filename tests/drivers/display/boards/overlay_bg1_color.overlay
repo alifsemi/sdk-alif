@@ -1,0 +1,10 @@
+/* Overlay: Background color = Red (0xFF0000)
+ * Visual check: Display background should appear red
+ */
+
+&cdc200 {
+	bg-color = <0xFF0000>;
+	enable-l1 = <0>;
+	def-back-color-l1 = <0x00ff00>;
+	enable-l2 = <0>;
+};
