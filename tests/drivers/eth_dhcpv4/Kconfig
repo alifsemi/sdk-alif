@@ -1,0 +1,18 @@
+source "Kconfig.zephyr"
+
+config ETH_DHCPV4_MANUAL_CABLE_TESTS
+	bool "Build manual Ethernet DHCPv4 cable unplug tests"
+	default n
+	help
+	  Enable operator-gated cable disconnect tests in the Ethernet DHCPv4
+	  validation suite. These tests require physically unplugging the RJ45
+	  cable during execution, so they are disabled for normal automated runs.
+
+config TEST_ETH_DHCPV4_NEGATIVE
+	bool "Build Ethernet DHCPv4 negative (invalid-argument) tests"
+	default y
+	help
+	  Enable the negative test suite that feeds invalid arguments to the
+	  ICMP ping and DHCPv4 option-callback APIs and confirms each one
+	  returns the documented error code (-EINVAL) instead of crashing or
+	  succeeding. These are fully automated and require no operator action.
