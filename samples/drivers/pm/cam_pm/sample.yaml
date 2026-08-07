@@ -1,0 +1,64 @@
+sample:
+  name: Alif Power Management States Demo
+  description: >
+    Demonstrates Zephyr power management states (PM_STATE_RUNTIME_IDLE,
+    PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF)
+    for Alif RTSS cores. Shows power profile configuration, state transitions
+    with RTC wakeup, IWIC low-power mode, and retention behavior differences
+    between HP (no retention) and HE (retention supported) cores.
+common:
+  tags:
+    - power
+    - pm
+    - counter
+    - rtc
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "Camera Sensors PM demo"
+      - "POWER STATE SEQUENCE"
+      - "Resumed from PM_STATE_SUSPEND_TO_RAM"
+tests:
+  sample.drivers.devkit.he.arx3a0.tcm:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=devkit-he-arx3a0-tcm
+  sample.drivers.devkit.hp.arx3a0.mram:
+    platform_allow:
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e7_dk_rtss_hp
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=devkit-hp-arx3a0-mram
+  sample.drivers.devkit.he.ov5675.tcm:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=devkit-he-ov5675-tcm
+  sample.drivers.devkit.hp.ov5675.mram:
+    platform_allow:
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e7_dk_rtss_hp
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=devkit-hp-ov5675-mram
