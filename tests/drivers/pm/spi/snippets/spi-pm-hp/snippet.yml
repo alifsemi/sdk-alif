@@ -1,0 +1,5 @@
+name: spi-pm-hp
+boards:
+  /alif_(e7|e8).*_rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: spi_pm_hp_ensemble.overlay
