@@ -1,0 +1,212 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+/* Camera Configuration for PM Testing - ARX3A0 Selfie Camera */
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+&lpgpio {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&subsys_off {
+	min-residency-us = <25000000>;
+	status = "okay";
+};
+
+&standby_s2ram {
+	min-residency-us = <19000000>;
+	status = "okay";
+};
+
+&stop_s2ram {
+	min-residency-us = <21000000>;
+	status = "okay";
+};
+
+&suspend_idle {
+	status = "disabled";
+};
+
+&aipm_run_default {
+	aipm-power-domains = <(ALIF_PD_SSE700_AON_MASK | ALIF_PD_SYST_MASK | ALIF_PD_DBSS_MASK)>;
+	phy-pwr-gating = <(ALIF_PHY_GATE_MIPI_TX_DPHY_MASK | ALIF_PHY_GATE_MIPI_RX_DPHY_MASK |
+			   ALIF_PHY_GATE_MIPI_PLL_DPHY_MASK | ALIF_PHY_GATE_LDO_MASK)>;
+	ip-clock-gating = <(ALIF_IP_CLK_GATE_CAMERA_MASK | ALIF_IP_CLK_GATE_MIPI_CSI_MASK |
+			    ALIF_IP_CLK_GATE_MIPI_DSI_MASK)>;
+	memory-blocks   = <(ALIF_MRAM_MASK | ALIF_SRAM0_MASK)>;
+};
+
+
+&aipm_off {
+	vtor-address = <0x00000000>;
+	status = "okay";
+};
+
+&off_profile_standby {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+&off_profile_stop {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+
+&i2c1 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+/* enable HFOSC clock clk_38p4m. */
+&clk_38p4m {
+	status = "okay";
+};
+
+/* enable CFG clock clk_100m. */
+&clk_100m {
+	status = "okay";
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+		zephyr,console = &uart4;
+	};
+};
+
+/ {
+    i2c_mux: i2c-mux {
+	compatible = "gpio-i2c-mux";
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	i2c-inst = <&i2c1>;
+	ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+	mux_i2c@0 {
+		compatible = "gpio-i2c-mux-channel";
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		arx3a0_selfie: arx3a0_selfie@36 {
+			compatible = "onnn,arx3a0";
+			reg = <0x36>;
+			reset-gpios = <&gpio14 4 GPIO_ACTIVE_HIGH>;
+			power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+			status = "okay";
+
+		port {
+			arx3a0_csi2_ep_out0: endpoint {
+			bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+			link-frequencies = < 400000000 >;
+			data-lanes = <1 2>;
+			clock-lane = <0>;
+			remote-endpoint-label = "csi2_ep_in0";
+			};
+		   };
+	     };
+	};
+	};
+};
+
+&cam {
+	status = "okay";
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+	clocks = <&clockctrl ALIF_CPI_CLK>, <&clockctrl ALIF_CAMERA_PIX_SYST_ACLK>;
+	clock-names = "cam_clk", "pix_clk";
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+	port@0 {
+		reg = <0>;
+		cam_csi2_ep_in: endpoint {
+			remote-endpoint-label = "csi2_ep_out";
+		};
+	};
+
+	port@1 {
+		reg = <1>;
+		cam_axi_ep: endpoint {
+		remote-endpoint-label = "apps_arx";
+		};
+	};
+
+	port@2 {
+		reg = <2>;
+		cam_mem_ep_out: endpoint {
+		remote-endpoint-label = "application";
+		};
+	};
+	};
+};
+
+&csi {
+	status = "okay";
+	phy-if = <&dphy 0>;
+
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+	port@0 {
+		reg = <0>;
+		csi2_ep_in0: endpoint {
+		bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+		data-lanes = <1 2>;
+		clock-lane = <0>;
+		remote-endpoint-label = "arx3a0_csi2_ep_out0";
+		};
+	};
+
+	port@2 {
+		reg = <2>;
+		csi2_ep_out: endpoint {
+		remote-endpoint-label = "cam_csi2_ep_in";
+		bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+		};
+	};
+	};
+};
+
+/ {
+	aliases {
+		camera = &cam;
+	};
+};
