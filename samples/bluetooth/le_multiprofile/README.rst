@@ -16,6 +16,7 @@ The following services are included:
 * Blood Pressure (BLPS)
 * Health Thermometer (HTPT)
 * Glucose (GLPS)
+* Continuous Glucose Monitoring (CGMS)
 * Cycling Speed & Cadence (CSCPS)
 * Running Speed & Cadence (RSCPS)
 * Proximity (PRXP)
@@ -25,7 +26,7 @@ The following services are included:
 Requirements
 ************
 
-* Alif Balletto Development Kit
+* Alif Balletto Development Kit or Starter Kit
 * BLE-capable central (phone / BLE app)
 
 Building and Running
@@ -36,13 +37,13 @@ After connection, individual profiles begin operation once the corresponding CCC
 Dummy measurements are sent for supported profiles.
 The custom Blinky service allows LED control from the central device.
 
-Limitations
-********************
+Pairing
+*******
 
-* Glucose (GLPS) is advertised and the service is visible, but runtime
-  measurement values are not accessible due to incomplete RACP (Record Access
-  Control Point) handling.
-* For the same reason as above, Continuous Glucose Monitor Sample (CGMS) was not added as well.
-* The Proximity Profile (PRXP) includes Link Loss Service (LLS) only.
-  Immediate Alert (IAS) and TX Power (TPS) are excluded to stay within the profile task limit.
-* Measurements are dummy values and not sensor-backed.
+The Glucose (GLPS) and Continuous Glucose Monitoring (CGMS) profiles require a one-time
+Bluetooth pairing when first accessed. A pairing request will appear on the central device
+prompting for a passcode. Enter **000000** to complete pairing.
+
+This pairing only happens once — on all subsequent connections the link is automatically
+re-encrypted using the stored bond, so no passcode will be requested again.
+
