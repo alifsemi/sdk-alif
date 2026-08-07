@@ -156,6 +156,15 @@ void led_worker_handler(struct k_work *work);
 
 static K_WORK_DELAYABLE_DEFINE(led_work, led_worker_handler);
 
+static bool led0_target_state;
+
+static void led0_worker_handler(struct k_work *work)
+{
+	ble_gpio_led_set(&led0, led0_target_state);
+}
+
+static K_WORK_DEFINE(led0_work, led0_worker_handler);
+
 /* Functions */
 
 static void update_led_state(void)
@@ -293,11 +302,8 @@ static void on_att_val_set(uint8_t conidx, uint8_t user_lid, uint16_t token, uin
 			} else {
 				memcpy(&env.char1_val, co_buf_data(p_data), sizeof(env.char1_val));
 				LOG_DBG("TOGGLE LED, state %d", env.char1_val);
-				if (env.char1_val) {
-					ble_gpio_led_set(&led0, true);
-				} else {
-					ble_gpio_led_set(&led0, false);
-				}
+				led0_target_state = env.char1_val;
+				k_work_submit(&led0_work);
 			}
 			break;
 		}
@@ -411,16 +417,10 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
 	if (has_changed & 1) {
-		if (!(button_state & 1)) {
-			if (env.char0_val) {
-				env.char0_val = 0;
-			} else {
-				env.char0_val = 1;
-			}
-			if ((conn_status == BT_CONN_STATE_CONNECTED) &&
-			    (env.ntf_cfg == PRF_CLI_START_NTF)) {
-				k_sem_give(&ntf_sem);
-			}
+		env.char0_val = !(button_state & 1);
+		if ((conn_status == BT_CONN_STATE_CONNECTED) &&
+		    (env.ntf_cfg == PRF_CLI_START_NTF)) {
+			k_sem_give(&ntf_sem);
 		}
 	}
 }
