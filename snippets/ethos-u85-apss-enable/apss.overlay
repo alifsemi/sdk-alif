@@ -1,0 +1,46 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * Ethos-U85 NPU + SRAM1 enable overlay for APSS (Cortex-A32).
+ *
+ * APSS board DTS files do not inherit the common RTSS DTSI which defines
+ * ethosu1 and sram1, so both nodes are declared here.
+ *
+ * NPU:   Ethos-U85 at 0x49042000
+ *        GIC_SPI 355  (Alif interrupt routing: M55 NVIC 366 - 11 = 355)
+ *        privilege-enable only — A32 runs in non-secure world; setting
+ *        secure-enable from normal world causes verify_access_state() to fail.
+ *
+ * SRAM1: 4MB at 0x02400000
+ *        Mapped non-cacheable by the MMU (mmu_regions.c) so the NPU and
+ *        CPU share a coherent view without explicit cache maintenance.
+ */
+
+#include <zephyr/dt-bindings/interrupt-controller/arm-gic.h>
+
+&{/soc} {
+	ethosu1: ethosu85@49042000 {
+		compatible = "arm,ethos-u";
+		reg = <0x49042000 0x1000>;
+		/* Interrupt routing for APSS GIC:
+		 * Alif shared-peripheral routing: GIC_SPI = M55_NVIC - 11.
+		 * Ethos-U85 M55 NVIC = 366  →  GIC_SPI = 355.
+		 */
+		interrupts = <GIC_SPI 355 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		privilege-enable;
+		status = "okay";
+	};
+
+	sram1: sram@2400000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x02400000 0x400000>;
+		zephyr,memory-region = "SRAM1";
+	};
+};

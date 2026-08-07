@@ -25,9 +25,10 @@ manifest:
   #
   # Please add items below based on alphabetical order
   projects:
+
     - name: zephyr
       repo-path: zephyr_alif
-      revision: f002a4d8499c35fc70ec4d5324faa7b01c152c72
+      revision: pull/517/head
       import:
         # In addition to the zephyr repository itself,
         # Alif SDK fetches the needed projects
@@ -76,7 +77,7 @@ manifest:
       revision: 85f6b92af0f6ac72594d391f895c45cc30847e41
       path: modules/hal/cmsis
       groups:
-        - hal
+         - hal
 
     - name: hal_infineon
       remote: zephyrproject

@@ -1,0 +1,8 @@
+name: ethos-u85-apss-enable
+
+boards:
+  # APSS (Cortex-A32): define ethosu1 + SRAM1 from scratch — these nodes are
+  # not inherited from any RTSS DTSI on the A32 board files.
+  /alif_(e4|e8)_(dk|ak)/.*/apss/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: apss.overlay
