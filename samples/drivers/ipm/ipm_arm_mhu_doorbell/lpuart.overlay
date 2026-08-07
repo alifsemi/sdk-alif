@@ -1,0 +1,89 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	current-speed = <115200>;
+	dlf = <13>;
+	/*/delete-property/ dlf;*/
+	status = "okay";
+	/delete-property/ pinctrl-1; // = <&pinctrl_lpuart_sleep>;
+	pinctrl-names = "default";
+};
+
+&pinctrl {
+	pinctrl_lpuart: pinctrl_lpuart {
+		group0 {
+			pinmux = < PIN_P9_1__LPUART_RX_B >,
+				 < PIN_P9_2__LPUART_TX_B >;
+		};
+	};
+};
+/ {
+	chosen {
+		zephyr,console = &lpuart;
+		zephyr,shell-uart = &lpuart;
+		zephyr,uart-mcumgr = &lpuart;
+	};
+};
+/*
+ * Enable PM_STATE_SOFT_OFF wake for the HE core via the always-on LPTIMER0.
+ *
+ * The pm-system-off-he snippet only configures the S2RAM off-profiles
+ * (off_profile_standby / off_profile_stop -> LPRTC wake) and leaves
+ * off_profile_soft_off at its default (wakeup-events = 0, ewic-cfg = 0), so
+ * SOFT_OFF on HE has no wake source and never resumes. Mirror the HP snippet
+ * and wake SOFT_OFF from LPTIMER0 (VBAT timer, EWIC VBAT_TIMER).
+ *
+ * Only a command-line EXTRA_DTC_OVERLAY_FILE is applied AFTER the snippet, so
+ * this override must live in an overlay passed on the west command line (this
+ * file). Enabling timer0 also lets main.c arm LPTIMER0 before entering
+ * SOFT_OFF, since the LPRTC idle-timer is powered down in that profile.
+ */
+&timer0 {
+	status = "okay";
+};
+
+/*
+ * The pm-system-off-he snippet sets aipm_off vtor-address = 0x0, i.e. it tells
+ * the Secure Enclave to restore VTOR to TCM (0x0) when the core wakes from the
+ * off profile. That is correct for a TCM-boot image (S2RAM resume in place),
+ * but this build boots from MRAM (VTOR = 0x80000000). On wake from SOFT_OFF the
+ * SE would jump to the empty TCM at 0x0 and the core would never restart, so no
+ * reset is observed. Point the wake vector back at the MRAM image start so
+ * SOFT_OFF wakeup performs a clean reset/reboot (as it does on the HP core,
+ * whose snippet does not override vtor-address).
+ */
+&aipm_off {
+	vtor-address = <0x80000000>;
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	/* Retain SRAM1 across SOFT_OFF so the HE initiator's cross-core heap
+	 * and its retained per-test counters survive the reset (the responder
+	 * staying awake also keeps SRAM1 powered).
+	 */
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK | ALIF_SRAM1_MASK)>;
+	wakeup-events = <ALIF_WE_LPTIMER0>;
+	ewic-cfg = <ALIF_EWIC_VBAT_TIMER>;
+};
+
+/*
+ * The m55he_to_m55hp_initiator.c flow re-enters SOFT_OFF between doorbell
+ * exchanges and arms LPTIMER0 for a 2 s wake. Lower the SOFT_OFF (subsys_off)
+ * min-residency below 2 s (snippet default is 25 s) so the PM policy actually
+ * selects SOFT_OFF for that 2 s k_sleep().
+ */
+&subsys_off {
+	min-residency-us = <500000>;
+};

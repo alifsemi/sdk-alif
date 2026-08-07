@@ -1,0 +1,38 @@
+{
+        "DEVICE": {
+                "disabled" : false,
+                "binary": "app-device-config.json",
+                "version" : "0.5.00",
+                "signed": true
+        },
+        "DTB": {
+                "binary": "devkit-e8.dtb",
+                "version" : "0.1.0",
+                "mramAddress": "0x80010000"
+        },
+        "BOOTLOAD": {
+                "binary": "bl32.bin",
+                "version" : "0.4.3",
+                "mramAddress": "0x80002000",
+                "cpu_id": "A32_0",
+                "flags": ["boot"]
+        },
+        "HE_APP": {
+	        "disabled": false,
+	        "binary": "zephyr_he.bin",
+	        "version": "1.0.0",
+	        "signed": true,
+	        "cpu_id": "M55_HE",
+	        "flags": ["boot"],
+	        "mramAddress": "0x80400000"
+	 },
+        "HP_APP": {
+	        "disabled": false,
+	        "binary": "zephyr_hp.bin",
+	        "version": "1.0.0",
+	        "signed": true,
+	        "cpu_id": "M55_HP",
+	        "flags": ["boot"],
+	        "mramAddress": "0x80200000"
+	 }
+}
