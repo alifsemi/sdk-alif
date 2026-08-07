@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcases suite="wifi_shell" module="SDIO WiFi (CYW43439 / Murata 1YN)"
+           board="alif_e8_dk/ae822fa0e5597xx0/rtss_hp"
+           framework="Zephyr ztest">
+
+  <!-- ============================================================= -->
+  <!-- Functional Tests                                                -->
+  <!-- ============================================================= -->
+  <category name="Functional">
+
+    <testcase id="TC_WIFI_FUNC_001" name="wifi_scan" function="test_wifi_scan"
+              priority="P1" type="functional">
+      <description>Perform an active WiFi scan and verify that at least one AP is discovered.</description>
+      <preconditions>WiFi interface is up; driver firmware loaded.</preconditions>
+      <steps>
+        <step>Reset scan result count.</step>
+        <step>Issue NET_REQUEST_WIFI_SCAN with WIFI_SCAN_TYPE_ACTIVE.</step>
+        <step>Wait for NET_EVENT_WIFI_SCAN_DONE (timeout: SCAN_TIMEOUT_SEC).</step>
+        <step>Verify scan_result_count > 0.</step>
+      </steps>
+      <expected_result>Scan completes; one or more APs reported.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_FUNC_002" name="wifi_connect" function="test_wifi_connect"
+              priority="P1" type="functional">
+      <description>Connect to the configured WiFi network using WPA2-PSK credentials.</description>
+      <preconditions>WiFi interface is up; valid SSID and PSK configured in Kconfig.</preconditions>
+      <steps>
+        <step>Issue NET_REQUEST_WIFI_CONNECT with configured SSID/PSK.</step>
+        <step>Retry on EAGAIN up to CONNECT_ATTEMPTS times.</step>
+        <step>Wait for NET_EVENT_WIFI_CONNECT_RESULT.</step>
+        <step>Verify interface state is WIFI_STATE_COMPLETED.</step>
+      </steps>
+      <expected_result>Connection established; interface reaches COMPLETED state.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_FUNC_003" name="wifi_status" function="test_wifi_status"
+              priority="P1" type="functional">
+      <description>Query WiFi interface status and verify connection details.</description>
+      <preconditions>WiFi is connected (depends on TC_WIFI_FUNC_002).</preconditions>
+      <steps>
+        <step>Issue NET_REQUEST_WIFI_IFACE_STATUS.</step>
+        <step>Verify state is WIFI_STATE_COMPLETED.</step>
+        <step>Verify SSID length > 0.</step>
+        <step>Print SSID, band, channel, security, and RSSI.</step>
+      </steps>
+      <expected_result>Status reports connected state with valid SSID and RSSI.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_FUNC_004" name="ping_gateway" function="test_wifi_ping_gateway"
+              priority="P1" type="functional">
+      <description>Ping the default gateway to verify IP-level connectivity.</description>
+      <preconditions>WiFi is connected; DHCP has assigned an IP and gateway.</preconditions>
+      <steps>
+        <step>Retrieve gateway address from net_if_ipv4_get_gw().</step>
+        <step>Send ICMP echo request.</step>
+        <step>Wait for echo reply (timeout: PING_TIMEOUT_SEC, retries: PING_ATTEMPTS).</step>
+        <step>Verify reply received.</step>
+      </steps>
+      <expected_result>At least one ICMP echo reply received from gateway.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_FUNC_005" name="wifi_disconnect" function="test_wifi_disconnect"
+              priority="P1" type="functional">
+      <description>Disconnect from the WiFi network gracefully.</description>
+      <preconditions>WiFi is connected.</preconditions>
+      <steps>
+        <step>Issue NET_REQUEST_WIFI_DISCONNECT.</step>
+        <step>Wait for NET_EVENT_WIFI_DISCONNECT_RESULT.</step>
+        <step>Verify disconnect result is 0 (success).</step>
+      </steps>
+      <expected_result>Disconnection succeeds without errors.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_FUNC_006" name="wifi_reconnect" function="test_wifi_reconnect"
+              priority="P1" type="functional">
+      <description>Reconnect to the WiFi network after a disconnect.</description>
+      <preconditions>WiFi is disconnected (depends on TC_WIFI_FUNC_005).</preconditions>
+      <steps>
+        <step>Issue NET_REQUEST_WIFI_CONNECT with configured credentials.</step>
+        <step>Handle EAGAIN and EALREADY gracefully.</step>
+        <step>Wait for NET_EVENT_WIFI_CONNECT_RESULT.</step>
+        <step>Verify interface reaches WIFI_STATE_COMPLETED.</step>
+      </steps>
+      <expected_result>Reconnection succeeds; interface in COMPLETED state.</expected_result>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Stress Tests                                                    -->
+  <!-- ============================================================= -->
+  <category name="Stress">
+
+    <testcase id="TC_WIFI_STRESS_001" name="repeated_scan" function="test_stress_repeated_scan"
+              priority="P2" type="stress">
+      <description>Perform multiple consecutive WiFi scans to verify scan stability.</description>
+      <preconditions>WiFi interface is up; firmware is healthy.</preconditions>
+      <steps>
+        <step>Loop for STRESS_SCAN_ITERATIONS (default 5) iterations.</step>
+        <step>Each iteration: reset count, issue scan, wait for completion.</step>
+        <step>Verify each scan finds at least one AP.</step>
+        <step>Pause 1 second between scans.</step>
+      </steps>
+      <expected_result>All scan iterations complete successfully with APs found.</expected_result>
+      <config>CONFIG_WIFI_SHELL_STRESS_SCAN_ITERATIONS (default: 5)</config>
+    </testcase>
+
+    <testcase id="TC_WIFI_STRESS_002" name="connect_disconnect_cycle"
+              function="test_stress_connect_disconnect"
+              priority="P2" type="stress">
+      <description>Perform multiple connect/disconnect cycles to verify driver stability.</description>
+      <preconditions>WiFi interface is up; firmware is healthy.</preconditions>
+      <steps>
+        <step>Ensure disconnected before starting.</step>
+        <step>Loop for STRESS_CONN_ITERATIONS (default 3) cycles.</step>
+        <step>Each cycle: connect with retry, verify COMPLETED, disconnect, verify success.</step>
+        <step>Pause 1 second between cycles.</step>
+      </steps>
+      <expected_result>All cycles complete; each connect reaches COMPLETED and each disconnect succeeds.</expected_result>
+      <config>CONFIG_WIFI_SHELL_STRESS_CONN_ITERATIONS (default: 3)</config>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Performance Tests                                               -->
+  <!-- ============================================================= -->
+  <category name="Performance">
+
+    <testcase id="TC_WIFI_PERF_001" name="scan_timing" function="test_perf_scan_timing"
+              priority="P2" type="performance">
+      <description>Benchmark WiFi scan completion time over multiple runs.</description>
+      <preconditions>WiFi interface is up; firmware is healthy.</preconditions>
+      <steps>
+        <step>Run 3 scans, measuring wall-clock time for each.</step>
+        <step>Print per-scan time and AP count.</step>
+        <step>Print average scan time.</step>
+      </steps>
+      <expected_result>All scans succeed; average scan time reported.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_PERF_002" name="connect_timing" function="test_perf_connect_timing"
+              priority="P2" type="performance">
+      <description>Benchmark WiFi connection establishment time.</description>
+      <preconditions>WiFi interface is up; firmware is healthy; valid credentials.</preconditions>
+      <steps>
+        <step>Ensure disconnected.</step>
+        <step>Measure time from connect request to COMPLETED state.</step>
+        <step>Print connect time, SSID, channel, and RSSI.</step>
+      </steps>
+      <expected_result>Connection succeeds; connect time reported in ms.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_PERF_003" name="ping_latency" function="test_perf_ping_latency"
+              priority="P2" type="performance">
+      <description>Measure ICMP ping round-trip latency to gateway (min/avg/max).</description>
+      <preconditions>WiFi is connected; gateway is reachable.</preconditions>
+      <steps>
+        <step>Ensure connected (auto-connect if needed).</step>
+        <step>Send 5 ICMP echo requests to gateway, measuring RTT for each.</step>
+        <step>Print per-ping time, min/avg/max statistics.</step>
+        <step>Verify at least 50% success rate.</step>
+      </steps>
+      <expected_result>Ping latency stats reported; at least 3/5 pings succeed.</expected_result>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Negative Tests                                                  -->
+  <!-- ============================================================= -->
+  <category name="Negative">
+
+    <testcase id="TC_WIFI_NEG_001" name="connect_wrong_ssid"
+              function="test_neg_connect_wrong_ssid"
+              priority="P2" type="negative">
+      <description>Attempt to connect with a non-existent SSID; verify graceful failure.</description>
+      <preconditions>WiFi interface is up; disconnected.</preconditions>
+      <steps>
+        <step>Ensure disconnected.</step>
+        <step>Issue connect with SSID "NONEXISTENT_SSID_12345".</step>
+        <step>Verify connect fails or is rejected.</step>
+        <step>Verify interface is NOT in COMPLETED state.</step>
+      </steps>
+      <expected_result>Connection fails; interface remains disconnected; no crash.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_NEG_002" name="disconnect_not_connected"
+              function="test_neg_disconnect_not_connected"
+              priority="P2" type="negative">
+      <description>Issue disconnect when already disconnected; verify no crash or hang.</description>
+      <preconditions>WiFi interface is up; disconnected.</preconditions>
+      <steps>
+        <step>Ensure disconnected.</step>
+        <step>Issue disconnect again.</step>
+        <step>Verify no crash; accept any return code.</step>
+        <step>Verify interface is NOT in COMPLETED state.</step>
+      </steps>
+      <expected_result>System remains functional; no hang or crash.</expected_result>
+    </testcase>
+
+    <testcase id="TC_WIFI_NEG_003" name="connect_wrong_psk"
+              function="test_neg_connect_wrong_psk"
+              priority="P2" type="negative">
+      <description>Attempt to connect with correct SSID but wrong PSK; verify auth failure.</description>
+      <preconditions>WiFi interface is up; disconnected.</preconditions>
+      <warning>On CYW43439 (1YN), this test may cause a firmware TRAP (crash).
+               Placed LAST intentionally — firmware may be non-functional after this test.</warning>
+      <steps>
+        <step>Ensure disconnected.</step>
+        <step>Issue connect with valid SSID and wrong PSK "WrongPassword123!".</step>
+        <step>Verify connect fails or is rejected.</step>
+        <step>Verify interface is NOT in COMPLETED state.</step>
+      </steps>
+      <expected_result>Connection fails; interface not in COMPLETED state.</expected_result>
+      <known_issues>CYW43439 firmware may crash (TRAP) during WPA handshake with wrong PSK.</known_issues>
+    </testcase>
+
+  </category>
+
+</testcases>

@@ -1,0 +1,67 @@
+source "Kconfig.zephyr"
+
+config WIFI_SHELL_TEST_SSID
+	string "WiFi Test SSID"
+	default "Alif-Wireless"
+	help
+	  SSID of the Wi-Fi network for testing.
+
+config WIFI_SHELL_TEST_PSK
+	string "WiFi Test PSK"
+	default "Alif$2o24$"
+	help
+	  Pre-Shared Key for the Wi-Fi network during testing.
+
+config WIFI_SHELL_CONNECT_ATTEMPTS
+	int "WiFi Connect Attempts"
+	default 5
+	help
+	  Number of attempts when connecting to a Wi-Fi network.
+
+config WIFI_SHELL_SCAN_TIMEOUT_SEC
+	int "WiFi Scan Timeout (seconds)"
+	default 30
+	help
+	  Timeout duration for Wi-Fi scanning.
+
+config WIFI_SHELL_CONNECT_TIMEOUT_SEC
+	int "WiFi Connect Timeout (seconds)"
+	default 60
+	help
+	  Timeout duration for connecting to Wi-Fi network.
+
+config WIFI_SHELL_DISCONNECT_TIMEOUT_SEC
+	int "WiFi Disconnect Timeout (seconds)"
+	default 10
+	help
+	  Timeout duration for disconnecting from Wi-Fi network.
+
+config WIFI_SHELL_PING_ATTEMPTS
+	int "Gateway Ping Attempts"
+	default 5
+	help
+	  Number of gateway ping attempts.
+
+config WIFI_SHELL_PING_TIMEOUT_SEC
+	int "Gateway Ping Timeout (seconds)"
+	default 5
+	help
+	  Timeout duration for pinging the network gateway.
+
+config WIFI_SHELL_STRESS_SCAN_ITERATIONS
+	int "Stress test: repeated scan iterations"
+	default 5
+	help
+	  Number of consecutive scans in the repeated scan stress test.
+
+config WIFI_SHELL_STRESS_CONN_ITERATIONS
+	int "Stress test: connect/disconnect cycle iterations"
+	default 3
+	help
+	  Number of connect/disconnect cycles in the stress test.
+
+config WIFI_SHELL_NEG_CONNECT_TIMEOUT_SEC
+	int "Negative test: connect failure timeout (seconds)"
+	default 15
+	help
+	  Timeout for negative connect tests (wrong SSID/PSK) to fail.

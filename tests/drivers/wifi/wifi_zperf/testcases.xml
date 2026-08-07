@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testcases suite="wifi_zperf" module="SDIO WiFi Throughput (CYW55500 / Murata 2FY)"
+           board="alif_e8_dk/ae822fa0e5597xx0/rtss_hp"
+           framework="Zephyr ztest">
+
+  <!-- ============================================================= -->
+  <!-- Functional Tests                                                -->
+  <!-- ============================================================= -->
+  <category name="Functional">
+
+    <testcase id="TC_ZPERF_FUNC_001" name="wifi_connect" function="test_wifi_connect"
+              priority="P1" type="functional">
+      <description>Connect to WiFi and obtain DHCP address as prerequisite for throughput tests.</description>
+      <preconditions>WiFi interface is up; valid SSID/PSK configured; DHCP server available.</preconditions>
+      <steps>
+        <step>Issue WiFi connect with configured credentials.</step>
+        <step>Wait for connect event (timeout: CONNECT_TIMEOUT_SEC).</step>
+        <step>Verify interface is in COMPLETED state.</step>
+        <step>Wait for DHCP to assign IP address.</step>
+      </steps>
+      <expected_result>WiFi connected; IP address obtained via DHCP.</expected_result>
+    </testcase>
+
+    <testcase id="TC_ZPERF_FUNC_002" name="tcp_upload" function="test_tcp_upload"
+              priority="P1" type="functional">
+      <description>TCP upload throughput test using zperf API with default packet size.</description>
+      <preconditions>WiFi connected; iperf server running on SERVER_IP:SERVER_PORT.</preconditions>
+      <steps>
+        <step>Configure upload params (server IP, port, duration, packet size 256).</step>
+        <step>Call zperf_tcp_upload() synchronously.</step>
+        <step>Calculate throughput from results.</step>
+        <step>Verify throughput meets minimum threshold (5 Mbps).</step>
+      </steps>
+      <expected_result>TCP upload completes; throughput >= MIN_TCP_THROUGHPUT_KBPS.</expected_result>
+    </testcase>
+
+    <testcase id="TC_ZPERF_FUNC_003" name="tcp_upload_large_packet"
+              function="test_tcp_upload_large_packet"
+              priority="P2" type="functional">
+      <description>TCP upload with large packet size (1024 bytes) to evaluate throughput improvement.</description>
+      <preconditions>WiFi connected; iperf server running.</preconditions>
+      <steps>
+        <step>Configure upload params with packet size 1024.</step>
+        <step>Call zperf_tcp_upload() synchronously.</step>
+        <step>Verify throughput meets minimum threshold.</step>
+      </steps>
+      <expected_result>TCP upload completes; throughput >= MIN_TCP_THROUGHPUT_KBPS.</expected_result>
+    </testcase>
+
+    <testcase id="TC_ZPERF_FUNC_004" name="udp_upload" function="test_udp_upload"
+              priority="P1" type="functional">
+      <description>UDP upload throughput test using zperf API with rate limiting.</description>
+      <preconditions>WiFi connected; iperf server running in UDP mode (-u).</preconditions>
+      <steps>
+        <step>Configure upload params (packet size, target rate 10 Mbps).</step>
+        <step>Call zperf_udp_upload() synchronously.</step>
+        <step>Report throughput, packet loss, and jitter.</step>
+        <step>Verify throughput meets minimum threshold (3 Mbps).</step>
+      </steps>
+      <expected_result>UDP upload completes; throughput >= MIN_UDP_THROUGHPUT_KBPS; loss reported.</expected_result>
+    </testcase>
+
+    <testcase id="TC_ZPERF_FUNC_005" name="udp_upload_large_packet"
+              function="test_udp_upload_large_packet"
+              priority="P2" type="functional">
+      <description>UDP upload with large packet size (1024 bytes).</description>
+      <preconditions>WiFi connected; iperf server running in UDP mode.</preconditions>
+      <steps>
+        <step>Configure upload params with packet size 1024.</step>
+        <step>Call zperf_udp_upload() synchronously.</step>
+        <step>Verify throughput meets minimum threshold.</step>
+      </steps>
+      <expected_result>UDP upload completes; throughput >= MIN_UDP_THROUGHPUT_KBPS.</expected_result>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Performance / Stability Tests                                   -->
+  <!-- ============================================================= -->
+  <category name="Performance">
+
+    <testcase id="TC_ZPERF_PERF_001" name="tcp_throughput_stability"
+              function="test_tcp_throughput_stability"
+              priority="P2" type="performance">
+      <description>Run multiple TCP uploads to verify throughput consistency.</description>
+      <preconditions>WiFi connected; iperf server running.</preconditions>
+      <steps>
+        <step>Run STABILITY_ITERATIONS (default 3) TCP uploads.</step>
+        <step>Record throughput for each iteration.</step>
+        <step>Calculate avg, min, max throughput.</step>
+        <step>Verify avg meets minimum threshold.</step>
+        <step>Verify min is at least half of minimum threshold.</step>
+      </steps>
+      <expected_result>All iterations succeed; avg throughput >= threshold; variance is reasonable.</expected_result>
+    </testcase>
+
+    <testcase id="TC_ZPERF_PERF_002" name="udp_packet_loss"
+              function="test_udp_packet_loss"
+              priority="P2" type="performance">
+      <description>Measure UDP packet loss and verify it remains below acceptable threshold.</description>
+      <preconditions>WiFi connected; iperf server running in UDP mode.</preconditions>
+      <steps>
+        <step>Run UDP upload with configured rate.</step>
+        <step>Calculate packet loss percentage.</step>
+        <step>Report packets sent, lost, jitter.</step>
+        <step>Verify loss <= 10%.</step>
+      </steps>
+      <expected_result>UDP packet loss is <= 10%; jitter reported.</expected_result>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Negative Tests                                                  -->
+  <!-- ============================================================= -->
+  <category name="Negative">
+
+    <testcase id="TC_ZPERF_NEG_001" name="tcp_upload_invalid_server"
+              function="test_tcp_upload_invalid_server"
+              priority="P3" type="negative">
+      <description>Attempt TCP upload to unreachable server; verify graceful failure.</description>
+      <preconditions>WiFi connected; no server at 192.168.255.254:59999.</preconditions>
+      <steps>
+        <step>Configure upload to non-existent server 192.168.255.254:59999.</step>
+        <step>Call zperf_tcp_upload().</step>
+        <step>Verify either error return or zero bytes transferred.</step>
+      </steps>
+      <expected_result>API returns error or zero throughput; no crash or hang.</expected_result>
+    </testcase>
+
+    <testcase id="TC_ZPERF_NEG_002" name="udp_upload_zero_duration"
+              function="test_udp_upload_zero_duration"
+              priority="P3" type="negative">
+      <description>Attempt UDP upload with zero duration; verify graceful handling.</description>
+      <preconditions>WiFi connected.</preconditions>
+      <steps>
+        <step>Configure upload with duration_ms = 0.</step>
+        <step>Call zperf_udp_upload().</step>
+        <step>Verify completes immediately without crash.</step>
+      </steps>
+      <expected_result>API handles zero duration gracefully; no crash.</expected_result>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Cleanup                                                         -->
+  <!-- ============================================================= -->
+  <category name="Cleanup">
+
+    <testcase id="TC_ZPERF_FUNC_006" name="wifi_disconnect" function="test_wifi_disconnect"
+              priority="P1" type="functional">
+      <description>Disconnect from WiFi after all throughput tests complete.</description>
+      <preconditions>WiFi is connected.</preconditions>
+      <steps>
+        <step>Issue disconnect request.</step>
+        <step>Wait for disconnect event.</step>
+        <step>Verify disconnect success.</step>
+      </steps>
+      <expected_result>WiFi disconnected successfully.</expected_result>
+    </testcase>
+
+  </category>
+
+  <!-- ============================================================= -->
+  <!-- Test Environment                                                -->
+  <!-- ============================================================= -->
+  <environment>
+    <requirement name="iperf_server">
+      iperf server must be running on the configured SERVER_IP:SERVER_PORT.
+      For TCP: iperf -s -p 5001
+      For UDP: iperf -s -u -p 5001
+    </requirement>
+    <requirement name="network">
+      Device and iperf server must be on the same network subnet.
+      DHCP server must be available.
+    </requirement>
+    <defaults>
+      <param name="SERVER_IP">10.0.0.73</param>
+      <param name="SERVER_PORT">5001</param>
+      <param name="DURATION">10 seconds</param>
+      <param name="TCP_PACKET_SIZE">256 bytes</param>
+      <param name="UDP_PACKET_SIZE">256 bytes</param>
+      <param name="UDP_RATE">10000 kbps</param>
+      <param name="MIN_TCP_THROUGHPUT">5000 kbps (5 Mbps)</param>
+      <param name="MIN_UDP_THROUGHPUT">3000 kbps (3 Mbps)</param>
+    </defaults>
+  </environment>
+
+</testcases>
