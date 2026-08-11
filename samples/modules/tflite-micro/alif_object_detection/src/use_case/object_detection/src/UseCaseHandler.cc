@@ -26,7 +26,6 @@
 #include "mlek/use_case/object_detection/DetectorPreProcessing.hpp"
 #include "mlek/fwk/tflm/YoloFastestModel.hpp"
 
-#include "ScreenLayout.hpp"
 #include "image_ensemble.h"
 
 #include <cinttypes>
@@ -34,8 +33,11 @@
 #include <cmath>
 #include <algorithm>
 
+#if defined(CONFIG_LVGL)
+#include "ScreenLayout.hpp"
 #include <lvgl.h>
 #include "lv_paint_utils.h"
+#endif
 
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
@@ -63,6 +65,7 @@ ASSERT_DIVISIBLE_BY_16(MIMAGE_X);
 #define LV_ZOOM         (1 * 256)
 #endif
 
+#if defined(CONFIG_LVGL)
 K_THREAD_STACK_DEFINE(lvgl_thread_stack, 1024 * 4);
 static struct k_thread lvgl_thread;
 static K_MUTEX_DEFINE(lvgl_mutex);
@@ -93,6 +96,7 @@ static constexpr int MAX_DETECTION_BOXES = 10;
 static lv_obj_t *boxPool[MAX_DETECTION_BOXES] = {};
 static int boxPoolSize = 0;
 };
+#endif /* CONFIG_LVGL */
 
 namespace alif {
 namespace app {
@@ -107,6 +111,7 @@ namespace app {
      **/
     static bool PresentInferenceResult(const std::vector<object_detection::DetectionResult>& results);
 
+#if defined(CONFIG_LVGL)
     /**
      * @brief           Draw boxes directly on the LCD for all detected objects.
      * @param[in]       results            Vector of detection results to be displayed.
@@ -114,9 +119,11 @@ namespace app {
     static void DrawDetectionBoxes(
            const std::vector<object_detection::DetectionResult>& results,
            int imgInputCols, int imgInputRows);
+#endif /* CONFIG_LVGL */
 
     bool ObjectDetectionInit()
     {
+#if defined(CONFIG_LVGL)
         LOG_DBG("ScreenLayoutInit");
 
         /* zero image data */
@@ -144,6 +151,7 @@ namespace app {
                         0, 0, K_NO_WAIT);       // TODO: priority define
 
 	    k_thread_name_set(&lvgl_thread, "lvgl");
+#endif /* CONFIG_LVGL */
 
         if (image_init(LIMAGE_X, LIMAGE_Y) != 0) {
             return false;
@@ -197,6 +205,7 @@ namespace app {
             return false;
         }
 
+#if defined(CONFIG_LVGL)
         k_mutex_lock(&lvgl_mutex, K_FOREVER);
 
         #if LV_COLOR_DEPTH == 16
@@ -211,6 +220,7 @@ namespace app {
         lv_obj_invalidate(ScreenLayoutImageObject());
 
         k_mutex_unlock(&lvgl_mutex);
+#endif /* CONFIG_LVGL */
 
         const size_t copySz = inputTensor->Bytes();
 
@@ -230,6 +240,7 @@ namespace app {
             return false;
         }
 
+#if defined(CONFIG_LVGL)
         k_mutex_lock(&lvgl_mutex, K_FOREVER);
 
         lv_label_set_text_fmt(ScreenLayoutLabelObject(0), "Faces Detected: %i", results.size());
@@ -238,6 +249,7 @@ namespace app {
         DrawDetectionBoxes(results, inputImgCols, inputImgRows);
 
         k_mutex_unlock(&lvgl_mutex);
+#endif /* CONFIG_LVGL */
 
         if (!PresentInferenceResult(results)) {
             return false;
@@ -267,6 +279,7 @@ namespace app {
         return true;
     }
 
+#if defined(CONFIG_LVGL)
     static void InitBoxPool(lv_obj_t *frame)
     {
         for (int i = 0; i < MAX_DETECTION_BOXES; i++) {
@@ -307,6 +320,7 @@ namespace app {
             lv_obj_add_flag(boxPool[i], LV_OBJ_FLAG_HIDDEN);
         }
     }
+#endif /* CONFIG_LVGL */
 
 } /* namespace app */
 } /* namespace alif */

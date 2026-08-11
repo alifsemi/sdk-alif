@@ -12,11 +12,18 @@ project(${ALIF_UI_API_TARGET}
         LANGUAGES       C CXX)
 
 # Create static library
-add_library(${ALIF_UI_API_TARGET} STATIC
-        src/lv_paint_utils.c
-        src/ScreenLayout.cc
-        src/Alif240.c
-        src/Alif240_white.c)
+add_library(${ALIF_UI_API_TARGET} STATIC)
+
+if(CONFIG_LVGL)
+        target_sources(${ALIF_UI_API_TARGET} PRIVATE
+                src/lv_paint_utils.c
+                src/ScreenLayout.cc
+                src/Alif240.c
+                src/Alif240_white.c)
+else()
+        # Headless build (e.g. E1C StarterKit)
+        target_sources(${ALIF_UI_API_TARGET} PRIVATE src/alif_ui_stub.c)
+endif()
 
 target_include_directories(${ALIF_UI_API_TARGET} PUBLIC include)
 

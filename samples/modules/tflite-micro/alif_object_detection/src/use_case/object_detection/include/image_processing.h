@@ -16,39 +16,31 @@
 
 #include "aipl_image.h"
 
-#ifdef CONFIG_DT_HAS_ONNN_ARX3A0_ENABLED
-#define RTE_ARX3A0_CAMERA_SENSOR_ENABLE 1
-#elif CONFIG_DT_HAS_OVTI_OV5675_ENABLED
-#define RTE_OV5675_CAMERA_SENSOR_ENABLE 1
-#elif CONFIG_DT_HAS_APTINA_MT9M114_ENABLED
-#define RTE_MT9M114_CAMERA_SENSOR_ENABLE 1
-#else
-#error "Unsupported camera"
-#endif
-
 #define RGB_BYTES 		3
 #define RGBA_BYTES 		4
 #define RGB565_BYTES	2
 #define PIXEL_BYTES 	1
 
 // Camera dimensions
-#if RTE_ARX3A0_CAMERA_SENSOR_ENABLE // REV A RTE
+#if CONFIG_DT_HAS_ONNN_ARX3A0_ENABLED
 #define CIMAGE_X                (560)
 #define CIMAGE_Y                (560)
 #define CIMAGE_COLOR_CORRECTION (0)
 #define CIMAGE_EXPOSURE_CALC    (0)
 #define CIMAGE_RGB_WIDTH_MAX    CIMAGE_X
 #define CIMAGE_RGB_HEIGHT_MAX   CIMAGE_Y
+#define CAMERA_OUTPUT_RGB565    (0)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
-#elif RTE_OV5675_CAMERA_SENSOR_ENABLE // OV5675 RTE
+#elif CONFIG_DT_HAS_OVTI_OV5675_ENABLED
 #define CIMAGE_X                (1296)
 #define CIMAGE_Y                (972)
 #define CIMAGE_COLOR_CORRECTION (0)
 #define CIMAGE_EXPOSURE_CALC    (0)
 #define CIMAGE_RGB_WIDTH_MAX    (800)
 #define CIMAGE_RGB_HEIGHT_MAX   (800)
+#define CAMERA_OUTPUT_RGB565    (0)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
-#elif RTE_MT9M114_CAMERA_SENSOR_ENABLE // MT9M114 RTE
+#elif CONFIG_DT_HAS_APTINA_MT9M114_ENABLED
 /*
  * With MIPI (CONFIG_MT9M114_PARALLEL_INIT=n) the largest advertised Y10P mode
  * is 1288x728, which the pipeline selects. Crop a centered square (even offsets
@@ -60,7 +52,24 @@
 #define CIMAGE_EXPOSURE_CALC    (0)
 #define CIMAGE_RGB_WIDTH_MAX    (560)
 #define CIMAGE_RGB_HEIGHT_MAX   (560)
+#define CAMERA_OUTPUT_RGB565    (0)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
+#elif CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+/*
+ * The OV5640 has an on-chip ISP and streams processed RGB565 over the parallel
+ * (LP-CPI) bus, so there is no Bayer demosaic stage. The selected sensor mode
+ * on the E1C StarterKit is 320x240 RGB565; crop a centered square before
+ * feeding the detector.
+ */
+#define CIMAGE_X                (320)
+#define CIMAGE_Y                (240)
+#define CIMAGE_COLOR_CORRECTION (0)
+#define CIMAGE_EXPOSURE_CALC    (0)
+#define CIMAGE_RGB_WIDTH_MAX    (240)
+#define CIMAGE_RGB_HEIGHT_MAX   (240)
+#define CAMERA_OUTPUT_RGB565    (1)
+#else
+#error "Unsupported camera"
 #endif
 
 /*error status*/

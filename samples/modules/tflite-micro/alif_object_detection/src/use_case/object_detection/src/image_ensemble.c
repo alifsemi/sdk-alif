@@ -19,6 +19,7 @@
 #include <aipl_white_balance.h>
 #include <aipl_lut_transform.h>
 #include <aipl_crop.h>
+#include <aipl_color_conversion.h>
 #include "aipl_cache.h"
 #include <zephyr/cache.h>
 
@@ -55,7 +56,13 @@ int log_level(void)
 #define VIDEO_BUFFER_COUNT 1
 #endif
 #else /* for E7 & ARX3A0 2 buffers are needed, otherwise image pipeline will stall */
-#if DT_HAS_COMPAT_STATUS_OKAY(onnn_arx3a0)
+#if DT_HAS_COMPAT_STATUS_OKAY(onnn_arx3a0) || CAMERA_OUTPUT_RGB565
+/*
+ * The OV5640 (LP-CPI, snapshot mode) also needs a second buffer: with a single
+ * buffer the driver powers the sensor down whenever the queue drains, which
+ * stalls the pipeline after the first frame. Two buffers keep the queue
+ * non-empty so the sensor stays streaming.
+ */
 #define VIDEO_BUFFER_COUNT 2
 #else
 #define VIDEO_BUFFER_COUNT 1
@@ -76,8 +83,21 @@ static int output_height;
 static uint8_t image_data[CIMAGE_RGB_WIDTH_MAX * CIMAGE_RGB_HEIGHT_MAX * RGB_BYTES]
 #if defined(CONFIG_SOC_SERIES_E8)
 	__section("SRAM1.camera_frame_bayer_to_rgb_buf");
+#elif defined(CONFIG_SOC_SERIES_E1C)
+	/* E1C has no SRAM0/SRAM1 regions; keep the buffer in the default RAM
+	 * (DTCM via .bss). */
+	;
 #else
 	__section("SRAM0.camera_frame_bayer_to_rgb_buf");
+#endif
+
+#if CAMERA_OUTPUT_RGB565
+/*
+ * Scratch buffer holding the centred RGB565 square cropped from the sensor
+ * frame before it is expanded to RGB888. Lives in the default RAM (DTCM on
+ * E1C) since the OV5640 path is only used on that part.
+ */
+static uint8_t rgb565_crop[CIMAGE_RGB_WIDTH_MAX * CIMAGE_RGB_HEIGHT_MAX * RGB565_BYTES];
 #endif
 
 void aipl_cpu_cache_clean(const void *ptr, uint32_t size)
@@ -193,24 +213,25 @@ int image_init(int req_output_width, int req_output_height)
 		       fcap->width_min, fcap->width_max, fcap->width_step,
 		       fcap->height_min, fcap->height_max, fcap->height_step);
 
-		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P &&
+#if CAMERA_OUTPUT_RGB565
+		if (fcap->pixelformat == VIDEO_PIX_FMT_RGB565 &&
 		    fcap->width_min == CIMAGE_X && fcap->height_min == CIMAGE_Y) {
-			/*
-			 * Select the exact resolution the image pipeline is built
-			 * for (CIMAGE_X x CIMAGE_Y). The downstream buffers, crop
-			 * math and RAW10->RAW8 conversion are dimensioned at compile
-			 * time, so no other resolution can be processed correctly.
-			 */
+			fmt.pixelformat = VIDEO_PIX_FMT_RGB565;
+			fmt.width = fcap->width_min;
+			fmt.height = fcap->height_min;
+		}
+#else
+		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P) {
 			fmt.pixelformat = VIDEO_PIX_FMT_Y10P;
 			fmt.width = fcap->width_min;
 			fmt.height = fcap->height_min;
 		}
+#endif
 		i++;
 	}
 
 	if (fmt.pixelformat == 0) {
-		LOG_ERR("Sensor does not advertise the required Y10P %ux%u mode",
-			CIMAGE_X, CIMAGE_Y);
+		LOG_ERR("Desired Pixel format is not supported.");
 		return -1;
 	}
 
@@ -258,7 +279,8 @@ int image_init(int req_output_width, int req_output_height)
 		fmt.width, fmt.pitch, fmt.height, bsize);
 
 	for (int j = 0; j < ARRAY_SIZE(buffers); j++) {
-		buffers[j] = video_buffer_alloc(bsize, K_NO_WAIT);
+		buffers[j] = video_buffer_aligned_alloc(bsize, CONFIG_VIDEO_BUFFER_POOL_ALIGN,
+							K_NO_WAIT);
 		if (buffers[j] == NULL) {
 			LOG_ERR("Unable to alloc video buffer");
 			return -1;
@@ -311,6 +333,33 @@ int get_image_data(uint8_t **output_image_data)
 	uint8_t *raw_image = vbuf->buffer;
 
 	#if !ISP_ENABLED
+	#if CAMERA_OUTPUT_RGB565
+	/*
+	 * OV5640 path: the sensor already delivers RGB565. Centre-crop to a
+	 * square and expand to the RGB888 the detector expects. The shared
+	 * resize stage below then scales the square down to the model input.
+	 */
+	uint32_t x0 = (CIMAGE_X - CIMAGE_RGB_WIDTH_MAX) / 2;
+	uint32_t y0 = (CIMAGE_Y - CIMAGE_RGB_HEIGHT_MAX) / 2;
+
+	aipl_ret = aipl_crop(raw_image, rgb565_crop,
+			     CIMAGE_X, CIMAGE_X, CIMAGE_Y, AIPL_COLOR_RGB565,
+			     x0, y0,
+			     x0 + CIMAGE_RGB_WIDTH_MAX, y0 + CIMAGE_RGB_HEIGHT_MAX);
+	if (aipl_ret != AIPL_ERR_OK) {
+		LOG_ERR("RGB565 crop failed with error code %d", aipl_ret);
+		return -1;
+	}
+
+	aipl_ret = aipl_color_convert(rgb565_crop, image_data,
+				      CIMAGE_RGB_WIDTH_MAX, CIMAGE_RGB_WIDTH_MAX,
+				      CIMAGE_RGB_HEIGHT_MAX,
+				      AIPL_COLOR_RGB565, AIPL_COLOR_RGB888);
+	if (aipl_ret != AIPL_ERR_OK) {
+		LOG_ERR("RGB565->RGB888 conversion failed with error code %d", aipl_ret);
+		return -1;
+	}
+	#else
 	/* in place conversion of RAW10 to RAW8 (scaling) */
 	/* When CIMAGE_EXPOSURE_CALC is enabled, exposure statistics are computed during conversion */
 	raw10_gray16le_bytes_to_raw8_inplace_mve(raw_image, (CIMAGE_X * CIMAGE_Y));
@@ -344,6 +393,7 @@ int get_image_data(uint8_t **output_image_data)
 		LOG_ERR("Demosaic failed with error code %d", aipl_ret);
 		return -1;
 	}
+	#endif /* CAMERA_OUTPUT_RGB565 */
 	#else
 	/* Planar RGB888 to packed RGB888 conversion.
 	 * ISP outputs R, G, B as separate planes: [R plane][G plane][B plane]

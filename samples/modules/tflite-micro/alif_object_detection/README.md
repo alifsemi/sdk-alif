@@ -80,6 +80,14 @@ ov5675 & ISP:
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
 ```
 
+## Building and running: StartKit-E1C
+StartKit-E1C has no display
+
+ov5640:
+```
+west build -b alif_e1c_sk/ae1c1f4051920hh/rtss_he -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="parallel_camera_ov5640.overlay" -DOVERLAY_CONFIG="ov5640.conf"
+```
+
 ## Expected output
 Camera image on display with bounding box drawn on top when faces detected. In serial:
 ```
