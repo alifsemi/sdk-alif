@@ -10,5 +10,28 @@ config MODEL_SECTION
 	string "Linker section where ML model is placed"
 	default ".rodata.tflm_model"
 
+# LVGL UI options only apply when the display stack is enabled.
+if LVGL
+
+config LV_FONT_MONTSERRAT_16
+	default y
+
+config LV_FONT_MONTSERRAT_24
+	default y
+
+config LV_FONT_MONTSERRAT_28
+	default y
+
+config LV_FONT_MONTSERRAT_32
+	default y
+
+config LV_THEME_DEFAULT_DARK
+	default y
+
+config LV_Z_MEM_POOL_SIZE
+	default 49152
+
+endif # LVGL
+
 source "Kconfig.zephyr"
 	

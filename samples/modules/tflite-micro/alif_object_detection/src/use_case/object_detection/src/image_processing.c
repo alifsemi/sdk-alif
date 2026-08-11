@@ -23,7 +23,7 @@
 #endif
 #include <math.h>
 
-#if RTE_ARX3A0_CAMERA_SENSOR_ENABLE /* REV A RTE */
+#if CONFIG_DT_HAS_ONNN_ARX3A0_ENABLED
 
 /*
  * Revised matrix (BECP-1455)
