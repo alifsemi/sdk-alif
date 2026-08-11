@@ -1,0 +1,38 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+#
+
+sample:
+  name: LVGL XML Widgets
+  description: >
+    LVGL UI built from a declarative XML description covering the common LVGL
+    widgets, exported to C and rendered through the D/AVE 2D GPU on the Alif
+    Ensemble E8 DevKit MW405 display.
+common:
+  modules:
+    - lvgl
+  tags:
+    - display
+    - lvgl
+    - gui
+    - xml
+    - dave2d
+    - gpu2d
+  harness: console
+  harness_config:
+    type: one_line
+    regex:
+      - "XML widgets UI created"
+  depends_on: display
+tests:
+  sample.modules.lvgl.gui.dave2d:
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
