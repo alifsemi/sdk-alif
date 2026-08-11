@@ -27,8 +27,8 @@ config CERT_NCC_ID
 	string "NCC certification ID"
 	default ""
 
-config CERT_JP_ID
-	string "Japan certification ID"
+config CERT_MIC_ID
+	string "MIC certification ID"
 	default ""
 
 endif # CERT_BOOT_INFO

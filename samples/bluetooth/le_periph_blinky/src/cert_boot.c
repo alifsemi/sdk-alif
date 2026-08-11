@@ -24,8 +24,8 @@ static int cert_boot_print(void)
 	if (sizeof(CONFIG_CERT_NCC_ID) > 1) {
 		printk("  NCC ID:  " CONFIG_CERT_NCC_ID "\n");
 	}
-	if (sizeof(CONFIG_CERT_JP_ID) > 1) {
-		printk("  MIC ID:  " CONFIG_CERT_JP_ID "\n");
+	if (sizeof(CONFIG_CERT_MIC_ID) > 1) {
+		printk("  MIC ID:  " CONFIG_CERT_MIC_ID "\n");
 	}
 	printk("*************************************\n");
 	return 0;
