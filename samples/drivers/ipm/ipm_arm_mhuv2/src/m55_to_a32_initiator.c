@@ -65,7 +65,7 @@ int main(void)
 {
 	int i = 0;
 
-	printk("\nM55-HE initiator <-> A32 Linux responder MHU example on %s\n", CONFIG_BOARD);
+	printk("\nM55-HE initiator <-> A32 responder MHU example on %s\n", CONFIG_BOARD);
 	if (MHU_GET_READY(mhu0_r, apssmhu0r) ||
 	    MHU_GET_READY(mhu0_s, apssmhu0s)) {
 		return -1;
@@ -79,7 +79,6 @@ int main(void)
 
 	printk("Wait for A32 side to get ready...\n");
 	printk("Please start the A32 responder application\n");
-	k_sleep(K_SECONDS(20));  /* Let A32 side get ready */
 
 	printk("Initiating messages to A32, then waiting for response\n");
 

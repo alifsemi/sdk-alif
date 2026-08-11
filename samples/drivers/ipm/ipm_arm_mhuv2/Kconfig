@@ -37,6 +37,12 @@ config HE_A32_S
 	help
 	  Build the RTSS-HE (M55) to APSS (A32) shared MHU initiator/sender.
 
+config A32_HE_R
+	bool "APSS (A32) to RTSS-HE (M55) responder"
+	help
+	  Build the APSS (A32) responder that replies to MHU messages initiated
+	  by the RTSS-HE (M55) core.
+
 endchoice
 
 config USE_MHU1

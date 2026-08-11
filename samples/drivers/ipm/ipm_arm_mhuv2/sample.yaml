@@ -7,3 +7,9 @@ tests:
     platform_allow:
       - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
       - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  sample.drivers.ipm.arm_mhuv2.a32_he_responder:
+    tags: MHUv2
+    extra_configs:
+      - CONFIG_A32_HE_R=y
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/apss
