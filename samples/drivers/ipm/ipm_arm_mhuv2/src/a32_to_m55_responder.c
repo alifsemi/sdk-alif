@@ -7,14 +7,15 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  */
+
 #include <zephyr/kernel.h>
 #include <zephyr/sys/printk.h>
 #include <zephyr/drivers/ipm.h>
 
 #include "mhuv2_common.h"
 
-#define M55 "M55-HE"
-#define REQUEST_MSG 0xBAADF00D
+#define A32 "A32"
+#define RESPONSE_MSG 0xC0FFEE00
 
 const struct device *mhu0_r;
 const struct device *mhu0_s;
@@ -32,7 +33,7 @@ static void recv_cb(const struct device *dev, void *user_data,
 	ARG_UNUSED(dev);
 	rx_msg = *((uint32_t *)data);
 
-	printk("%s: RESP received on %s Ch%d = 0x%x\n\n", M55, mhu, id, rx_msg);
+	printk("%s: REQ received on %s Ch%d = 0x%x\n", A32, mhu, id, rx_msg);
 	k_sem_give(&sem_received);
 }
 
@@ -43,7 +44,7 @@ static void send_cb(const struct device *dev, void *user_data,
 	ARG_UNUSED(user_data);
 	ARG_UNUSED(data);
 
-	printk("%s: MSG sent on %s Ch:%d = 0x%x\n", M55, mhu, id, tx_msg);
+	printk("%s: RESP sent on %s Ch:%d = 0x%x\n", A32, mhu, id, tx_msg);
 	k_sem_give(&sem_sent);
 }
 
@@ -51,11 +52,11 @@ static void send(const struct device *dev)
 {
 	int wait = 0;
 
-	tx_msg = REQUEST_MSG;
+	tx_msg = RESPONSE_MSG;
 	int ret = ipm_send(dev, wait, 0, &tx_msg, sizeof(tx_msg));
 
 	if (ret != 0) {
-		printk("%s: ipm_send failed on %s: %d\n", M55, mhu, ret);
+		printk("%s: ipm_send failed on %s: %d\n", A32, mhu, ret);
 		return;
 	}
 	k_sem_take(&sem_sent, K_FOREVER);
@@ -65,7 +66,7 @@ int main(void)
 {
 	int i = 0;
 
-	printk("\nM55-HE initiator <-> A32 Linux responder MHU example on %s\n", CONFIG_BOARD);
+	printk("\nA32 responder <-> M55-HE initiator MHU example on %s\n", CONFIG_BOARD);
 	if (MHU_GET_READY(mhu0_r, apssmhu0r) ||
 	    MHU_GET_READY(mhu0_s, apssmhu0s)) {
 		return -1;
@@ -77,22 +78,22 @@ int main(void)
 	/* Enable Rx MHU interrupt */
 	ipm_set_enabled(mhu0_r, true);
 
-	printk("Wait for A32 side to get ready...\n");
-	printk("Please start the A32 responder application\n");
-	k_sleep(K_SECONDS(20));  /* Let A32 side get ready */
-
-	printk("Initiating messages to A32, then waiting for response\n");
+	printk("Waiting for messages from M55-HE...\n\n");
 
 	while (i < ITERATIONS) {
-		k_sleep(K_SECONDS(1));
-		printk("%s: REQ[%d] sending 0x%x on %s Ch0\n", M55, i + 1, REQUEST_MSG, mhu);
-		send(mhu0_s);
+		/* Wait for the M55 request */
 		k_sem_take(&sem_received, K_FOREVER);
+
+		/* Reply back to the M55 initiator */
+		printk("%s: RESP[%d] sending 0x%x on %s Ch0\n", A32, i + 1, RESPONSE_MSG, mhu);
+		send(mhu0_s);
+
+		printk("Iteration %d complete\n\n", i + 1);
 		++i;
 	}
 	/* Disable Rx MHU interrupt */
 	ipm_set_enabled(mhu0_r, false);
 
-	printk("%s Test completed successfully!\n", M55);
+	printk("%s Test completed successfully!\n", A32);
 	return 0;
 }
