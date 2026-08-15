@@ -227,6 +227,46 @@
 		};
 	};
 
+	pinctrl_i2c2: pinctrl_i2c2 {
+		group0 {
+			pinmux = <PIN_P0_7__I2C2_SDA_A>,
+				 <PIN_P0_6__I2C2_SCL_A>;
+
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
+	pinctrl_i2c2_sleep: pinctrl_i2c2_sleep {
+		group0 {
+			pinmux = <PIN_P0_7__GPIO>,
+				 <PIN_P0_6__GPIO>;
+
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
+	pinctrl_i2c3: pinctrl_i2c3 {
+		group0 {
+			pinmux = <PIN_P1_0__I2C3_SDA_A>,
+				 <PIN_P1_1__I2C3_SCL_A>;
+
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
+	pinctrl_i2c3_sleep: pinctrl_i2c3_sleep {
+		group0 {
+			pinmux = <PIN_P1_0__GPIO>,
+				 <PIN_P1_1__GPIO>;
+
+			read-enable = <0x1>;
+			driver-state-control = <0x2>;
+		};
+	};
+
 	pinctrl_lpi2c0: pinctrl_lpi2c0 {
 		group0 {
 			pinmux = <PIN_P0_0__LPI2C0_SCL_A>,
