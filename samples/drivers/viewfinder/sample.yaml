@@ -1,0 +1,20 @@
+sample:
+  name: Viewfinder Sample
+  description: Continuous frame capture from ARX3A0 camera sensor
+    and display on MIPI DSI panel
+tests:
+  sample.drivers.viewfinder.e7:
+    platform_allow:
+      - alif_e7_dk/rtss_hp
+      - alif_e7_dk/rtss_he
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/arx3a0_mipi_viewfinder.overlay
+    tags: drivers video display
+  sample.drivers.viewfinder.e8:
+    platform_allow:
+      - alif_e8_dk/rtss_hp
+      - alif_e8_dk/rtss_he
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/arx3a0_mipi_isp_viewfinder.overlay
+      - OVERLAY_CONFIG=boards/isp.conf
+    tags: drivers video display
