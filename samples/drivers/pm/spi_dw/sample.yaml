@@ -1,0 +1,63 @@
+sample:
+  name: Alif SPI DW Power Management Demo
+  description: >
+    Demonstrates Zephyr power management states (PM_STATE_RUNTIME_IDLE,
+    PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF)
+    for Alif RTSS cores with SPI DW loopback between PM state transitions.
+    PM states exercised are selected via build snippets: spi-dw-pm-s2ram-tcm
+    (HE TCM retention), spi-dw-pm-mram (MRAM boot SOFT_OFF, HE or HP), and
+    spi-dw-pm-s2ram-sram0 (SRAM0 retention S2RAM, E8 only, HE or HP).
+common:
+  tags:
+    - power
+    - pm
+    - spi
+    - dma
+    - counter
+    - rtc
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "SPI DW PM demo"
+      - "POWER STATE SEQUENCE"
+tests:
+  sample.drivers.spi.dw.pm.s2ram_tcm:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=spi-dw-pm-s2ram-tcm
+  sample.drivers.spi.dw.pm.mram:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_he
+      - alif_e8_dk_rtss_hp
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+      - alif_e7_dk_rtss_hp
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=spi-dw-pm-mram
+  sample.drivers.spi.dw.pm.s2ram_sram0:
+    platform_allow:
+      - alif_e8_dk_rtss_he
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e8_dk_rtss_he
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=spi-dw-pm-s2ram-sram0
