@@ -13,5 +13,6 @@ project(le_multiprofile)
 target_sources(app PRIVATE
     src/main.c
     src/prxp_rom_1_2.c
+    src/cgms_rom_1_2.c
 )
 
