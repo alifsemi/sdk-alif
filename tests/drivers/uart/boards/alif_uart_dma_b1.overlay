@@ -1,0 +1,39 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * DMA overlay for B1 DevKit.
+ * Routes devnode1 to uart0 (DMA-capable) and enables dma2/evtrtr2.
+ */
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+#define UART0_DMA_RX_REQ 10
+#define UART0_DMA_TX_REQ 18
+
+/ {
+	chosen {
+		zephyr,devnode1 = &uart0;
+	};
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&evtrtr2 {
+	status = "okay";
+};
+
+&uart0 {
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 0, 1) UART0_DMA_RX_REQ>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(1, 0, 1) UART0_DMA_TX_REQ>;
+	dma-names = "rx", "tx";
+	status = "okay";
+};
