@@ -1,0 +1,17 @@
+name: devkit-he
+
+boards:
+  "/alif_b1_dk/.*/rtss_he/":
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_dk_rtss_he.overlay
+      EXTRA_CONF_FILE: prj.conf
+
+  "/alif_(e3|e5|e7)_(dk|ak)/.*/rtss_he/":
+    append:
+      EXTRA_DTC_OVERLAY_FILE: snippet.overlay
+      EXTRA_CONF_FILE: prj.conf
+
+  "/alif_(e4|e6|e8)_(dk|ak)/.*/rtss_he/":
+    append:
+      EXTRA_DTC_OVERLAY_FILE: snippet.overlay
+      EXTRA_CONF_FILE: prj.conf
