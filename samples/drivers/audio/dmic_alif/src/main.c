@@ -149,18 +149,23 @@ static int config_channel(const struct device *dmic_dev,
 			return rc;
 		}
 
-		/* copy the data from the buffer to the pcmj data */
-		if (k + data <= DATA_SIZE) {
+		/* `data` is the valid PCM byte count for this block. It equals
+		 * block_size only for full-pair channel maps; sparse maps
+		 * (odd channel counts) deliver less.
+		 */
+		if (k + data > DATA_SIZE) {
+			LOG_WRN("pcmj_data full, truncating block %d (%u bytes)",
+				i, data);
+		} else {
 			memcpy(pcmj_data + k, buffer, data);
 			k += data;
 		}
-
 		k_mem_slab_free(&mem_slab, buffer);
 	}
 
 	printk("Stop recording\n");
-	LOG_INF("PCM samples will be stored in %p address and size of "
-	"buffer is %d\n", (void *)pcmj_data, sizeof(pcmj_data));
+	LOG_INF("PCM samples stored at %p, %d valid bytes captured\n",
+			(void *)pcmj_data, k);
 	LOG_INF("Block freed at address: %p\n", (void *)buffer);
 
 	rc = dmic_trigger(dmic_dev, DMIC_TRIGGER_STOP);
