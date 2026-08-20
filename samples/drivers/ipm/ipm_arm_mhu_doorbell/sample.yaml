@@ -1,0 +1,9 @@
+---
+sample:
+  name: MHU Doorbell & Shared SRAM Sample
+tests:
+  sample.drivers.ipm.arm_mhu_doorbell:
+    tags: doorbell
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
