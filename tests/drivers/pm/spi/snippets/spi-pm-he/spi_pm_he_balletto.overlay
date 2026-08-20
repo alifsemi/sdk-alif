@@ -1,0 +1,107 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+&lpgpio {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <25000000>;
+	status = "okay";
+};
+
+&standby_s2ram {
+	min-residency-us = <19000000>;
+	status = "okay";
+};
+
+&stop_s2ram {
+	min-residency-us = <21000000>;
+	status = "okay";
+};
+
+&suspend_idle {
+	status = "disabled";
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+		zephyr,console = &lpuart;
+	};
+};
+
+/* default SPI controller CS is H/W controlled,
+ * enable this to use as S/W controlled using gpio.
+ */
+#define SPI_CONTROLLER_CS_SW_CONTROLLED_GPIO 0
+
+/ {
+	aliases {
+		controller-spi = &spi1;
+		peripheral-spi = &spi0;
+	};
+};
+
+&spi1 {
+	status = "okay";
+
+#if SPI_CONTROLLER_CS_SW_CONTROLLED_GPIO
+	cs-gpios = <&gpio8 7 GPIO_ACTIVE_LOW>;
+	/* as we are testing Loopback on the same board,
+	 * make sure controller interrupt priority is
+	 * higher than peripheral interrupt priority.
+	 */
+	interrupts = <138 0>;
+#endif /* SPI_CONTROLLER_CS_SW_CONTROLLED_GPIO */
+};
+
+#if SPI_CONTROLLER_CS_SW_CONTROLLED_GPIO
+
+&pinctrl_spi1 {
+	group0 {
+		pinmux = <PIN_P8_4__SPI1_MISO_C>,
+			 <PIN_P8_5__SPI1_MOSI_C>,
+			 <PIN_P8_6__SPI1_SCLK_C>,
+			 <PIN_P8_7__GPIO>;
+		read-enable = <0x1>;
+	};
+};
+
+&gpio8 {
+	status = "okay";
+};
+#endif /* SPI_CONTROLLER_CS_SW_CONTROLLED_GPIO */
+
+&spi0 {
+	status = "okay";
+	serial-target;
+
+#if SPI_CONTROLLER_CS_SW_CONTROLLED_GPIO
+	interrupts = <137 1>;
+#endif
+};
