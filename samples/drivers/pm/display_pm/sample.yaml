@@ -1,0 +1,39 @@
+sample:
+  name: Alif Display Power Management Demo
+  description: >
+    Demonstrates Zephyr power management states (PM_STATE_RUNTIME_IDLE,
+    PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF)
+    for Alif RTSS cores with Display between PM state transitions.
+    PM states exercised are selected via build snippets: display-pm-s2ram-tcm
+    (HE TCM retention), display-pm-mram (MRAM boot SOFT_OFF, HE or HP).
+common:
+  tags:
+    - power
+    - pm
+    - display
+    - counter
+    - rtc
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "DISPLAY PM demo"
+      - "POWER STATE SEQUENCE"
+tests:
+  sample.drivers.display.pm.s2ram_tcm:
+    platform_allow:
+      - alif_e8_dk_rtss_he
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=display-pm-s2ram-tcm
+  sample.drivers.display.pm.mram:
+    platform_allow:
+      - alif_e8_dk_rtss_he
+      - alif_e8_dk_rtss_hp
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=display-pm-mram

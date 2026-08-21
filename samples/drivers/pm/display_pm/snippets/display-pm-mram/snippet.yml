@@ -1,0 +1,10 @@
+name: display-pm-mram
+boards:
+  /alif_e8.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e8_he.overlay
+      EXTRA_CONF_FILE: display_e8_he.conf
+  /alif_e8.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e8_hp.overlay
+      EXTRA_CONF_FILE: display_e8_hp.conf
