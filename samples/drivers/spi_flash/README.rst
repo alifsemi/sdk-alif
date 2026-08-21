@@ -7,16 +7,104 @@ SPI-Flash Test
 Overview
 ********
 
-This is the test application to test and verify the Flash Read,Write and Erase opearations over OSPI interface.
-The OSPI driver placed under *modules/hal/alif/drivers*.
+This application verifies flash read, write, and erase operations through the
+MSPI/OSPI interface. The flash driver is selected by the compatible in the
+``ospi_flash`` devicetree node.
 
-As of current h/w support 16bit Data Frame Size been applied for R/W.
+Currently supported Flash device is ISSI-IS25WX Flash.
 
-Flash driver will be chosen based on configuration in ospi-flash node.
+Test modes
+**********
 
-Currently supported Flash devices are :
-       1. ISSI IS25WX Flash
-       2. Macronix MX66UW Flash
+The application selects its tests using ``CONFIG_MSPI_XIP``.
+
+Indirect command mode
+=====================
+
+Use the following configuration to run the flash API read, write, sector
+erase, and full erase tests:
+
+.. code-block:: cfg
+
+   CONFIG_MSPI_XIP=n
+   CONFIG_FLASH_MSPI_XIP_READ=n
+
+The flash ``xip-config`` may still describe the available memory-mapped
+window, but its enable field must be zero:
+
+.. code-block:: devicetree
+
+   /* E7: 64-MB read-only XiP window, disabled */
+   xip-config = <0 0x0 0x04000000 1>;
+
+   /* E8: 128-MB read-only XiP window, disabled */
+   xip-config = <0 0x0 0x08000000 1>;
+
+One-byte read and write support
+===============================
+
+One-byte read and write operations are not supported in ``8S-8D-8D`` mode.
+The DDR data phase transfers on both clock edges, and the controller uses a
+minimum 16-bit data frame in this mode. Applications requiring one-byte
+transfers should use the upstream-supported ``1S-8S-8S`` SDR mode. This mode
+uses single-edge transmission and supports an 8-bit data frame.
+
+Configure the ISSI IS25 flash node as follows:
+
+.. code-block:: devicetree
+
+   mspi-io-mode = "MSPI_IO_MODE_OCTAL_1_8_8";
+   mspi-data-rate = "MSPI_DATA_RATE_SINGLE";
+   mspi-dqs-enable;
+   write-block-size = <1>;
+   rx-dummy = <16>;
+   tx-dummy = <0>;
+   read-command = <0xcc>;
+   write-command = <0x8e>;
+   command-length = "INSTR_1_BYTE";
+   address-length = "ADDR_4_BYTE";
+
+In this configuration, the command is transferred on one data line, while
+the address and data phases use eight data lines. It is not a dual-edge
+transfer.
+
+XiP mode
+========
+
+Enable MSPI XiP and set the first ``xip-config`` cell to one:
+
+.. code-block:: cfg
+
+   CONFIG_MSPI_XIP=y
+
+.. code-block:: devicetree
+
+   /* E7: 64-MB read-only XiP window, enabled */
+   xip-config = <1 0x0 0x04000000 1>;
+
+   /* E8: 128-MB read-only XiP window, enabled */
+   xip-config = <1 0x0 0x08000000 1>;
+
+In XiP mode, this sample performs only a 16-byte memory-mapped read and dumps
+the data. Set ``CONFIG_FLASH_MSPI_XIP_READ=y`` only when ``flash_read()`` must
+also use the memory-mapped XiP window.
+
+The ``xip-config`` cells are ``<enable address-offset size permission>``.
+Permission value ``1`` selects read-only access. Memory-mapped writes are not
+used; flash programming and erase operations must use the flash APIs in
+indirect command mode.
+
+E7 and E1C implement the XIP slave-enable register and their OSPI controller
+nodes must contain:
+
+.. code-block:: devicetree
+
+   xip-ser-support;
+
+E8 and B1 do not implement this register and must omit the property.
+
+Use a pristine build when switching between XiP and indirect configurations
+so that generated Kconfig and devicetree files are regenerated.
 
 
 Building and Running
@@ -33,10 +121,13 @@ Example command to build:
 Sample Output
 =============
 
+Indirect command-mode output:
+
 .. code-block:: console
 
 	ospi1@83002000 OSPI flash testing
 	========================================
+	Running indirect command-mode test cases
 
 	Test 1: Flash erase
 	Flash erase succeeded!
@@ -85,4 +176,16 @@ Sample Output
 	Total errors after reading erased Sector 5 = 0
 
 	Multi-Sector Erase Test Succeeded !
+
+XiP output:
+
+.. code-block:: console
+
+	ospi_flash@0 OSPI flash testing
+	========================================
+	Running XiP mode test
+
+	XiP Read Test
+	XiP data at 0xc0000000:
+	00 01 02 03 04 05 06 07 08 09 0a 0b 0c 0d 0e 0f
 
