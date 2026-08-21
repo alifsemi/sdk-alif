@@ -1,0 +1,26 @@
+name: display-pm-mram
+boards:
+  /alif_e1c.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e1c.overlay
+      EXTRA_CONF_FILE: display_e1c.conf
+  /alif_b.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_b1.overlay
+      EXTRA_CONF_FILE: display_b1.conf
+  /alif_e8.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e8_he.overlay
+      EXTRA_CONF_FILE: display_e8_he.conf
+  /alif_e8.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e8_hp.overlay
+      EXTRA_CONF_FILE: display_e8_hp.conf
+  /alif_e7.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e7_he.overlay
+      EXTRA_CONF_FILE: display_e7_he.conf
+  /alif_e7.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: display_e7_hp.overlay
+      EXTRA_CONF_FILE: display_e7_hp.conf
