@@ -1,0 +1,78 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ */
+
+/*
+ * Enable the Infineon S80KS HyperRAM connected to OSPI1 on E8
+ * DK-compatible engineering boards.
+ */
+
+/ {
+	aliases {
+		spi-psram = &ospi_ram;
+	};
+};
+
+&pinctrl_ospi1 {
+	group0 {
+		pinmux = <PIN_P5_5__OSPI1_SCLK_C>,
+			 <PIN_P5_7__OSPI1_SS0_C>,
+			 <PIN_P9_5__OSPI1_D0_C>,
+			 <PIN_P9_6__OSPI1_D1_C>,
+			 <PIN_P9_7__OSPI1_D2_C>,
+			 <PIN_P10_0__OSPI1_D3_C>,
+			 <PIN_P10_1__OSPI1_D4_C>,
+			 <PIN_P10_2__OSPI1_D5_C>,
+			 <PIN_P10_3__OSPI1_D6_C>,
+			 <PIN_P10_4__OSPI1_D7_C>,
+			 <PIN_P17_0__OSPI1_D8_C>,
+			 <PIN_P17_1__OSPI1_D9_C>,
+			 <PIN_P17_2__OSPI1_D10_C>,
+			 <PIN_P17_3__OSPI1_D11_C>,
+			 <PIN_P17_4__OSPI1_D12_C>,
+			 <PIN_P17_5__OSPI1_D13_C>,
+			 <PIN_P17_6__OSPI1_D14_C>,
+			 <PIN_P17_7__OSPI1_D15_C>,
+			 <PIN_P9_0__OSPI1_RXDS1_C>,
+			 <PIN_P10_7__OSPI1_RXDS0_C>;
+		read-enable = <0x1>;
+		drive-strength = <12>;
+		slew-rate = <0x1>;
+	};
+};
+
+&ospi_flash {
+	status = "disabled";
+};
+
+&ospi1 {
+	hyperbus-mode;
+	memmap-write-support;
+	rx-ds-delay = <11>;
+	rx-ds1-delay = <8>;
+	tx-fifo-threshold = <0>;
+	ddr-drive-edge = <1>;
+	status = "okay";
+
+	ospi_ram: hyperram@0 {
+		compatible = "infineon,s80ks";
+		reg = <0>;
+		size = <DT_SIZE_M(32)>;
+		mspi-max-frequency = <40000000>;
+		mspi-io-mode = "MSPI_IO_MODE_HEX_8_8_16";
+		mspi-data-rate = "MSPI_DATA_RATE_DUAL";
+		mspi-dqs-enable;
+		mspi-hardware-ce-num = <0>;
+		mspi-cpp-mode = "MSPI_CPP_MODE_0";
+		mspi-endian = "MSPI_BIG_ENDIAN";
+		mspi-ce-polarity = "MSPI_CE_ACTIVE_LOW";
+		initial-latency = <3>;
+		rx-dummy = <3>;
+		tx-dummy = <3>;
+		command-length = "INSTR_DISABLED";
+		address-length = "ADDR_DISABLED";
+		xip-config = <1 0x0 DT_SIZE_M(32) 0>;
+		status = "okay";
+	};
+};
