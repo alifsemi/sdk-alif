@@ -1,0 +1,16 @@
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+&dma0 {
+    status = "okay";
+};
+
+&evtrtr0 {
+    status = "okay";
+};
+
+&adc0 {
+    status = "okay";
+    adc_conversion_mode = "CONTINUOUS_CONVERSION";
+    dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 0, 1) 8>;
+    dma-names = "rxdma";
+};
