@@ -1,19 +1,82 @@
+common:
+  tags:
+    - drivers
+    - flash
+    - ospi
+  harness: ztest
+  timeout: 600
+  # The OSPI flash node is enabled by the ospi-flash snippet, so twister must
+  # apply it too (west/cmake -S ospi-flash equivalent). Without it spi_flash0
+  # stays disabled and DEVICE_DT_GET() has nothing to bind to.
+  extra_args:
+    - SNIPPET=ospi-flash
+  filter: dt_alias_exists("spi_flash0")
+  platform_allow:
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+
 tests:
-  drivers.spi_flash.basic_tests:
-    tags: OSPI
+  drivers.spi_flash.basic_tests: {}
+
+  # Timing overlays layer on top of the snippet's board overlay, so they must
+  # be appended (extra_dtc_overlay_files), not passed via DTC_OVERLAY_FILE
+  # which would replace the snippet overlay and drop the flash node.
+  drivers.spi_flash.overlay_50mhz:
+    extra_dtc_overlay_files:
+      - boards/ospi1_50Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+  drivers.spi_flash.overlay_100mhz:
+    extra_dtc_overlay_files:
+      - boards/ospi1_100Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+  drivers.spi_flash.overlay_200mhz:
+    extra_dtc_overlay_files:
+      - boards/ospi1_200Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+  drivers.spi_flash.overlay_ospi0_80mhz:
+    extra_dtc_overlay_files:
+      - boards/ospi0_80Mhz.overlay
     platform_allow:
       - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
       - alif_e1c_dk/ae1c1f4051920hh/rtss_he
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
-      - alif_e7_dk/ae722f80f55d5xx/rtss_he
-      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
-    harness: ztest
-    timeout: 600
-    integration_platforms:
-      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
-      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
-      - alif_e7_dk/ae722f80f55d5xx/rtss_he
-      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+  # Extra API/DT suites including XIP enter/exit via HAL (no register pokes).
+  drivers.spi_flash.extra_tests:
+    extra_configs:
+      - CONFIG_TEST_OSPI_FLASH_EXTRA=y
+    timeout: 900
+
+  # Same suites with the memory-mapped XIP window left untouched, for boards
+  # where dereferencing it is not safe. HAL enable/disable and flash_* still run.
+  drivers.spi_flash.extra_tests.no_xip_live:
+    extra_configs:
+      - CONFIG_TEST_OSPI_FLASH_EXTRA=y
+      - CONFIG_TEST_OSPI_XIP_LIVE=n
+    timeout: 900
+
+  # Bounded performance suite (never erases offset 0).
+  drivers.spi_flash.perf:
+    extra_configs:
+      - CONFIG_TEST_OSPI_FLASH_PERF=y
+    timeout: 1800
