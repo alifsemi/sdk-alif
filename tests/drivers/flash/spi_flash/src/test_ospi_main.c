@@ -9,7 +9,6 @@
  */
 
 
-#include <stdio.h>
 #include <string.h>
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
@@ -196,16 +195,19 @@ static void single_sector_test(void)
 	for (i = 0; i < len; i++) {
 		if (buf[i] != expected[i]) {
 			e_count++;
-			LOG_INF("Not matched at [%d] _w[%4x] _r[%4x]\n",
+			LOG_INF("Not matched at [%d] _w[%4x] _r[%4x]",
 				i, expected[i], buf[i]);
 		}
 	}
 
 	if (e_count) {
-		LOG_INF("Error: Data read NOT matches data written\n");
+		LOG_INF("Error: Data read NOT matches data written");
 	} else {
-		LOG_INF("Data read matches data written. Good!!\n");
+		LOG_INF("Data read matches data written. Good!!");
 	}
+
+	zassert_equal(e_count, 0,
+		      "Single-sector verify failed: %d mismatches", e_count);
 }
 
 static void erase_test(const struct device *dev, uint32_t offset, uint32_t len)
@@ -229,6 +231,8 @@ static void erase_test(const struct device *dev, uint32_t offset, uint32_t len)
 	}
 
 	LOG_INF("Total errors after reading erased chip = %d", count);
+	zassert_equal(count, 0,
+		      "Erase verify failed: %d bytes not erased", count);
 }
 
 static void multi_page_test(const struct device *dev)
@@ -333,17 +337,17 @@ static void multi_sector_test(void)
 	}
 
 	/* Prepare sectors 4 and 5 by erasing before writing */
-	LOG_INF("\nTest 4: Prepare sectors 4 and 5 (erase before write)\n");
+	LOG_INF("Test 4: Prepare sectors 4 and 5 (erase before write)");
 	ret = flash_erase(flash_dev, SPI_FLASH_SECTOR_12_OFFSET,
 			  SPI_FLASH_SECTOR_SIZE * 2);
-	zassert_equal(ret, 0, "Error: Preparation erase failed! [%d]\n", ret);
+	zassert_equal(ret, 0, "Error: Preparation erase failed! [%d]", ret);
 
 	LOG_INF("Test 4: write sector %d", SPI_FLASH_SECTOR_12_OFFSET);
 
 	/* Write into Sector 4 */
 	ret = flash_write(flash_dev, SPI_FLASH_SECTOR_12_OFFSET, w_buf, len);
 	zassert_equal(ret, 0,
-		     "Error: Flash write failed at Sec 4! [%d]\n", ret);
+		     "Error: Flash write failed at Sec 4! [%d]", ret);
 
 	LOG_INF("Test 4: write sector %d", SPI_FLASH_SECTOR_13_OFFSET);
 
@@ -681,12 +685,12 @@ ZTEST(test_ospi_flash, test_ospi_flash_parameters)
 	zassert_not_null(flash_param, "Failed to get flash parameters");
 
 	LOG_INF("****Flash Configured Parameters******");
-	LOG_INF("* Num Of Sectors : %d", flash_param->num_of_sector);
-	LOG_INF("* Sector Size : %d", flash_param->sector_size);
-	LOG_INF("* Page Size : %d", flash_param->page_size);
-	LOG_INF("* Erase value : %d", flash_param->erase_value);
-	LOG_INF("* Write Blk Size: %d", flash_param->write_block_size);
-	LOG_INF("* Total Size in Bytes: %d",
+	LOG_INF("* Num Of Sectors : %zu", flash_param->num_of_sector);
+	LOG_INF("* Sector Size : %zu", flash_param->sector_size);
+	LOG_INF("* Page Size : %zu", flash_param->page_size);
+	LOG_INF("* Erase value : 0x%02x", flash_param->erase_value);
+	LOG_INF("* Write Blk Size: %zu", flash_param->write_block_size);
+	LOG_INF("* Total Size in Bytes: %zu",
 		flash_param->num_of_sector * flash_param->sector_size);
 	LOG_INF("* Test Region Offset: 0x%x",
 		(uint32_t)SPI_FLASH_TEST_REGION_OFFSET);
