@@ -12,40 +12,179 @@
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/kernel.h>
+#include <errno.h>
 
-int main(void)
+#if defined(CONFIG_SOC_SERIES_E7) || defined(CONFIG_SOC_SERIES_E5) || \
+	defined(CONFIG_SOC_SERIES_E3) || defined(CONFIG_SOC_SERIES_E1)
+#include <zephyr/arch/arm/mpu/arm_mpu.h>
+#include <zephyr/cache.h>
+#include <zephyr/sys/barrier.h>
+#endif
+
+#define PSRAM_NODE		DT_ALIAS(spi_psram)
+#define OSPI_XIP_BASE		DT_REG_ADDR_BY_NAME(DT_PARENT(PSRAM_NODE), xip)
+
+#if defined(CONFIG_SOC_SERIES_E7) || defined(CONFIG_SOC_SERIES_E5) || \
+	defined(CONFIG_SOC_SERIES_E3) || defined(CONFIG_SOC_SERIES_E1)
+#define PSRAM_TEST_RUNTIME_MPU_ATTR	1
+typedef uint16_t psram_data_t;
+#else
+#define PSRAM_TEST_RUNTIME_MPU_ATTR	0
+#if defined(CONFIG_SOC_SERIES_B1)
+typedef uint16_t psram_data_t;
+#elif DT_NODE_HAS_COMPAT(PSRAM_NODE, apmemory_aps512xxn)
+typedef uint16_t psram_data_t;
+#else
+/**32b used in HexRAM */
+typedef uint32_t psram_data_t;
+#endif
+#endif
+
+static void print_test_config(uint32_t ram_size)
 {
-	const struct device *psram_dev = DEVICE_DT_GET(DT_ALIAS(spi_psram));
-	uint32_t *const ptr = (uint32_t *) DT_PROP_BY_IDX(DT_PARENT(DT_ALIAS(spi_psram)),
-						xip_base_address, 0);
-	uint32_t total_errors = 0, ram_size;
+	printf("Test configuration:\n");
+	printf("  XIP base        : 0x%x\n", (uint32_t)OSPI_XIP_BASE);
+	printf("  RAM size        : %u bytes\n", ram_size);
+	printf("  Access width    : %u-bit\n", sizeof(psram_data_t) * 8);
+	printf("  Pattern         : incrementing %u-bit value, wraps at data width\n",
+	       sizeof(psram_data_t) * 8);
+#if PSRAM_TEST_RUNTIME_MPU_ATTR
+	printf("  MPU test cases  : Device, Normal non-cacheable, SRAM cacheable\n");
+#else
+	printf("  MPU test cases  : Direct read/write, no runtime MPU changes\n");
+#endif
+}
 
-	ram_size = DT_PROP(DT_ALIAS(spi_psram), size);
+static void print_test_case(const char *mode, const char *write_attr, const char *read_attr)
+{
+	printf("\nTest case: %s\n", mode);
+	printf("  Write attribute : %s\n", write_attr);
+	printf("  Read attribute  : %s\n", read_attr);
+}
 
-	if (!device_is_ready(psram_dev)) {
-		printk("%s: device not ready.\n", psram_dev->name);
-		return -1;
+#if PSRAM_TEST_RUNTIME_MPU_ATTR
+static int ospi_xip_set_mair_idx(uint8_t mair_idx, size_t cache_size)
+{
+	for (uint32_t region = 0; region < mpu_config.num_regions; region++) {
+		const struct arm_mpu_region *mpu_region = &mpu_config.mpu_regions[region];
+
+		if (mpu_region->base != OSPI_XIP_BASE) {
+			continue;
+		}
+
+		unsigned int key = irq_lock();
+
+		(void)sys_cache_data_flush_and_invd_range((void *)OSPI_XIP_BASE, cache_size);
+		barrier_dsync_fence_full();
+		ARM_MPU_SetRegion(region, OSPI_XIP_BASE | mpu_region->attr.rbar,
+				  mpu_region->attr.r_limit |
+					  (mair_idx << MPU_RLAR_AttrIndx_Pos) |
+					  MPU_RLAR_EN_Msk);
+		barrier_dsync_fence_full();
+		barrier_isync_fence_full();
+		irq_unlock(key);
+
+		return 0;
 	}
 
-	printk("\nPSRAM XIP mode demo app started\n");
+	return -ENOENT;
+}
+#endif
 
-	printk("Writing data to the XIP region:\n");
+static uint32_t verify_pattern(const char *mode, volatile psram_data_t *ptr, uint32_t ram_size)
+{
+	uint32_t total_errors = 0;
 
-	for (uint32_t index = 0; index < (ram_size/sizeof(uint32_t)); index++) {
-		ptr[index] = index;
-	}
+	printf("Reading back in %s mode:\n", mode);
 
-	printk("Reading back:\n");
+	for (uint32_t index = 0; index < (ram_size / sizeof(psram_data_t)); index++) {
+		psram_data_t got = ptr[index];
+		psram_data_t expected = (psram_data_t)index;
 
-	for (uint32_t index = 0; index < (ram_size/sizeof(uint32_t)); index++) {
-		if (ptr[index] != index) {
-			printk("Data error at addr %x, got %x, expected %x\n",
-			(index * sizeof(uint32_t)), ptr[index], index);
+		if (got != expected) {
+			printf("%s read error at addr %x, line_item %u, got %x, expected %x\n",
+			       mode, (index * sizeof(psram_data_t)),
+			       index & ((32 / sizeof(psram_data_t)) - 1),
+			       got, expected);
 			total_errors++;
+			break;
 		}
 	}
 
-	printk("Done, total errors = %d\n", total_errors);
+	printf("%s total errors = %u\n", mode, total_errors);
+
+	return total_errors;
+}
+
+int main(void)
+{
+	const struct device *psram_dev = DEVICE_DT_GET(PSRAM_NODE);
+
+	volatile psram_data_t *const ptr = (volatile psram_data_t *)OSPI_XIP_BASE;
+	uint32_t ram_size;
+
+	ram_size = DT_PROP(PSRAM_NODE, size);
+
+	if (!device_is_ready(psram_dev)) {
+		printf("%s: device not ready.\n", psram_dev->name);
+		return -1;
+	}
+
+	printf("\nPSRAM XIP mode demo app started\n");
+	print_test_config(ram_size);
+
+#if PSRAM_TEST_RUNTIME_MPU_ATTR
+	int ret;
+
+	print_test_case("Device", "Device", "Device");
+
+	ret = ospi_xip_set_mair_idx(MPU_MAIR_INDEX_DEVICE, ram_size);
+	if (ret != 0) {
+		printf("Failed to set OSPI XIP Device MPU attribute: %d\n", ret);
+		return ret;
+	}
+
+	printf("Writing data to the XIP region:\n");
+
+	for (uint32_t index = 0; index < (ram_size/sizeof(psram_data_t)); index++) {
+		ptr[index] = (psram_data_t)index;
+	}
+	barrier_dsync_fence_full();
+
+	(void)verify_pattern("Device", ptr, ram_size);
+
+	print_test_case("Normal non-cacheable", "Device", "Normal non-cacheable");
+
+	ret = ospi_xip_set_mair_idx(MPU_MAIR_INDEX_SRAM_NOCACHE, ram_size);
+	if (ret != 0) {
+		printf("Failed to set OSPI XIP Normal non-cacheable MPU attribute: %d\n", ret);
+		return ret;
+	}
+
+	(void)verify_pattern("Normal non-cacheable", ptr, ram_size);
+
+	print_test_case("SRAM cacheable", "Device", "SRAM cacheable");
+
+	ret = ospi_xip_set_mair_idx(MPU_MAIR_INDEX_SRAM, ram_size);
+	if (ret != 0) {
+		printf("Failed to set OSPI XIP SRAM cacheable MPU attribute: %d\n", ret);
+		return ret;
+	}
+
+	(void)verify_pattern("SRAM cacheable", ptr, ram_size);
+#else
+	print_test_case("Direct", "Default MPU/static attribute", "Default MPU/static attribute");
+
+	printf("Writing data to the XIP region:\n");
+
+	for (uint32_t index = 0; index < (ram_size/sizeof(psram_data_t)); index++) {
+		ptr[index] = (psram_data_t)index;
+	}
+
+	(void)verify_pattern("Default", ptr, ram_size);
+#endif
+
+	printf("Done\n");
 
 	return 0;
 }
