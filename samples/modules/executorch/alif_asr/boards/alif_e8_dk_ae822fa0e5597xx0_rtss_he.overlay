@@ -17,6 +17,19 @@
 	};
 };
 
+/*
+ * This is a large (~4.5 MB) single-image, non-MCUBoot application. In non-MCUBoot
+ * builds the executable MRAM MPU region (soc/alif/ensemble mpu_regions.c) spans
+ * boot_partition..storage_partition, so the code that may be executed ends where
+ * the storage partition begins. The default layout places storage at 0x1A0000,
+ * capping executable MRAM at ~1.62 MB and causing an Instruction Access Violation
+ * as soon as code above that boundary runs. Move storage to the top of MRAM so
+ * the executable region covers the whole image.
+ */
+&storage_partition {
+	reg = <0x0057D800 DT_SIZE_K(10)>;
+};
+
 &i2s4 {
 	status = "okay";
 };
