@@ -1,0 +1,18 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Layer on boards/alif_psram.overlay. Latency code 3 is valid up to 66 MHz. */
+
+&ospi0 {
+	bus-speed = <50000000>;
+};
+
+&aps512xxn {
+	latency-code = <3>;
+};
