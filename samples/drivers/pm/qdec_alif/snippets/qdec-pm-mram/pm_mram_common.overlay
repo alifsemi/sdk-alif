@@ -1,0 +1,46 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+&lpgpio {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <8000000>;
+	status = "okay";
+};
+
+&aipm_run_default {
+	aipm-power-domains = <(ALIF_PD_SSE700_AON_MASK | ALIF_PD_SYST_MASK)>;
+	memory-blocks      = <ALIF_MRAM_MASK>;
+};
+
+&aipm_off {
+	status = "okay";
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+};
+
+/ {
+	chosen {
+		zephyr,console = &uart2;
+	};
+};
