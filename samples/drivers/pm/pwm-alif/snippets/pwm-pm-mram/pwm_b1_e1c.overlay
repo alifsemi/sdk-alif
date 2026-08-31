@@ -1,0 +1,35 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+#include "pm_mram_he.overlay"
+
+/ {
+	aliases {
+		pwm-led0 = &pwm_ut2;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_ut2: pwm_ut2 {
+			pwms = <&pwm2 1 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			label = "UT2 PWM";
+		};
+	};
+};
+
+&utimer2 {
+	status = "okay";
+
+	pwm2: pwm2 {
+		pinctrl-0 = <&pinctrl_ut2>;
+		pinctrl-1 = <&pinctrl_ut2_sleep>;
+		pinctrl-names = "default", "sleep";
+		status = "okay";
+	};
+};
