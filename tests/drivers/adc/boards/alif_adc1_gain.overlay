@@ -1,0 +1,5 @@
+
+&adc1 {
+		pga_enable;
+		pga_gain = "ADC_PGA_GAIN_42_DB";
+};

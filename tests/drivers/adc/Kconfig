@@ -1,0 +1,59 @@
+config TEST_ADC_DIFFERENTIAL
+	bool "To Test ADC in differential mode"
+
+config TEST_ADC_CONTINUOUS
+	bool "To Test ADC in continuous mode"
+
+config TEST_ADC_MultiCH
+	bool "To Test ADC in multi Channel mode"
+	select TEST_ADC_CONTINUOUS
+	help
+	  Alif ADC does not support multi-channel scan in single-shot mode.
+	  Enabling this option also enables continuous conversion. Include
+	  the continuous overlay together with the multich overlay, or use
+	  a multich overlay that sets CONTINUOUS_CONVERSION.
+
+config TEST_ADC24
+	bool "To Enable ADC24 testcases"
+
+config TEST_ADC_CH0
+	bool "To enable ADC channel 0 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH0=y on the west build command.
+
+config TEST_ADC_CH1
+	bool "To enable ADC channel 1 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH1=y on the west build command.
+
+config TEST_ADC_CH2
+	bool "To enable ADC channel 2 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH2=y on the west build command.
+
+config TEST_ADC_CH3
+	bool "To enable ADC channel 3 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH3=y on the west build command.
+
+config TEST_ADC_CH4
+	bool "To enable ADC channel 4 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH4=y on the west build command.
+
+config TEST_ADC_CH5
+	bool "To enable ADC channel 5 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH5=y on the west build command.
+
+config TEST_ADC_CH6
+	bool "To enable ADC channel 6 (temperature) testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH6=y on the west build command.
+
+config TEST_ADC_CH7
+	bool "To enable ADC channel 7 testcase"
+	help
+	  Enable with -DCONFIG_TEST_ADC_CH7=y on the west build command.
+
+source "Kconfig.zephyr"

@@ -1,0 +1,13 @@
+&adc0 {
+	status = "disabled";
+};
+
+
+&adc24 {
+			adc_conversion_mode	= "SINGLE_SHOT_CONVERSION";
+			adc24_output_rate		= "16KS/s";
+			shift_direction		= "RIGHT_SHIFT";
+			avg_sample_num		= <256>;
+			shift_n_bits		= <8>;
+
+};

@@ -1,0 +1,91 @@
+common:
+  tags: adc drivers
+  depends_on: adc
+  harness: ztest
+  timeout: 600
+  platform_allow:
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  extra_configs:
+    - CONFIG_TEST_ADC_CH0=y
+    - CONFIG_TEST_ADC_CH1=y
+    - CONFIG_TEST_ADC_CH2=y
+    - CONFIG_TEST_ADC_CH3=y
+    - CONFIG_TEST_ADC_CH4=y
+    - CONFIG_TEST_ADC_CH5=y
+    - CONFIG_TEST_ADC_CH6=y
+    - CONFIG_TEST_ADC_CH7=y
+
+tests:
+  drivers.adc.adc12.single_ended:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+
+  drivers.adc.adc12.continuous:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+      - boards/alif_adc1_continuous.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC_CONTINUOUS=y
+
+  drivers.adc.adc12.differential:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC_DIFFERENTIAL=y
+
+  drivers.adc.adc12.multich:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+      - boards/alif_adc1_multich.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC_MultiCH=y
+
+  drivers.adc.adc12.continuous_differential:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+      - boards/alif_adc1_continuous.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC_CONTINUOUS=y
+      - CONFIG_TEST_ADC_DIFFERENTIAL=y
+
+  drivers.adc.adc12.gain:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+      - boards/alif_adc1_gain.overlay
+
+  drivers.adc.adc12.samples8:
+    extra_dtc_overlay_files:
+      - boards/alif_adc1.overlay
+      - boards/alif_adc1_samples8.overlay
+
+  drivers.adc.adc24.differential:
+    extra_dtc_overlay_files:
+      - boards/alif_adc24.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC24=y
+      - CONFIG_TEST_ADC_DIFFERENTIAL=y
+
+  drivers.adc.adc24.continuous:
+    extra_dtc_overlay_files:
+      - boards/alif_adc24.overlay
+      - boards/alif_adc24_continuous.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC24=y
+      - CONFIG_TEST_ADC_DIFFERENTIAL=y
+      - CONFIG_TEST_ADC_CONTINUOUS=y
+
+  drivers.adc.adc24.multich:
+    extra_dtc_overlay_files:
+      - boards/alif_adc24.overlay
+      - boards/alif_adc24_multich.overlay
+    extra_configs:
+      - CONFIG_TEST_ADC24=y
+      - CONFIG_TEST_ADC_DIFFERENTIAL=y
+      - CONFIG_TEST_ADC_MultiCH=y

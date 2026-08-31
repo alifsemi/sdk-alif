@@ -1,0 +1,4 @@
+&adc1 {
+	adc_channel_scan	= "MULTIPLE_CHANNEL_SCAN";
+	adc_conversion_mode	= "CONTINUOUS_CONVERSION";
+};
