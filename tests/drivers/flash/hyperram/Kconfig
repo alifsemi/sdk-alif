@@ -1,0 +1,80 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+choice XIP_DEVICE
+	prompt "XIP device under test"
+	optional
+	default TEST_HYPERRAM
+	help
+	  Selects which device-specific cases are built on top of the shared
+	  XIP suite in src/main.c. HyperRAM (S80KS2564) is the default.
+	  Pass CONFIG_TEST_PSRAM=y for the APS512XXN cases, or
+	  CONFIG_TEST_ISSI_HYPERRAM=y for the shared suite on ISSI IS66.
+	  With neither set, only the shared cases run.
+
+config TEST_PSRAM
+	bool "APS512XXN PSRAM"
+	help
+	  Build src/test_hyperram.c (APS512XXN identity and latency-code vs
+	  bus-speed). Use boards/alif_psram.overlay. The shared XIP cases in
+	  src/main.c are still built. Select this explicitly for APS512
+	  images, including the flash-to-PSRAM copy.
+
+config TEST_HYPERRAM
+	bool "S80KS2564 HyperRAM"
+	help
+	  Build src/test_s80ks2564.c (datasheet identity, tCSM, RWDS, and
+	  refresh). Use boards/alif_hex_s80ks.overlay. This is the default
+	  device for the suite. The shared XIP cases in src/main.c are
+	  still built.
+
+config TEST_ISSI_HYPERRAM
+	bool "ISSI IS66 HyperRAM"
+	help
+	  Run the shared XIP suite only. ISSI IS66 has no latency property,
+	  so the S80KS and APS512 files are not built. Use
+	  boards/alif_b1_issi_hyperram.overlay on the B1 dev kit.
+	  Eight-bit stores are skipped because XiP writes are 16-bit frames.
+
+endchoice
+
+config TEST_PSRAM_FULL_CHIP
+	bool "Walk the entire PSRAM in the full-memory XIP test"
+	depends on TEST_PSRAM
+	help
+	  Build only test_full_memory_rw_test, which writes and verifies
+	  every byte of DT property size (64 MiB on APS512XXN). The other
+	  XIP cases are not registered. Leave disabled for functional CI;
+	  enable only on bring-up.
+
+config TEST_HYPERRAM_FULL_CHIP
+	bool "Walk the entire HyperRAM in the full-memory XIP test"
+	depends on TEST_HYPERRAM
+	help
+	  Build only test_full_memory_rw_test, which writes and verifies
+	  every byte of DT property size (32 MiB on S80KS2564). The other
+	  XIP cases are not registered. Leave disabled for functional CI;
+	  enable only on bring-up.
+
+config TEST_PSRAM_FLASH_COPY
+	bool "OSPI flash to PSRAM XiP copy tests"
+	help
+	  Build the flash-to-PSRAM copy cases next to the XIP suite.
+	  PSRAM is boards/alif_psram.overlay. Flash is the ospi-flash snippet.
+	  On E8 those are separate controllers (OSPI0 PSRAM, OSPI1 flash).
+	  Power management is not used.
+
+config TEST_PSRAM_FLASH_COPY_FULL
+	bool "Also copy a preprogrammed 4MB test.bin from flash offset 0"
+	depends on TEST_PSRAM_FLASH_COPY
+	help
+	  Add the sample's 4MB copy. OSPI flash offset 0 must contain the
+	  image from gen_test_bin.py --size 4M. Leave disabled for the
+	  self-contained suite, which programs its own image at 0x10000.
+
+source "Kconfig.zephyr"

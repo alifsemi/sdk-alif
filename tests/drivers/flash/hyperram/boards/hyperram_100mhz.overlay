@@ -1,0 +1,11 @@
+/* Layer on boards/alif_hex_s80ks.overlay.
+ * LC4 is valid to 104 MHz (S80KS2564 CR0[7:4], tACC 35 ns).
+ */
+
+&ospi1 {
+	bus-speed = <100000000>;
+};
+
+&s80ks2564 {
+	latency = <4>;
+};
