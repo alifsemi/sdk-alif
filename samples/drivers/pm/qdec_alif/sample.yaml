@@ -1,0 +1,42 @@
+sample:
+  name: Alif QDEC Power Management Demo
+  description: >
+    Demonstrates utimer QDEC operation combined with Zephyr power management
+    states (PM_STATE_RUNTIME_IDLE, PM_STATE_SUSPEND_TO_IDLE,
+    PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF) on Alif RTSS cores.
+    Uses GPIO quadrature emulation and shows retention differences between
+    HE (S2RAM/TCM) and HP/MRAM (SOFT_OFF) paths.
+common:
+  tags:
+    - power
+    - pm
+    - counter
+    - rtc
+    - qdec
+    - sensor
+    - gpio
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "QDEC PM demo"
+      - "POWER STATE SEQUENCE"
+      - "Resumed from PM_STATE_SUSPEND_TO_RAM"
+  timeout: 90
+tests:
+  sample.pm.qdec_alif:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+      - alif_e8_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+    extra_args:
+      - SNIPPET=qdec-pm-s2ram-tcm
+    depends_on:
+      - counter
+      - gpio
+      - sensor
