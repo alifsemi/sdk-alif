@@ -1,0 +1,40 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * Portable APS512XXN enablement: alias, OSPI0, and the RAM node.
+ * Board pinctrl / XIP window / cs-pin stay SoC-default so this works on
+ * AppKit (x16 overlay below), E7/E8 DevKit, and Balletto (B1 / E1C).
+ */
+
+/ {
+	aliases {
+		spi-psram = &aps512xxn;
+	};
+};
+
+&ospi_flash {
+	status = "disabled";
+};
+
+&ospi0 {
+	rx-ds-delay = <11>;
+	xip-wait-cycles = <255>;
+	tx-fifo-threshold = <0>;
+	ddr-drive-edge = <1>;
+	bus-speed = <100000000>;
+	status = "okay";
+
+	aps512xxn: aps512xxn {
+		compatible = "alif,apmemory-aps512xxn";
+		size = <DT_SIZE_M(64)>;
+		latency-code = <4>;
+		status = "okay";
+	};
+};

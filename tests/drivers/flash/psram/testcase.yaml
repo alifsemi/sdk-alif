@@ -1,0 +1,115 @@
+common:
+  tags:
+    - drivers
+    - memc
+    - psram
+    - hyperram
+  harness: ztest
+  timeout: 180
+  # Overlays are per scenario. Twister appends common extra_dtc_overlay_files
+  # onto each test, so the APS and S80KS bases must not share this section.
+  filter: dt_alias_exists("spi_psram")
+
+tests:
+  # APS512XXN. CONFIG_TEST_PSRAM is the Kconfig default.
+  drivers.psram.xip:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+
+  # Timing overlays only change bus-speed / latency-code. They must be
+  # appended (extra_dtc_overlay_files), not passed as DTC_OVERLAY_FILE,
+  # which would replace alif_psram.overlay and drop pins + XIP window.
+  drivers.psram.xip.overlay_50mhz:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_50Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+
+  drivers.psram.xip.overlay_100mhz:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_100Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+
+  # 200 MHz needs a 400 MHz OSPI input clock (E7/E8). Balletto is 160 MHz.
+  drivers.psram.xip.overlay_200mhz:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_200Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+
+  drivers.psram.xip.full_chip:
+    extra_configs:
+      - CONFIG_TEST_PSRAM_FULL_CHIP=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+    timeout: 1800
+
+  # S80KS2564 on OSPI1. Do not also apply alif_psram.overlay.
+  drivers.hyperram.xip:
+    extra_configs:
+      - CONFIG_TEST_HYPERRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_hex_s80ks.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+  # LC4 valid to 104 MHz.
+  drivers.hyperram.xip.100mhz_lc4:
+    extra_configs:
+      - CONFIG_TEST_HYPERRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_hex_s80ks.overlay
+      - boards/hyperram_100mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+  # 200 MHz requires LC7.
+  drivers.hyperram.xip.200mhz_lc7:
+    extra_configs:
+      - CONFIG_TEST_HYPERRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_hex_s80ks.overlay
+      - boards/hyperram_200mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+  drivers.hyperram.xip.full_chip:
+    extra_configs:
+      - CONFIG_TEST_HYPERRAM=y
+      - CONFIG_TEST_HYPERRAM_FULL_CHIP=y
+    extra_dtc_overlay_files:
+      - boards/alif_hex_s80ks.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    timeout: 1800
