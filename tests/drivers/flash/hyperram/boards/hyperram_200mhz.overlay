@@ -1,0 +1,11 @@
+/* Layer on boards/alif_hex_s80ks.overlay.
+ * 200 MHz requires latency 7 (S80KS2564 CR0[7:4], tACC 35 ns).
+ */
+
+&ospi1 {
+	bus-speed = <200000000>;
+};
+
+&s80ks2564 {
+	latency = <7>;
+};
