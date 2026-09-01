@@ -1,0 +1,56 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+/ {
+	aliases {
+		pwm-led6 = &pwm_led6_green;
+		pwm-led7 = &pwm_led7_blue;
+	};
+
+	test_pwm_loopback {
+		compatible = "test-pwm-loopback";
+		pwms = <&pwm6 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>,
+		       <&pwm7 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+	};
+
+	pwmled6 {
+			compatible = "pwm-leds";
+			pwm_led6_green: pwm_led_6 {
+				pwms = <&pwm6 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+				label = "PWM GREEN 0";
+			};
+	};
+	pwmled7 {
+			compatible = "pwm-leds";
+			pwm_led7_blue: pwm_led_7 {
+				pwms = <&pwm7 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+				label = "PWM BLUE 0";
+			};
+	};
+
+};
+
+&utimer6 {
+	status = "okay";
+
+	pwm6: pwm6 {
+		pinctrl-0 = < &pinctrl_ut6 >;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};
+
+&utimer7 {
+	status = "okay";
+
+	pwm7: pwm7 {
+		pinctrl-0 = < &pinctrl_ut7 >;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};
