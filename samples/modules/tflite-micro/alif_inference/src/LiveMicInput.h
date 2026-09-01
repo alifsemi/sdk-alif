@@ -2,6 +2,8 @@
 #define LIVEMICINPUT_H
 
 #include <cstddef>
+#include <cstdint>
+
 
 class LiveMicInput
 {

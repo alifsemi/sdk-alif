@@ -49,6 +49,11 @@ Build the sample for the Alif Ensemble Development Kit with the following comman
 
 	west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u55-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay
 
+Build the sample for the Alif Ensemble Development Kit using U85 with the following command:
+.. code-block:: console
+
+	west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u85-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
 Build the sample for the Alif Balletto Development Kit with the following command:
 .. code-block:: console
 

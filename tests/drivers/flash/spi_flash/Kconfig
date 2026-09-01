@@ -1,17 +1,58 @@
-config TEST_PERF
+config TEST_OSPI_FLASH_PERF
 	bool "Enable OSPI flash performance test suite"
 	default n
 	help
 	  Enable performance benchmarking test cases for the Alif OSPI flash
 	  driver on the Zephyr test harness. When enabled, the build includes
 	  the test suite defined in test_ospi_perf_tests.c, which performs
-	  repeated erase/write/read operations across a configurable region
-	  of the attached flash device. Each iteration measures elapsed time
-	  using k_uptime_get() and accumulates totals so that average latency
-	  and throughput (KBPS) for erase, write, and read can be reported
-	  through LOG_INF. These metrics help validate driver performance
-	  regressions and characterize the OSPI bus at different clock speeds.
-	  Leave this disabled for functional-only test runs as the performance
-	  suite extends execution time significantly.
+	  repeated erase/write/read operations across a bounded region of the
+	  attached flash device (starting at the test region offset, never
+	  offset 0). Each iteration measures elapsed time using k_uptime_get()
+	  and accumulates totals so that average latency and throughput (KiB/s)
+	  for erase, write, and read can be reported through LOG_INF. These
+	  metrics help validate driver performance regressions and characterize
+	  the OSPI bus at different clock speeds. Leave this disabled for
+	  functional-only test runs as the performance suite extends execution
+	  time significantly.
+
+config TEST_OSPI_FLASH_FULL_CHIP
+	bool "Enable the destructive full-chip OSPI flash perf test"
+	depends on TEST_OSPI_FLASH_PERF
+	default n
+	help
+	  Add a full-device erase/write/read case to the performance suite
+	  (test_ospi_perf_full_chip). It calls flash_erase(0, total), which
+	  uses the driver's chip-erase path and WIPES the entire device,
+	  including offset 0 and any boot image stored there. Sized from DT
+	  (num-of-sector x sector-size): 64 MiB on E7, 128 MiB on E8, so it
+	  also runs for a long time. Keep this disabled in CI and only enable
+	  it on a bring-up board that does not boot from this flash part.
+
+config TEST_OSPI_FLASH_EXTRA
+	bool "Enable extra OSPI flash API/DT suites"
+	default n
+	help
+	  Build the extra flash-device, IRQ-routing, and XIP-transition suites.
+	  Those tests use Zephyr flash APIs, HAL functions (prepare_transfer,
+	  xip enable/disable), and user-configurable DT/Kconfig macros. They
+	  do not read or write OSPI or AES registers from the testcase. If a
+	  required driver or HAL API is missing or broken, the case fails.
+
+config TEST_OSPI_XIP_LIVE
+	bool "Dereference the XIP window in XIP API/transition suites"
+	depends on TEST_OSPI_FLASH_EXTRA
+	default y
+	help
+	  Allow the XIP transition and XIP API suites to read through the
+	  memory-mapped XIP window after alif_hal_ospi_xip_enable(). This is
+	  what turns the mapped-read, boundary-read and off-to-on cases into
+	  real data comparisons.
+
+	  A mapped read with a descriptor the attached device does not accept
+	  is a bus fault rather than a failed assertion, so disable this option
+	  on a board whose flash part or wiring differs from the one described
+	  in devicetree. With it disabled those suites still run the HAL
+	  enable/disable and flash_* half of each case and skip only the
+	  window dereference.
 
 source "Kconfig.zephyr"

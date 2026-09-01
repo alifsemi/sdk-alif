@@ -14,6 +14,10 @@
 	};
 };
 
+&i2s3 {
+	status = "okay";
+};
+
 &ospi1 {
 	bus-speed = <100000000>;
 	status = "okay";

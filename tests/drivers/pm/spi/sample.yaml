@@ -1,0 +1,42 @@
+sample:
+  name: Alif SPI Power Management Test
+  description: >
+    Validates Zephyr power management states (PM_STATE_RUNTIME_IDLE,
+    PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF) on Alif
+    RTSS cores while an SPI controller/peripheral loopback transfer runs concurrently,
+    using the ztest framework to verify SPI transactions are correctly suspended
+    and resumed across each power state transition.
+common:
+  tags:
+    - power
+    - pm
+    - spi
+    - rtc
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "PM states demo"
+      - "SPI threads started"
+      - "PROJECT EXECUTION SUCCESSFUL"
+tests:
+  sample.pm.spi_pm_testcode.he:
+    extra_args:
+      - SNIPPET=spi-pm-he
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+    depends_on:
+      - spi
+  sample.pm.spi_pm_testcode.hp:
+    extra_args:
+      - SNIPPET=spi-pm-hp
+    platform_allow:
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_hp
+    depends_on:
+      - spi

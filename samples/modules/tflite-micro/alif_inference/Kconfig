@@ -48,4 +48,30 @@ config I2S_GAIN
 	int "Fixed linear again applied to I2S samples (e.g 10 = 20dB gain)"
 	default 20
 
+# Configuration required by the shared AudioBackend (alif_common/audio)
+
+config AUDIO_CHANNELS
+	int "Number of input audio channels"
+	default 2
+
+config SAMPLE_CNT
+	int "Number of samples per slab buffer"
+	default 400
+
+config AUDIO_STRIDE
+	int "Number of audio samples in a single stride"
+	default 8000
+
+config NUM_BUFFERS
+	int "Number of slab buffers to allocate"
+	default 2
+
+config THREAD_STACK_SIZE
+	int "Stack size of audio thread"
+	default 1024
+
+config THREAD_PRIORITY
+	int "Priority of audio thread"
+	default 0
+
 source "Kconfig.zephyr"

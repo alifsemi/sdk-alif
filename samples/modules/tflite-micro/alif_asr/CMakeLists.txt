@@ -33,6 +33,49 @@ endif()
 # Register the MLEK Zephyr port as an extra Zephyr module
 list(APPEND ZEPHYR_EXTRA_MODULES ${MLEK_ROOT}/source/lib/ports/zephyr)
 
+# ---------------------------------------------------------------------------
+# Ethos-U NPU selection
+# ---------------------------------------------------------------------------
+# When ETHOSU_TARGET_NPU_CONFIG is provided on the command line it is the single
+# source of truth for the NPU. We must act on it BEFORE find_package(Zephyr) so
+# that the matching Kconfig choice (CONFIG_ARM_ETHOS_U<arch>_<macs>) is fed into
+# the build and the Ethos-U driver targets the requested NPU. This overrides the
+# board default (E8 rtss_hp defaults to Ethos-U55 with 256 MACs).
+#
+# The parsed value is also used to pick the correct Vela-compiled model below.
+# Vela config-ID prefix: U55 -> H, U65 -> Y, U85 -> Z (e.g. ethos-u85-256 -> Z256).
+if (DEFINED ETHOSU_TARGET_NPU_CONFIG)
+    string(TOLOWER "${ETHOSU_TARGET_NPU_CONFIG}" _npu_cfg)
+    if (_npu_cfg MATCHES "^ethos-(u[0-9]+)-([0-9]+)$")
+        set(_npu_arch "${CMAKE_MATCH_1}")
+        set(_npu_macs "${CMAKE_MATCH_2}")
+        if (_npu_arch STREQUAL "u55")
+            set(_npu_prefix "H")
+        elseif (_npu_arch STREQUAL "u65")
+            set(_npu_prefix "Y")
+        elseif (_npu_arch STREQUAL "u85")
+            set(_npu_prefix "Z")
+        else()
+            message(FATAL_ERROR
+                "Unsupported Ethos-U architecture '${_npu_arch}' in "
+                "ETHOSU_TARGET_NPU_CONFIG='${ETHOSU_TARGET_NPU_CONFIG}'")
+        endif()
+        set(ETHOS_U_NPU_CONFIG_ID "${_npu_prefix}${_npu_macs}")
+
+        # Feed the matching Kconfig choice into the Zephyr configuration.
+        string(TOUPPER "${_npu_arch}" _npu_arch_uc)
+        set(CONFIG_ARM_ETHOS_${_npu_arch_uc}_${_npu_macs} y
+            CACHE INTERNAL "Selected Ethos-U NPU configuration" FORCE)
+        message(STATUS
+            "Ethos-U: ETHOSU_TARGET_NPU_CONFIG=${ETHOSU_TARGET_NPU_CONFIG} -> "
+            "CONFIG_ARM_ETHOS_${_npu_arch_uc}_${_npu_macs}=y, model ID ${ETHOS_U_NPU_CONFIG_ID}")
+    else()
+        message(FATAL_ERROR
+            "Invalid ETHOSU_TARGET_NPU_CONFIG='${ETHOSU_TARGET_NPU_CONFIG}'.\n"
+            "Expected format: ethos-u<arch>-<macs>, e.g. ethos-u55-256 or ethos-u85-256")
+    endif()
+endif()
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
 project(alif_asr)
@@ -61,11 +104,17 @@ file(MAKE_DIRECTORY ${SRC_GEN_DIR} ${INC_GEN_DIR})
 message(STATUS "Using SRC_GEN_DIR:    ${SRC_GEN_DIR}")
 message(STATUS "Using INC_GEN_DIR:    ${INC_GEN_DIR}")
 
-# Determine NPU config ID based on Zephyr Kconfig
-if (CONFIG_ARM_ETHOS_U55_256)
-    set(ETHOS_U_NPU_CONFIG_ID "H256")
-else()
-    set(ETHOS_U_NPU_CONFIG_ID "H128")
+# Determine NPU config ID based on Zephyr Kconfig.
+# If ETHOSU_TARGET_NPU_CONFIG was supplied on the command line, ETHOS_U_NPU_CONFIG_ID
+# has already been computed above. Otherwise fall back to the board Kconfig defaults.
+if (NOT DEFINED ETHOS_U_NPU_CONFIG_ID)
+    if (CONFIG_ARM_ETHOS_U85_256)
+        set(ETHOS_U_NPU_CONFIG_ID "Z256")
+    elseif (CONFIG_ARM_ETHOS_U55_256)
+        set(ETHOS_U_NPU_CONFIG_ID "H256")
+    else()
+        set(ETHOS_U_NPU_CONFIG_ID "H128")
+    endif()
 endif()
 
 # Model file path

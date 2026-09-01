@@ -1,4 +1,4 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
@@ -10,16 +10,10 @@
 
 / {
 	aliases {
-		i2s-mic = &i2s2;
+		pdm-audio = &lppdm;
 	};
 };
 
-/* i2s1 default pinmux conflicts with ospi0 */
-&i2s1 {
-	status = "disabled";
-};
-
-&ospi0 {
-	bus-speed = <80000000>;
+&lppdm {
 	status = "okay";
 };
