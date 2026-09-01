@@ -21,7 +21,7 @@ def initialize() {
 }
 
 def verify_checkpatch(){
-     sh '''#!/bin/bash -xe
+    int status = sh(script: '''#!/bin/bash -xe
         cd /root/alif/alif/
         if [[ -v CHANGE_ID ]]; then
             ../zephyr/scripts/checkpatch.pl --ignore=GERRIT_CHANGE_ID,EMAIL_SUBJECT,COMMIT_MESSAGE,COMMIT_LOG_LONG_LINE -g pr-\${CHANGE_ID}...origin/main
@@ -32,19 +32,38 @@ def verify_checkpatch(){
                 echo "Checkpatch passed successfully"
             fi
         fi
-        '''
+        ''',
+        returnStatus: true
+    )
+    if (status != 0) {
+        error("Checkpatch FAILED: exit status ${status}")
+    } else {
+        return status
+    }
 }
 
 def verify_gitlint (){
-    sh '''#!/bin/bash -xe
+    int status = sh(script: '''#!/bin/bash -xe
         env
         cd /root/alif/alif/
         if [[ -v CHANGE_ID ]]; then
-            pip install gitlint
+            if ! command -v gitlint >/dev/null 2>&1; then
+                echo "gitlint not found. Installing gitlint..."
+                pip install gitlint
+            else
+                echo "gitlint is already installed: $(gitlint --version)"
+            fi
             git rev-list origin/main..HEAD | xargs -r -n1 gitlint --commit
         fi
         exit $?
-        '''
+        ''',
+        returnStatus: true
+    )
+    if (status != 0) {
+        error("GitLint FAILED: exit status ${status}")
+    } else {
+        return status
+    }
 }
 
 def is_docs_only_change() {
@@ -154,7 +173,6 @@ def test(String pytest_test){
         sed -e 's/ttyACM0/$HEDUT1/g' -e 's/ttyACM1/$HEDUT2/g' pytest_ini.template > pytest.ini
         pytest $pytest_test --root-logdir=pytest-logs
         """
-
 }
 
 def get_all_alif_boards (){
@@ -234,7 +252,7 @@ def build_test_apps(boards, samples, args = null) {
                         build_result=\$?
 
                         if [[ \$build_result -eq 0 ]]; then
-                            echo "📌 ✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
+                            echo "📌✅ Compilation succeeded for board: \$boardName, sample: ${appName}"
                             runCnt=\$((runCnt + 1))
                         else
                             echo "❌🚫 Build failed (code: \$build_result) for board: \$boardName, sample: ${appName}"
@@ -253,14 +271,83 @@ def build_test_apps(boards, samples, args = null) {
     return stages
 }
 
-return [
-    initialize: this.&initialize,
-    verify_checkpatch: this.&verify_checkpatch,
-    verify_gitlint: this.&verify_gitlint,
-    is_docs_only_change: this.&is_docs_only_change,
-    build_ble: this.&build_ble,
-    flash_test: this.&flash_test,
-    test: this.&test,
-    get_all_alif_boards: this.&get_all_alif_boards,
-    build_test_apps: this.&build_test_apps
-]
+def checkManifestUpdate() {
+    def output = sh(script: '''#!/bin/bash
+            set -e
+            #cd /root/alif/alif || exit 99
+
+            last_commiter_email=$(git log -1 --format='%ae')
+            automation_email=$(git config user.email)
+
+            file_count=$(git diff-tree --no-commit-id --name-only -r HEAD | wc -l)
+            changed_file_list=$(git diff-tree --no-commit-id --name-only -r HEAD)
+
+            if printf '%s\n' "$changed_file_list" | grep -Fq "west.yml"; then
+                is_west_updated=1
+            else
+                is_west_updated=0
+            fi
+
+            has_pull_request_ref=0
+            pull_request_number=""
+            # Check pull/NUMBER/head only in west.yml changes
+            if [ "$is_west_updated" -eq 1 ]; then
+                west_diff=$(git diff-tree --no-commit-id -p -r HEAD -- west.yml)
+                if printf '%s\\n' "$west_diff" | grep -Eq 'pull/[0-9]+/head'; then
+                    has_pull_request_ref=1
+                    pull_request_number=$(printf '%s\\n' "$west_diff" |
+                        grep -Eo 'pull/[0-9]+/head' | head -n 1 | grep -Eo '[0-9]+')
+                fi
+            fi
+
+            echo "Last committer email: $last_commiter_email"
+            echo "Automation email: $automation_email"
+            echo "No. of files changed: $file_count"
+            echo "Has pull request ref: $has_pull_request_ref"
+            echo "Pull request number: $pull_request_number"
+
+            if [ "$last_commiter_email" = "$automation_email" ] &&
+               [ "$file_count" -eq 1 ] &&
+               [ "$is_west_updated" -eq 1 ]; then
+                echo "only west.yml file updation with automation"
+                manifest_status=1
+            elif [ "$file_count" -eq 1 ] &&
+                 [ "$is_west_updated" -eq 1 ]; then
+                echo "only west.yml file updation manually"
+                manifest_status=2
+            elif [ "$is_west_updated" -eq 1 ]; then
+                echo "west.yml file updation found in last commit"
+                manifest_status=3
+            else
+                manifest_status=0
+            fi
+
+            # Machine-readable output for Groovy
+            echo "RESULT_MANIFEST_STATUS=$manifest_status"
+            echo "RESULT_HAS_PULL_REQUEST_REF=$has_pull_request_ref"
+            echo "RESULT_PULL_REQUEST_NUMBER=$pull_request_number"
+        ''',
+        returnStdout: true
+    )
+
+    def result = [:]
+
+    output.readLines().each { line ->
+        if (line.startsWith("RESULT_MANIFEST_STATUS=")) {
+            result.manifestStatus = line.split("=", 2)[1].toInteger()
+        } else if (line.startsWith("RESULT_HAS_PULL_REQUEST_REF=")) {
+            result.hasPullRequestRef = line.split("=", 2)[1] == "1"
+        } else if (line.startsWith("RESULT_PULL_REQUEST_NUMBER="))  {
+            def value = line.split("=", 2)[1]
+            result.pullRequestNumber = value ? value.toInteger() : null
+        }
+    }
+
+    echo "Manifest Status       : ${result.manifestStatus}"
+    echo "Has PR Reference      : ${result.hasPullRequestRef}"
+    echo "Pull Request Number   : ${result.pullRequestNumber}"
+
+    return result
+}
+
+return this
