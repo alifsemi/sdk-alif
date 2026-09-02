@@ -24,6 +24,7 @@ To build the display application for a parallel display, use:
    :zephyr-app: ../alif/samples/drivers/display/
    :board: alif_e7_dk/ae722f80f55d5xx/rtss_hp
    :goals: build
+   :snippets: parallel-display
 
 To build the display application for ILI9806E (2-lane) serial display:
 
@@ -31,7 +32,7 @@ To build the display application for ILI9806E (2-lane) serial display:
    :zephyr-app: ../alif/samples/drivers/display/
    :board: alif_e7_dk/ae722f80f55d5xx/rtss_hp
    :goals: build
-   :gen-args: -DDTC_OVERLAY_FILE="boards/serial_display_2lane.overlay" -DOVERLAY_CONFIG="boards/serial_display.conf"
+   :snippets: serial-display-2lane
 
 To build the display application for ILI9488 (1-lane) serial display:
 
@@ -39,7 +40,7 @@ To build the display application for ILI9488 (1-lane) serial display:
    :zephyr-app: ../alif/samples/drivers/display/
    :board: alif_e1c_dk/ae1c1f4051920hh/rtss_he
    :goals: build
-   :gen-args: -DDTC_OVERLAY_FILE="boards/serial_display_1lane.overlay" -DOVERLAY_CONFIG="boards/serial_display.conf"
+   :snippets: serial-display-1lane
 
 Sample Output
 *************

@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -6,4 +6,14 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-CONFIG_FB_USES_DTCM_REGION=y
+name: parallel-display
+
+boards:
+  /alif_(e7|e8)_dk/.*/rtss_(hp|he)/:
+    append:
+      EXTRA_CONF_FILE: parallel_display.conf
+
+  /alif_(b1|e1c)_dk/.*/rtss_he/:
+    append:
+      EXTRA_CONF_FILE: alif_b1_e1c.conf
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_e1c.overlay
