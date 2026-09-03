@@ -1,0 +1,35 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+&i3c0 {
+	status = "okay";
+
+	bmi323: bmi323@69000003b810431000 {
+		compatible = "bosch,bmi323";
+		reg = <0x69 0x03b8 0x10431000>;
+		/* Dynamic Address To Be Assigned To The Device */
+		assigned-address = <0xA>;
+		int-gpios	 = <&gpio6 6 GPIO_ACTIVE_HIGH>;
+		status		 = "okay";
+	};
+};
+
+&pinctrl_gpio6 {
+	group0 {
+		/* Enable only Port-6 Pin-6 */
+		pinmux = <PIN_P6_6__GPIO>;
+	};
+};
+
+&gpio6 {
+	pinctrl-0       = <&pinctrl_gpio6>;
+	pinctrl-names   = "default";
+	status		= "okay";
+};

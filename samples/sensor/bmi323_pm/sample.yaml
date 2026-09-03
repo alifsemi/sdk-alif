@@ -1,0 +1,41 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+sample:
+  name: BMI323 Sensor Power Management
+  description: >
+    Walks Alif PM states (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM or SOFT_OFF)
+    while polling the on-board BMI323 over I3C.
+common:
+  tags:
+    - i3c
+    - sensors
+    - pm
+  filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
+  depends_on:
+    - i3c
+    - counter
+tests:
+  sample.sensor.bmi323_pm.he:
+    extra_args:
+      - SNIPPET="alif-dk-ak;pm-system-off-he"
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+      - alif_e8_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+  sample.sensor.bmi323_pm.hp:
+    extra_args:
+      - SNIPPET="alif-dk-ak;pm-system-off-hp"
+    platform_allow:
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e7_dk_rtss_hp
