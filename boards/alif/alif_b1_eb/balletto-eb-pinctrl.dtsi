@@ -69,11 +69,29 @@
 		};
 	};
 
+	pinctrl_ut0_sleep: pinctrl_utimer0_sleep {
+		group0 {
+			pinmux = <PIN_P4_0__GPIO>,
+				 <PIN_P4_1__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
+		};
+	};
+
 	pinctrl_ut1: pinctrl_utimer1 {
 		group0 {
 			pinmux = <PIN_P6_2__UT1_T0_B>,
 				 <PIN_P6_3__UT1_T1_B>;
 			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_ut1_sleep: pinctrl_utimer1_sleep {
+		group0 {
+			pinmux = <PIN_P6_2__GPIO>,
+				 <PIN_P6_3__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
 		};
 	};
 
@@ -85,11 +103,29 @@
 		};
 	};
 
+	pinctrl_ut2_sleep: pinctrl_utimer2_sleep {
+		group0 {
+			pinmux = <PIN_P4_4__GPIO>,
+				 <PIN_P4_5__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
+		};
+	};
+
 	pinctrl_ut3: pinctrl_utimer3 {
 		group0 {
 			pinmux = <PIN_P4_6__UT3_T0_A>,
 				 <PIN_P4_7__UT3_T1_A>;
 			read-enable = <0x1>;
+		};
+	};
+
+	pinctrl_ut3_sleep: pinctrl_utimer3_sleep {
+		group0 {
+			pinmux = <PIN_P4_6__GPIO>,
+				 <PIN_P4_7__GPIO>;
+			read-enable = <0x1>;
+			driver-state-control = <2>; /* pull-down */
 		};
 	};
 
