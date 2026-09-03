@@ -7,9 +7,10 @@ Overview
 ********
 
 ZTest suite for the Alif CDC200 display driver
-(``alif,cdc200``).
+(``tes,cdc-2.1``).
 
 Two test suites are provided:
+
 - **display_api**: Tests all display driver API functions (standard and CDC200-specific)
 - **display_functional**: Tests helper functions and functional behavior
 
@@ -18,13 +19,14 @@ covers basic capabilities reporting, framebuffer access, display writes,
 blanking control, orientation changes, and buffer management.
 
 Test Coverage
-************
+*************
 
 API Tests (display_api suite)
-******************************
+*****************************
 
 Standard Display API
 ====================
+
 #. Display blanking on/off control.
 #. Display read operations.
 #. Display pixel format setting.
@@ -32,11 +34,13 @@ Standard Display API
 #. Display contrast setting.
 #. Capabilities reporting (resolution, pixel formats, orientation).
 #. Display orientation changes (validates all 4 orientations).
-#. Basic display write operations.
+#. CDC200 layer write (``cdc200_display_write``) API success.
+#. Standard ``display_write()`` API success (MIPI DSI builds).
 #. Multiple rectangle write operations.
 
 CDC200-Specific API
 ===================
+
 #. Display enable/disable control.
 #. CDC200-specific capabilities (panel resolution, layer configuration).
 #. Framebuffer access for both layers.
@@ -45,26 +49,61 @@ CDC200-Specific API
 #. Default framebuffer restoration.
 
 Functional Tests (display_functional suite)
-********************************************
+*******************************************
+
 #. Framebuffer solid color sweep (red, blue, green, white, black).
 #. Framebuffer fill performance benchmark (word-based vs per-pixel memcpy).
 #. Framebuffer readback verification (write pattern, read back, verify match).
-#. Region clipping (negative coordinates, out-of-bounds, partial out-of-bounds).
-#. Display power cycle (disable/enable, test operations while disabled, verify recovery).
+#. Region clipping (out-of-bounds, partial out-of-bounds, valid write).
+#. Display power cycle (disable/enable, operations while disabled, recovery).
+#. Invalid layer index handling.
+#. Undersized buffer / NULL parameter checks (skipped until driver is fixed).
+#. Read cache coherency probe.
 
 Requirements
 ************
 
-* Alif Ensemble E8 Development/Application Kit (or any board exposing
-  the display node with compatible ``alif,cdc200``).
+* A board with a CDC200 node (``tes,cdc-2.1``). Panel interfaces:
+
+  - **Parallel RGB**: all targets (E7, E8, E1C, B1)
+  - **2-lane MIPI-DSI**: alif_e8_dk / alif_e7_dk
+  - **1-lane MIPI-DSI**: alif_e1c_dk / alif_b1_dk
 * Zephyr RTOS with display subsystem enabled.
 
 Building and Running
 ********************
 
+Parallel RGB (default, all targets):
+
 .. code-block:: console
 
    west build -b <board> <test_app_path>
+
+2-lane MIPI-DSI (ILI9806E / MW405 on E7/E8 DK):
+
+.. code-block:: console
+
+   west build -b <board> <test_app_path> -- \
+     -DDTC_OVERLAY_FILE="boards/serial_display_2lane.overlay" \
+     -DEXTRA_CONF_FILE="boards/serial_display.conf"
+
+1-lane MIPI-DSI (ILI9488 on E1C/B1 DK):
+
+.. code-block:: console
+
+   west build -b <board> <test_app_path> -- \
+     -DDTC_OVERLAY_FILE="boards/serial_display_1lane.overlay" \
+     -DEXTRA_CONF_FILE="boards/serial_display.conf"
+
+Twister scenarios in ``testcase.yaml``:
+
+* ``drivers.display.cdc200`` — parallel RGB (all targets)
+* ``drivers.display.cdc200.mipi_2lane`` — 2-lane MIPI-DSI (E7/E8)
+* ``drivers.display.cdc200.mipi_1lane`` — 1-lane MIPI-DSI (E1C/B1)
+
+Timeout is 180 s to cover the visual ``k_msleep()`` delays. Optional
+``boards/overlay_bg*.overlay`` files are background-color experiments;
+they disable the layers and are not part of the default suite.
 
 Expected output
 ***************
@@ -78,6 +117,7 @@ Expected output
    PASS - display_api::test_display_get_capabilities
    PASS - display_api::test_display_orientation
    PASS - display_api::test_display_write
+   PASS - display_api::test_generic_display_write
    PASS - display_api::test_display_write_multiple_rects
    PASS - display_api::test_display_read
    PASS - display_api::test_display_set_pixel_format
@@ -91,12 +131,20 @@ Expected output
    PASS - display_functional::test_display_fb_solid_sweep
    PASS - display_functional::test_display_power_cycle
    PASS - display_functional::test_display_region_clipping
+   PASS - display_functional::test_display_invalid_layer
+   SKIP - display_functional::test_display_undersized_buffer
+   SKIP - display_functional::test_display_null_params
+   PASS - display_functional::test_display_read_cache_coherency
+
+``test_generic_display_write`` is skipped when ``CONFIG_MIPI_DSI`` is not
+enabled. ``test_display_undersized_buffer`` and ``test_display_null_params``
+are skipped until the driver adds the corresponding validation.
 
 Test Details
 ************
 
 API Tests
-========
+=========
 
 test_display_blanking
   Validates display blanking on/off control for power management.
@@ -122,12 +170,19 @@ test_display_orientation
   hardware does not support orientation changes.
 
 test_display_write
-  Performs a basic display write operation to test the rendering
-  pipeline.
+  Calls ``cdc200_display_write()`` for one full-width row and asserts
+  that the call succeeds. This is an API success check, not a visual
+  full-screen fill. Colors are packed for the active pixel format.
+
+test_generic_display_write
+  Calls the standard Zephyr ``display_write()`` API for one full-width
+  row and asserts success. Runs when MIPI DSI is enabled; skipped
+  otherwise.
 
 test_display_write_multiple_rects
   Tests writing multiple colored rectangles to different positions on
-  the display to verify coordinate handling.
+  the display to verify coordinate handling. Rectangle colors are packed
+  for the active pixel format (ARGB8888 / RGB888 / RGB565).
 
 test_display_cdc200_enable
   Tests display enable/disable functionality through the CDC200-specific
@@ -151,7 +206,7 @@ test_restore_fb
   Tests restoring default framebuffers for all layers.
 
 Functional Tests
-=================
+================
 
 test_display_fb_fill_benchmark
   Benchmarks framebuffer fill performance by comparing word-based fill
@@ -170,8 +225,10 @@ test_display_fb_readback_verify
 
 test_display_fb_solid_sweep
   Tests framebuffer solid color sweep (red, blue, green, white, black)
-  with 3-second delays for visual observation. The write method can be
-  selected via the DISPLAY_FB_WRITE_METHOD macro:
+  with 3-second delays for visual observation. Colors are packed for the
+  active pixel format. The write method can be selected via the
+  DISPLAY_FB_WRITE_METHOD macro:
+
   - DISPLAY_FB_WRITE_DIRECT (default): Uses cdc200_get_framebuffer()
     and word-based fill for direct memory access
   - DISPLAY_FB_WRITE_API: Uses cdc200_display_write() API with 10-row
@@ -183,15 +240,33 @@ test_display_power_cycle
   attempting write and read operations while disabled (to verify robustness),
   re-enabling the display, waiting for power up, and verifying functionality by
   clearing the display to white. This test ensures the display driver correctly
-  handles power state transitions, rejects operations gracefully when disabled,
-  and recovers functionality after a power cycle.
+  handles power state transitions and recovers functionality after a power cycle.
 
 test_display_region_clipping
   Tests region clipping behavior by attempting writes with various invalid
   coordinates:
-  - Negative coordinates (-10, -10)
+
+  - Negative coordinates (-10, -10) — skipped (known driver fault, waiting
+    for a fix)
   - Coordinates beyond display resolution
   - Partial out-of-bounds rectangles (rectangle extends beyond edge)
   - Valid write at (100, 100) as control
-  The test validates that the driver either rejects invalid coordinates or
-  clips them appropriately, while valid writes succeed.
+
+  Out-of-bounds cases currently log the driver return value. A valid write
+  must succeed.
+
+test_display_invalid_layer
+  Passes invalid layer indices (2, 5, 255) to CDC200 APIs and expects
+  ``-EINVAL`` from write/read, and no output modification from void APIs.
+
+test_display_undersized_buffer
+  Skipped until the driver validates ``desc->buf_size`` against
+  width * height * pixel size.
+
+test_display_null_params
+  Skipped until the driver rejects NULL ``desc`` / ``buf`` with ``-EINVAL``.
+
+test_display_read_cache_coherency
+  Writes a pattern directly into the framebuffer (no cache flush) and
+  reads it back via ``cdc200_display_read()``. Documents cache behavior
+  on the read path.
