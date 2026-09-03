@@ -8,13 +8,14 @@
  */
 
 #include <string.h>
+#include <zephyr/sys/util.h>
 #include "display_common.h"
 
 LOG_MODULE_REGISTER(display_test, LOG_LEVEL_INF);
 
 /*
  * Test suites for the Alif CDC200 display driver
- * (compatible: alif,cdc200).
+ * (compatible: tes,cdc-2.1).
  *
  * Two test suites:
  * - display_api: Tests all display driver API functions
@@ -93,18 +94,8 @@ ZTEST(display_functional, test_display_fb_fill_benchmark)
 	zassert_not_null(fb_desc.fb_addr, "Layer 0 framebuffer address is NULL");
 
 	pixel_size = display_get_pixel_size(caps.layer[0].current_pixel_format);
-
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color = BLUE_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color = BLUE_RGB888;
-		break;
-	default:
-		color = BLUE_RGB565;
-		break;
-	}
+	color = display_solid_color(caps.layer[0].current_pixel_format,
+				    DISPLAY_COLOR_BLUE);
 
 	TC_PRINT("\n=== Framebuffer Fill Benchmark ===\n");
 	TC_PRINT("Framebuffer size: %zu bytes\n", fb_desc.fb_size);
@@ -189,7 +180,6 @@ ZTEST(display_functional, test_display_fb_solid_sweep)
 	 */
 	buf_size = caps.layer[0].x_resolution * 10 * pixel_size; /* 10 rows */
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	TC_PRINT("Layer 0:\n");
 	TC_PRINT("  Resolution: %dx%d\n", caps.layer[0].x_resolution,
@@ -210,20 +200,8 @@ ZTEST(display_functional, test_display_fb_solid_sweep)
 
 	/* Fill with RED */
 	TC_PRINT("Filling framebuffer with RED\n");
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color = RED_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color = RED_RGB888;
-		break;
-	case PIXEL_FORMAT_RGB_565:
-		color = RED_RGB565;
-		break;
-	default:
-		color = RED_RGB565;
-		break;
-	}
+	color = display_solid_color(caps.layer[0].current_pixel_format,
+				    DISPLAY_COLOR_RED);
 #if DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_DIRECT
 	display_fb_fill_word(fb_desc.fb_addr, fb_desc.fb_size, pixel_size, color);
 #elif DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_API
@@ -238,20 +216,8 @@ ZTEST(display_functional, test_display_fb_solid_sweep)
 
 	/* Fill with BLUE */
 	TC_PRINT("Filling framebuffer with BLUE\n");
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color = BLUE_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color = BLUE_RGB888;
-		break;
-	case PIXEL_FORMAT_RGB_565:
-		color = BLUE_RGB565;
-		break;
-	default:
-		color = BLUE_RGB565;
-		break;
-	}
+	color = display_solid_color(caps.layer[0].current_pixel_format,
+				    DISPLAY_COLOR_BLUE);
 #if DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_DIRECT
 	display_fb_fill_word(fb_desc.fb_addr, fb_desc.fb_size, pixel_size, color);
 #elif DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_API
@@ -266,20 +232,8 @@ ZTEST(display_functional, test_display_fb_solid_sweep)
 
 	/* Fill with GREEN */
 	TC_PRINT("Filling framebuffer with GREEN\n");
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color = GREEN_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color = GREEN_RGB888;
-		break;
-	case PIXEL_FORMAT_RGB_565:
-		color = GREEN_RGB565;
-		break;
-	default:
-		color = GREEN_RGB565;
-		break;
-	}
+	color = display_solid_color(caps.layer[0].current_pixel_format,
+				    DISPLAY_COLOR_GREEN);
 #if DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_DIRECT
 	display_fb_fill_word(fb_desc.fb_addr, fb_desc.fb_size, pixel_size, color);
 #elif DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_API
@@ -294,20 +248,8 @@ ZTEST(display_functional, test_display_fb_solid_sweep)
 
 	/* Fill with WHITE */
 	TC_PRINT("Filling framebuffer with WHITE\n");
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color = WHITE_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color = WHITE_RGB888;
-		break;
-	case PIXEL_FORMAT_RGB_565:
-		color = WHITE_RGB565;
-		break;
-	default:
-		color = WHITE_RGB565;
-		break;
-	}
+	color = display_solid_color(caps.layer[0].current_pixel_format,
+				    DISPLAY_COLOR_WHITE);
 #if DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_DIRECT
 	display_fb_fill_word(fb_desc.fb_addr, fb_desc.fb_size, pixel_size, color);
 #elif DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_API
@@ -322,20 +264,8 @@ ZTEST(display_functional, test_display_fb_solid_sweep)
 
 	/* Fill with BLACK */
 	TC_PRINT("Filling framebuffer with BLACK\n");
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color = BLACK_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color = BLACK_RGB888;
-		break;
-	case PIXEL_FORMAT_RGB_565:
-		color = BLACK_RGB565;
-		break;
-	default:
-		color = BLACK_RGB565;
-		break;
-	}
+	color = display_solid_color(caps.layer[0].current_pixel_format,
+				    DISPLAY_COLOR_BLACK);
 #if DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_DIRECT
 	display_fb_fill_word(fb_desc.fb_addr, fb_desc.fb_size, pixel_size, color);
 #elif DISPLAY_FB_WRITE_METHOD == DISPLAY_FB_WRITE_API
@@ -406,22 +336,10 @@ ZTEST(display_functional, test_display_fb_readback_verify)
 	buf_desc.width = rect_w;
 	buf_desc.height = rect_h;
 
-	/* Determine colors based on pixel format */
-	switch (caps.layer[0].current_pixel_format) {
-	case PIXEL_FORMAT_ARGB_8888:
-		color1 = RED_ARGB8888;
-		color2 = BLUE_ARGB8888;
-		break;
-	case PIXEL_FORMAT_RGB_888:
-		color1 = RED_RGB888;
-		color2 = BLUE_RGB888;
-		break;
-	case PIXEL_FORMAT_RGB_565:
-	default:
-		color1 = RED_RGB565;
-		color2 = BLUE_RGB565;
-		break;
-	}
+	color1 = display_solid_color(caps.layer[0].current_pixel_format,
+				     DISPLAY_COLOR_RED);
+	color2 = display_solid_color(caps.layer[0].current_pixel_format,
+				     DISPLAY_COLOR_BLUE);
 
 	/* ===== Pattern 1: Checkerboard color pattern ===== */
 	TC_PRINT("\n--- Pattern 1: Checkerboard (color1/color2) ---\n");
@@ -526,7 +444,6 @@ ZTEST(display_functional, test_display_region_clipping)
 	pixel_size = display_get_pixel_size(caps.layer[0].current_pixel_format);
 	buf_size = rect_w * rect_h * pixel_size;
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	/* Setup buffer descriptor */
 	buf_desc.buf_size = buf_size;
@@ -537,7 +454,8 @@ ZTEST(display_functional, test_display_region_clipping)
 	/* Fill buffer with red */
 	display_fill_buffer_solid(buf, buf_size,
 				  caps.layer[0].current_pixel_format,
-				  RED_RGB565);
+				  display_solid_color(caps.layer[0].current_pixel_format,
+						     DISPLAY_COLOR_RED));
 
 	/* Test 1: Negative coordinates (-10, -10) - disabled (known driver fault) */
 	TC_PRINT("\nTest 1: Negative coordinates (-10, -10) - skipped\n");
@@ -609,7 +527,6 @@ ZTEST(display_functional, test_display_power_cycle)
 	pixel_size = display_get_pixel_size(caps.layer[0].current_pixel_format);
 	buf_size = rect_w * rect_h * pixel_size;
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	/* Setup buffer descriptor */
 	buf_desc.buf_size = buf_size;
@@ -620,7 +537,8 @@ ZTEST(display_functional, test_display_power_cycle)
 	/* Fill buffer with red */
 	display_fill_buffer_solid(buf, buf_size,
 				  caps.layer[0].current_pixel_format,
-				  RED_RGB565);
+				  display_solid_color(caps.layer[0].current_pixel_format,
+						     DISPLAY_COLOR_RED));
 
 	/* Clear display to white for visual observation
 	 * TC_PRINT("Clearing display to white for visual observation...\n");
@@ -712,7 +630,6 @@ ZTEST(display_functional, test_display_invalid_layer)
 	pixel_size = display_get_pixel_size(caps.layer[0].current_pixel_format);
 	buf_size = rect_w * rect_h * pixel_size;
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	buf_desc.buf_size = buf_size;
 	buf_desc.pitch = rect_w;
@@ -721,7 +638,8 @@ ZTEST(display_functional, test_display_invalid_layer)
 
 	display_fill_buffer_solid(buf, buf_size,
 				  caps.layer[0].current_pixel_format,
-				  RED_RGB565);
+				  display_solid_color(caps.layer[0].current_pixel_format,
+						     DISPLAY_COLOR_RED));
 
 	for (size_t i = 0; i < ARRAY_SIZE(invalid_indices); i++) {
 		uint8_t idx = invalid_indices[i];
@@ -802,7 +720,6 @@ ZTEST(display_functional, test_display_undersized_buffer)
 	ztest_test_skip();
 
 	buf = display_alloc_buffer(small_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 	memset(buf, 0xAB, small_size);
 
 	/* Buffer descriptor claims large size, but actual buf is tiny */
@@ -864,7 +781,6 @@ ZTEST(display_functional, test_display_null_params)
 	pixel_size = display_get_pixel_size(caps.layer[0].current_pixel_format);
 	buf_size = rect_w * rect_h * pixel_size;
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	buf_desc.buf_size = buf_size;
 	buf_desc.pitch = rect_w;
@@ -1203,10 +1119,11 @@ ZTEST(display_api, test_display_write)
 {
 	struct display_buffer_descriptor buf_desc;
 	struct cdc200_display_caps caps;
+	enum display_pixel_format fmt;
 	uint8_t *buf;
 	size_t buf_size;
+	int pixel_size;
 
-	/* Get capabilities to determine buffer size */
 	cdc200_get_capabilities(display_dev, &caps);
 
 	if (!caps.layer[0].layer_en) {
@@ -1214,33 +1131,72 @@ ZTEST(display_api, test_display_write)
 		ztest_test_skip();
 	}
 
-	/* Allocate a small buffer for testing (one full row) */
-	int pixel_size = display_get_pixel_size(caps.layer[0].current_pixel_format);
+	fmt = caps.layer[0].current_pixel_format;
+	pixel_size = display_get_pixel_size(fmt);
+	zassert_true(pixel_size > 0, "Unsupported pixel format: %d", fmt);
 
-	zassert_true(pixel_size > 0, "Unsupported pixel format: %d",
-			caps.layer[0].current_pixel_format);
 	buf_size = caps.layer[0].x_resolution * (size_t)pixel_size;
 	buf = display_alloc_buffer(buf_size);
 
-	/* Fill buffer with red */
 	TC_PRINT("Using pixel format: %s\n",
-		 display_pixel_format_to_string(caps.layer[0].current_pixel_format));
-	display_fill_buffer_solid(buf, buf_size,
-				  caps.layer[0].current_pixel_format,
-				  RED_ARGB8888);
+		 display_pixel_format_to_string(fmt));
+	display_fill_buffer_solid(buf, buf_size, fmt,
+				  display_solid_color(fmt, DISPLAY_COLOR_RED));
 
-	/* Setup buffer descriptor */
 	buf_desc.buf_size = buf_size;
 	buf_desc.pitch = caps.layer[0].x_resolution;
 	buf_desc.width = caps.layer[0].x_resolution;
 	buf_desc.height = 1;
 
-	/* Write to display at position (0, 0) */
 	zassert_equal(cdc200_display_write(display_dev, 0, 0, 0, &buf_desc, buf), 0,
 		      "cdc200_display_write failed");
 
-	/* Delay for visual observation */
-	k_msleep(5000);
+	display_free_buffer(buf);
+}
+
+ZTEST(display_api, test_generic_display_write)
+{
+	struct display_buffer_descriptor buf_desc;
+	struct cdc200_display_caps caps;
+	enum display_pixel_format fmt;
+	uint8_t *buf;
+	size_t buf_size;
+	int pixel_size;
+	int ret;
+
+	if (!IS_ENABLED(CONFIG_MIPI_DSI)) {
+		TC_PRINT("MIPI DSI not enabled, skipping display_write() test\n");
+		ztest_test_skip();
+	}
+
+	cdc200_get_capabilities(display_dev, &caps);
+
+	if (!caps.layer[0].layer_en) {
+		TC_PRINT("Layer 0 not enabled, skipping display_write() test\n");
+		ztest_test_skip();
+	}
+
+	fmt = caps.layer[0].current_pixel_format;
+	pixel_size = display_get_pixel_size(fmt);
+	zassert_true(pixel_size > 0, "Unsupported pixel format: %d", fmt);
+
+	buf_size = caps.layer[0].x_resolution * (size_t)pixel_size;
+	buf = display_alloc_buffer(buf_size);
+
+	TC_PRINT("Using pixel format: %s\n",
+		 display_pixel_format_to_string(fmt));
+	display_fill_buffer_solid(buf, buf_size, fmt,
+				  display_solid_color(fmt, DISPLAY_COLOR_RED));
+
+	buf_desc.buf_size = buf_size;
+	buf_desc.pitch = caps.layer[0].x_resolution;
+	buf_desc.width = caps.layer[0].x_resolution;
+	buf_desc.height = 1;
+
+	ret = display_write(display_dev, 0, 0, &buf_desc, buf);
+	TC_PRINT("display_write() returned: %s (%d)\n",
+		 display_errno_to_string(ret), ret);
+	zassert_equal(ret, 0, "display_write failed: %d", ret);
 
 	display_free_buffer(buf);
 }
@@ -1249,8 +1205,12 @@ ZTEST(display_api, test_display_write_multiple_rects)
 {
 	struct display_buffer_descriptor buf_desc;
 	struct cdc200_display_caps caps;
+	enum display_pixel_format fmt;
 	uint8_t *buf;
 	size_t buf_size;
+	size_t rect_w = 64;
+	size_t rect_h = 64;
+	int pixel_size;
 
 	cdc200_get_capabilities(display_dev, &caps);
 
@@ -1259,25 +1219,22 @@ ZTEST(display_api, test_display_write_multiple_rects)
 		ztest_test_skip();
 	}
 
-	/* Allocate buffer for a small rectangle */
-	size_t rect_w = 64;
-	size_t rect_h = 64;
-
 	if (caps.layer[0].x_resolution < rect_w ||
 		caps.layer[0].y_resolution < rect_h) {
 		TC_PRINT("Display too small for %zux%zu rectangles, skipping test\n",
 			 rect_w, rect_h);
 		ztest_test_skip();
 	}
+
+	fmt = caps.layer[0].current_pixel_format;
 	TC_PRINT("Using pixel format: %s\n",
-		 display_pixel_format_to_string(caps.layer[0].current_pixel_format));
-	int pixel_size = display_get_pixel_size(
-		caps.layer[0].current_pixel_format);
+		 display_pixel_format_to_string(fmt));
+	pixel_size = display_get_pixel_size(fmt);
+	zassert_true(pixel_size > 0, "Unsupported pixel format: %d", fmt);
 
 	buf_size = rect_w * rect_h * pixel_size;
 
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	/* Setup buffer descriptor */
 	buf_desc.buf_size = buf_size;
@@ -1288,18 +1245,16 @@ ZTEST(display_api, test_display_write_multiple_rects)
 	/* Write red rectangle at top-left */
 	TC_PRINT("Writing RED rectangle at top-left (0, 0), size %zux%zu\n",
 			rect_w, rect_h);
-	display_fill_buffer_solid(buf, buf_size,
-				  caps.layer[0].current_pixel_format,
-				  RED_RGB565);
+	display_fill_buffer_solid(buf, buf_size, fmt,
+				  display_solid_color(fmt, DISPLAY_COLOR_RED));
 	zassert_equal(cdc200_display_write(display_dev, 0, 0, 0, &buf_desc, buf), 0,
 		      "cdc200_display_write (red) failed");
 
 	/* Write green rectangle at top-right */
 	TC_PRINT("Writing GREEN rectangle at top-right (%d, 0), size %zux%zu\n",
 		 caps.layer[0].x_resolution - rect_w, rect_w, rect_h);
-	display_fill_buffer_solid(buf, buf_size,
-				  caps.layer[0].current_pixel_format,
-				  GREEN_RGB565);
+	display_fill_buffer_solid(buf, buf_size, fmt,
+				  display_solid_color(fmt, DISPLAY_COLOR_GREEN));
 	zassert_equal(cdc200_display_write(display_dev, 0,
 					   caps.layer[0].x_resolution - rect_w, 0,
 					   &buf_desc, buf), 0,
@@ -1308,10 +1263,9 @@ ZTEST(display_api, test_display_write_multiple_rects)
 	/* Write blue rectangle at bottom-left */
 	TC_PRINT("Writing BLUE rectangle at bottom-left (0, %d), size %zux%zu\n",
 		 caps.layer[0].y_resolution - rect_h, rect_w, rect_h);
-	display_fill_buffer_solid(buf, buf_size,
-				  caps.layer[0].current_pixel_format,
-				  BLUE_RGB565);
-zassert_equal(cdc200_display_write(display_dev, 0, 0,
+	display_fill_buffer_solid(buf, buf_size, fmt,
+				  display_solid_color(fmt, DISPLAY_COLOR_BLUE));
+	zassert_equal(cdc200_display_write(display_dev, 0, 0,
 					   caps.layer[0].y_resolution - rect_h,
 					   &buf_desc, buf), 0,
 		      "cdc200_display_write (blue) failed");
@@ -1346,7 +1300,6 @@ ZTEST(display_api, test_display_read)
 		     caps.layer[0].current_pixel_format);
 	buf_size = caps.layer[0].x_resolution * (size_t)pixel_size;
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	/* Setup buffer descriptor */
 	buf_desc.buf_size = buf_size;
@@ -1410,7 +1363,6 @@ ZTEST(display_api, test_cdc200_display_read)
 		     caps.layer[0].current_pixel_format);
 	buf_size = caps.layer[0].x_resolution * (size_t)pixel_size;
 	buf = display_alloc_buffer(buf_size);
-	zassert_not_null(buf, "Failed to allocate buffer");
 
 	/* Setup buffer descriptor */
 	buf_desc.buf_size = buf_size;
@@ -1479,3 +1431,37 @@ ZTEST(display_api, test_display_set_contrast)
 	}
 	zassert_equal(ret, 0, "display_set_contrast failed: %d", ret);
 }
+
+/**
+ * Set the early init configuration for this application.
+ */
+static int app_board_early_init(void)
+{
+#if (defined(CONFIG_ENSEMBLE_GEN2) && defined(CONFIG_MIPI_DSI))
+	const struct gpio_dt_spec cam_disp_mux_gpio =
+		GPIO_DT_SPEC_GET(DT_NODELABEL(mipi_dsi), cam_disp_mux_gpios);
+	int ret = gpio_pin_configure_dt(&cam_disp_mux_gpio, GPIO_OUTPUT_ACTIVE);
+
+	if (ret != 0) {
+		return ret;
+	}
+#endif
+
+	/* Enable HFOSC (38.4 MHz) and CFG (100 MHz) clock. */
+	sys_set_bits(CGU_CLK_ENA, BIT(21) | BIT(23));
+
+	return 0;
+}
+/*
+ * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
+ *
+ * Priority 46 ensures this runs:
+ *   - AFTER SE Services (priority 45) - SE must be ready for set_run_cfg()
+ *   - BEFORE Power Domain (priority 47) - Power domain needs SYSTOP enabled
+ *   - BEFORE UART and peripherals (priority 50+) - Peripherals need SYSTOP ON
+ *
+ * On cold boot: SYSTOP is already ON by default, safe to call.
+ * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
+ */
+SYS_INIT(app_board_early_init, PRE_KERNEL_1, 46);
+
