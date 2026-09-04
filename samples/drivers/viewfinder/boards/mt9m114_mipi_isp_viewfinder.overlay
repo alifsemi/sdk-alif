@@ -1,0 +1,190 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+#include <dt-bindings/pinctrl/ensemble-pinctrl.h>
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+&i2c1 {
+	status = "okay";
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio14 {
+	status = "okay";
+};
+
+/ {
+csi_cam_power: regulator-v1.2-v1.8v {
+		compatible = "regulator-fixed";
+
+		regulator-name = "MIPI supply";
+
+		enable-gpios = < &gpio7 5 GPIO_ACTIVE_HIGH >;
+
+		regulator-boot-on;
+		regulator-always-on;
+		status = "okay";
+};
+};
+
+/{
+	i2c_mux: i2c-mux {
+		compatible = "gpio-i2c-mux";
+		status = "okay";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		i2c-inst = <&i2c1>;
+
+		ctrl-gpios = <&gpio14 3 GPIO_ACTIVE_HIGH>;
+
+		mux_i2c@0 {
+			compatible = "gpio-i2c-mux-channel";
+			reg = <0>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			mt9m114_selfie: mt9m114_selfie@5d {
+				compatible = "aptina,mt9m114";
+				reg = <0x5d>;
+
+				reset-gpios = <&gpio14 4 GPIO_ACTIVE_LOW>;
+
+				status = "okay";
+
+				port {
+					mt9m114_csi2_ep_out: endpoint {
+						bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+						link-frequencies = < 384000000 >;
+						data-lanes = <1>;
+						clock-lane = <0>;
+
+						remote-endpoint-label = "csi2_ep_in";
+					};
+				};
+			};
+		};
+	};
+};
+
+&isp {
+	status = "okay";
+
+	port {
+		isp_ep_in: endpoint {
+			remote-endpoint-label = "cam_isp_ep_out";
+		};
+	};
+};
+
+&cam {
+	status = "okay";
+
+	pinctrl-0 = <&pinctrl_cam_xvclk>;
+	pinctrl-names = "default";
+	capture-mode = "snapshot";
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* MIPI CSI-2 bus endpoint. */
+		port@0 {
+			reg = <0>;
+			cam_csi2_ep_in: endpoint {
+				remote-endpoint-label = "csi2_ep_out";
+			};
+		};
+
+		/* ISP Interface. */
+		port@2 {
+			reg = <2>;
+			cam_isp_ep_out: endpoint {
+				remote-endpoint-label = "isp_ep_in";
+			};
+		};
+	};
+};
+
+&csi {
+	status = "okay";
+
+	/* Selfie camera D-PHY*/
+	phy-if = <&dphy 0>;
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		port@0 {
+			reg = <0>;
+			csi2_ep_in: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = < 384000000 >;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "mt9m114_csi2_ep_out";
+			};
+		};
+		port@1 {
+			reg = <2>;
+			csi2_ep_out: endpoint {
+				remote-endpoint-label = "cam_csi2_ep_in";
+				bus-type = <VIDEO_BUS_TYPE_PARALLEL>;
+			};
+		};
+	};
+};
+
+&mipi_dsi {
+	status = "okay";
+};
+/ {
+	soc {
+		cdc200: cdc200@49031000 {
+			width = <480>;
+			height = <800>;
+			hfront-porch = <5>;
+			hback-porch = <5>;
+			hsync-len = <4>;
+			vfront-porch = <10>;
+			vback-porch = <10>;
+			vsync-len = <2>;
+			clock-frequency = <24364080>;
+			hsync-active = <0>;
+			vsync-active = <0>;
+			de-active = <1>;
+			pixelclk-active = <0>;
+			bg-color = <0>;
+			enable-l1 = <1>;
+			pixel-fmt-l1 = "rgb-565";
+			def-back-color-l1 = <0>;
+			win-x0-l1 = <0>;
+			win-y0-l1 = <0>;
+			win-x1-l1 = <480>;
+			win-y1-l1 = <800>;
+			blend-factor1-l1 = <4>;
+			blend-factor2-l1 = <5>;
+			const-alpha-l1 = <0xff>;
+			enable-l2 = <0>;
+			pixel-fmt-l2 = "undefined";
+			win-x0-l2 = <0>;
+			win-y0-l2 = <0>;
+			win-x1-l2 = <0>;
+			win-y1-l2 = <0>;
+			blend-factor1-l2 = <6>;
+			blend-factor2-l2 = <7>;
+			const-alpha-l2 = <0xff>;
+		};
+	};
+};
