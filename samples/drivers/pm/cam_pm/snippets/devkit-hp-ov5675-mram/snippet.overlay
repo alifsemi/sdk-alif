@@ -1,0 +1,3 @@
+/* OV5675 on HP devkit */
+#include "../common/hp_platform.overlay"
+#include "../common/sensors/ov5675_selfie.overlay"
