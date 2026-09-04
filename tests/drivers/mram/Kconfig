@@ -1,0 +1,20 @@
+menu "MRAM Test Selection"
+
+choice
+	prompt "Select MRAM test type"
+	default ALIF_MRAM_CORE
+	help
+	  Selects which ztest sources CMake compiles.
+	  Driven by snippets / testcase.yaml; do not enable both.
+
+config ALIF_MRAM_CORE
+	bool "Core tests (functional + performance + stress)"
+
+config ALIF_MRAM_FILESYSTEM
+	bool "Filesystem test"
+
+endchoice
+
+endmenu
+
+source "Kconfig.zephyr"
