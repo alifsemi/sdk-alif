@@ -1,14 +1,22 @@
-config TEST_PDM_MONO_CH
-	bool "To Test pdm mono channel"
-	default n
+choice TEST_PDM_CHANNEL_GROUP
+	prompt "PDM channel group under test"
+	optional
+	help
+	  Required. Pass exactly one of CONFIG_TEST_PDM_MONO_CH,
+	  CONFIG_TEST_PDM_STEREO_CH, or CONFIG_TEST_PDM_MULTI_CH.
+	  Also enable matching CONFIG_TEST_PDM_CHx (1 / 2 / 3..8).
+	  There is no default; a build without these flags is invalid.
 
-config TEST_PDM_MULTI_CH
-	bool "To Test pdm in multi channel"
-	default n
+config TEST_PDM_MONO_CH
+	bool "Test PDM mono channel (1 channel)"
 
 config TEST_PDM_STEREO_CH
-	bool "To Test pdm stereo channel"
-	default n
+	bool "Test PDM stereo channel (2 channels)"
+
+config TEST_PDM_MULTI_CH
+	bool "Test PDM multi channel (3..8 channels)"
+
+endchoice
 
 config TEST_PDM_CH0
 	bool "To Test pdm channel 0"
@@ -35,28 +43,32 @@ config TEST_PDM_CH7
 	bool "To Test pdm channel 7"
 	default n
 
+choice TEST_PDM_MODE
+	prompt "PDM clock/sampling mode"
+	optional
+	help
+	  Required. Pass exactly one CONFIG_TEST_PDM_MODEx (x = 1..9).
+	  MODE0 (mic sleep) is not offered. There is no default.
+
 config TEST_PDM_MODE1
-	bool "To Test pdm in mode1"
-	default n
+	bool "Mode 1: standard voice 512 kHz"
+config TEST_PDM_MODE2
+	bool "Mode 2: high quality 512 kHz"
 config TEST_PDM_MODE3
-	bool "To Test pdm in mode3"
-	default n
+	bool "Mode 3: high quality 768 kHz"
 config TEST_PDM_MODE4
-	bool "To Test pdm in mode4"
-	default n
+	bool "Mode 4: high quality 1024 kHz"
 config TEST_PDM_MODE5
-	bool "To Test pdm in mode5"
-	default n
+	bool "Mode 5: wide bandwidth 1536 kHz"
 config TEST_PDM_MODE6
-	bool "To Test pdm in mode6"
-	default n
+	bool "Mode 6: full bandwidth 2400 kHz"
 config TEST_PDM_MODE7
-	bool "To Test pdm in mode7"
-	default n
+	bool "Mode 7: full bandwidth 3071 kHz"
 config TEST_PDM_MODE8
-	bool "To Test pdm in mode8"
-	default n
+	bool "Mode 8: ultrasound 4800 kHz"
 config TEST_PDM_MODE9
-	bool "To Test pdm in mode9"
-	default n
+	bool "Mode 9: ultrasound 96 kHz sampling"
+
+endchoice
+
 source "Kconfig.zephyr"
