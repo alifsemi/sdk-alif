@@ -1,0 +1,25 @@
+/*
+ * SoC dtsi has the full PLL + HFRC menu (boot PLL okay, rest disabled).
+ * Enable the demo subset. Walk is DT child order.
+ */
+&pstate_pll_80 {
+	status = "okay";
+};
+
+&pstate_scaled_hfrc_76p8 {
+	status = "okay";
+};
+
+&pstate_scaled_hfrc_38p4 {
+	status = "okay";
+};
+
+&pstate_scaled_hfrc_19p2 {
+	status = "okay";
+};
+
+/* Fixed-rate wall clock; independent of SysTick / EXTSYS. */
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
