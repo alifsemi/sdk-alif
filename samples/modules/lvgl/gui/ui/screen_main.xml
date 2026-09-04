@@ -1,0 +1,85 @@
+<!--
+  Copyright (C) Alif Semiconductor - All Rights Reserved.
+  Use, distribution and modification of this code is permitted under the
+  terms stated in the Alif Semiconductor Software License Agreement
+
+  You should have received a copy of the Alif Semiconductor Software
+  License Agreement with this file. If not, please write to:
+  contact@alifsemi.com, or visit: https://alifsemi.com/license
+-->
+
+<!--
+  LVGL declarative UI description covering the common LVGL widgets/drawings.
+
+  This file is the UI *source of truth*. Because the Alif LVGL fork does not
+  ship the runtime XML loader (lv_xml_*), the equivalent C is generated from it
+  by scripts/gen_ui_xml.py (author in XML, export C, compile the C). The build
+  runs the generator automatically and emits ui_xml.c into the build tree; it is
+  never written to the source tree. To inspect the exported C by hand:
+
+      python scripts/gen_ui_xml.py ui/screen_main.xml
+-->
+<component>
+  <view extends="lv_obj"
+        width="100%"
+        height="100%"
+        style_flex_flow="column"
+        style_flex_main_place="start"
+        style_flex_cross_place="center"
+        style_pad_row="14"
+        style_pad_all="16"
+        style_bg_color="0x101418">
+
+    <!-- 0. lv_image - Alif logo (white variant). The image data is a C asset
+         (Alif240_white.c), the same logo used by the alif_img_class sample. -->
+    <lv_image name="logo" src="Alif240_white"/>
+
+    <!-- 1. lv_label -->
+    <lv_label name="title"
+              text="UI example"
+              style_text_color="0xFFFFFF"
+              style_text_font="montserrat_24"/>
+
+    <!-- 2. lv_button (with a child lv_label) -->
+    <lv_button name="btn" width="180" height="48">
+      <lv_label text="Button" align="center"/>
+    </lv_button>
+
+    <!-- 3. lv_slider -->
+    <lv_slider name="slider" width="240" value="40"/>
+
+    <!-- 4. lv_bar -->
+    <lv_bar name="bar" width="240" height="16" value="70"/>
+
+    <!-- 5. lv_switch (rendered in the "on"/checked state) -->
+    <lv_switch name="sw" checked="true"/>
+
+    <!-- 6. lv_checkbox -->
+    <lv_checkbox name="cb"
+                 text="Checkbox"
+                 checked="true"
+                 style_text_color="0xFFFFFF"/>
+
+    <!-- 7. lv_arc -->
+    <lv_arc name="arc" width="120" height="120" value="60"/>
+
+    <!-- 8. lv_led (green, on) -->
+    <lv_led name="led" width="28" height="28" color="green" on="true"/>
+
+    <!-- 9. lv_line - polyline (points are a space-separated list of x,y pairs) -->
+    <lv_line name="line"
+             points="0,0 60,20 120,0 180,25 240,0"
+             style_line_width="3"
+             style_line_color="amber"
+             style_line_rounded="true"/>
+
+    <!-- 10. lv_obj (styled rounded-rectangle panel / base drawing primitive) -->
+    <lv_obj name="panel"
+            width="240"
+            height="56"
+            style_radius="10"
+            style_bg_color="0x2196F3"
+            style_border_width="0"/>
+
+  </view>
+</component>

@@ -1,0 +1,22 @@
+<!--
+  Copyright (C) Alif Semiconductor - All Rights Reserved.
+  Use, distribution and modification of this code is permitted under the
+  terms stated in the Alif Semiconductor Software License Agreement
+
+  You should have received a copy of the Alif Semiconductor Software
+  License Agreement with this file. If not, please write to:
+  contact@alifsemi.com, or visit: https://alifsemi.com/license
+-->
+
+<!--
+  LVGL UI Editor project descriptor. This exists only so the LVGL Editor VS Code
+  extension can open, preview and export screen_main.xml. It is not used by the
+  Zephyr firmware build. Display size matches the MW405 panel (480x800).
+-->
+<project>
+    <targets>
+        <target name="alif_mw405">
+            <display width="480" height="800"/>
+        </target>
+    </targets>
+</project>

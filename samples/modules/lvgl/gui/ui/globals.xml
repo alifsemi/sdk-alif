@@ -1,0 +1,45 @@
+<!--
+  Copyright (C) Alif Semiconductor - All Rights Reserved.
+  Use, distribution and modification of this code is permitted under the
+  terms stated in the Alif Semiconductor Software License Agreement
+
+  You should have received a copy of the Alif Semiconductor Software
+  License Agreement with this file. If not, please write to:
+  contact@alifsemi.com, or visit: https://alifsemi.com/license
+-->
+
+<!--
+  LVGL Editor global definitions (styles, consts, images, fonts) shared by all
+  components in this project. Used only by the LVGL Editor preview/export, not
+  by the Zephyr firmware build.
+
+  NOTE: the "Alif240_white" logo referenced by screen_main.xml is a hand-exported
+  C image descriptor (../src/Alif240_white.c), not a source PNG, so it cannot be
+  previewed by the Editor. Provide a PNG here (<file .../>) if a live preview of
+  the logo is required.
+-->
+<globals>
+    <api>
+        <!-- Add <enumdefs> here -->
+    </api>
+
+    <consts>
+        <!-- Add <px>, <int>, <color> etc here -->
+    </consts>
+
+    <styles>
+        <!-- Add <style> tags here -->
+    </styles>
+
+    <subjects>
+        <!-- Add <int>, <string>, or <float> subjects here -->
+    </subjects>
+
+    <images>
+        <!-- Add <file> or <data> tags here -->
+    </images>
+
+    <fonts>
+        <!-- Add <bin>, <tiny_ttf>, <freetype> tags here -->
+    </fonts>
+</globals>
