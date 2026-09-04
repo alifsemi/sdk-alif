@@ -14,9 +14,18 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/display.h>
 #include <zephyr/drivers/display/cdc200.h>
+#ifdef CONFIG_MIPI_DSI
+#include <zephyr/drivers/mipi_dsi/dsi_dw.h>
+#endif
 #include <zephyr/logging/log.h>
 #include <zephyr/ztest.h>
 #include <stdint.h>
+
+#include <soc_common.h>
+
+#if defined(CONFIG_ENSEMBLE_GEN2)
+#include <zephyr/drivers/gpio.h>
+#endif
 
 #define DISPLAY_DEVICE_NODE	DT_CHOSEN(zephyr_display)
 
@@ -51,6 +60,16 @@
 #define CDC200_PIXEL_SIZE_RGB888	3
 #define CDC200_PIXEL_SIZE_RGB565	2
 
+/* Named colors for display_solid_color() */
+enum display_test_color {
+	DISPLAY_COLOR_RED = 0,
+	DISPLAY_COLOR_GREEN,
+	DISPLAY_COLOR_BLUE,
+	DISPLAY_COLOR_WHITE,
+	DISPLAY_COLOR_BLACK,
+	DISPLAY_COLOR_COUNT,
+};
+
 /* Shared device handle. */
 extern const struct device *display_dev;
 
@@ -59,6 +78,10 @@ void display_suite_before(void *fixture);
 
 /* Get pixel size in bytes for a given pixel format. */
 int display_get_pixel_size(enum display_pixel_format fmt);
+
+/* Packed solid color for the given pixel format. */
+uint32_t display_solid_color(enum display_pixel_format fmt,
+			     enum display_test_color color);
 
 /* Fill a buffer with a solid color for the given pixel format. */
 void display_fill_buffer_solid(uint8_t *buf, size_t buf_size,
@@ -75,7 +98,7 @@ bool display_validate_buffer_color(const uint8_t *buf, size_t buf_size,
 				   enum display_pixel_format fmt,
 				   uint32_t expected_color);
 
-/* Allocate a display buffer of the given size. */
+/* Allocate a display buffer of the given size. Asserts if allocation fails. */
 uint8_t *display_alloc_buffer(size_t size);
 
 /* Free a display buffer. */
