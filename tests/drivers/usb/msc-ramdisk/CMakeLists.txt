@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.20.0)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
-project(usb)
-target_sources(app PRIVATE src/test_cdc_acm.c)
+project(msc-ramdisk)
+
+target_sources(app PRIVATE src/test_msc_ramdisk.c)
+
 include(${ZEPHYR_BASE}/samples/subsys/usb/common/common.cmake)

@@ -1,0 +1,19 @@
+menu "USB MSC SD Test options"
+
+config APP_MSC_STORAGE_SDCARD
+	bool "Use SDHC and FAT file system"
+	default y
+	imply DISK_DRIVER_SDMMC
+	imply FILE_SYSTEM
+	imply FAT_FILESYSTEM_ELM
+	help
+	  Select the SD card as the USB MSC storage backend. Implies the
+	  SDMMC disk driver and FAT filesystem. The LUN disk name itself
+	  comes from USBD_DEFINE_MSC_LUN() and the DT disk-name property.
+
+endmenu
+
+# Source common USB sample options used to initialize USB device stack.
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+source "Kconfig.zephyr"

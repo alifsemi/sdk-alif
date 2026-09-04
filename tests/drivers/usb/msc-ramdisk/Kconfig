@@ -1,0 +1,4 @@
+# Source common USB sample options used to initialize USB device stack.
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+source "Kconfig.zephyr"
