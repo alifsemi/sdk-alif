@@ -1,0 +1,17 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+config TEST_PSRAM_FULL_CHIP
+	bool "Walk the entire PSRAM in the full-memory XIP test"
+	help
+	  Build test_full_memory_rw_test, which writes and verifies every
+	  byte of DT property size (64 MiB on APS512XXN). Leave disabled
+	  for functional CI; enable only on bring-up. The sample app
+	  (samples/drivers/spi_psram) performs the same full-array walk.
+
+source "Kconfig.zephyr"

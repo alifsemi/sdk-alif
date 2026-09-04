@@ -1,0 +1,42 @@
+common:
+  tags:
+    - drivers
+    - memc
+    - psram
+  harness: ztest
+  timeout: 180
+  # Base overlay matches samples/drivers/spi_psram (alias, pins, XIP window).
+  extra_dtc_overlay_files:
+    - boards/alif_psram.overlay
+  filter: dt_alias_exists("spi_psram")
+  platform_allow:
+    - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+    - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+  integration_platforms:
+    - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+
+tests:
+  drivers.psram.xip: {}
+
+  # Timing overlays only change bus-speed / latency-code. They must be
+  # appended (extra_dtc_overlay_files), not passed as DTC_OVERLAY_FILE,
+  # which would replace alif_psram.overlay and drop pins + XIP window.
+  drivers.psram.xip.overlay_50mhz:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_50Mhz.overlay
+
+  drivers.psram.xip.overlay_100mhz:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_100Mhz.overlay
+
+  drivers.psram.xip.overlay_200mhz:
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_200Mhz.overlay
+
+  drivers.psram.xip.full_chip:
+    extra_configs:
+      - CONFIG_TEST_PSRAM_FULL_CHIP=y
+    timeout: 1800
