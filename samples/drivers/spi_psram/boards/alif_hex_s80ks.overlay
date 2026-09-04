@@ -1,0 +1,86 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * Enable the Infineon S80KS HyperRAM connected to OSPI1 on E8
+ * DK-compatible engineering boards.
+ *
+ * This configuration was tested on the Alif E8 CSP engineering board.
+ *
+ * On the Alif E8 engineering board, the HyperRAM is connected over OSPI1.
+ * To test on this board, use the Alif E8 DevKit build and rename this file to
+ * match the build target. For example, use
+ * alif_e8_dk_ae822fa0e5597xx0_rtss_he.overlay for the "e8_ae822 HE" build.
+ *
+ * Ensure the MPU entry for the XiP region is marked as read/write with SRAM
+ * attributes.
+ */
+
+/ {
+	aliases {
+		spi-psram = &s80ks2564;
+	};
+};
+
+&pinctrl_ospi1 {
+	group0 {
+		pinmux = <PIN_P9_5__OSPI1_D0_C>,
+			 <PIN_P9_6__OSPI1_D1_C>,
+			 <PIN_P9_7__OSPI1_D2_C>,
+			 <PIN_P10_0__OSPI1_D3_C>,
+			 <PIN_P10_1__OSPI1_D4_C>,
+			 <PIN_P10_2__OSPI1_D5_C>,
+			 <PIN_P10_3__OSPI1_D6_C>,
+			 <PIN_P10_4__OSPI1_D7_C>,
+			 <PIN_P17_0__OSPI1_D8_C>,
+			 <PIN_P17_1__OSPI1_D9_C>,
+			 <PIN_P17_2__OSPI1_D10_C>,
+			 <PIN_P17_3__OSPI1_D11_C>,
+			 <PIN_P17_4__OSPI1_D12_C>,
+			 <PIN_P17_5__OSPI1_D13_C>,
+			 <PIN_P17_6__OSPI1_D14_C>,
+			 <PIN_P17_7__OSPI1_D15_C>,
+			 <PIN_P9_0__OSPI1_RXDS1_C>,
+			 <PIN_P10_7__OSPI1_RXDS0_C>;
+		read-enable = <1>;
+		drive-strength = <12>;
+		slew-rate = <1>;
+	};
+	group1 {
+		pinmux = <PIN_P5_5__OSPI1_SCLK_C>,
+			 <PIN_P5_7__OSPI1_SS0_C>,
+			 <PIN_P15_7__LPGPIO>;
+		read-enable = <0>;
+		drive-strength = <12>;
+	};
+
+};
+
+&ospi_flash {
+	status = "disabled";
+};
+
+
+&ospi1 {
+	rx-ds-delay = <11>;
+	xip-wait-cycles = <255>;
+	tx-fifo-threshold = <0>;
+	ddr-drive-edge = <1>;
+	clocks = <&clockctrl ALIF_OSPI1_ACLK_CLK>;
+	xip-base-address = <0xC0000000 0x10000000>;
+	bus-speed = <40000000>;
+	status = "okay";
+
+	s80ks2564: s80ks2564 {
+		compatible = "alif,infineon-s80ks2564";
+		size = <DT_SIZE_M(32)>;
+		latency = <3>;
+		status = "okay";
+	};
+};
