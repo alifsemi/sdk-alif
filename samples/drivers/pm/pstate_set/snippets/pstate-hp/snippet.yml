@@ -1,0 +1,3 @@
+name: pstate-hp
+append:
+  EXTRA_DTC_OVERLAY_FILE: pstate_hp.overlay

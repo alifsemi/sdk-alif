@@ -1,0 +1,37 @@
+sample:
+  name: Alif RTSS P-state set
+  description: >
+    Walks okay /performance-states via cpu_freq_pstate_set(). Snippet
+    enables demo PLL plus HFRC 76.8 RC scaled 76.8 / 38.4 / 19.2 MHz.
+    Prints SE EXTSYS/AXI/AHB/APB Hz and checks SysTick against EXTSYS.
+common:
+  tags:
+    - power
+    - cpu_freq
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "pstate_set: Demo for"
+      - "pstate_set: Demo PASSED"
+tests:
+  sample.pm.pstate_set.he:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e8_dk_rtss_he
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+    extra_args:
+      - SNIPPET=pstate-he
+  sample.pm.pstate_set.hp:
+    platform_allow:
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e7_dk_rtss_hp
+    extra_args:
+      - SNIPPET=pstate-hp
