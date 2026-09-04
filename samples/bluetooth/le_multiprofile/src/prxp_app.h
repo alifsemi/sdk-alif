@@ -37,15 +37,5 @@ void ias_process(void);
  */
 void prxp_disc_notify(uint16_t reason);
 
-/**
- * @brief Append PRXP advertising parameters to an existing param struct.
- *
- * Sets the TX power parameter for advertising and returns the
- * updated advertising creation parameter struct.
- *
- * @param adv_append_params  Pointer to the base advertising parameter struct.
- * @return Updated gapm_le_adv_create_param_t with PRXP parameters merged in.
- */
-gapm_le_adv_create_param_t append_adv_param(gapm_le_adv_create_param_t *adv_append_params);
 
 #endif /* PRXP_APP_H */
