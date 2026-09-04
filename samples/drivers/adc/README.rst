@@ -31,3 +31,86 @@ The application will build only for a target that has a devicetree entry with :d
 	[00:00:00.000,000] <inf> ALIF_ADC: Allocated memory buffer Address is 0x20002050
 	[00:00:00.000,000] <inf> ALIF_ADC: Current temp 21.2 C
 	[00:00:00.000,000] <inf> ALIF_ADC: ADC sampling Done
+
+Optional: DMA and UTIMER-triggered sampling
+*******************************************
+
+The sample can be built to exercise two additional code paths in the
+Alif ADC driver. Both are opt-in and share the same ``main.c`` – behaviour
+is selected at build time via Kconfig options and a devicetree overlay.
+
+DMA
+===
+
+Enable in ``prj.conf``:
+
+.. code-block:: kconfig
+
+   CONFIG_ADC_ALIF_DMA=y
+   CONFIG_DMA=y
+
+and add the following to the board overlay:
+
+.. code-block:: dts
+
+   &dma2       { status = "okay"; };
+   &evtrtr2    { status = "okay"; };
+
+   &adc0 {
+       status = "okay";
+       adc_conversion_mode = "CONTINUOUS_CONVERSION";
+       dmas      = <&evtrtr2 ALIF_DMA_ENCODE(0, 0, 1) 4>;
+       dma-names = "rxdma";
+   };
+
+In DMA mode the sample collects ``ADC_DMA_NUM_SAMPLES`` samples per
+``adc_read()`` call (1 by default) and prints each one as a temperature
+value.
+
+UTIMER hardware trigger
+=======================
+
+Enable in ``prj.conf``:
+
+.. code-block:: kconfig
+
+   CONFIG_ADC_ALIF_UTIMER_TRIGGER=y
+   CONFIG_USE_ALIF_HAL_UTIMER=y
+
+and describe the UTIMER wiring in the overlay:
+
+.. code-block:: dts
+
+   &utimer0 { status = "okay"; };
+
+   &adc0 {
+       status = "okay";
+       alif,utimer-trigger  = <&utimer0>;
+       alif,utimer-driver   = <0>;
+       alif,utimer-period   = <160000000>;
+       alif,ext-trigger-src = <0x1>;   /* bit 0 = UTIMER0 driver A */
+   };
+
+The driver programs UTIMER0 in ``adc_init()`` and arms the ADC to fire on
+the selected external trigger source. From then on, one UTIMER pulse
+triggers one ADC conversion in hardware. Without DMA, the done interrupt
+copies the sample; with DMA, the transfer is CPU-free per sample.
+
+When combined with DMA the two are complementary: UTIMER paces the ADC,
+DMA moves the samples. The DMA-mode ``CONTINUOUS_CONVERSION`` restriction
+is lifted when UTIMER is configured, so ``SINGLE_SHOT_CONVERSION`` is
+also allowed.
+
+Example console output (UTIMER + DMA, ``SINGLE_SHOT_CONVERSION``,
+``alif,utimer-period = <160000000>``, single temperature sample per read):
+
+.. code-block:: console
+
+   *** Booting Zephyr OS build ... ***
+   [00:00:00.000,000] <inf> ALIF_ADC: ADC DMA mode - collecting 1 samples per read
+   [00:00:00.000,000] <inf> ADC: ADC UTIMER trigger: timer_id=0 drv=0 period=160000000 src=0x1
+   [00:00:00.200,000] <inf> ALIF_ADC: adc_read() blocked for 200 ms (1 samples)
+   [00:00:00.200,000] <inf> ALIF_ADC: Sample[0]: 38.8 C
+   [00:00:01.400,000] <inf> ALIF_ADC: adc_read() blocked for 200 ms (1 samples)
+   [00:00:01.400,000] <inf> ALIF_ADC: Sample[0]: 38.8 C
+
