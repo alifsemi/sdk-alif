@@ -1,4 +1,4 @@
-# Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -6,4 +6,10 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-CONFIG_HEAP_MEM_POOL_SIZE=81920
+name: serial-display-2lane
+
+boards:
+  /alif_(e7|e8)_(dk|ak)/.*/rtss_(hp|he)/:
+    append:
+      EXTRA_CONF_FILE: serial_display_2lane.conf
+      EXTRA_DTC_OVERLAY_FILE: serial_display_2lane.overlay

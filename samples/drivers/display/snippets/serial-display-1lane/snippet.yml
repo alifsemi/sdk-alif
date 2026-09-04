@@ -1,0 +1,25 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+name: serial-display-1lane
+
+boards:
+  # Snippet append values are a single file each; a second matching
+  # regex applies the 1-lane pair after the shared Spark pair.
+  /alif_(b1|e1c)_dk/.*/rtss_he/:
+    append:
+      EXTRA_CONF_FILE: alif_b1_e1c.conf
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_e1c.overlay
+  /alif_b1_dk/.*/rtss_he/:
+    append:
+      EXTRA_CONF_FILE: serial_display_1lane.conf
+      EXTRA_DTC_OVERLAY_FILE: serial_display_1lane.overlay
+  /alif_e1c_dk/.*/rtss_he/:
+    append:
+      EXTRA_CONF_FILE: serial_display_1lane.conf
+      EXTRA_DTC_OVERLAY_FILE: serial_display_1lane.overlay
