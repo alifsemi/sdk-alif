@@ -1,0 +1,35 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+#include "pm_tcm_ensemble.overlay"
+
+/ {
+	aliases {
+		pwm-led0 = &pwm_led1_red;
+	};
+
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led1_red: pwm_led_1 {
+			pwms = <&pwm5 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+			label = "RED PWM LED 1";
+		};
+	};
+};
+
+&utimer5 {
+	status = "okay";
+
+	pwm5: pwm5 {
+		pinctrl-0 = <&pinctrl_ut5>;
+		pinctrl-1 = <&pinctrl_ut5_sleep>;
+		pinctrl-names = "default", "sleep";
+		status = "okay";
+	};
+};
