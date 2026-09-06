@@ -1,0 +1,24 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * E8 HE: I2S3 speaker (TX) + I2S4 LPI2S mic (RX).
+ * PM: TCM boot S2RAM (Ensemble memory masks).
+ */
+
+#include "pm_tcm_ensemble.overlay"
+
+i2s_tx: &i2s3 {
+	status = "okay";
+};
+
+i2s_rx: &i2s4 {
+	status = "okay";
+};
