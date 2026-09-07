@@ -145,4 +145,49 @@ Observations
 
 * The output consists of sine wave samples.
 
+I2S and Power Management
+========================
+
+The I2S driver participates in Zephyr device PM. The
+``tests/drivers/pm/i2s`` ztest starts an I2S stream, enters a CPU power
+state, and restarts the stream after resume. That checks that controller
+and target I2S instances suspend and resume, and that context is kept
+across S2RAM on HE.
+
+Use the test-local snippets ``i2s-pm-he`` or ``i2s-pm-hp`` together with
+``pm-system-off-he`` or ``pm-system-off-hp``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/tests/drivers/pm/i2s \
+     -S i2s-pm-he -S pm-system-off-he
+
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Target
+     - I2S pair and notes
+   * - Ensemble E7/E8 HE
+     - ``i2s3`` (controller) + ``i2s4`` (target)
+   * - Balletto B1 HE
+     - ``i2s0`` + ``i2s4`` (``i2s_pm_he_balletto.overlay``)
+   * - Ensemble E7 HP
+     - ``i2s1`` + ``i2s3``. S2RAM tests are skipped (no retention).
+   * - Ensemble E8 HP
+     - Not supported. The onboard microphone is routed to LPI2S
+       (``i2s4``), not ``i2s1`` / ``i2s3``.
+
+Constraints:
+
+* The I2S instance that drives BCLK/LRCLK is the controller
+  (``I2S_OPT_BIT_CLK_MASTER`` / ``I2S_OPT_FRAME_CLK_MASTER``).
+* Connect TX/RX for loopback, or microphone and speaker, before running
+  the test.
+* Disconnect the debugger when testing ``SOFT_OFF`` or S2RAM.
+* See ``tests/drivers/pm/i2s/README.rst`` for the full state matrix
+  (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY/STOP, SOFT_OFF).
+
 

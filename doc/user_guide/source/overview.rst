@@ -74,7 +74,7 @@ The HAL provides hardware-specific APIs for Alif's devices, enabling consistent 
 3. **LC3 API**:
    - Application Programming Interface for the LC3 (Low Complexity Communication Codec) audio codec, enhancing audio processing capabilities.
 4. **15.4 API**:
-   - IEEE 802.15.4 support for protocols like OpenThread and Matter, leveraging the same radio used by BLE but with distinct modulation and protocol implementations.
+   - IEEE 802.15.4 support for protocols like OpenThread and Matter, leveraging the same radio used by BLE but with distinct modulation and protocol implementations. Balletto B1 only. Operational details (``rf`` HAL shell, ``openthread-shell`` snippet, ``testapp``, Matter) are in the SDK Technical Documentation connectivity chapter.
 
 These APIs within the HAL_ALIF framework ensure that developers can access the underlying hardware features in a standardized manner, simplifying development across Alif's product range.
 

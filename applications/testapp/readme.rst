@@ -40,10 +40,19 @@ Build the application use the following commands:
 
    west build alif/applications/testapp -- -DEXTRA_CONF_FILE=overlay-ethosu.conf
 
+Reusing OpenThread on other applications
+****************************************
+
+``testapp`` enables OpenThread from the B1 board ``*.conf`` files, not
+from a snippet. To add the same Thread + ``ot`` shell configuration to
+another application, use ``-S openthread-shell``. That snippet sets
+``CONFIG_OPENTHREAD_MANUAL_START=n`` (automatic start). See
+``snippets/openthread-shell/README.rst``.
+
 Starting OpenThread manually
 ****************************
 
-To start openThread manually using commands issue the following commands.
+To start OpenThread manually using commands issue the following commands.
 
 .. code-block:: console
 

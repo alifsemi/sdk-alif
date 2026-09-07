@@ -241,3 +241,41 @@ Console Output
     [00:01:12.207,000] <inf> pm_system_off: Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)
 
     [00:01:12.217,000] <inf> pm_system_off: === POWER STATE SEQUENCE COMPLETED ===
+
+Peripheral Power Management
+===========================
+
+CPU states are only half of the path. Peripherals that implement Zephyr
+device PM must suspend and resume around ``SUSPEND_TO_IDLE``, S2RAM, and
+``SOFT_OFF``. Recent driver work covers I2S, SPI, I2C, UART, counters,
+QDEC, PWM, ADC, and CAN in the Alif Zephyr tree.
+
+I2S is the first in-tree example that streams through those states. The
+``tests/drivers/pm/i2s`` application:
+
+* Enables I2S via ``i2s-pm-he`` or ``i2s-pm-hp``
+* Enables CPU states, wakeup timer, and SE off profiles via
+  ``pm-system-off-he`` or ``pm-system-off-hp``
+* Starts a short RX/TX block before sleep and again after resume
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/tests/drivers/pm/i2s \
+     -S i2s-pm-he -S pm-system-off-he
+
+Constraints that also apply to other peripheral PM tests:
+
+* HE TCM boot (``CONFIG_FLASH_BASE_ADDRESS=0``) uses retention and skips
+  ``SOFT_OFF``.
+* HP has no S2RAM; those suites are skipped.
+* E8 HP I2S PM is not supported (onboard mic on LPI2S).
+* Disconnect the debugger when measuring or entering OFF states.
+* After S2RAM, restore SE run configuration if the application depends
+  on clocks or power domains that the Secure Enclave programs. The BLE
+  test app does this in ``pm_notify_pre_device_resume()``.
+
+See the I2S application note for instance mapping, and
+``applications/bletestapp/README.rst`` for a Balletto BLE + PM shell
+workflow.

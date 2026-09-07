@@ -38,7 +38,7 @@ make clean
 
 The SDK documentation is organized as follows:
 
-- **connectivity/** - Bluetooth, BLE audio, and wireless connectivity documentation
+- **connectivity/** - Bluetooth, BLE audio, IEEE 802.15.4 / OpenThread, and wireless connectivity documentation
 - **modules/** - SDK modules and components
 - **zephyr_integration/** - Zephyr RTOS integration details
 - **images/** - Diagrams and figures

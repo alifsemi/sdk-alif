@@ -1,0 +1,208 @@
+.. _zas-connection-ieee802154:
+
+IEEE 802.15.4 and OpenThread
+############################
+
+Balletto B1 includes a BLE 5.3 + IEEE 802.15.4 radio. Thread and Matter use
+that 802.15.4 path through the Alif MAC HAL, Zephyr's IEEE 802.15.4 L2, and
+the OpenThread stack fetched by the west manifest.
+
+Ensemble kits do not provide this radio. They can still build generic
+networking samples without Thread.
+
+Architecture
+************
+
+.. list-table::
+   :header-rows: 1
+   :widths: 25 75
+
+   * - Layer
+     - Role
+   * - Application
+     - Shell (``ot``, ``rf``), Matter samples, or a custom Thread app
+   * - OpenThread
+     - Thread 1.3 stack (``CONFIG_NET_L2_OPENTHREAD``). West pulls the
+       ``openthread`` project.
+   * - Zephyr IEEE 802.15.4
+     - Radio API used by OpenThread and the Alif ``rf`` test shell
+   * - Alif 802.15.4 subsystem
+     - ``subsys/ieee802154``: optional AHI message library and RF HAL shell
+   * - HAL / ROM
+     - Alif MAC 802.15.4 API (``alif_mac154_*``)
+
+Kconfig in this SDK
+===================
+
+``subsys/ieee802154/Kconfig`` adds two Alif options. Both depend on
+``IEEE802154_ALIF_SUPPORT`` (provided by the Alif Zephyr / HAL tree):
+
+.. list-table::
+   :header-rows: 1
+   :widths: 45 55
+
+   * - Option
+     - Purpose
+   * - ``CONFIG_IEEE802154_ALIF_AHI_MSG_LIB``
+     - Build the AHI message library from
+       ``subsys/ieee802154/msglib``. Default ``n``. Matter samples set
+       this to ``y``.
+   * - ``CONFIG_IEEE802154_ALIF_SHELL``
+     - Build IEEE 802.15.4 HAL test commands. Default ``y`` when
+       ``CONFIG_SHELL`` and ``IEEE802154_ALIF_SUPPORT`` are enabled.
+
+The radio device is ``DEVICE_DT_GET(DT_CHOSEN(zephyr_ieee802154))``.
+
+RF HAL shell
+************
+
+When ``CONFIG_IEEE802154_ALIF_SHELL=y``, the ``rf`` command exercises the
+MAC HAL without starting OpenThread. Useful for radio bring-up and energy
+detect.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 72
+
+   * - Command
+     - Purpose
+   * - ``rf info``
+     - Capabilities, HAL version, extended address, PAN ID, power, RSSI,
+       promiscuous mode, CCA, and TX/RX/ED priorities
+   * - ``rf transmit``
+     - Transmit ``--ch`` ``--count`` ``--pkt`` with optional ``--cca``,
+       ``--ack``, and ``-delay``
+   * - ``rf rx-start`` / ``rf rx-stop``
+     - Start or stop the receiver (``--ch``, ``--count``)
+   * - ``rf filter``
+     - Set PAN ID, short address, or extended address
+   * - ``rf pending``
+     - Insert or delete pending short/extended addresses (``--del``)
+   * - ``rf energy``
+     - Energy detect: ``--ch``, ``--ticks`` (128 µs), ``--thr``
+   * - ``rf power``
+     - Set TX power
+   * - ``rf cca``
+     - CCA mode ``0`` ED, ``1`` CS, ``2`` ED or CS, ``3`` ED and CS
+   * - ``rf promiscious``
+     - ``on`` / ``off`` (command name matches the shell registration)
+   * - ``rf sniffer``
+     - Sniffer mode with optional ``--reply <delay ms>``
+   * - ``rf config``
+     - Debug RF register access: ``--key`` / ``--write``
+   * - ``rf reset``
+     - Reset the radio
+
+Example:
+
+.. code-block:: console
+
+   rf info
+   rf energy --ch 11 --ticks 10 --thr 100
+   rf filter --panid 0x1234 --short 0x0001
+
+OpenThread snippet
+******************
+
+``snippets/openthread-shell`` appends Thread, the ``ot`` shell, NVS
+settings, and automatic stack start. See
+``snippets/openthread-shell/README.rst``.
+
+Default snippet parameters: channel 11, PAN ID 4660 (``0x1234``), Thread
+1.3, and a fixed development network key.
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/applications/testapp \
+     -S openthread-shell
+
+Developer workflows
+*******************
+
+Test application (BLE + Thread shell)
+=====================================
+
+``applications/testapp`` is the Balletto shell for BLE and 802.15.4.
+
+* B1 board ``*.conf`` files enable OpenThread with
+  ``CONFIG_OPENTHREAD_MANUAL_START=y``.
+* CMake always adds the ``zephyr-bluetooth-shell`` snippet unless it is
+  already listed.
+* Ensemble can build the app without BLE/Thread radio.
+
+Manual Thread start:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/applications/testapp
+
+   ot ifconfig up
+   ot thread start
+
+Automatic start (override the board default):
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/applications/testapp \
+     -- -DCONFIG_OPENTHREAD_MANUAL_START=n
+
+Sleepy end device (MTD SED + CSL) using ``overlay-sed.conf``:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/applications/testapp \
+     -- -DCONFIG_OPENTHREAD_MANUAL_START=n -DEXTRA_CONF_FILE=overlay-sed.conf
+
+One-time dataset matching the snippet defaults (needed only if storage is
+cleared):
+
+.. code-block:: console
+
+   ot dataset init new
+   ot dataset channel 11
+   ot dataset networkkey 00112233445566778899aabbccddeeff
+   ot dataset panid 0x1234
+   ot dataset meshlocalprefix fd11:22:: /64
+   ot dataset activetimestamp 221212
+   ot dataset networkname OpenThreadDemo
+   ot dataset commit active
+
+See ``applications/testapp/readme.rst``.
+
+Matter on Thread
+================
+
+Matter samples use OpenThread plus ``CONFIG_IEEE802154_ALIF_AHI_MSG_LIB=y``.
+They do not use the ``openthread-shell`` snippet.
+
+* Samples: ``samples/matter/light-bulb`` and ``samples/matter/light-switch``
+* Environment: ``scripts/matter/matter_env_setup.sh`` and
+  ``scripts/matter/activate_env.sh``
+* Commissioning and OTBR: ``subsys/matter/matter_sdk.rst`` and
+  ``subsys/matter/otbr_setup.rst``
+* Sample walkthrough: ``samples/matter/matter.rst``
+
+Constraints and pitfalls
+************************
+
+* Thread radio is Balletto B1 only. Confirm
+  ``DT_CHOSEN(zephyr_ieee802154)`` is present before using ``rf`` or
+  OpenThread.
+* ``rf`` and OpenThread both own the radio. Do not run HAL ``rf`` traffic
+  while the Thread stack is attached.
+* The shell command is spelled ``rf promiscious`` (as registered in
+  ``ieee802154_shell.c``).
+* OpenThread needs a larger MbedTLS heap (snippet uses 30000 bytes) and a
+  larger system workqueue stack when settings are enabled.
+* Matter commissioning over BLE uses the same radio in BLE mode first, then
+  Thread. See the Matter sample READMEs for LED and button behavior.
+* For a border router, use a host OTBR (``subsys/matter/otbr_setup.rst``),
+  not the Balletto image itself.

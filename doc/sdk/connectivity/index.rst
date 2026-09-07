@@ -8,3 +8,4 @@ Connectivity
    :caption: Contents
 
    bluetooth/index.rst
+   ieee802154.rst
