@@ -37,7 +37,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
      -DRTSS_HP_MHU0=on
 
@@ -48,7 +48,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
      -DRTSS_HE_MHU0=on
 
@@ -58,7 +58,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
      -DRTSS_HP_MHU1=on
 
@@ -69,7 +69,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
      -DRTSS_HE_MHU1=on
 
