@@ -96,6 +96,14 @@ This release adds two new APIs to the SE Host Services component:
    * - read_otp
      - Read an OTP word specified by offset.
 
+I3C
+~~~
+
+- Power-management support for the DesignWare I3C controller (suspend/resume,
+  sleep pinctrl, DAT restore across S2RAM).
+- New sample ``samples/sensor/bmi323_pm``: poll the on-board BMI323 over I3C
+  after RUNTIME_IDLE, SUSPEND_TO_IDLE, and S2RAM (or SOFT_OFF on MRAM/HP).
+
 Compatibility Notes
 -------------------
 
@@ -145,7 +153,7 @@ Communication Interfaces
    * - LPI2C
      - Low-power I2C controller for power-efficient peripheral communication.
    * - I3C
-     - Improved Inter-Integrated Circuit (I3C) interface supporting high-speed, low-power communication with dynamic addressing, in-band interrupts, and backward compatibility with I2C devices.
+     - Improved Inter-Integrated Circuit (I3C) interface supporting high-speed, low-power communication with dynamic addressing, in-band interrupts, and backward compatibility with I2C devices. Supports device PM suspend/resume, including sleep pinctrl and DAT restore across S2RAM.
    * - LP-UART
      - Low-power Universal Asynchronous Receiver/Transmitter supporting extended sleep modes with wake-on-receive capability. Maintains serial communication during system low-power states with reduced power consumption compared to standard UART peripherals.
    * - LP-SPI
