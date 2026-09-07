@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+
+&timer0 {
+	status = "disabled";
+};
+
+&rtc0 {
+	status = "okay";
+	wrap-enable;
+	/*
+	 * 32768 / prescaler = counter Hz, 1 tick period = 1 / Hz
+	 * 16384 -> 2 Hz -> 0.5 s
+	 * 32768 -> 1 Hz -> 1 s
+	 *  8192 -> 4 Hz -> 0.25 s
+	 */
+	prescaler = <16384>;
+};
