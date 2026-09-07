@@ -34,3 +34,7 @@
 	status		= "okay";
 };
 
+/* I3C bus recovery (scl-gpios / sda-gpios on gpio7) */
+&gpio7 {
+	status = "okay";
+};
