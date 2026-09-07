@@ -6,6 +6,16 @@
 
 source "Kconfig.zephyr"
 
+# Enable the FPU for the Helium/MVE optimisations, but only where one exists:
+# CONFIG_FPU depends on CPU_HAS_FPU, which the RTSS (Cortex-M55) cores select
+# and APSS (Cortex-A32) does not. Assigning it from prj.conf would abort the
+# APSS build, because Zephyr promotes "assigned 'y' but got 'n'" Kconfig
+# warnings to errors. The hard-float ABI needs no assignment of its own --
+# FP_HARDABI is already the default of the "Floating point ABI" choice, which
+# becomes active as soon as FPU is set.
+configdefault FPU
+	default y if CPU_HAS_FPU
+
 menu "executorch KWS sample configuration"
 
 config EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE
@@ -20,6 +30,9 @@ config EXECUTORCH_METHOD_ALLOCATOR_POOL_SIZE
 	  Default is 64KB for boards without SRAM0 (B1, E1C) which use DTCM,
 	  and 1.5MB for boards with SRAM0 (E7/E8).
 
+	  On APSS (Cortex-A32) the pool lives in .bss, which the linker places
+	  in SRAM0, so the 1.5MB default applies there too.
+
 config EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE
 	int "Temporary allocator pool size in bytes"
 	default 32768 if SOC_FAMILY_BALLETTO
@@ -29,7 +42,11 @@ config EXECUTORCH_TEMP_ALLOCATOR_POOL_SIZE
 	help
 	  Size of the temporary allocator pool in bytes. This memory is used
 	  for temporary allocations during model execution such as Ethos-U
-	  scratch memory. Must be in DTCM for all boards (NPU accesses via
-	  global alias). 32KB is sufficient; NPU needs ~22KB scratch.
+	  scratch memory. 32KB is sufficient; the NPU needs ~22KB scratch for
+	  the KWS model.
+
+	  On RTSS this must be in DTCM for all boards, because the NPU reaches
+	  it through the global alias that local_to_global() computes. On APSS
+	  it is placed in non-cacheable SRAM1 instead; see src/main.cpp.
 
 endmenu

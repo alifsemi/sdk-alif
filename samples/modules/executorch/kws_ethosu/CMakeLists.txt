@@ -92,6 +92,37 @@ set(CONF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/prj.conf")
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(executorch_kws_ethosu)
 
+# Core-type checks that need Kconfig, so they have to run after find_package().
+# The CONFIG_ARM_ETHOS_U* forcing above must stay before it, since Zephyr turns
+# CONFIG_-prefixed CMake cache variables into Kconfig assignments while
+# configuring.
+if(CONFIG_APSS)
+  if(ETHOSU_ARCH STREQUAL "u55" OR ETHOSU_ARCH STREQUAL "u65")
+    message(FATAL_ERROR
+        "Ethos-U55/U65 is not reachable from APSS (Cortex-A32).\n"
+        "Use Ethos-U85 instead: -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256")
+  endif()
+
+  # Only E8 pairs an APSS core with an Ethos-U85, so it is the only board this
+  # combination can target. Checked before the SRAM1 check below, which would
+  # otherwise point at a snippet that does not cover this board.
+  if(NOT CONFIG_SOC_SERIES_E8)
+    message(FATAL_ERROR
+        "Ethos-U85 on APSS (Cortex-A32) is only available on the E8 boards.\n"
+        "This board's APSS core has no U85 to drive.")
+  endif()
+
+  # The NPU and the non-cacheable SRAM1 region both come from the
+  # ethos-u85-apss-enable snippet; without it there is no ethosu1 node to bind
+  # the driver to and no SRAM1 region for GROUP_LINK_IN() below to target.
+  dt_nodelabel(_apss_sram1 NODELABEL "sram1")
+  if(NOT _apss_sram1)
+    message(FATAL_ERROR
+        "APSS build is missing the SRAM1 memory region.\n"
+        "Add the APSS NPU snippet: -S ethos-u85-apss-enable")
+  endif()
+endif()
+
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 # Detect the correct Python executable for executorch scripts.
@@ -109,6 +140,18 @@ else()
                   "ensure you activate the venv before running west build.")
 endif()
 
+# ExecuTorch's codegen helpers (tools/cmake/Codegen.cmake) hardcode
+# ${PYTHON_EXECUTABLE}, which Zephyr sets from find_package(Python3). That can
+# resolve to a bare system interpreter even with the venv active -- this venv's
+# bin/python3 is a symlink to /usr/bin/python3, and a venv is only entered when
+# the interpreter is invoked *through* its own bin directory. The system
+# interpreter cannot "import executorch", so gen_oplist fails at build time
+# rather than configure time. Point PYTHON_EXECUTABLE at the interpreter
+# resolved above for the rest of this file; Zephyr's own build steps are
+# unaffected, because kernel.cmake already added ${ZEPHYR_BASE} as a
+# subdirectory from inside find_package(Zephyr), capturing its own value.
+set(PYTHON_EXECUTABLE "${ET_PYTHON_EXECUTABLE}")
+
 set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -Wall -Wno-switch -Wno-float-conversion -Wno-double-promotion -ffunction-sections -fdata-sections"
 )
@@ -125,6 +168,16 @@ execute_process(
 )
 
 if(CMD_RESULT_CODE AND NOT CMD_RESULT_CODE EQUAL 0)
+  # By far the most common cause, so name it rather than only dumping the
+  # traceback: the same failure would otherwise reappear later inside codegen.
+  if(CMD_ERROR MATCHES "No module named 'executorch'")
+    message(FATAL_ERROR
+        "'${ET_PYTHON_EXECUTABLE}' cannot import the executorch Python "
+        "package, which this sample needs to read the operator list out of "
+        "the .pte.\n"
+        "Activate the workspace virtual environment before building:\n"
+        "  source <workspace>/.zephyr_venv/bin/activate")
+  endif()
   message(FATAL_ERROR "Failed to generate operator list: ${CMD_ERROR}")
 endif()
 
@@ -232,13 +285,97 @@ target_link_libraries(app PRIVATE libexecutorch)
 if(EXECUTORCH_OPS_LIB)
   target_link_libraries(app PRIVATE ${EXECUTORCH_OPS_LIB})
 endif()
-if(CONFIG_CPU_CORTEX_M)
-  if(TARGET cortex_m_ops_lib)
-    target_link_libraries(app PRIVATE cortex_m_ops_lib)
-  endif()
+
+# The cortex_m operators the model calls.
+#
+# aot_arm_compiler applies ReplaceQuantNodesPass to every Ethos-U export, so the
+# int8 boundary around the delegated subgraph is always expressed as
+# cortex_m::quantize_per_tensor.out / cortex_m::dequantize_per_tensor.out rather
+# than the quantized_decomposed equivalents. Those kernels must be registered or
+# Method::load() aborts with "Missing operator" (Error::NotFound, 0x14) -- the
+# .pte itself is core-agnostic, only the kernel registry is not.
+#
+# On RTSS the executorch Zephyr module builds the whole cortex_m backend, so the
+# kernels come from there. It gates that on CONFIG_CPU_CORTEX_M because most of
+# the backend's kernels are CMSIS-NN wrappers, and CMSIS-NN is Cortex-M only.
+# quantize/dequantize_per_tensor are the two exceptions: they are plain C++ that
+# includes nothing beyond kernel_includes.h, with an MVE fast path behind
+# __ARM_FEATURE_MVE and a scalar fallback for everything else. So on APSS
+# (Cortex-A32) we compile just those two and generate a registration lib for
+# them, which keeps one .pte working across both core types.
+if(TARGET cortex_m_ops_lib)
+  target_link_libraries(app PRIVATE cortex_m_ops_lib)
   if(TARGET cortex_m_kernels)
     target_link_libraries(app PRIVATE cortex_m_kernels)
   endif()
+elseif(CMD_RESULT MATCHES "cortex_m::")
+  # Anything outside the CMSIS-NN-free pair cannot be served here. Catch it now
+  # rather than at method load on the target.
+  set(_cortex_m_standalone_ops "cortex_m::quantize_per_tensor.out"
+                               "cortex_m::dequantize_per_tensor.out"
+  )
+  string(REGEX MATCHALL "cortex_m::[A-Za-z0-9_]+\\.[A-Za-z0-9_]+" _model_cortex_m_ops
+         "${CMD_RESULT}"
+  )
+  list(REMOVE_DUPLICATES _model_cortex_m_ops)
+  foreach(_op IN LISTS _model_cortex_m_ops)
+    if(NOT _op IN_LIST _cortex_m_standalone_ops)
+      message(FATAL_ERROR
+          "The model needs the operator '${_op}', which the cortex_m backend "
+          "implements on top of CMSIS-NN and is therefore available on the "
+          "RTSS (Cortex-M) cores only.\n"
+          "Re-export the model so that this operator is delegated to the "
+          "Ethos-U, or run it on an RTSS core.")
+    endif()
+  endforeach()
+
+  include(${EXECUTORCH_DIR}/tools/cmake/Utils.cmake)
+  include(${EXECUTORCH_DIR}/tools/cmake/Codegen.cmake)
+
+  # The kernel sources are taken from the backend as-is; only the CMSIS-NN
+  # dependency is dropped. Compiled with zephyr_interface so they pick up this
+  # core's -mcpu/ABI flags and autoconf.h.
+  add_library(cortex_m_standalone_kernels
+              ${EXECUTORCH_DIR}/backends/cortex_m/ops/op_quantize_per_tensor.cpp
+              ${EXECUTORCH_DIR}/backends/cortex_m/ops/op_dequantize_per_tensor.cpp
+  )
+  get_filename_component(_executorch_parent_dir ${EXECUTORCH_DIR} DIRECTORY)
+  target_include_directories(
+    cortex_m_standalone_kernels
+    PRIVATE ${_executorch_parent_dir}
+            ${EXECUTORCH_DIR}/runtime/core/portable_type/c10
+  )
+  # kernels_util_all_deps provides resize_tensor(), used by both kernels.
+  target_link_libraries(
+    cortex_m_standalone_kernels PRIVATE zephyr_interface executorch
+                                        kernels_util_all_deps
+  )
+
+  # Select from the model, so only the operators it actually calls get
+  # registered, while the schema still comes from the backend's own yaml.
+  gen_selected_ops(
+    LIB_NAME "cortex_m_standalone_ops_lib"
+    OPS_SCHEMA_YAML ""
+    ROOT_OPS ""
+    INCLUDE_ALL_OPS ""
+    OPS_FROM_MODEL "${ET_PTE_FILE_PATH}"
+    DTYPE_SELECTIVE_BUILD ""
+  )
+  generate_bindings_for_kernels(
+    LIB_NAME "cortex_m_standalone_ops_lib"
+    CUSTOM_OPS_YAML ${EXECUTORCH_DIR}/backends/cortex_m/ops/operators.yaml
+    DTYPE_SELECTIVE_BUILD ""
+  )
+  gen_operators_lib(
+    LIB_NAME "cortex_m_standalone_ops_lib" KERNEL_LIBS
+    cortex_m_standalone_kernels DEPS executorch
+  )
+  target_link_libraries(cortex_m_standalone_ops_lib PRIVATE zephyr_interface)
+  target_link_libraries(app PRIVATE cortex_m_standalone_ops_lib)
+
+  message(STATUS
+      "ExecuTorch: registering cortex_m quantize/dequantize kernels locally "
+      "(cortex_m backend not built for this core)")
 endif()
 if(TARGET executorch_delegate_ethos_u)
   target_link_libraries(app PRIVATE executorch_delegate_ethos_u)
@@ -248,6 +385,13 @@ if(TARGET ethosu_core_driver)
 endif()
 
 target_include_directories(app PRIVATE src ${CMAKE_CURRENT_BINARY_DIR})
+
+# APSS (Cortex-A32): add the SRAM1 output section that holds the NPU-visible
+# buffers. SRAM1 is non-cacheable in the MMU, which is what keeps the CPU and
+# the NPU coherent on this core; see src/main.cpp and the snippet itself.
+if(CONFIG_APSS)
+  zephyr_linker_sources(SECTIONS boards/apss_sram1_sections.ld)
+endif()
 
 message(STATUS "executorch KWS application configured successfully")
 message(STATUS "  Model: ${ET_PTE_FILE_PATH}")

@@ -39,6 +39,19 @@ tests:
       - ET_PTE_FILE_PATH=./kws_u85_256.pte
       - ET_PTE_SECTION=.rodata.model
       - ETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+  # E8 APSS (Cortex-A32): U85 only -- the U55 is not reachable from APSS.
+  # NPU-visible buffers go to non-cacheable SRAM1; the .pte is shared with the
+  # RTSS U85 configurations above.
+  sample.executorch.kws_ethosu.e8_apss_u85:
+    build_only: true
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/apss
+      - alif_e8_ak/ae822fa0e5597xx0/apss
+    extra_args:
+      - SNIPPET=ethos-u85-apss-enable
+      - ET_PTE_FILE_PATH=./kws_u85_256.pte
+      - ET_PTE_SECTION=.rodata.model
+      - ETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
   # E7: U55 only (no U85)
   sample.executorch.kws_ethosu.e7_hp_u55:
     build_only: true

@@ -57,14 +57,53 @@ executorch_delegate_EthosUBackend_registered(void);
 #endif
 
 /*
- * method_allocation_pool: place in SRAM0 (fast, 4MB) on boards that
- * have it (E7/E8). On boards without sram0 (E1C, B1) fall back to
- * DTCM so the linker does not emit an orphan section.
+ * method_allocation_pool holds the memory-planned activation buffers and the
+ * input/output tensors. Only the CPU touches it -- the Ethos-U delegate copies
+ * I/O between these tensors and its own scratch -- so it belongs in cacheable
+ * memory.
+ *
+ * RTSS (Cortex-M55): the default .bss lands in DTCM, so boards that have SRAM0
+ * get an explicit .alif_sram0 placement to keep the 1.5MB pool out of DTCM.
+ * Boards without sram0 (E1C, B1) fall back to DTCM so the linker does not emit
+ * an orphan section.
+ *
+ * APSS (Cortex-A32): SRAM0 already *is* the linker's RAM region
+ * (zephyr,sram = &sram0), so plain .bss is the right home. It is also the only
+ * option: the .alif_sram0 output section is defined in
+ * soc/alif/ensemble/common/sram.ld, which is included only by the RTSS linker
+ * script (linker.ld), not the APSS one (linker_a.ld).
  */
-#if DT_NODE_HAS_STATUS(DT_NODELABEL(sram0), okay)
+#if !defined(CONFIG_APSS) && DT_NODE_HAS_STATUS(DT_NODELABEL(sram0), okay)
 #define ET_METHOD_POOL_ATTR __attribute__((section(".alif_sram0.tensor_arena"), aligned(16)))
 #else
 #define ET_METHOD_POOL_ATTR __attribute__((aligned(16)))
+#endif
+
+/*
+ * Buffers that the NPU itself reads and writes: the Ethos-U scratch, which the
+ * delegate carves out of the temp allocator, and the fast-scratch region used
+ * by Vela's Dedicated_Sram memory mode.
+ *
+ * RTSS (Cortex-M55): these stay in DTCM (plain .bss). DTCM is never cached, and
+ * Alif's ethosu_address_remap() rewrites DTCM addresses to their global alias
+ * (0x50800000 + offset) so the NPU can reach them over the AXI fabric. Note
+ * that the Ethos-U55 on E8 cannot reach SRAM0 (0x02000000) directly at all, so
+ * these must not follow method_allocation_pool into SRAM0.
+ *
+ * APSS (Cortex-A32): there is no DTCM, local_to_global() is the identity, and
+ * Alif's Ethos-U cache callbacks are compiled for Cortex-M only
+ * (modules/hal/alif/drivers/ethos_u/CMakeLists.txt gates on CONFIG_CPU_CORTEX_M),
+ * which leaves the core driver's weak no-op flush/invalidate hooks in place.
+ * Coherency therefore has to come from the memory type rather than from cache
+ * maintenance, so these buffers go into SRAM1, which mmu_regions.c maps as
+ * non-cacheable normal memory. This also matches the NPU_MEM_ATTR_* settings
+ * that zephyr/modules/hal_ethos_u applies for U85 (Normal Non-cacheable
+ * Non-bufferable).
+ */
+#if defined(CONFIG_APSS)
+#define ET_NPU_BUF_ATTR __attribute__((section("SRAM1.et_npu"), aligned(16)))
+#else
+#define ET_NPU_BUF_ATTR __attribute__((aligned(16)))
 #endif
 
 #if !defined(ET_ARM_METHOD_ALLOCATOR_POOL_SIZE)
@@ -82,25 +121,18 @@ unsigned char method_allocation_pool[ET_ARM_METHOD_ALLOCATOR_POOL_SIZE];
 #define ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE 0x600
 #endif
 
-/*
- * NPU-accessible buffers MUST be in DTCM (BSS), NOT in SRAM0.
- * The Ethos-U55 on Alif E8 cannot access SRAM0 (0x02000000) directly.
- * DTCM addresses are remapped by local_to_global() to the global alias
- * (0x50800000+offset) which the NPU can reach via the AXI fabric.
- * This applies to ALL boards (E7, E8, E1C, B1).
- */
 const size_t temp_allocation_pool_size =
     ET_ARM_BAREMETAL_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE;
-unsigned char __attribute__((aligned(16)))
-    temp_allocation_pool[temp_allocation_pool_size];
+ET_NPU_BUF_ATTR
+unsigned char temp_allocation_pool[temp_allocation_pool_size];
 
 #if defined(ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
 extern "C" {
 size_t ethosu_fast_scratch_size =
     ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE;
-unsigned char __attribute__((aligned(16)))
-    ethosu_dtcm_scratch[ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
-unsigned char* ethosu_fast_scratch = ethosu_dtcm_scratch;
+ET_NPU_BUF_ATTR unsigned char
+    ethosu_scratch_pool[ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE];
+unsigned char* ethosu_fast_scratch = ethosu_scratch_pool;
 }
 #endif
 
@@ -294,6 +326,21 @@ int main(void) {
     return 1;
   }
   ET_LOG(Info, "Ethos-U backend registered successfully");
+#endif
+
+  /*
+   * The NPU reads and writes the temp/fast scratch pools directly, so a port to
+   * a new core stands or falls on where they were linked. Report it once at
+   * boot: on APSS both must be inside the non-cacheable SRAM1 window, and on
+   * RTSS both must be in DTCM.
+   */
+  ET_LOG(Info, "Method pool  %p (%zu bytes)", method_allocation_pool,
+         method_allocation_pool_size);
+  ET_LOG(Info, "NPU scratch  %p (%zu bytes)", temp_allocation_pool,
+         temp_allocation_pool_size);
+#if defined(ET_ARM_BAREMETAL_FAST_SCRATCH_TEMP_ALLOCATOR_POOL_SIZE)
+  ET_LOG(Info, "NPU fast scr %p (%zu bytes)", ethosu_fast_scratch,
+         ethosu_fast_scratch_size);
 #endif
 
   executorch::runtime::runtime_init();

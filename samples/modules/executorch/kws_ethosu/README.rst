@@ -50,34 +50,36 @@ Supported Boards
 
 **Tested and Verified:**
 
-+-------+--------+---------+-------------------------+
-| Board | U55    | U85     | Status                  |
-+=======+========+=========+=========================+
-| B1    | Yes    | No      | **Tested**              |
-+-------+--------+---------+-------------------------+
-| E1C   | Yes    | No      | **Tested**              |
-+-------+--------+---------+-------------------------+
-| E7    | Yes    | No      | **Tested** (U55 only)   |
-+-------+--------+---------+-------------------------+
-| E8    | Yes    | Yes     | **Tested**              |
-+-------+--------+---------+-------------------------+
++-------+--------+---------+---------+-------------------------+
+| Board | U55    | U85     | APSS    | Status                  |
++=======+========+=========+=========+=========================+
+| B1    | Yes    | No      | No      | **Tested**              |
++-------+--------+---------+---------+-------------------------+
+| E1C   | Yes    | No      | No      | **Tested**              |
++-------+--------+---------+---------+-------------------------+
+| E7    | Yes    | No      | No      | **Tested** (U55 only)   |
++-------+--------+---------+---------+-------------------------+
+| E8    | Yes    | Yes     | Yes     | **Tested**              |
++-------+--------+---------+---------+-------------------------+
 
 **Expected to Work (Not Yet Tested):**
 
-+-------+--------+---------+-------------------------+
-| Board | U55    | U85     | Notes                   |
-+=======+========+=========+=========================+
-| E3    | Yes    | No      | U55 only                |
-+-------+--------+---------+-------------------------+
-| E4    | Yes    | Yes     | Dual NPU                |
-+-------+--------+---------+-------------------------+
++-------+--------+---------+---------+-------------------------+
+| Board | U55    | U85     | APSS    | Notes                   |
++=======+========+=========+=========+=========================+
+| E3    | Yes    | No      | No      | U55 only                |
++-------+--------+---------+---------+-------------------------+
+| E4    | Yes    | Yes     | No      | Dual NPU                |
++-------+--------+---------+---------+-------------------------+
 
 Core Type Restrictions
 **********************
 
 - **HE cores (rtss_he)**: U55 supports 128 MACs only
 - **HP cores (rtss_hp)**: U55 supports 256 MACs only
-- **U85**: Always 256 MACs (both HE and HP cores)
+- **APSS core (apss)**: U85 with 256 MACs only (Cortex-A32); the U55 is not
+  reachable from APSS, and requesting it fails the build
+- **U85**: Always 256 MACs (HE, HP and APSS cores)
 
 Requirements
 ************
@@ -206,7 +208,8 @@ Building for Alif E8 DK (HP Core with U55)
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
@@ -218,7 +221,8 @@ Building for Alif E8 DK (HP Core with U85)
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
        -S ethos-u85-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u85_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
@@ -230,7 +234,8 @@ Building for Alif E8 DK (HE Core with U85)
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
        -S ethos-u85-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u85_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
@@ -242,7 +247,8 @@ Building for Alif E7 DK (HP Core with U55)
 
    west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
@@ -254,7 +260,8 @@ Building for Alif E7 DK (HE Core with U55-128)
 
    west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_128.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
@@ -266,7 +273,8 @@ Building for Alif E1C DK (HE Core with U55-128)
 
    west build -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_128.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
@@ -278,10 +286,109 @@ Building for Alif B1 DK (HE Core with U55-128)
 
    west build -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_128.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif E8 DK (APSS Core, Cortex-A32, with U85)
+==========================================================
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/apss \
+       -S ethos-u85-apss-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u85_256.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
+The ``.pte`` file is the same one used for the RTSS U85 builds. Vela's system
+config only models memory latency, and the NPU base addresses are supplied by
+the runtime rather than baked into the model, so no APSS-specific export is
+needed.
+
+The ``ethos-u85-apss-enable`` snippet is what makes this build possible. APSS
+board DTS files are standalone -- they do not include the RTSS DTSI that
+declares ``ethosu1`` and ``sram1`` -- so the snippet adds both: the Ethos-U85
+node with GIC interrupt routing (``GIC_SPI 355``), and the SRAM1 memory region
+used for the NPU-visible buffers. Building for APSS without it fails with a
+message pointing at the snippet.
+
+APSS Core Notes (Cortex-A32)
+****************************
+
+The A32 port differs from the Cortex-M55 builds in four ways, all of which are
+handled automatically by the sample.
+
+**Coherency comes from the memory type, not cache maintenance.** On RTSS, Alif's
+Ethos-U callbacks (``modules/hal/alif/drivers/ethos_u``) clean and invalidate the
+D-cache around each inference, and ``ethosu_address_remap()`` rewrites DTCM
+addresses to the global alias the NPU can reach. Those callbacks are compiled
+for Cortex-M only, so on APSS the core driver's weak no-op cache hooks stay in
+place. The buffers the NPU reads and writes -- the Ethos-U scratch carved out of
+the temp allocator, and the fast-scratch region -- are therefore linked into
+SRAM1, which ``soc/alif/ensemble/common/mmu_regions.c`` maps as non-cacheable
+normal memory. This matches the ``NPU_MEM_ATTR_*`` settings that
+``zephyr/modules/hal_ethos_u`` programs for U85.
+
+**There is no DTCM or ITCM.** The method allocator pool, which only the CPU
+touches, lands in ``.bss``; on APSS the linker's RAM region already *is* SRAM0,
+so no explicit section attribute is needed. The RTSS ``.alif_sram0`` output
+section does not exist here at all, because it is defined in
+``soc/alif/ensemble/common/sram.ld``, which only the RTSS linker script pulls in.
+
+**There is no FPU.** ``CONFIG_FPU`` depends on ``CPU_HAS_FPU``, which Cortex-A32
+does not select in this tree, so the sample enables it from its own ``Kconfig``
+with ``configdefault`` instead of ``prj.conf``. Assigning it unconditionally
+would abort the APSS build, since Zephyr promotes unsatisfied Kconfig
+assignments to errors.
+
+**The two quantize kernels have to be registered by the sample.** The ``.pte``
+is core-agnostic, but the kernel registry is not. ``aot_arm_compiler`` runs
+``ReplaceQuantNodesPass`` on every Ethos-U export, so the int8 boundary around
+the delegated subgraph is emitted as ``cortex_m::quantize_per_tensor.out`` and
+``cortex_m::dequantize_per_tensor.out`` rather than the ``quantized_decomposed``
+equivalents. On RTSS these come from ExecuTorch's ``cortex_m`` backend, which
+the Zephyr module only builds when ``CONFIG_CPU_CORTEX_M`` is set, because most
+of that backend's kernels wrap CMSIS-NN. Without them ``Method::load()`` fails
+with ``Missing operator`` (``Error::NotFound``, ``0x14``).
+
+These two kernels are the backend's only CMSIS-NN-free ones: plain C++ with a
+Helium fast path behind ``__ARM_FEATURE_MVE`` and a scalar fallback otherwise.
+The sample's ``CMakeLists.txt`` therefore compiles just those two from the
+backend's own sources on APSS and generates a registration lib for them,
+selecting operators from the model so only what the ``.pte`` actually calls is
+registered. The same ``.pte`` consequently runs on both core types, and a model
+that needs any *other* ``cortex_m`` operator fails at configure time with an
+explicit message instead of at method load on the target.
+
+One further difference is worth knowing about if you extend the sample: because
+APSS enables the MMU, Zephyr defaults ``COMMON_LIBC_MALLOC_ARENA_SIZE`` to 16KB
+rather than the "all remaining RAM" that the RTSS builds get. That is far more
+than this application needs -- it only ever heap-allocates a few small
+``std::vector`` objects, since ExecuTorch itself allocates from the method and
+temp pools -- but a model with substantial CPU-side (non-delegated) work may
+need ``CONFIG_COMMON_LIBC_MALLOC_ARENA_SIZE`` raised.
+
+Resulting memory layout on ``alif_e8_dk/ae822fa0e5597xx0/apss``:
+
++---------------------------+--------------+--------------------------------+
+| Buffer                    | Region       | Cacheability                   |
++===========================+==============+================================+
+| Model ``.pte``            | MRAM (XIP)   | Cacheable, read-only           |
++---------------------------+--------------+--------------------------------+
+| Method allocator pool     | SRAM0        | Cacheable (CPU only)           |
++---------------------------+--------------+--------------------------------+
+| Ethos-U scratch (temp)    | SRAM1        | **Non-cacheable** (CPU + NPU)  |
++---------------------------+--------------+--------------------------------+
+| Ethos-U fast scratch      | SRAM1        | **Non-cacheable** (CPU + NPU)  |
++---------------------------+--------------+--------------------------------+
+
+The application logs the address and size of all three pools at startup, so the
+placement can be confirmed on the console before the first inference.
 
 Flashing
 ********
@@ -289,6 +396,13 @@ Flashing
 .. code-block:: console
 
    west flash
+
+APSS images boot through TF-A, so the A32 build additionally needs the BL32
+binary to be flashed alongside the application:
+
+.. code-block:: console
+
+   west flash --bl32-bin /path/to/bl32_e8.bin
 
 Sample Output
 *************
