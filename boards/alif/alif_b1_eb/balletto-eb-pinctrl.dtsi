@@ -800,3 +800,8 @@
 		};
 	};
 };
+
+&i3c0 {
+	scl-gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
+	sda-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+};
