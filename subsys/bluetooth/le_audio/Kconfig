@@ -9,6 +9,7 @@
 menuconfig ALIF_BLE_AUDIO
 	bool "Alif BLE audio subsystem"
 	depends on BT_CUSTOM && ALIF_ROM_LC3_CODEC
+	select ALIF_BLE_ENABLE_AUDIO_SYNC_TIMER
 	help
 	  The Alif BLE audio subsystem contains common code to be re-used across LE audio applications.
 
