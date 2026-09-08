@@ -1,4 +1,4 @@
-.. _cdc200:
+.. _parallel-display:
 
 ================
 Parallel Display
@@ -102,11 +102,11 @@ The CDC (Color Display Controller) includes blending logic that combines the col
 Hardware Requirements
 =====================
 
-- Alif Devkit
+- Alif DevKit
 
 .. note::
 
-   The Parallel Display interface is supported on DevKit E7, DevKit E8, E1C, and B1 A5/A6.
+   The Parallel Display interface is supported on Alif E7 DevKit, Alif E8 DevKit, Alif E1C DevKit, and Alif B1 DevKit.
 
 CDC200 Controller
 -----------------
@@ -170,49 +170,203 @@ Hardware Setup
 
    Hardware Setup
 
-Build an CDC200 Application with Zephyr
-===========================================
+Build a CDC200 Application with Zephyr
+=======================================
 
 Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   Parallel builds require ``-S parallel-display``. The same snippet applies on Alif
+   E7/E8 DevKit and AppKit (80K heap) and on Alif E1C/B1 DevKit (DTCM framebuffer).
 
+Alif E7 DevKit
+---------------
 
-2. Build command for application on the M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
 .. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/display
+     ../alif/samples/drivers/display \
+     -S parallel-display
 
-
-3. Build command for application on the M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
 .. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/display
+     ../alif/samples/drivers/display \
+     -S parallel-display
 
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
 
-Once the build command completes successfully, executable images will be generated and placed in the build/zephyr directory. Both .bin (binary) and .elf (Executable and Linkable Format) files will be available.
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/display \
+     -S parallel-display
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Required Config Features
 ========================
 
 The following config features are necessary to test the application:
 
-- ``CONFIG_HEAP_MEM_POOL_SIZE=81920``
+- ``CONFIG_HEAP_MEM_POOL_SIZE=81920`` (E7/E8 via ``-S parallel-display``; ``prj.conf`` stays at 16384)
+- ``CONFIG_FB_USES_DTCM_REGION=y`` (B1/E1C via the same snippet)
 - ``CONFIG_LOG=y``
 - ``CONFIG_DISPLAY=y``
 - ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y`` (to enable display driver debug logs)
 
-These config features are already selected when building the test application.
+These config features are already selected when building with ``-S parallel-display``.
 
 DTS Properties
 ==============
@@ -349,7 +503,7 @@ Only Layer 1
    [00:00:00.000,000] <inf> ensemble_disp: Display Capabilities panel y_res - 480
    [00:00:00.000,000] <inf> ensemble_disp: Display Capabilities pix_fmt_supported - 25
    [00:00:00.000,000] <inf> ensemble_disp: Display Capabilities orientation - 0
-   [00:00:00.000] <inf> ensemble_disp: Display Capabilities layer 1:
+   [00:00:00.000,000] <inf> ensemble_disp: Display Capabilities layer 1:
    [00:00:00.000,000] <inf> ensemble_disp:         layer_enabled - 1
    [00:00:00.000,000] <inf> ensemble_disp:         (x_res, y_res) - (300, 480)
    [00:00:00.000,000] <inf> ensemble_disp:         curr_pix_fmt - 16
@@ -412,6 +566,8 @@ No Layers Enabled
    :alt: Output with No Layers
    :align: center
 
+   Output with No Layers
+
    The Layer 1 default color (0x00ff00) blended with background layer color (0x5a5a5a) is observed.
 
 No Layers and Default Color for Layer 1 Disabled
@@ -436,6 +592,8 @@ No Layers and Default Color for Layer 1 Disabled
 .. figure:: _static/output_no_layers_no_default.png
    :alt: Output with No Layers and Default Color for Layer 1 Disabled
    :align: center
+
+   Output with No Layers and Default Color for Layer 1 Disabled
 
    The Background Layer color 0x5a5a5a is observed when all layers and their default colors are disabled.
 

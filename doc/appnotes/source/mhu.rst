@@ -23,15 +23,16 @@ It enables interrupt-based communication between these processing entities.
 Build an MHU Application with Zephyr
 ========================================
 
-Follow these steps to build the MHU application using the Alif Zephyr SDK:
+Follow these steps to build the MHU sample application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build Command for the MHU0 Application on the M55-HE Core:
+Build for SoC variant ``ae722f80f55d5xx``, MHU0 Application on the M55-HE Core:
 
 .. code-block:: console
 
@@ -41,8 +42,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -- \
      -DRTSS_HP_MHU0=on
 
-
-3. Build Command for the MHU0 Application on the M55-HP Core:
+Build for SoC variant ``ae722f80f55d5xx``, MHU0 Application on the M55-HP Core:
 
 .. code-block:: console
 
@@ -52,7 +52,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -- \
      -DRTSS_HE_MHU0=on
 
-4. Build Command for the MHU1 Application on the M55-HE Core:
+Build for SoC variant ``ae722f80f55d5xx``, MHU1 Application on the M55-HE Core:
 
 .. code-block:: console
 
@@ -63,7 +63,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -DRTSS_HP_MHU1=on
 
 
-5. Build Command for the MHU1 Application on the M55-HP Core:
+Build for SoC variant ``ae722f80f55d5xx``, MHU1 Application on the M55-HP Core:
 
 .. code-block:: console
 
@@ -73,19 +73,334 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -- \
      -DRTSS_HE_MHU1=on
 
+Build for SoC variant ``ae302f80f55d5xx``, MHU0 Application on the M55-HE Core:
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+.. code-block:: console
 
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ae302f80f55d5xx``, MHU0 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU0=on
+
+Build for SoC variant ``ae302f80f55d5xx``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+
+Build for SoC variant ``ae302f80f55d5xx``, MHU1 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU1=on
+
+Alif E7 AppKit
+---------------
+
+Build for SoC variant ``ae722f80f55d5xx``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ae722f80f55d5xx``, MHU0 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU0=on
+
+Build for SoC variant ``ae722f80f55d5xx``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Build for SoC variant ``ae722f80f55d5xx``, MHU1 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU1=on
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU0 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU0=on
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU1 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU1=on
+
+Build for SoC variant ``ae402fa0e5597xx0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ae402fa0e5597xx0``, MHU0 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU0=on
+
+Build for SoC variant ``ae402fa0e5597xx0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+
+Build for SoC variant ``ae402fa0e5597xx0``, MHU1 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU1=on
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU0 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU0=on
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Build for SoC variant ``ae822fa0e5597xx0``, MHU1 Application on the M55-HP Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_hp \
+     -- \
+     -DRTSS_HE_MHU1=on
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_elc_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ae1c1f4051920hh``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ab1c1f4m51820ph0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Build for SoC variant ``ab1c1f4m51820hh0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ab1c1f4m51820hh0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Build for SoC variant ``ab1c1f1m41820hh0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ab1c1f1m41820hh0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Build for SoC variant ``ab1c1f1m41820ph0``, MHU0 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU0=on
+
+Build for SoC variant ``ab1c1f1m41820ph0``, MHU1 Application on the M55-HE Core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/rtss_he \
+     -- \
+     -DRTSS_HP_MHU1=on
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
-================================
+===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 
    west flash
-
 
 Console Output
 ===============
@@ -184,6 +499,7 @@ The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU1
           RTSS-HP: MSG rcvd on ch:0 is 0xfaceface
 
           RTSS-HP: MSG sent on Ch:1 is 0xfadefade
+          RTSS-HP: MSG rcvd on ch:1 is 0xfadefade
 
      - .. code-block:: text
 

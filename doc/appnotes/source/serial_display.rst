@@ -125,14 +125,14 @@ The CDC (Color Display Controller) includes blending logic that combines the col
 Hardware Requirements
 =====================
 
-- Alif Devkit
+- Alif DevKit
 
 .. note::
 
    The following displays are supported:
 
-   - **MW405-ILI9806E** (2-lane serial): DevKit E7, DevKit E8
-   - **ILI9488** (1-lane serial): E1C, B1 A5/A6
+   - **MW405-ILI9806E** (2-lane serial): Alif E7 DevKit, Alif E8 DevKit
+   - **ILI9488** (1-lane serial): Alif E1C DevKit, Alif B1 DevKit
 
 CDC200 Controller
 -----------------
@@ -285,13 +285,15 @@ Required Config Features
 
 The following config features are necessary to test the application:
 
-- ``CONFIG_HEAP_MEM_POOL_SIZE=81920``
+- ``CONFIG_HEAP_MEM_POOL_SIZE=81920`` (2-lane E7/E8 via ``-S serial-display``; ``prj.conf`` stays at 16384)
 - ``CONFIG_LOG=y``
 - ``CONFIG_DISPLAY=y``
-- ``CONFIG_MIPI_DSI=y``
+- ``CONFIG_MIPI_DSI=y`` (enabled by the serial-display snippet)
 - ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y`` (to enable display driver debug logs)
 
-These config features are already selected when building the test application.
+These config features are already selected when building with ``-S serial-display``.
+The snippet applies 2-lane overlays on Alif E7/E8 DevKit and AppKit, and 1-lane plus
+the shared B1/E1C Spark overlay on Alif B1 DevKit and Alif E1C DevKit.
 
 DTS Properties
 ==============
@@ -462,61 +464,189 @@ The DTS entry for the FW-405 serial panel has the following tweakable properties
 .. include:: note.rst
 
 Build a CDC200 Application in Zephyr
-========================================
+=====================================
 
-Follow these steps to build CDC200 application using the Alif Zephyr SDK:
+Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
-   The build commands shown here are for the Alif E7 DevKit, E8 DevKit, and B1 DK.
+   Serial builds require ``-S serial-display-2lane`` on E7/E8 (DevKit and AppKit)
+   or ``-S serial-display-1lane`` on B1/E1C.
 
-2. Build command for the E7 HE application (2lane):
+Alif E7 DevKit
+---------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core (2lane):
 
 .. code-block:: console
-
 
    west build -p always \
     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-3. Build command for the E7 HP application (2lane):
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core (2lane):
 
 .. code-block:: console
-
 
    west build -p always \
     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-4. Build command for the E8 HE application (2lane):
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core (2lane):
 
 .. code-block:: console
 
+   west build -p always \
+    -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core (2lane):
+
+.. code-block:: console
 
    west build -p always \
     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-5. Build command for the E8 HP application (2lane):
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core (2lane):
 
 .. code-block:: console
 
-
    west build -p always \
     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-6. Build command for the B1 DK HE application (1lane):
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core (2lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core (1lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+    ../alif/samples/drivers/display/ \
+    -S serial-display-1lane
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core (1lane):
 
 .. code-block:: console
 
    west build -p always \
     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
-    ../alif/samples/drivers/display -S serial-display-1lane
+    ../alif/samples/drivers/display/ \
+    -S serial-display-1lane
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core (1lane):
 
+.. code-block:: console
+
+   west build -p always \
+    -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+    ../alif/samples/drivers/display/ \
+    -S serial-display-1lane
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core (1lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+    ../alif/samples/drivers/display/ \
+    -S serial-display-1lane
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core (1lane):
+
+.. code-block:: console
+
+   west build -p always \
+    -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+    ../alif/samples/drivers/display/ \
+    -S serial-display-1lane
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Validating CDC200
 =================

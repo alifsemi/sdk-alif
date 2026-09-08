@@ -28,7 +28,7 @@ The Real-Time Processor cores are:
 Hardware Requirements
 ======================
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 
 Software Requirements
@@ -50,9 +50,6 @@ Build a tflm_ethosu Application Using the GCC Compiler
 ========================================================
 
 Follow these steps to prepare your tflm_ethosu application using the GCC compiler and the Alif Zephyr SDK:
-
-.. note::
-   The application is designed for the Alif Ensemble E8 DevKit. Modify the sample code as needed for other DevKits.
 
 1. Fetch the Alif Zephyr SDK source from the main branch at `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 
@@ -80,7 +77,88 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
       rm -rf build
 
-4. Build command for application on the Ethos-U85-256 HE core:
+Alif E7 DevKit
+---------------
+
+Build for SoC variant ``ae722f80f55d5xx``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ae722f80f55d5xx``, Ethos-U55-256 HP core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ae302f80f55d5xx``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ae302f80f55d5xx``, Ethos-U55-256 HP core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ae722f80f55d5xx``, Ethos-U55-256 HP core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U85-256 HE core:
 
 .. code-block:: console
 
@@ -92,7 +170,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
 
-5. Build command for application on the Ethos-U85-256 HP core:
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U85-256 HP core:
 
 .. code-block:: console
 
@@ -104,8 +182,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
 
-
-6. Build command for the application on the Ethos-U55-128 HE core:
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U55-128 HE core:
 
 .. code-block:: console
 
@@ -117,8 +194,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
-
-7. Build command for the application on the Ethos-U55-256 HP core:
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U55-256 HP core:
 
 .. code-block:: console
 
@@ -130,11 +206,127 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
      -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U85-256 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
+
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U85-256 HP core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
+
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ae822fa0e5597xx0``, Ethos-U55-256 HP core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ab1c1f4m51820hh0``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ab1c1f1m41820hh0``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+
+Build for SoC variant ``ab1c1f1m41820ph0``, Ethos-U55-128 HE core:
+
+.. code-block:: console
+
+   west build \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
+     -p always \
+     -- \
+     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
 
 Executing Binary on the DevKit
 ================================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -377,7 +569,7 @@ Building for Alif E7 DK (HE Core with U55-128)
 Executing Binary on the DevKit
 ================================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -387,7 +579,7 @@ To execute binaries on the DevKit follow the command
 Sample Output
 =============
 
-.. code-block:: console
+.. code-block:: text
 
    *** Booting Zephyr OS build ***
 
@@ -409,7 +601,6 @@ Sample Output
 
    Inference time: 107 ms
    Result: PASS
-
 
 References
 ==========
