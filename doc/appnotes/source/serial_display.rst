@@ -471,7 +471,6 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 .. note::
    The build commands shown here are for the Alif E7 DevKit, E8 DevKit, and B1 DK.
 
-
 2. Build command for the E7 HE application (2lane):
 
 .. code-block:: console
@@ -479,11 +478,7 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-    ../alif/samples/drivers/display \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
-
+    ../alif/samples/drivers/display -S serial-display-2lane
 
 3. Build command for the E7 HP application (2lane):
 
@@ -492,10 +487,7 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-    ../alif/samples/drivers/display \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+    ../alif/samples/drivers/display -S serial-display-2lane
 
 4. Build command for the E8 HE application (2lane):
 
@@ -504,10 +496,7 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-    ../alif/samples/drivers/display \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+    ../alif/samples/drivers/display -S serial-display-2lane
 
 5. Build command for the E8 HP application (2lane):
 
@@ -516,10 +505,7 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-    ../alif/samples/drivers/display \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_2lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+    ../alif/samples/drivers/display -S serial-display-2lane
 
 6. Build command for the B1 DK HE application (1lane):
 
@@ -527,10 +513,7 @@ Follow these steps to build CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
-    ../alif/samples/drivers/display/ \
-    -- \
-    -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/display/boards/serial_display_1lane.overlay" \
-    -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/display/boards/serial_display.conf"
+    ../alif/samples/drivers/display -S serial-display-1lane
 
 Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
 
