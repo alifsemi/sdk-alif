@@ -1,0 +1,71 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+&uart3 {
+	pinctrl-0 = < &test_device0_default >;
+	pinctrl-1 = < &test_device0_sleep >;
+	pinctrl-names = "default", "sleep";
+	status = "okay";
+};
+
+&uart5 {
+	pinctrl-0 = < &test_device1_default >;
+	pinctrl-1 = < &test_device1_mystate >;
+	pinctrl-names = "default", "mystate";
+	status = "okay";
+};
+
+&pinctrl {
+	test_device0_default: test_device0_default {
+		group0 {
+			pinmux = < PIN_P1_0__GPIO >;
+			driver-state-control = <1>;
+		};
+		group1 {
+			pinmux = < PIN_P1_1__UART2_TX_A >;
+			driver-state-control = <2>;
+		};
+	};
+
+	/* sleep state for device 0 */
+	test_device0_sleep: test_device0_sleep {
+		group0 {
+			pinmux = < PIN_P1_0__UART2_RX_A >,
+			< PIN_P1_1__UART2_TX_A >;
+		};
+	};
+
+	/* default state for device 1 */
+	test_device1_default: test_device1_default {
+		group0 {
+			pinmux = < PIN_P1_2__GPIO >,
+			< PIN_P1_3__GPIO >,
+			< PIN_P1_4__GPIO >;
+		};
+	};
+
+	/* custom state "mystate" for device 1 */
+	test_device1_mystate: test_device1_mystate {
+		group0 {
+			pinmux = < PIN_P1_2__GPIO >;
+			read-enable = <0>;
+		};
+		group1 {
+			pinmux = < PIN_P1_3__GPIO >;
+			driver-state-control = <1>;
+			slew-rate = <1>;
+			drive-strength = <12>;
+		};
+		group2 {
+			pinmux = < PIN_P1_4__GPIO >;
+			driver-state-control = <2>;
+			schmitt-enable = <0>;
+			driver = <1>;
+		};
+	};
+};
