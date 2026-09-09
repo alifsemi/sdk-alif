@@ -2,11 +2,9 @@
  * Copyright (C) 2024 Alif Semiconductor.
  * SPDX-License-Identifier: Apache-2.0
  */
-
 #include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
-
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/adc.h>
@@ -14,8 +12,8 @@
 #include <zephyr/sys/printk.h>
 #include <zephyr/sys/util.h>
 #include "temperature.h"
-
 #include <zephyr/logging/log.h>
+
 LOG_MODULE_REGISTER(ALIF_ADC, LOG_LEVEL_INF);
 
 #define ADC_CHANNEL_0				(0x00)
@@ -45,18 +43,24 @@ LOG_MODULE_REGISTER(ALIF_ADC, LOG_LEVEL_INF);
 #define ADC_COMPARATOR_THRESHOLD_BELOW_B	(1 << 3)
 #define ADC_COMPARATOR_THRESHOLD_BETWEEN_A_B	(1 << 4)
 #define ADC_COMPARATOR_THRESHOLD_OUTSIDE_A_B	(1 << 5)
-
 #define MAX_NUM_THRESHOLD			(6)
 
+#ifdef CONFIG_ADC_ALIF_DMA
+#define ADC_DMA_NUM_SAMPLES			1
+static uint32_t buffer[ADC_DMA_NUM_SAMPLES];
+#else
 static uint32_t m_samplings_done;
 static uint8_t comparator;
-
 uint32_t comp_value[MAX_NUM_THRESHOLD] = {0};
+static uint32_t buffer[1];
 
 enum adc_action adc_call_back(const struct device *dev,
 				const struct adc_sequence *sequence,
 				uint16_t sampling_index)
 {
+	ARG_UNUSED(dev);
+	ARG_UNUSED(sequence);
+	ARG_UNUSED(sampling_index);
 
 	if (comparator & ADC_COMPARATOR_THRESHOLD_ABOVE_A) {
 		comp_value[0] += 1;
@@ -76,26 +80,19 @@ enum adc_action adc_call_back(const struct device *dev,
 	if (comparator & ADC_COMPARATOR_THRESHOLD_OUTSIDE_A_B) {
 		comp_value[5] += 1;
 	}
-
 	++m_samplings_done;
-
 	if (m_samplings_done < 2) {
 		return ADC_ACTION_REPEAT;
 	} else {
 		return ADC_ACTION_FINISH;
 	}
 }
+#endif /* CONFIG_ADC_ALIF_DMA */
 
 int main(void)
 {
-	static uint32_t buffer[1];
 	float temp;
 	int ret;
-
-	struct adc_sequence_options adc_seq_options = {
-		.callback	= adc_call_back,
-		.user_data	= (uint8_t *)&comparator,
-	};
 
 	const struct device *adc_dev = DEVICE_DT_GET(DT_NODELABEL(adc0));
 
@@ -109,13 +106,25 @@ int main(void)
 		.channel_id   = ADC_CHANNEL_6,
 	};
 
-
+#ifdef CONFIG_ADC_ALIF_DMA
 	struct adc_sequence sequence = {
-		.options = &adc_seq_options,
-		.buffer  = (void *)buffer,
+		.options     = NULL,
+		.buffer      = (void *)buffer,
 		.buffer_size = sizeof(buffer),
-		.channels = ADC_UNMASK_CHANNEL_6,
+		.channels    = ADC_UNMASK_CHANNEL_6,
 	};
+#else
+	struct adc_sequence_options adc_seq_options = {
+		.callback  = adc_call_back,
+		.user_data = (uint8_t *)&comparator,
+	};
+	struct adc_sequence sequence = {
+		.options     = &adc_seq_options,
+		.buffer      = (void *)buffer,
+		.buffer_size = sizeof(buffer),
+		.channels    = ADC_UNMASK_CHANNEL_6,
+	};
+#endif /* CONFIG_ADC_ALIF_DMA */
 
 	/* Set the channel */
 	ret = adc_channel_setup(adc_dev, &channel_cfg);
@@ -124,13 +133,45 @@ int main(void)
 		return -1;
 	}
 
-	/* Start reading the samples */
+#ifdef CONFIG_ADC_ALIF_DMA
+	LOG_INF("ADC DMA mode - collecting %d samples per read", ADC_DMA_NUM_SAMPLES);
+
+	while (1) {
+		int64_t t0 = k_uptime_get();
+
+		ret = adc_read(adc_dev, &sequence);
+		if (ret) {
+			LOG_ERR("ADC read failed: %d", ret);
+			return -1;
+		}
+
+		int64_t dt = k_uptime_get() - t0;
+
+		LOG_INF("adc_read() blocked for %lld ms (%d samples)",
+			dt, ADC_DMA_NUM_SAMPLES);
+
+		for (int i = 0; i < ADC_DMA_NUM_SAMPLES; i++) {
+			if (channel_cfg.channel_id == ADC_CHANNEL_6) {
+				temp = get_temperature(buffer[i]);
+				if (temp == -1) {
+					LOG_ERR("Sample[%d]: outside range (raw: %u)",
+						i, buffer[i]);
+				} else {
+					LOG_INF("Sample[%d]: %0.1f C", i, (double)temp);
+				}
+			}
+		}
+
+		k_sleep(K_MSEC(1000));
+	}
+
+#else
+	/* Start reading the samples - IRQ path */
 	ret = adc_read(adc_dev, &sequence);
 	if (ret) {
 		LOG_ERR("Error: ADC_read failed");
 		return -1;
 	}
-
 
 	LOG_INF("Allocated memory buffer Address is 0x%X", (uint32_t)buffer);
 
@@ -144,6 +185,7 @@ int main(void)
 	}
 
 	LOG_INF("ADC sampling Done");
+#endif /* CONFIG_ADC_ALIF_DMA */
 
 	return 0;
 }
