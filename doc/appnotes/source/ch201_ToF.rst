@@ -43,7 +43,7 @@ Prerequisites
 
 Hardware Requirements
 ---------------------
-- Alif Appkit
+- Alif AppKit
 - Debugger: JLink
 
 Software Requirements
@@ -72,7 +72,7 @@ Pin Setup
 +---------------+--------+
 
 **Connection:**
-The CH201 sensor is available only on the **E8 App-Kit** and is connected onboard to **I2C1**.
+The CH201 sensor is available only on the **E8 AppKit** and is connected onboard to **I2C1**.
 No external wiring is required.
 
 .. include:: note.rst
@@ -82,13 +82,14 @@ Building a CH201 Application with Zephyr
 
 Follow these steps to build the CH201 ToF Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The CH201 ToF feature is supported **only** on the **Alif E8 AppKit**.
    It is not applicable to other boards.
 
-2. Build the example application for the M55 HE core:
+Build the example application for the M55 HE core:
 
 .. code-block:: console
 
@@ -96,7 +97,7 @@ Follow these steps to build the CH201 ToF Application using the Alif Zephyr SDK:
      -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
      -S alif-ak ../alif/samples/sensor/ch201
 
-3. Build the example application for the M55 HP core:
+Build the example application for the M55 HP core:
 
 .. code-block:: console
 
@@ -104,12 +105,12 @@ Follow these steps to build the CH201 ToF Application using the Alif Zephyr SDK:
      -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
      -S alif-ak ../alif/samples/sensor/ch201
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
-Executing Binary on the Appkit
-================================
+Executing Binary on the AppKit
+===============================
 
-To execute binaries on the AppKit follow the command
+To execute binaries on the AppKit, follow the command:
 
 .. code-block:: console
 

@@ -89,7 +89,7 @@ The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and ener
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
@@ -100,7 +100,7 @@ Camera Sensor Support
 
    The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) with ISP and is supported on the following DevKits:
 
-   - DevKit E8
+   - Alif E8 DevKit
 
 Features
 ----------
@@ -194,28 +194,90 @@ Selected ISP Configurations
 .. include:: note.rst
 
 Build an ARX3A0 ISP Application with Zephyr
-======================================================
+===========================================
 
-Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK:
+Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
-.. note::
-   The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build command for application on the M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/drivers/video/ \
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
 
-3. Build command for application on the M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
 
 .. code-block:: console
 
@@ -226,17 +288,138 @@ Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
 
-Executing Binary on the DevKit
---------------------------------
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
 
-To execute the binary on the DevKit, run:
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf"
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
+
+Executing Binary on the DevKit
+===============================
+
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
    west flash
 
 Console Output
----------------
+===============
 
 The following output is observed in the console during execution of the ARX3A0 ISP application:
 
@@ -279,7 +462,6 @@ The following output is observed in the console during execution of the ARX3A0 I
    [00:00:10.125,000] <inf> video_app: Calling video flush.
    [00:00:10.125,000] <inf> video_app: Calling video stream stop.
 
-
 MT9M114 Camera Sensor
 =======================
 
@@ -292,7 +474,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 
@@ -303,7 +485,7 @@ Camera Sensor Support
 
    The MT9M114 camera sensor interfaces via MIPI-CSI (serial interface) with ISP and is supported on the following DevKits:
 
-   - DevKit E8
+   - Alif E8 DevKit
 
 Hardware Connections and Setup
 ------------------------------
@@ -422,18 +604,95 @@ Selected ISP Configurations
 - **Output Resolution**: Configurable via ISP scaling
 - **Output Format**: RGB888 planar
 
-Build an MT9M114 ISP Application with Zephyr
-======================================================
+Build a MT9M114 ISP Application with Zephyr
+=============================================
 
-Follow these steps to build the MT9M114 ISP (Selfie Camera) application using the Alif Zephyr SDK:
+Follow these steps to build the MT9M114 ISP (Selfie Camera) application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
-.. note::
-   The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build command for E8 DevKit (Selfie Camera with ISP) on M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
 
 .. code-block:: console
 
@@ -443,12 +702,101 @@ Follow these steps to build the MT9M114 ISP (Selfie Camera) application using th
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
 
-3. Build command for E8 DevKit (Selfie Camera with ISP) on M55 HE core:
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
 
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
      ../alif/samples/drivers/video/ \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_selfie.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf;$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
@@ -460,20 +808,20 @@ Follow these steps to build the MT9M114 ISP (Selfie Camera) application using th
    - ISP provides scaling, demosaicing, and other image processing capabilities
 
 Executing Binary on the DevKit
---------------------------------
+===============================
 
-To execute the binary on the DevKit, run:
+To execute binaries on the DevKit, follow the command:
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
 Console Output
----------------
+===============
 
 The following output is observed in the console during execution of the MT9M114 ISP application:
 
-.. code-block:: console
+.. code-block:: text
 
    [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
    [00:00:00.000,000] <inf> mt9m114: MT9M114 initialization starting...

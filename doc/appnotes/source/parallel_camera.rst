@@ -48,7 +48,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 - Cypress Interconnect Board (CYUSB3ACC-004A)
@@ -60,10 +60,10 @@ Camera Sensor Support
 
    The MT9M114 camera sensor uses the Parallel Camera Interface (CPI) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
-   - E1C
-   - B1 A5/A6
+   - Alif E7 DevKit
+   - Alif E8 DevKit
+   - Alif E1C DevKit
+   - Alif B1 DevKit
 
 Features
 ----------
@@ -82,7 +82,7 @@ Applications
 - Surveillance, medical, and industrial applications
 
 Hardware Connections and Setup
-------------------------------
+--------------------------------
 
 .. figure:: _static/MT9M114_board_bottom_view.png
    :alt: Bottom View of the Board Connector
@@ -119,7 +119,7 @@ GPIO Configuration
 ===================
 
 LPCAM Configuration (B0 Flat Board)
-------------------------------------
+--------------------------------------
 
 The following GPIO pins are configured for LPCAM:
 
@@ -159,7 +159,7 @@ The following GPIO pins are configured for LPCAM:
 
 
 CAM Configuration (B0 Flat Board)
-----------------------------------
+-----------------------------------
 
 And if MT9M114 camera sensor being tested with CAM driver:
 The following GPIO pins are configured for CAM:
@@ -198,7 +198,6 @@ The following GPIO pins are configured for CAM:
 | P8_7   | CAM_D7_B             |
 +--------+----------------------+
 
-
 I2C Configuration
 ------------------
 
@@ -227,7 +226,6 @@ Required Config Features
 Software Requirements
 -----------------------
 
-
 - **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 - **West Tool**: For building Zephyr applications (installed via ``pip install west``)
 - **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
@@ -238,7 +236,7 @@ Software Requirements
 - Standard Zephyr MT9M114 Camera Sensor Driver
 
 Selected MT9M114 Camera Sensor Configurations
-----------------------------------------------
+------------------------------------------------
 
 - **Resolution**: 640x480
 - **Output Format**: RAW Bayer10
@@ -262,20 +260,20 @@ To convert a Bayer 10 image to RGB format for viewing, run the following command
    -m SIMPLE -t
 
 Build an MT9M114 Camera Sensor Application with Zephyr
-======================================================
+=======================================================
 
-Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr SDK:
+Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
+Alif E7 DevKit
+---------------
 
-2. Build command for the application with LPCAM interface (M55 HE core):
+Build for SoC variant ``ae722f80f55d5xx``, (LPCAM interface, M55 HE core):
 
 .. code-block:: console
-
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -283,21 +281,9 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
 
-3. Build command for the application with CAM interface (M55 HP core):
+Build for SoC variant ``ae722f80f55d5xx``, (CAM interface, M55 HE core):
 
 .. code-block:: console
-
-
-   west build -p always \
-     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/video/ \
-     -- \
-     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
-
-4. Build command for the application with CAM interface (M55 HE core):
-
-.. code-block:: console
-
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -305,17 +291,228 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
 
+Build for SoC variant ``ae722f80f55d5xx``, (CAM interface, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ae302f80f55d5xx``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ae302f80f55d5xx``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ae302f80f55d5xx``, (CAM interface, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ae822fa0e5597xx0``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ae822fa0e5597xx0``, (CAM interface, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ae402fa0e5597xx0``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ae402fa0e5597xx0``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ae402fa0e5597xx0``, (CAM interface, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ae1c1f4051920hh``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ab1c1f4m51820ph0``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ab1c1f4m51820hh0``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ab1c1f4m51820hh0``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ab1c1f1m41820hh0``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ab1c1f1m41820hh0``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Build for SoC variant ``ab1c1f1m41820ph0``, (LPCAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_lpcam.overlay"
+
+Build for SoC variant ``ab1c1f1m41820ph0``, (CAM interface, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/parallel_camera_mt9m114_cam.overlay"
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
+
 Executing Binary on the DevKit
---------------------------------
+==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
 Console Output
----------------
+===============
 
 The following output is observed in the console when the MT9M114 camera sensor is tested with the LPCAM instance of the video driver:
 
@@ -469,7 +666,6 @@ OV5640 Camera Sensor Pin Connections
 
    Cypress Interconnect Board Connecting OV5640 Camera Sensor to Alif SoC
 
-
 .. note::
 
    Currently, the module has not been validated with an externally supplied XVCLK.
@@ -486,12 +682,11 @@ To configure the board:
 
    External XVCLK input support has not been tested and should not be used in the current configuration.
 
-
 GPIO Configuration
 -------------------
 
 The following GPIO pins are configured for the LPCAM interface on the
-E1C Startkit board.
+E1C StartKit board.
 
 LPCAM Interface
 ----------------
@@ -500,7 +695,6 @@ LPCAM Interface
 - P0_6 as LPCAM_VSYNC_B
 - P2_1 as LPCAM_PCLK_B
 - P2_3 as LPCAM_XVCLK_B
-
 
 Data Lines (D0–D7)
 --------------------
@@ -513,7 +707,6 @@ Data Lines (D0–D7)
 - P4_5 as LPCAM_D5_A
 - P4_6 as LPCAM_D6_A
 - P4_7 as LPCAM_D7_A
-
 
 I2C Interface
 ---------------
@@ -552,7 +745,6 @@ LPCAM application:
   - Zephyr I2C DesignWare Driver
   - Standard Zephyr OV5640 Camera Sensor Driver
 
-
 Selected OV5640 Camera Sensor Configurations
 -----------------------------------------------
 
@@ -574,22 +766,24 @@ Build an OV5640 Camera Sensor Application with Zephyr
 
 Follow these steps to build the OV5640 Camera Sensor Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
-.. note::
-   The build commands shown here for the E1C Startkit board.
+Alif E1C DevKit
+----------------
 
-2. Build command for the application on the M55 HE core:
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
 
 .. code-block:: console
 
-   west build -b alif_e1c_sk//rtss_he ../alif/samples/drivers/video/
-
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/video/
 
 Executing Binary on the DevKit
---------------------------------
+==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -628,7 +822,6 @@ Interpretation
   ``i2c_dw`` driver are successfully verified.
 - The video capturing process has completed successfully.
 
-
 References and Dependencies
 -----------------------------
 
@@ -640,4 +833,3 @@ OV5640 Camera Sensor:
    :align: center
 
    Reference Image Captured using the Camera Controller and OV5640 Camera Sensor
-

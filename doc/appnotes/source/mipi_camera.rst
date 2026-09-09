@@ -72,14 +72,14 @@ MIPI CSI2 unpacks serial input data based on the configured pixel data type, con
 - Error Detection and Correction: Robust mechanisms at PHY, packet, line, and frame levels.
 
 ARX3A0 Camera Sensor
-=======================
+=====================
 
 The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and energy-efficient, ideal for IoT devices.
 
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
@@ -90,8 +90,8 @@ Camera Sensor Support
 
    The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
+   - Alif E7 DevKit
+   - Alif E8 DevKit
 
 Features
 ----------
@@ -156,18 +156,19 @@ Selected ARX3A0 Camera Sensor Configurations
 - **Resolution**: 560x560
 - **Output Format**: RAW Bayer10
 
-Build an ARX3A0 Camera Application with Zephyr
+Build an ARX3A0 Camera Sensor Application with Zephyr
 ======================================================
 
-Follow these steps to build the ARX3A0 camera application using the Alif Zephyr SDK:
+Follow these steps to build the ARX3A0 Camera Sensor Application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build command for application on the M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
 .. code-block:: console
 
@@ -177,17 +178,50 @@ Follow these steps to build the ARX3A0 camera application using the Alif Zephyr 
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay"
 
-Executing Binary on the DevKit
---------------------------------
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
 
-To execute binaries on the DevKit follow the command
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay"
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay"
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ \
+     -- \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0.overlay"
+
+Executing Binary on the DevKit
+==============================
+
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
    west flash
 
 Console Output
----------------
+==============
 
 The following output is observed in the console for ARX3A0 sensor:
 
@@ -245,7 +279,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 
@@ -256,8 +290,8 @@ Camera Sensor Support
 
    The MT9M114 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
+   - Alif E7 DevKit
+   - Alif E8 DevKit
 
 Hardware Connections and Setup
 ------------------------------
@@ -357,25 +391,16 @@ Selected MT9M114 Camera Sensor Configurations
 Build an MT9M114 Camera Sensor Application with Zephyr
 ======================================================
 
-Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr SDK:
+Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
-.. note::
-   The build commands shown here are for the Alif E7 and E8 DevKits.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
+Alif E7 DevKit
+---------------
 
-2. Build command for E7 DevKit (Standard CPI to AXI, HP core):
-
-.. code-block:: console
-
-   west build -p always \
-     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/video \
-     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
-     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
-
-3. Build command for E7 DevKit (Standard CPI to AXI, HE core):
+Build for SoC variant ``ae722f80f55d5xx``, (Standard CPI to AXI, M55 HE core):
 
 .. code-block:: console
 
@@ -385,24 +410,77 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
 
-4. Build command for E8 DevKit (Standard CPI to AXI, HP core):
+Build for SoC variant ``ae722f80f55d5xx``, (Standard CPI to AXI, M55 HP core):
 
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-     ../alif/samples/drivers/video/ \
-     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_standard.overlay" \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
 
-5. Build command for E8 DevKit (Standard CPI to AXI, HE core):
+Build for SoC variant ``ae302f80f55d5xx``, (Standard CPI to AXI, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae302f80f55d5xx``, (Standard CPI to AXI, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, (Standard CPI to AXI, M55 HE core):
 
 .. code-block:: console
 
    west build -p always \
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-     ../alif/samples/drivers/video/ \
-     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114_standard.overlay" \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae822fa0e5597xx0``, (Standard CPI to AXI, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae402fa0e5597xx0``, (Standard CPI to AXI, M55 HE core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
+     -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
+
+Build for SoC variant ``ae402fa0e5597xx0``, (Standard CPI to AXI, M55 HP core):
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video \
+     -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.overlay" \
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/serial_camera_mt9m114.conf"
 
 .. note::
@@ -412,16 +490,16 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
    - For ISP-based selfie camera configuration with MT9M114, refer to the :ref:`isp` application note
 
 Executing Binary on the DevKit
---------------------------------
+==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
-.. code-block:: bash
+.. code-block:: console
 
    west flash
 
 Console Output
----------------
+==============
 
 The following output is observed in the console for MT9M114 sensor (E8 Standard mode):
 
