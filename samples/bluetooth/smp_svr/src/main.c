@@ -122,6 +122,13 @@ struct smp_environment {
 	uint8_t user_lid;
 	struct k_sem ntf_sem;
 	struct smp_transport transport;
+	/* SMP request reassembly: a single SMP frame can be larger than one GATT write
+	 * (MTU - 3) and the client (e.g. nRF Connect McuMgr) then splits it across several
+	 * write commands. rx_frag accumulates those fragments until the full frame -
+	 * rx_expected bytes - has arrived. NULL when no frame is in progress.
+	 */
+	struct net_buf *rx_frag;
+	uint16_t rx_expected;
 };
 
 static struct smp_environment env;
@@ -196,22 +203,55 @@ static void on_cb_att_read_get(uint8_t conidx, uint8_t user_lid, uint16_t token,
 	}
 }
 
+/* The SMP header is 8 bytes; its length field (bytes 2-3, big-endian) is the payload
+ * length, so the full frame is SMP_HDR_LEN + payload.
+ */
+#define SMP_HDR_LEN 8
+
 static uint16_t utils_process_smp_req(const void *p_data, uint16_t len)
 {
-	struct net_buf *nb;
+	const uint8_t *d = p_data;
+	struct net_buf *nb = env.rx_frag;
 
-	nb = smp_packet_alloc();
-	if (!nb) {
-		return ATT_ERR_INSUFF_RESOURCE;
+	/* First fragment of a new frame: it carries the header, from which we learn the total
+	 * frame length and allocate the reassembly buffer.
+	 */
+	if (nb == NULL) {
+		if (len < SMP_HDR_LEN) {
+			return ATT_ERR_INVALID_ATTRIBUTE_VAL_LEN;
+		}
+
+		nb = smp_packet_alloc();
+		if (!nb) {
+			return ATT_ERR_INSUFF_RESOURCE;
+		}
+
+		env.rx_expected = SMP_HDR_LEN + (((uint16_t)d[2] << 8) | d[3]);
+
+		/* A compliant client never sends a frame bigger than the buf_size we advertise
+		 * (== the net_buf capacity), but guard against it rather than overflow.
+		 */
+		if (env.rx_expected > net_buf_tailroom(nb)) {
+			smp_packet_free(nb);
+			return ATT_ERR_INSUFF_RESOURCE;
+		}
+
+		env.rx_frag = nb;
 	}
 
 	if (net_buf_tailroom(nb) < len) {
 		smp_packet_free(nb);
+		env.rx_frag = NULL;
 		return ATT_ERR_INSUFF_RESOURCE;
 	}
 
-	net_buf_add_mem(nb, p_data, len);
-	smp_rx_req(&env.transport, nb);
+	net_buf_add_mem(nb, d, len);
+
+	/* Hand the frame to the SMP layer only once every fragment has been collected. */
+	if (nb->len >= env.rx_expected) {
+		env.rx_frag = NULL;
+		smp_rx_req(&env.transport, nb);
+	}
 
 	return GAP_ERR_NO_ERROR;
 }
@@ -345,6 +385,64 @@ static uint16_t create_advertising(void)
 						      &env.adv_actv_idx);
 }
 
+/* Preferred connection parameters the device requests once connected, to speed up
+ * the DFU transfer. Intervals are in 1.25 ms units, supervision timeout in 10 ms units.
+ */
+static const gapc_le_con_param_nego_with_ce_len_t dfu_fast_conn_param = {
+	.hdr.interval_min = 12, /* 15 ms */
+	.hdr.interval_max = 24, /* 30 ms */
+	.hdr.latency = 0,
+	.hdr.sup_to = 500, /* 5 s */
+	.ce_len_min = 0,
+	.ce_len_max = 0,
+};
+
+static void on_conn_param_updated(uint8_t conidx, uint32_t metainfo, uint16_t status)
+{
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_WRN("Connection parameter update rejected (conidx: %u), status: %u", conidx,
+			status);
+	} else {
+		LOG_INF("Connection parameters updated for faster DFU (conidx: %u)", conidx);
+	}
+}
+
+static void on_data_length_updated(uint8_t conidx, uint32_t metainfo, uint16_t status)
+{
+	uint16_t err;
+
+	if (status != GAP_ERR_NO_ERROR) {
+		LOG_WRN("Data length update failed (conidx: %u), status: %u", conidx, status);
+	} else {
+		LOG_INF("Data length update done (conidx: %u)", conidx);
+	}
+
+	/* Chain the connection-parameter update after the data-length procedure so the stack
+	 * runs only one GAP procedure at a time on this connection.
+	 */
+	err = gapc_le_update_params(conidx, 0, &dfu_fast_conn_param, on_conn_param_updated);
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_WRN("Failed to start connection parameter update (conidx: %u), err: %u", conidx,
+			err);
+	}
+}
+
+/* Drive the BLE link to full capability from the device side instead of waiting for the
+ * peer. This is the equivalent of Zephyr's CONFIG_BT_AUTO_DATA_LEN_UPDATE +
+ * MCUMGR_TRANSPORT_BT_CONN_PARAM_CONTROL and is what makes DFU work on older phones that
+ * never initiate the Data Length Update themselves.
+ */
+static void app_upgrade_link(uint8_t conidx)
+{
+	uint16_t err;
+
+	err = gapc_le_set_packet_size(conidx, 0, GAP_LE_MAX_OCTETS, GAP_LE_MAX_TIME,
+				      on_data_length_updated);
+	if (err != GAP_ERR_NO_ERROR) {
+		LOG_WRN("Failed to start data length update (conidx: %u), err: %u", conidx, err);
+	}
+}
+
 void app_connection_status_update(enum gapm_connection_event con_event, uint8_t con_idx,
 				  uint16_t status)
 {
@@ -352,15 +450,23 @@ void app_connection_status_update(enum gapm_connection_event con_event, uint8_t 
 	case GAPM_API_SEC_CONNECTED_KNOWN_DEVICE:
 		env.conidx = con_idx;
 		ctrl.connected = true;
+		app_upgrade_link(con_idx);
 		break;
 	case GAPM_API_DEV_CONNECTED:
 		env.conidx = con_idx;
 		ctrl.connected = true;
+		app_upgrade_link(con_idx);
 		break;
 	case GAPM_API_DEV_DISCONNECTED:
 		LOG_INF("Client disconnected (conidx: %u), restating advertising", con_idx);
 
 		smp_rx_remove_invalid(&env.transport, NULL);
+
+		/* Drop any half-reassembled SMP frame from the connection that just dropped. */
+		if (env.rx_frag != NULL) {
+			smp_packet_free(env.rx_frag);
+			env.rx_frag = NULL;
+		}
 
 		env.conidx = GAP_INVALID_CONIDX;
 		env.ntf_cfg = PRF_CLI_STOP_NTFIND;
@@ -391,9 +497,15 @@ static uint16_t utils_config_gapm(void)
 		.irk.key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 		.gap_start_hdl = 0,
 		.gatt_start_hdl = 0,
-		.att_cfg = 0,
-		.sugg_max_tx_octets = GAP_LE_MIN_OCTETS,
-		.sugg_max_tx_time = GAP_LE_MIN_TIME,
+		/* Disable the stack's automatic MTU exchange at connection. The CEVA stack
+		 * otherwise initiates the (once-per-connection) ATT MTU exchange itself, so a
+		 * central that later sends its own Exchange MTU Request gets rejected with
+		 * ATT "Request Not Supported" (0x06). nRF Connect's McuMgr treats that as fatal
+		 * and aborts DFU. Leaving the exchange to the peer fixes it.
+		 */
+		.att_cfg = GAPM_ATT_CLI_DIS_AUTO_MTU_EXCH_MASK,
+		.sugg_max_tx_octets = GAP_LE_MAX_OCTETS,
+		.sugg_max_tx_time = GAP_LE_MAX_TIME,
 		.tx_pref_phy = GAP_PHY_ANY,
 		.rx_pref_phy = GAP_PHY_ANY,
 		.tx_path_comp = 0,
@@ -514,6 +626,7 @@ int main(void)
 	env.ntf_cfg = PRF_CLI_STOP_NTFIND;
 	env.start_hdl = GATT_INVALID_HDL;
 	env.user_lid = GATT_INVALID_USER_LID;
+	env.rx_frag = NULL;
 	k_sem_init(&env.ntf_sem, 0, 1);
 
 	env.transport.functions.output = transport_out;
