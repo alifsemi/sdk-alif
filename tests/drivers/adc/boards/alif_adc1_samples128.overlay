@@ -1,0 +1,5 @@
+&adc1 {
+			avg_sample_num		= <128>;
+
+};
+
