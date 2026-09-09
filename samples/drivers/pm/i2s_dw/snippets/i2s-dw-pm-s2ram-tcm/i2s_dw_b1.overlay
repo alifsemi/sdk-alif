@@ -5,7 +5,6 @@
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
- *
  */
 
 /*
@@ -14,11 +13,32 @@
  */
 
 #include "pm_tcm_e1c_b1.overlay"
-
+/* Overwrite the existing pinctrl_lpi2s with B-instance pins */
+&pinctrl_lpi2s {
+	group0 {
+		pinmux = <PIN_P4_3__LPI2S_SDI_B>,
+			 <PIN_P4_4__LPI2S_SDO_B>,
+			 <PIN_P4_5__LPI2S_SCLK_B>,
+			 <PIN_P4_6__LPI2S_WS_B>;
+		read-enable = <0x1>;
+	};
+};
+&pinctrl_lpi2s_sleep {
+	group0 {
+		pinmux = <PIN_P4_3__GPIO>,
+			 <PIN_P4_4__GPIO>,
+			 <PIN_P4_5__GPIO>,
+			 <PIN_P4_6__GPIO>;
+		read-enable = <0x1>;
+		driver-state-control = <2>;
+	};
+};
 i2s_tx: &i2s0 {
 	status = "okay";
 };
-
 i2s_rx: &i2s4 {
 	status = "okay";
+	pinctrl-0 = <&pinctrl_lpi2s>;
+	pinctrl-1 = <&pinctrl_lpi2s_sleep>;
+	pinctrl-names = "default", "sleep";
 };
