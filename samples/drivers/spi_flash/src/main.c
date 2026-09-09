@@ -14,6 +14,43 @@
 #define SPI_FLASH_SECTOR_SIZE        4096
 #define BUFF_SIZE                    1024
 
+#ifdef CONFIG_ALIF_OSPI_FLASH_XIP
+#define XIP_IMAGE_BASE DT_PROP_BY_IDX(DT_PARENT(DT_ALIAS(spi_flash0)), xip_base_address, 0)
+
+FUNC_NORETURN static void boot_xip_image(void)
+{
+	uint32_t image_base = XIP_IMAGE_BASE;
+	uint32_t initial_sp = *(uint32_t *)image_base;
+	uint32_t reset_addr = *(uint32_t *)(image_base + sizeof(uint32_t));
+
+	printf("\nBooting XiP image at 0x%08x\n", image_base);
+	printf("Initial SP: 0x%08x, reset handler: 0x%08x\n\n\n", initial_sp, reset_addr);
+
+	/* Clear the stack limit */
+	__set_MSPLIM(0);
+
+	/* Set the new vector table address */
+	SCB->VTOR = image_base;
+
+	/* Complete memory operations */
+	__DSB();
+	/* Refresh the instruction pipeline */
+	__ISB();
+
+	/* Set the new stack pointer and start the application */
+	__asm volatile (
+		"ldr sp, [%0, #0]\n\t"
+		"ldr pc, [%0, #4]\n\t"
+		:
+		: "r" (image_base)
+		: "memory"
+	);
+
+	CODE_UNREACHABLE;
+}
+
+#endif
+
 const struct flash_parameters *flash_param;
 
 void single_sector_test(const struct device *flash_dev)
@@ -368,6 +405,10 @@ int main(void)
 	printf("* Total Size in MB: %d\n",
 	       (flash_param->num_of_sector * flash_param->sector_size) / (1024 * 1024));
 
+#if defined(CONFIG_ALIF_OSPI_FLASH_XIP) && defined(CONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE)
+	boot_xip_image();
+	CODE_UNREACHABLE;
+#endif
 
 	/*Current RW support only on 16 DFS */
 	single_sector_test(flash_dev);

@@ -22,13 +22,27 @@ Currently supported Flash devices are :
 Building and Running
 ********************
 
-Example command to build:
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/spi_flash
+   :board: alif_e8_dk/ae822fa0e5597xx0/rtss_he
+   :goals: build
+   :gen-args: -S ospi-flash
+   :compact:
 
-.. code-block:: console
+Boot XiP Image from Flash
+*************************
 
-   west build -b alif_b1_dk/ab1c1f4m51820hh/rtss_he -S ospi-flash ../alif/samples/drivers/spi_flash -p
-   OR
-   west build -b alif_b1_dk/ab1c1f4m51820hh/rtss_he ../alif/samples/drivers/spi_flash -p -- -DSNIPPET=ospi-flash
+To boot an image from OSPI Flash using XiP mode, enable both configurations:
+
+.. code-block:: cfg
+
+   CONFIG_ALIF_OSPI_FLASH_XIP=y
+   CONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE=y
+
+When booting an XiP image from OSPI Flash, the application does not run the
+read, write, or erase test cases. This avoids modifying the flash contents that
+hold the bootable binary.
+
 
 Sample Output
 =============
