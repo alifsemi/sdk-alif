@@ -75,6 +75,9 @@
 /* Proximity Profile (Link Loss only - IASS and TPSS removed to stay within profile task limit) */
 #include "prxp_app.h"
 
+/* Continuous Glucose Monitoring Profile Server */
+#include "cgms_app.h"
+
 /* Custom Blinky GATT service */
 #include "gatt_db.h"
 #include "gatt_srv.h"
@@ -93,6 +96,7 @@ static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
 void LedWorkerHandler(struct k_work *work);
 
 static K_WORK_DELAYABLE_DEFINE(ledWork, LedWorkerHandler);
+
 /* HRPS feature flags */
 enum hrps_feat_bf {
 	HRPS_BODY_SENSOR_LOC_CHAR_SUP_POS = 0,
@@ -129,11 +133,15 @@ static bool hr_ready_to_send;
 static bool bp_ready_to_send;
 static bool ht_ready_to_send;
 static bool gl_ready_to_send;
-static bool gl_sent_once;
 static bool cs_ready_to_send;
 static bool rsc_ready_to_send;
 
-static void send_glucose_once(void);
+/* Saved RACP request context — needed to send the response after measurement completes */
+static uint8_t gl_racp_conidx;
+static uint8_t gl_racp_op_code;
+static uint16_t gl_seq_num;
+
+static void send_glucose_measurement(void);
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 
@@ -195,7 +203,7 @@ static const gatt_att_desc_t blinky_att_db[BLINKY_IDX_NB] = {
 /* Bluetooth stack configuration */
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
-	.pairing_mode = GAPM_PAIRING_DISABLE,
+	.pairing_mode = GAPM_PAIRING_LEGACY,
 	.privacy_cfg = 0,
 	.renew_dur = 1500,
 	.private_identity.addr = {0},
@@ -235,16 +243,18 @@ static void on_disconnection(uint8_t conidx, uint16_t reason)
 {
 	/* Notify PRXP (triggers link loss alert if disconnection was not user-initiated) */
 	prxp_disc_notify(reason);
+	disc_notify(reason);
 
-	/* Turn off BLE-controlled LED on disconnect */
+	/* Turn off BLE-controlled LED on disconnect, restart advertising blink */
 	ble_gpio_led_set(&led0, false);
+	k_work_reschedule(&ledWork, K_MSEC(1));
 
 	/* Reset all service send gates - phone must re-enable CCCDs after reconnect */
 	hr_ready_to_send = false;
 	bp_ready_to_send = false;
 	ht_ready_to_send = false;
 	gl_ready_to_send = false;
-	gl_sent_once = false;
+	gl_racp_op_code = 0;
 	cs_ready_to_send = false;
 	rsc_ready_to_send = false;
 }
@@ -358,7 +368,6 @@ static void on_glps_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
 
 	if (evt_cfg == PRF_CLI_START_NTF) {
 		gl_ready_to_send = true;
-		gl_sent_once = false;
 	} else {
 		gl_ready_to_send = false;
 	}
@@ -366,20 +375,23 @@ static void on_glps_bond_data_upd(uint8_t conidx, uint8_t evt_cfg)
 
 static void on_glps_meas_send_complete(uint8_t conidx, uint16_t status)
 {
-	ARG_UNUSED(conidx);
 	ARG_UNUSED(status);
+	gl_ready_to_send = true;
+
+	if (gl_racp_op_code) {
+		glps_racp_rsp_send(conidx, gl_racp_op_code, GLP_RSP_SUCCESS, 1);
+		gl_racp_op_code = 0;
+	}
 }
 
-/* Called when the app sends a RACP request (e.g. user taps reload button).
- * Send the dummy measurement first, then report 1 record so the app shows a value.
- */
 static void on_glps_racp_req(uint8_t conidx, uint8_t op_code,
 			     uint8_t func_operator,
 			     uint8_t filter_type,
 			     const union glp_filter *p_filter)
 {
-	send_glucose_once();
-	glps_racp_rsp_send(conidx, op_code, GLP_RSP_SUCCESS, 1);
+	gl_racp_conidx = conidx;
+	gl_racp_op_code = op_code;
+	send_glucose_measurement();
 }
 
 static void on_glps_racp_rsp_send_cmp(uint8_t conidx, uint16_t status)
@@ -407,7 +419,7 @@ static prf_sfloat glucose_to_sfloat(float mg_dl)
 }
 
 /* Send a single dummy glucose record (95 mg/dL, capillary whole blood, finger) */
-static void send_glucose_once(void)
+static void send_glucose_measurement(void)
 {
 	glp_meas_t meas = {
 		.flags = GLP_MEAS_GL_CTR_TYPE_AND_SPL_LOC_PRES_BIT,
@@ -424,7 +436,7 @@ static void send_glucose_once(void)
 		},
 	};
 
-	uint16_t err = glps_meas_send(0, 1, &meas, NULL);
+	uint16_t err = glps_meas_send(0, gl_seq_num++, &meas, NULL);
 
 	if (err) {
 		LOG_ERR("GLPS send error %u", err);
@@ -550,6 +562,7 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 		GATT_SVC_BLOOD_PRESSURE,
 		GATT_SVC_HEALTH_THERMOM,
 		GATT_SVC_GLUCOSE,
+		GATT_SVC_CONTINUOUS_GLUCOSE_MONITORING,
 		GATT_SVC_CYCLING_SPEED_CADENCE,
 		GATT_SVC_RUNNING_SPEED_CADENCE,
 		GATT_SVC_LINK_LOSS,
@@ -965,11 +978,12 @@ static void combined_process(void)
 		ht_ready_to_send = false;
 	}
 
-	/* Glucose sends one record per connection (it's a historical log, not a stream) */
-	if (gl_ready_to_send && !gl_sent_once) {
-		send_glucose_once();
-		gl_sent_once = true;
+	if (gl_ready_to_send) {
+		send_glucose_measurement();
+		gl_ready_to_send = false;
 	}
+
+	cgms_process(0);
 
 	/* CSCPS gated by CCCD enable + send complete */
 	if (cs_ready_to_send) {
@@ -1041,12 +1055,14 @@ int main(void)
 
 	/* Share connection state with battery and other sub-services */
 	service_conn(&ctrl);
+	service_conn_cgms(&ctrl);
 
 	config_battery_service();
 	blinky_init();
 
 	/* Add all standard BLE profiles (share the profile framework GATT user) */
 	bundle_server_configure();
+	server_configure();
 	prxp_server_configure(); /* Registers LLSS only */
 
 	/* Create and start advertising */
