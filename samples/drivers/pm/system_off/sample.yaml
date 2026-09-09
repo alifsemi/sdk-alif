@@ -3,9 +3,11 @@ sample:
   description: >
     Demonstrates Zephyr power management states (PM_STATE_RUNTIME_IDLE,
     PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF)
-    for Alif RTSS cores. Shows power profile configuration, state transitions
-    with RTC wakeup, IWIC low-power mode, and retention behavior differences
-    between HP (no retention) and HE (retention supported) cores.
+    for Alif RTSS cores.  The PM states exercised are driven by capability
+    predicates (S2RAM_SUPPORTED / SOFT_OFF_SUPPORTED) rather than core type,
+    and are selected via build snippets: pm-system-off-s2ram-tcm (HE TCM
+    retention), pm-system-off-mram (MRAM boot SOFT_OFF, HE or HP), and
+    pm-system-off-s2ram-sram0 (SRAM0 retention S2RAM, E8 only, HE or HP).
 common:
   tags:
     - power
@@ -20,9 +22,8 @@ common:
     regex:
       - "PM states demo"
       - "POWER STATE SEQUENCE"
-      - "Resumed from PM_STATE_SUSPEND_TO_RAM"
 tests:
-  sample.pm.system_off:
+  sample.pm.system_off.s2ram_tcm:
     platform_allow:
       - alif_e7_dk_rtss_he
       - alif_e1c_dk_rtss_he
@@ -32,3 +33,30 @@ tests:
       - alif_e7_dk_rtss_he
     depends_on:
       - counter
+    extra_args:
+      - SNIPPET=pm-system-off-s2ram-tcm
+  sample.pm.system_off.mram:
+    platform_allow:
+      - alif_e7_dk_rtss_he
+      - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_he
+      - alif_e8_dk_rtss_hp
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+      - alif_e7_dk_rtss_hp
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=pm-system-off-mram
+  sample.pm.system_off.s2ram_sram0:
+    platform_allow:
+      - alif_e8_dk_rtss_he
+      - alif_e8_dk_rtss_hp
+    integration_platforms:
+      - alif_e8_dk_rtss_he
+    depends_on:
+      - counter
+    extra_args:
+      - SNIPPET=pm-system-off-s2ram-sram0
