@@ -19,3 +19,24 @@ tests:
       - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
       - alif_e7_dk/ae722f80f55d5xx/rtss_he
       - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+  drivers.rtc.suspend_wake:
+    tags: drivers counter pm
+    depends_on: counter
+    min_ram: 16
+    timeout: 600
+    harness: ztest
+    extra_args: SNIPPET=rtc-suspend-wake
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    integration_platforms:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
