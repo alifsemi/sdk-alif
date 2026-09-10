@@ -1,0 +1,32 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * E1C HE: I2C0 (master) + I2C1 (slave).
+ * PM: MRAM boot SOFT_OFF (HE, RTC wakeup).
+ * Console: uart2 (from pm_mram_common.overlay).
+ */
+
+#include "pm_mram_he.overlay"
+
+/ {
+	aliases {
+		master-i2c = &i2c0;
+		slave-i2c = &i2c1;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
