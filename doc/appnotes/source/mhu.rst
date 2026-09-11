@@ -21,15 +21,15 @@ It enables interrupt-based communication between these processing entities.
 .. include:: note.rst
 
 Build an MHU Application with Zephyr
-========================================
+======================================
 
 Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build Command for the MHU0 Application on the M55-HE Core:
 
@@ -39,8 +39,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HP_MHU0=on
-
+     -DCONFIG_HE_HP_S=y
 
 3. Build Command for the MHU0 Application on the M55-HP Core:
 
@@ -50,7 +49,7 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HE_MHU0=on
+     -DCONFIG_HP_HE_R=y
 
 4. Build Command for the MHU1 Application on the M55-HE Core:
 
@@ -60,8 +59,8 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HP_MHU1=on
-
+     -DCONFIG_HE_HP_S=y \
+     -DCONFIG_USE_MHU1=y
 
 5. Build Command for the MHU1 Application on the M55-HP Core:
 
@@ -71,16 +70,15 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HE_MHU1=on
+     -DCONFIG_HP_HE_R=y \
+     -DCONFIG_USE_MHU1=y
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ================================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 
@@ -223,5 +221,57 @@ The following console logs show the Minicom outputs for RTSS-HP and RTSS-HE MHU1
 .. note::
    The logs above show successful message exchange between RTSS-HP and RTSS-HE cores through the MHU interface on the Alif E7 DevKit.
 
+MHU Doorbell Sample
+===================
 
+This sample uses the MHU channel as a doorbell. The 32-bit value carries the
+address of a shared-SRAM1 data block. The other core reads the block, validates
+it, and rings the doorbell back.
 
+Supported pairs:
+
+* M55-HE to M55-HP, using a shared heap in SRAM1
+* M55 (HE or HP) to APSS (A32). The M55 owns allocation and free. The A32 reads and writes the block.
+
+Both images are required. By default the sample uses MHU0. Add
+``-DCONFIG_USE_MHU1=y`` to use MHU1. Without a power-management snippet, the
+HE-to-HP build exchanges 10 messages and prints a pass or fail summary.
+
+M55-HE initiator (E8)
+---------------------
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhu_doorbell \
+     -- -DCONFIG_HE_HP_S=y
+
+M55-HP responder (E8)
+---------------------
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_arm_mhu_doorbell \
+     -- -DCONFIG_HP_HE_R=y
+
+M55 to APSS (E8)
+----------------
+
+Build the initiator for RTSS-HE or RTSS-HP, and the responder for APSS:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_arm_mhu_doorbell \
+     -- -DCONFIG_HE_A32_S=y
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/apss \
+     ../alif/samples/drivers/ipm/ipm_arm_mhu_doorbell \
+     -- -DCONFIG_A32_HE_R=y

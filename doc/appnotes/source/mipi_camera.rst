@@ -15,8 +15,9 @@ MIPI camera sensors:
 
 - ARX3A0 Camera Sensor
 - MT9M114 Camera Sensor
+- OV5675 Camera Sensor
 
-Both sensors transmit image data through the MIPI CSI-2 serial interface
+All sensors transmit image data through the MIPI CSI-2 serial interface
 while sensor configuration is performed using the I2C interface.
 
 Image Data Path::
@@ -79,7 +80,7 @@ The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and ener
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
@@ -90,8 +91,8 @@ Camera Sensor Support
 
    The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
+   - Alif E7 DevKit
+   - Alif E8 DevKit
 
 Features
 ----------
@@ -156,16 +157,16 @@ Selected ARX3A0 Camera Sensor Configurations
 - **Resolution**: 560x560
 - **Output Format**: RAW Bayer10
 
-Build an ARX3A0 Camera Application with Zephyr
+Build an ARX3A0 Camera Sensor Application with Zephyr
 ======================================================
 
-Follow these steps to build the ARX3A0 camera application using the Alif Zephyr SDK:
+Follow these steps to build the ARX3A0 Camera Sensor application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -180,7 +181,7 @@ Follow these steps to build the ARX3A0 camera application using the Alif Zephyr 
 Executing Binary on the DevKit
 --------------------------------
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -245,7 +246,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 
@@ -256,8 +257,8 @@ Camera Sensor Support
 
    The MT9M114 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
+   - Alif E7 DevKit
+   - Alif E8 DevKit
 
 Hardware Connections and Setup
 ------------------------------
@@ -359,11 +360,11 @@ Build an MT9M114 Camera Sensor Application with Zephyr
 
 Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are for the Alif E7 and E8 DevKits.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for E7 DevKit (Standard CPI to AXI, HP core):
 
@@ -414,7 +415,7 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
 Executing Binary on the DevKit
 --------------------------------
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: bash
 
@@ -498,6 +499,331 @@ To convert a RAW10 (Y10) image to RGB format for viewing, run the following comm
    ./raw2rgbpnm -s 1288x728 -f Y10 input_image.bin output_image.pnm
 
 
+OV5675 Camera Sensor
+====================
+
+Overview
+--------
+
+The OV5675 is a high-performance, 1/5-inch, 5-megapixel CMOS RAW RGB
+PureCel image sensor that delivers 2592x1944 at 30 fps.
+
+The sensor provides full-frame, sub-sampled, and windowed 10-bit MIPI images through
+CSI-2. Sensor control uses I2C/SCCB. It supports a 5 MP array at up to 30 fps, 10-bit output, user control of image
+quality, format, and output, and programmable processing such as defective pixel
+canceling.
+
+Features
+--------
+
+- Supported resolution: 1296x972, 1920x1080, 1280x720, 640x480
+- Frame rate: 30 fps
+- Compact 1/5th inch optical format
+- 2-lane MIPI interface
+
+Hardware Requirements and Setup
+-------------------------------
+
+- Alif DevKit
+- Debugger: JLink
+- OV5675 Camera Sensor
+
+Hardware Connections and Setup
+------------------------------
+
+Camera GPIO Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- **P0_3**: Configured as ``CAM_XVCLK_A``.
+
+I2C GPIO Configuration
+^^^^^^^^^^^^^^^^^^^^^^
+
+- **P7_2**: Configured as ``I2C1_SDA_C``.
+- **P7_3**: Configured as ``I2C1_SCL_C``.
+
+Additional Features
+-------------------
+
+- Superior low-light performance
+- Ultra-low power
+- Maximum resolution: 2592 x 1944 pixels (RAW)
+- Output: RAW Bayer (10-bit)
+- MIPI CSI-2: 2 lanes, up to 800 Mbps
+- I2C control interface
+
+Required Config Features
+--------------------------
+
+- ``CONFIG_VIDEO=y``
+- ``CONFIG_VIDEO_MIPI_CSI2_DW=y``
+- ``CONFIG_LOG=y``
+- ``CONFIG_PRINTK=y``
+- ``CONFIG_STDOUT_CONSOLE=y``
+- ``CONFIG_I2C_TARGET=y``
+- ``CONFIG_I2C=y``
+- ``CONFIG_I2C_DW_CLOCK_SPEED=100``
+
+Software Requirements
+---------------------
+
+- **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
+- **West Tool**: For building Zephyr applications (installed via ``pip install west``)
+- **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
+- **SE Tools (optional)**: For loading binaries (refer to Alif documentation)
+- **Alif MIPI CSI2/Video/DPHY drivers**
+- **Zephyr I2C DesignWare**
+- **Alif OV5675 Camera Sensor Driver**
+
+Build an OV5675 Camera Sensor Application with Zephyr
+=====================================================
+
+Follow these steps to build the OV5675 Camera Sensor Application using the Alif Zephyr SDK:
+
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
+
+.. note::
+
+   The build command shown here is for the Alif E8 DevKit.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+
+2. Build command for E8 DevKit (HP core):
+
+.. code-block:: console
+
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ -- \
+     -DDTC_OVERLAY_FILE="boards/serial_camera_ov5675_selfie.overlay" \
+     -DOVERLAY_CONFIG="boards/isp.conf"
+
+Executing Binary on the DevKit
+--------------------------------
+
+To execute binaries on the DevKit, follow the command:
+
+.. code-block:: console
+
+   west flash
+
+Console Output
+---------------
+
+The following output is observed in the console for the OV5675 sensor:
+
+.. code-block:: text
+
+   [00:00:00.000,000] dphy_dw: dphy_dw_init: MMIO Address csi: 0x49033000
+   [00:00:00.000,000] dphy_dw: dphy_dw_init: Config Clk: 25000000 Ref Clk: 38400000
+   [00:00:00.000,000] csi2_dw: #rx_dphy_ids: 1
+   *** Booting Zephyr OS build b728a3274037 ***
+   [00:00:00.027,000] cam_pm: alif_e8_dk (S2RAM): CAM PM demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+   [00:00:00.027,000] cam_pm: CAM: PM states demo WITH Camera Capture
+   [00:00:00.027,000] cam_pm: POWER STATE SEQUENCE:
+   [00:00:00.027,000] cam_pm: 1. PM_STATE_RUNTIME_IDLE
+   [00:00:00.027,000] cam_pm: 2. PM_STATE_SUSPEND_TO_IDLE
+   [00:00:00.027,000] cam_pm: 3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+   [00:00:00.027,000] cam_pm: 4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+   [00:00:00.027,000] cam_pm: Enter RUNTIME_IDLE sleep for (10000000 microseconds)
+   [00:00:00.027,000] cam_pm: skip starting a new capture cycle this round
+   [00:00:00.027,000] cam_pm: - Device name: isp@49046000
+   [00:00:00.027,000] cam_pm: Selected camera: Selfie
+   [00:00:00.027,000] cam_pm: - Capabilities:
+   [00:00:00.027,000] cam_pm: Y10P width (min, max, step)[1296; 1296; 0] height (min, max, step)[972; 972; 0]
+   [00:00:00.027,000] cam_pm: Y10P width (min, max, step)[1920; 1920; 0] height (min, max, step)[1080; 1080; 0]
+   [00:00:00.027,000] cam_pm: Y10P width (min, max, step)[1280; 1280; 0] height (min, max, step)[720; 720; 0]
+   [00:00:00.027,000] cam_pm: Y10P width (min, max, step)[640; 640; 0] height (min, max, step)[480; 480; 0]
+   [00:00:00.027,000] cam_pm: Setting format: Y10P 640x480 pitch=1280 on ep=-3
+   [00:00:00.054,000] dphy_dw: RX-DDR clock: 400000000
+   [00:00:00.054,000] dphy_dw: dphy_dw_slave_setup: hsfrequency - 9, osc_freq - 1e9
+   [00:00:00.055,000] dphy_dw: dphy_dw_slave_setup: PHY RX status: 0x00010000, STOPSTATE: 0x00010003, RX DPHY state: 0xf, DPHY ID: 0
+   [00:00:00.055,000] cam_pm: - format: PRGB 480x480
+   [00:00:00.055,000] cam_pm: Width - 480, Pitch - 1440, Height - 480, Buff size - 691200
+   [00:00:00.055,000] cam_pm: - addr - 0x2000060, size - 691200, bytesused - 0
+   [00:00:00.086,000] cam_pm: capture buffer[0]: dump binary memory "/home/$USER/capture_0.bin" 0x02000060 0x020a8c5f -r
+   [00:00:00.086,000] cam_pm: - addr - 0x20a8c68, size - 691200, bytesused - 0
+   [00:00:00.118,000] cam_pm: capture buffer[1]: dump binary memory "/home/$USER/capture_1.bin" 0x020a8c68 0x02151867 -r
+   [00:00:07.119,000] cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:07.119,000] cam_pm: Camera thread is now suspended (polling for resume)
+   [00:00:07.119,000] cam_pm: Camera Capture is Suspended
+   [00:00:17.120,000] cam_pm: Exited from RUNTIME_IDLE sleep
+   [00:00:17.120,000] cam_pm: Camera: Try to Resume...
+   [00:00:17.120,000] cam_pm: Camera: resume signal sent
+   [00:00:17.120,000] cam_pm: Camera Capture is starting...
+   [00:00:17.120,000] cam_pm: Camera: Woken up by PM resume
+   [00:00:17.120,000] cam_pm: Waiting for sensor to stabilize...
+   [00:00:18.184,000] cam_pm: Capture started
+   [00:00:18.224,000] cam_pm: Got frame 0! size: 691200; timestamp 18224 ms
+   [00:00:18.255,000] cam_pm: Got frame 1! size: 691200; timestamp 18255 ms
+   [00:00:18.287,000] cam_pm: Got frame 2! size: 691200; timestamp 18287 ms
+   [00:00:18.287,000] cam_pm: FPS: 31.2
+   [00:00:18.318,000] cam_pm: Got frame 3! size: 691200; timestamp 18318 ms
+   [00:00:18.318,000] cam_pm: FPS: 32.2
+   [00:00:18.350,000] cam_pm: Got frame 4! size: 691200; timestamp 18350 ms
+   [00:00:18.350,000] cam_pm: FPS: 31.2
+   [00:00:18.382,000] cam_pm: Got frame 5! size: 691200; timestamp 18381 ms
+   [00:00:18.382,000] cam_pm: FPS: 32.2
+   [00:00:18.413,000] cam_pm: Got frame 6! size: 691200; timestamp 18413 ms
+   [00:00:18.413,000] cam_pm: FPS: 31.2
+   [00:00:18.445,000] cam_pm: Got frame 7! size: 691200; timestamp 18445 ms
+   [00:00:18.445,000] cam_pm: FPS: 31.2
+   [00:00:18.476,000] cam_pm: Got frame 8! size: 691200; timestamp 18476 ms
+   [00:00:18.476,000] cam_pm: FPS: 32.2
+   [00:00:18.508,000] cam_pm: Got frame 9! size: 691200; timestamp 18508 ms
+   [00:00:18.508,000] cam_pm: FPS: 31.2
+   [00:00:18.508,000] cam_pm: Calling video flush.
+   [00:00:20.508,000] cam_pm: Flush done.
+   [00:00:20.508,000] cam_pm: Calling video stream stop.
+   [00:00:20.508,000] cam_pm: Stream stop done.
+   [00:00:20.609,000] cam_pm: Capture completed after 10 frames, waiting for PM cycle
+   [00:00:20.609,000] cam_pm: Camera Capture cycle completed
+   [00:00:20.609,000] cam_pm: Enter PM_STATE_SUSPEND_TO_IDLE for (10000 microseconds)
+   [00:00:20.609,000] cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:20.610,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:20.610,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:20.620,000] cam_pm: Exited from PM_STATE_SUSPEND_TO_IDLE
+   [00:00:20.620,000] cam_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+   [00:00:20.620,000] cam_pm: Camera Capture is Suspended: for Deep Sleep
+   [00:00:20.684,000] dphy_dw: dphy_dw_pm_action: PM: Suspended d-phy@4903f000
+   [00:00:20.685,000] power_domain: Disabled power domain 6
+   [00:00:20.685,000] power_domain: Disabled power domain 2
+   [00:00:20.687,000] cam_pm: PM enter: SUSPEND_TO_RAM (substate 0)
+   [00:00:20.686,000] cam_pm: PM wakeup: SUSPEND_TO_RAM (substate 0)
+   [00:00:20.686,000] dphy_dw: dphy_dw_pm_action: PM: Resumed d-phy@4903f000
+   [00:00:20.686,000] ISP: PM: Resumed isp@49046000
+   [00:00:20.686,000] cam_pm: PM exit: SUSPEND_TO_RAM (substate 0)
+   [00:00:26.621,000] cam_pm: Camera: Try to Resume...
+   [00:00:26.621,000] cam_pm: Camera: resume signal sent
+   [00:00:26.621,000] cam_pm: Camera Capture is Resumed: for Deep Sleep
+   [00:00:26.621,000] cam_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:26.621,000] cam_pm: Camera: Woken up by PM resume
+   [00:00:26.674,000] dphy_dw: RX-DDR clock: 400000000
+   [00:00:26.674,000] dphy_dw: dphy_dw_slave_setup: hsfrequency - 9, osc_freq - 1e9
+   [00:00:26.675,000] dphy_dw: dphy_dw_slave_setup: PHY RX status: 0x00010000, STOPSTATE: 0x00010003, RX DPHY state: 0xf, DPHY ID: 0
+   [00:00:26.675,000] cam_pm: Waiting for sensor to stabilize...
+   [00:00:27.738,000] cam_pm: Capture started
+   [00:00:27.779,000] cam_pm: Got frame 0! size: 691200; timestamp 27779 ms
+   [00:00:27.810,000] cam_pm: Got frame 1! size: 691200; timestamp 27810 ms
+   [00:00:27.842,000] cam_pm: Got frame 2! size: 691200; timestamp 27842 ms
+   [00:00:27.842,000] cam_pm: FPS: 31.2
+   [00:00:27.873,000] cam_pm: Got frame 3! size: 691200; timestamp 27873 ms
+   [00:00:27.873,000] cam_pm: FPS: 32.2
+   [00:00:27.905,000] cam_pm: Got frame 4! size: 691200; timestamp 27905 ms
+   [00:00:27.905,000] cam_pm: FPS: 31.2
+   [00:00:27.936,000] cam_pm: Got frame 5! size: 691200; timestamp 27936 ms
+   [00:00:27.937,000] cam_pm: FPS: 32.2
+   [00:00:27.968,000] cam_pm: Got frame 6! size: 691200; timestamp 27968 ms
+   [00:00:27.968,000] cam_pm: FPS: 31.2
+   [00:00:28.000,000] cam_pm: Got frame 7! size: 691200; timestamp 28000 ms
+   [00:00:28.000,000] cam_pm: FPS: 31.2
+   [00:00:28.031,000] cam_pm: Got frame 8! size: 691200; timestamp 28031 ms
+   [00:00:28.031,000] cam_pm: FPS: 32.2
+   [00:00:28.063,000] cam_pm: Got frame 9! size: 691200; timestamp 28063 ms
+   [00:00:28.063,000] cam_pm: FPS: 31.2
+   [00:00:28.063,000] cam_pm: Calling video flush.
+   [00:00:30.063,000] cam_pm: Flush done.
+   [00:00:30.063,000] cam_pm: Calling video stream stop.
+   [00:00:30.063,000] cam_pm: Stream stop done.
+   [00:00:30.064,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.064,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.129,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.129,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.194,000] cam_pm: Capture completed after 10 frames, waiting for PM cycle
+   [00:00:30.194,000] cam_pm: Camera Capture cycle completed (after STANDBY)
+   [00:00:30.194,000] cam_pm: Main thread running - iteration 0 - tick: 30194
+   [00:00:30.194,000] cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:30.287,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.287,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:32.242,000] cam_pm: Main thread running - iteration 1 - tick: 32242
+   [00:00:32.287,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:32.287,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:34.266,000] cam_pm: Main thread running - iteration 2 - tick: 34266
+   [00:00:34.311,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:34.311,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:36.289,000] cam_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+   [00:00:36.289,000] cam_pm: Camera Capture is Suspended: for Deep Sleep
+   [00:00:36.321,000] dphy_dw: dphy_dw_pm_action: PM: Suspended d-phy@4903f000
+   [00:00:36.321,000] power_domain: Disabled power domain 6
+   [00:00:36.321,000] power_domain: Disabled power domain 2
+   [00:00:36.324,000] cam_pm: PM enter: SUSPEND_TO_RAM (substate 1)
+   [00:00:36.322,000] cam_pm: PM wakeup: SUSPEND_TO_RAM (substate 1)
+   [00:00:36.322,000] dphy_dw: dphy_dw_pm_action: PM: Resumed d-phy@4903f000
+   [00:00:36.322,000] ISP: PM: Resumed isp@49046000
+   [00:00:36.322,000] cam_pm: PM exit: SUSPEND_TO_RAM (substate 1)
+   [00:00:45.290,000] cam_pm: Camera: Try to Resume...
+   [00:00:45.290,000] cam_pm: Camera: resume signal sent
+   [00:00:45.290,000] cam_pm: Camera Capture is Resumed: for Deep Sleep
+   [00:00:45.290,000] cam_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:00:45.290,000] cam_pm: Camera: Woken up by PM resume
+   [00:00:45.343,000] dphy_dw: RX-DDR clock: 400000000
+   [00:00:45.343,000] dphy_dw: dphy_dw_slave_setup: hsfrequency - 9, osc_freq - 1e9
+   [00:00:45.344,000] dphy_dw: dphy_dw_slave_setup: PHY RX status: 0x00010000, STOPSTATE: 0x00010003, RX DPHY state: 0xf, DPHY ID: 0
+   [00:00:45.344,000] cam_pm: Waiting for sensor to stabilize...
+   [00:00:46.407,000] cam_pm: Capture started
+   [00:00:46.448,000] cam_pm: Got frame 0! size: 691200; timestamp 46448 ms
+   [00:00:46.479,000] cam_pm: Got frame 1! size: 691200; timestamp 46479 ms
+   [00:00:46.511,000] cam_pm: Got frame 2! size: 691200; timestamp 46511 ms
+   [00:00:46.511,000] cam_pm: FPS: 31.2
+   [00:00:46.542,000] cam_pm: Got frame 3! size: 691200; timestamp 46542 ms
+   [00:00:46.542,000] cam_pm: FPS: 32.2
+   [00:00:46.574,000] cam_pm: Got frame 4! size: 691200; timestamp 46574 ms
+   [00:00:46.574,000] cam_pm: FPS: 31.2
+   [00:00:46.605,000] cam_pm: Got frame 5! size: 691200; timestamp 46605 ms
+   [00:00:46.606,000] cam_pm: FPS: 32.2
+   [00:00:46.637,000] cam_pm: Got frame 6! size: 691200; timestamp 46637 ms
+   [00:00:46.637,000] cam_pm: FPS: 31.2
+   [00:00:46.669,000] cam_pm: Got frame 7! size: 691200; timestamp 46669 ms
+   [00:00:46.669,000] cam_pm: FPS: 31.2
+   [00:00:46.700,000] cam_pm: Got frame 8! size: 691200; timestamp 46700 ms
+   [00:00:46.700,000] cam_pm: FPS: 32.2
+   [00:00:46.732,000] cam_pm: Got frame 9! size: 691200; timestamp 46732 ms
+   [00:00:46.732,000] cam_pm: FPS: 31.2
+   [00:00:46.732,000] cam_pm: Calling video flush.
+   [00:00:48.732,000] cam_pm: Flush done.
+   [00:00:48.732,000] cam_pm: Calling video stream stop.
+   [00:00:48.732,000] cam_pm: Stream stop done.
+   [00:00:48.733,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.733,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.798,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.798,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.862,000] cam_pm: Capture completed after 10 frames, waiting for PM cycle
+   [00:00:48.863,000] cam_pm: Camera Capture cycle completed (after STOP)
+   [00:00:48.863,000] cam_pm: Main thread running - iteration 0 - tick: 48863
+   [00:00:48.863,000] cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:48.955,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.955,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:50.910,000] cam_pm: Main thread running - iteration 1 - tick: 50910
+   [00:00:50.956,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:50.956,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:52.934,000] cam_pm: Main thread running - iteration 2 - tick: 52934
+   [00:00:52.979,000] cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:52.979,000] cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:54.958,000] cam_pm: === CAM PM SEQUENCE COMPLETED ===
+   [00:00:54.958,000] cam_pm: Camera: requesting thread stop
+   [00:00:54.958,000] cam_pm: Camera: thread stopping (suspend)
+   [00:00:54.958,000] cam_pm: Camera: thread stopped
+   [00:00:54.958,000] cam_pm: Camera Capture is Stopped (PM sequence done)
+
+CAMERA PM Observation
+---------------------
+
+The sensor stops streaming, holds reset/power GPIOs low, and applies
+sleep pinctrl. ISP stops the stream, masks ``ISP_IMSC`` and ``ISP_MI_IMSC``,
+uninitializes the library, and returns queued buffers. CSI-2 disables
+its IRQ and gates pixclk/csiclk. D-PHY gates RX and PLL clocks. CPI stops
+capture and gates cam/pix clocks. SYSTOP (PD6) then SSE-700 AON (PD2) drop,
+and the CPU enters STANDBY or STOP with LPRTC wakeup.
+
+Resume is the reverse: the core wakes, domains return, then D-PHY and
+ISP come back. Sensor resume is sleep-free (pinctrl only); reset, I2C,
+MODE_SELECT, and stabilize delays run later on the capture thread via
+``set_fmt`` / ``set_stream``. After wakeup the thread re-applies the
+cached format and restarts streaming.
+
+Image conversion from RGB888 Planar to RGB888 interleaved
+----------------------------------------------------------
+
+To convert an RGB888 Planar image to an RGB888 interleaved image, a Python utility can be used.
+
 Interpretation
 ==============
 
@@ -518,6 +844,300 @@ MT9M114 Sensor
 - Video capture operates at ~15 FPS with consistent frame delivery
 - The `mt9m114` driver, `csi2_dw` driver, `dphy_dw` driver, and `alif_video` driver were successfully verified
 - Frame size of 1,875,328 bytes accommodates the 1288x728 RAW10 format
+
+
+OV5675 Sensor
+-------------
+
+- The OV5675 sensor initializes successfully and provides the supported Y10P resolutions shown in the capabilities output.
+- MIPI DPHY RX-DDR clock operates at 400 MHz.
+- Video capture operates at approximately 31 to 32 FPS in the observed console output.
+- The ``csi2_dw``, ``dphy_dw``, and ``video_app`` components were successfully verified.
+- The captured frame size is 691,200 bytes for the 480x480 PRGB output shown in the console output.
+
+PM Support
+==========
+
+The ``samples/drivers/pm/cam_pm`` sample demonstrates Zephyr power
+management states for the camera on Alif RTSS cores. The sample captures
+frames, then enters PM states and captures again after an RTC wakeup.
+
+PM states exercised (determined at runtime by capability predicates):
+
+- **S2RAM path** (TCM or SRAM0 retention): RUNTIME_IDLE → SUSPEND_TO_IDLE →
+  S2RAM STANDBY → S2RAM STOP → idle loop
+- **SOFT_OFF path** (MRAM boot, no retention): RUNTIME_IDLE → SUSPEND_TO_IDLE →
+  SOFT_OFF (system resets on wakeup)
+
+Requirements
+------------
+
+- Alif Ensemble development board
+- RTC peripheral enabled for wakeup
+- SE Services for power profile configuration
+
+Supported boards: ``alif_e8_dk/ae822fa0e5597xx0/rtss_he`` and
+``alif_e8_dk/ae822fa0e5597xx0/rtss_hp``.
+
+Building and Running the PM Sample
+----------------------------------
+
+Follow these steps to build the PM sample application using the Alif Zephyr SDK:
+
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
+
+.. note::
+   The build commands shown here are specifically for the Alif E8 DevKit.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+
+HE Core — ARX3A0 Sensor TCM boot S2RAM (E8)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/pm/cam_pm \
+     -S devkit-he-arx3a0-tcm \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
+
+HP Core — ARX3A0 Sensor MRAM boot SOFT_OFF (E8)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/pm/cam_pm \
+     -S devkit-hp-arx3a0-mram
+
+HE Core — OV5675 Sensor TCM boot S2RAM (E8)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/pm/cam_pm \
+     -S devkit-he-ov5675-tcm \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
+
+HP Core — OV5675 Sensor MRAM boot SOFT_OFF (E8)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/pm/cam_pm \
+     -S devkit-hp-ov5675-mram
+
+PM Support Verification
+-----------------------
+
+Sample Output (S2RAM path)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The output below is from an E8 HE core OV5675 TCM-boot S2RAM run.
+
+.. code-block:: console
+
+   [00:00:00.000,000] <dbg> dphy_dw: dphy_dw_init: MMIO Address expmst: 0x4903f000
+   [00:00:00.000,000] <dbg> dphy_dw: dphy_dw_init: MMIO Address dsi: 0x49032000
+   [00:00:00.000,000] <dbg> dphy_dw: dphy_dw_init: MMIO Address csi: 0x49033000
+   [00:00:00.000,000] <dbg> dphy_dw: dphy_dw_init: Config Clk: 25000000 Ref Clk: 38400000
+   [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
+   *** Booting Zephyr OS build b728a3274037 ***
+   [00:00:00.027,000] <inf> cam_pm: alif_e8_dk (S2RAM): CAM PM demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+   [00:00:00.027,000] <inf> cam_pm: CAM: PM states demo WITH Camera Capture
+   [00:00:00.027,000] <inf> cam_pm: POWER STATE SEQUENCE:
+   [00:00:00.027,000] <inf> cam_pm:   1. PM_STATE_RUNTIME_IDLE
+   [00:00:00.027,000] <inf> cam_pm:   2. PM_STATE_SUSPEND_TO_IDLE
+   [00:00:00.027,000] <inf> cam_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+   [00:00:00.027,000] <inf> cam_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+   [00:00:00.027,000] <inf> cam_pm: Enter RUNTIME_IDLE sleep for (10000000 microseconds)
+   [00:00:00.027,000] <inf> cam_pm: skip starting a new capture cycle this round
+   [00:00:00.027,000] <inf> cam_pm: - Device name: isp@49046000
+   [00:00:00.027,000] <inf> cam_pm: Selected camera: Selfie
+   [00:00:00.027,000] <inf> cam_pm: - Capabilities:
+   [00:00:00.027,000] <inf> cam_pm:   Y10P width (min, max, step)[1296; 1296; 0] height (min, max, step)[972; 972; 0]
+   [00:00:00.027,000] <inf> cam_pm:   Y10P width (min, max, step)[1920; 1920; 0] height (min, max, step)[1080; 1080; 0]
+   [00:00:00.027,000] <inf> cam_pm:   Y10P width (min, max, step)[1280; 1280; 0] height (min, max, step)[720; 720; 0]
+   [00:00:00.027,000] <inf> cam_pm:   Y10P width (min, max, step)[640; 640; 0] height (min, max, step)[480; 480; 0]
+   [00:00:00.027,000] <inf> cam_pm: Setting format: Y10P 640x480 pitch=1280 on ep=-3
+   [00:00:00.054,000] <inf> dphy_dw: RX-DDR clock: 400000000
+   [00:00:00.054,000] <dbg> dphy_dw: dphy_dw_slave_setup: hsfrequency - 9, osc_freq - 1e9
+   [00:00:00.055,000] <dbg> dphy_dw: dphy_dw_slave_setup: PHY RX status: 0x00010000, STOPSTATE: 0x00010003, RX DPHY state: 0xf, DPHY ID: 0
+   [00:00:00.055,000] <inf> cam_pm: - format: PRGB 480x480
+   [00:00:00.055,000] <inf> cam_pm: Width - 480, Pitch - 1440, Height - 480, Buff size - 691200
+   [00:00:00.055,000] <inf> cam_pm: - addr - 0x2000060, size - 691200, bytesused - 0
+   [00:00:00.086,000] <inf> cam_pm: capture buffer[0]: dump binary memory "/home/$USER/capture_0.bin" 0x02000060 0x020a8c5f -r
+   [00:00:00.086,000] <inf> cam_pm: - addr - 0x20a8c68, size - 691200, bytesused - 0
+   [00:00:00.118,000] <inf> cam_pm: capture buffer[1]: dump binary memory "/home/$USER/capture_1.bin" 0x020a8c68 0x02151867 -r
+   [00:00:07.119,000] <inf> cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:07.119,000] <inf> cam_pm: Camera thread is now suspended (polling for resume)
+   [00:00:07.119,000] <inf> cam_pm: Camera Capture is Suspended
+   [00:00:17.120,000] <inf> cam_pm: Exited from RUNTIME_IDLE sleep
+   [00:00:17.120,000] <inf> cam_pm: Camera: Try to Resume...
+   [00:00:17.120,000] <inf> cam_pm: Camera: resume signal sent
+   [00:00:17.120,000] <inf> cam_pm: Camera Capture is starting...
+   [00:00:17.120,000] <inf> cam_pm: Camera: Woken up by PM resume
+   [00:00:17.120,000] <inf> cam_pm: Waiting for sensor to stabilize...
+   [00:00:18.184,000] <inf> cam_pm: Capture started
+   [00:00:18.224,000] <inf> cam_pm: Got frame 0! size: 691200; timestamp 18224 ms
+   [00:00:18.255,000] <inf> cam_pm: Got frame 1! size: 691200; timestamp 18255 ms
+   [00:00:18.287,000] <inf> cam_pm: Got frame 2! size: 691200; timestamp 18287 ms
+   [00:00:18.287,000] <inf> cam_pm: FPS: 31.2
+   [00:00:18.318,000] <inf> cam_pm: Got frame 3! size: 691200; timestamp 18318 ms
+   [00:00:18.318,000] <inf> cam_pm: FPS: 32.2
+   [00:00:18.350,000] <inf> cam_pm: Got frame 4! size: 691200; timestamp 18350 ms
+   [00:00:18.350,000] <inf> cam_pm: FPS: 31.2
+   [00:00:18.382,000] <inf> cam_pm: Got frame 5! size: 691200; timestamp 18381 ms
+   [00:00:18.382,000] <inf> cam_pm: FPS: 32.2
+   [00:00:18.413,000] <inf> cam_pm: Got frame 6! size: 691200; timestamp 18413 ms
+   [00:00:18.413,000] <inf> cam_pm: FPS: 31.2
+   [00:00:18.445,000] <inf> cam_pm: Got frame 7! size: 691200; timestamp 18445 ms
+   [00:00:18.445,000] <inf> cam_pm: FPS: 31.2
+   [00:00:18.476,000] <inf> cam_pm: Got frame 8! size: 691200; timestamp 18476 ms
+   [00:00:18.476,000] <inf> cam_pm: FPS: 32.2
+   [00:00:18.508,000] <inf> cam_pm: Got frame 9! size: 691200; timestamp 18508 ms
+   [00:00:18.508,000] <inf> cam_pm: FPS: 31.2
+   [00:00:18.508,000] <inf> cam_pm: Calling video flush.
+   [00:00:20.508,000] <inf> cam_pm: Flush done.
+   [00:00:20.508,000] <inf> cam_pm: Calling video stream stop.
+   [00:00:20.508,000] <inf> cam_pm: Stream stop done.
+   [00:00:20.609,000] <inf> cam_pm: Capture completed after 10 frames, waiting for PM cycle
+   [00:00:20.609,000] <inf> cam_pm: Camera Capture cycle completed
+   [00:00:20.609,000] <inf> cam_pm: Enter PM_STATE_SUSPEND_TO_IDLE for (10000 microseconds)
+   [00:00:20.609,000] <inf> cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:20.610,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:20.610,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:20.620,000] <inf> cam_pm: Exited from PM_STATE_SUSPEND_TO_IDLE
+   [00:00:20.620,000] <inf> cam_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+   [00:00:20.620,000] <inf> cam_pm: Camera Capture is Suspended: for Deep Sleep
+   [00:00:20.684,000] <dbg> dphy_dw: dphy_dw_pm_action: PM: Suspended d-phy@4903f000
+   [00:00:20.685,000] <inf> power_domain: Disabled power domain 6
+   [00:00:20.685,000] <inf> power_domain: Disabled power domain 2
+   [00:00:20.687,000] <inf> cam_pm: PM enter: SUSPEND_TO_RAM (substate 0)
+   [00:00:20.686,000] <inf> cam_pm: PM wakeup: SUSPEND_TO_RAM (substate 0)
+   [00:00:20.686,000] <dbg> dphy_dw: dphy_dw_pm_action: PM: Resumed d-phy@4903f000
+   [00:00:20.686,000] <inf> ISP: PM: Resumed isp@49046000
+   [00:00:20.686,000] <inf> cam_pm: PM exit: SUSPEND_TO_RAM (substate 0)
+   [00:00:26.621,000] <inf> cam_pm: Camera: Try to Resume...
+   [00:00:26.621,000] <inf> cam_pm: Camera: resume signal sent
+   [00:00:26.621,000] <inf> cam_pm: Camera Capture is Resumed: for Deep Sleep
+   [00:00:26.621,000] <inf> cam_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:26.621,000] <inf> cam_pm: Camera: Woken up by PM resume
+   [00:00:26.674,000] <inf> dphy_dw: RX-DDR clock: 400000000
+   [00:00:26.674,000] <dbg> dphy_dw: dphy_dw_slave_setup: hsfrequency - 9, osc_freq - 1e9
+   [00:00:26.675,000] <dbg> dphy_dw: dphy_dw_slave_setup: PHY RX status: 0x00010000, STOPSTATE: 0x00010003, RX DPHY state: 0xf, DPHY ID: 0
+   [00:00:26.675,000] <inf> cam_pm: Waiting for sensor to stabilize...
+   [00:00:27.738,000] <inf> cam_pm: Capture started
+   [00:00:27.779,000] <inf> cam_pm: Got frame 0! size: 691200; timestamp 27779 ms
+   [00:00:27.810,000] <inf> cam_pm: Got frame 1! size: 691200; timestamp 27810 ms
+   [00:00:27.842,000] <inf> cam_pm: Got frame 2! size: 691200; timestamp 27842 ms
+   [00:00:27.842,000] <inf> cam_pm: FPS: 31.2
+   [00:00:27.873,000] <inf> cam_pm: Got frame 3! size: 691200; timestamp 27873 ms
+   [00:00:27.873,000] <inf> cam_pm: FPS: 32.2
+   [00:00:27.905,000] <inf> cam_pm: Got frame 4! size: 691200; timestamp 27905 ms
+   [00:00:27.905,000] <inf> cam_pm: FPS: 31.2
+   [00:00:27.936,000] <inf> cam_pm: Got frame 5! size: 691200; timestamp 27936 ms
+   [00:00:27.937,000] <inf> cam_pm: FPS: 32.2
+   [00:00:27.968,000] <inf> cam_pm: Got frame 6! size: 691200; timestamp 27968 ms
+   [00:00:27.968,000] <inf> cam_pm: FPS: 31.2
+   [00:00:28.000,000] <inf> cam_pm: Got frame 7! size: 691200; timestamp 28000 ms
+   [00:00:28.000,000] <inf> cam_pm: FPS: 31.2
+   [00:00:28.031,000] <inf> cam_pm: Got frame 8! size: 691200; timestamp 28031 ms
+   [00:00:28.031,000] <inf> cam_pm: FPS: 32.2
+   [00:00:28.063,000] <inf> cam_pm: Got frame 9! size: 691200; timestamp 28063 ms
+   [00:00:28.063,000] <inf> cam_pm: FPS: 31.2
+   [00:00:28.063,000] <inf> cam_pm: Calling video flush.
+   [00:00:30.063,000] <inf> cam_pm: Flush done.
+   [00:00:30.063,000] <inf> cam_pm: Calling video stream stop.
+   [00:00:30.063,000] <inf> cam_pm: Stream stop done.
+   [00:00:30.064,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.064,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.129,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.129,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.194,000] <inf> cam_pm: Capture completed after 10 frames, waiting for PM cycle
+   [00:00:30.194,000] <inf> cam_pm: Camera Capture cycle completed (after STANDBY)
+   [00:00:30.194,000] <inf> cam_pm: Main thread running - iteration 0 - tick: 30194
+   [00:00:30.194,000] <inf> cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:30.287,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:30.287,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:32.242,000] <inf> cam_pm: Main thread running - iteration 1 - tick: 32242
+   [00:00:32.287,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:32.287,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:34.266,000] <inf> cam_pm: Main thread running - iteration 2 - tick: 34266
+   [00:00:34.311,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:34.311,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:36.289,000] <inf> cam_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+   [00:00:36.289,000] <inf> cam_pm: Camera Capture is Suspended: for Deep Sleep
+   [00:00:36.321,000] <dbg> dphy_dw: dphy_dw_pm_action: PM: Suspended d-phy@4903f000
+   [00:00:36.321,000] <inf> power_domain: Disabled power domain 6
+   [00:00:36.321,000] <inf> power_domain: Disabled power domain 2
+   [00:00:36.324,000] <inf> cam_pm: PM enter: SUSPEND_TO_RAM (substate 1)
+   [00:00:36.322,000] <inf> cam_pm: PM wakeup: SUSPEND_TO_RAM (substate 1)
+   [00:00:36.322,000] <dbg> dphy_dw: dphy_dw_pm_action: PM: Resumed d-phy@4903f000
+   [00:00:36.322,000] <inf> ISP: PM: Resumed isp@49046000
+   [00:00:36.322,000] <inf> cam_pm: PM exit: SUSPEND_TO_RAM (substate 1)
+   [00:00:45.290,000] <inf> cam_pm: Camera: Try to Resume...
+   [00:00:45.290,000] <inf> cam_pm: Camera: resume signal sent
+   [00:00:45.290,000] <inf> cam_pm: Camera Capture is Resumed: for Deep Sleep
+   [00:00:45.290,000] <inf> cam_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:00:45.290,000] <inf> cam_pm: Camera: Woken up by PM resume
+   [00:00:45.343,000] <inf> dphy_dw: RX-DDR clock: 400000000
+   [00:00:45.343,000] <dbg> dphy_dw: dphy_dw_slave_setup: hsfrequency - 9, osc_freq - 1e9
+   [00:00:45.344,000] <dbg> dphy_dw: dphy_dw_slave_setup: PHY RX status: 0x00010000, STOPSTATE: 0x00010003, RX DPHY state: 0xf, DPHY ID: 0
+   [00:00:45.344,000] <inf> cam_pm: Waiting for sensor to stabilize...
+   [00:00:46.407,000] <inf> cam_pm: Capture started
+   [00:00:46.448,000] <inf> cam_pm: Got frame 0! size: 691200; timestamp 46448 ms
+   [00:00:46.479,000] <inf> cam_pm: Got frame 1! size: 691200; timestamp 46479 ms
+   [00:00:46.511,000] <inf> cam_pm: Got frame 2! size: 691200; timestamp 46511 ms
+   [00:00:46.511,000] <inf> cam_pm: FPS: 31.2
+   [00:00:46.542,000] <inf> cam_pm: Got frame 3! size: 691200; timestamp 46542 ms
+   [00:00:46.542,000] <inf> cam_pm: FPS: 32.2
+   [00:00:46.574,000] <inf> cam_pm: Got frame 4! size: 691200; timestamp 46574 ms
+   [00:00:46.574,000] <inf> cam_pm: FPS: 31.2
+   [00:00:46.605,000] <inf> cam_pm: Got frame 5! size: 691200; timestamp 46605 ms
+   [00:00:46.606,000] <inf> cam_pm: FPS: 32.2
+   [00:00:46.637,000] <inf> cam_pm: Got frame 6! size: 691200; timestamp 46637 ms
+   [00:00:46.637,000] <inf> cam_pm: FPS: 31.2
+   [00:00:46.669,000] <inf> cam_pm: Got frame 7! size: 691200; timestamp 46669 ms
+   [00:00:46.669,000] <inf> cam_pm: FPS: 31.2
+   [00:00:46.700,000] <inf> cam_pm: Got frame 8! size: 691200; timestamp 46700 ms
+   [00:00:46.700,000] <inf> cam_pm: FPS: 32.2
+   [00:00:46.732,000] <inf> cam_pm: Got frame 9! size: 691200; timestamp 46732 ms
+   [00:00:46.732,000] <inf> cam_pm: FPS: 31.2
+   [00:00:46.732,000] <inf> cam_pm: Calling video flush.
+   [00:00:48.732,000] <inf> cam_pm: Flush done.
+   [00:00:48.732,000] <inf> cam_pm: Calling video stream stop.
+   [00:00:48.732,000] <inf> cam_pm: Stream stop done.
+   [00:00:48.733,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.733,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.798,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.798,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.862,000] <inf> cam_pm: Capture completed after 10 frames, waiting for PM cycle
+   [00:00:48.863,000] <inf> cam_pm: Camera Capture cycle completed (after STOP)
+   [00:00:48.863,000] <inf> cam_pm: Main thread running - iteration 0 - tick: 48863
+   [00:00:48.863,000] <inf> cam_pm: Camera: putting thread into wait for PM resume
+   [00:00:48.955,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:48.955,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:50.910,000] <inf> cam_pm: Main thread running - iteration 1 - tick: 50910
+   [00:00:50.956,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:50.956,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:52.934,000] <inf> cam_pm: Main thread running - iteration 2 - tick: 52934
+   [00:00:52.979,000] <inf> cam_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:52.979,000] <inf> cam_pm: PM exit: SUSPEND_TO_IDLE (substate 0)
+   [00:00:54.958,000] <inf> cam_pm: === CAM PM SEQUENCE COMPLETED ===
+   [00:00:54.958,000] <inf> cam_pm: Camera: requesting thread stop
+   [00:00:54.958,000] <inf> cam_pm: Camera: thread stopping (suspend)
+   [00:00:54.958,000] <inf> cam_pm: Camera: thread stopped
+   [00:00:54.958,000] <inf> cam_pm: Camera Capture is Stopped (PM sequence done)
 
 References and Dependencies
 ===========================

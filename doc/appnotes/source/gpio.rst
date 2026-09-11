@@ -63,7 +63,7 @@ Build a GPIO Application with Zephyr
 
 Follow these steps to build the GPIO application using the Alif Zephyr SDK:
 
-For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
    The build commands shown here are for the Alif E8 DevKit.
@@ -102,6 +102,17 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
      samples/basic/button/ \
      -S alif-button
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
+
+Executing Binary on the DevKit
+===============================
+
+To execute the binary on the DevKit, follow the command:
+
+.. code-block:: console
+
+   west flash
 
 Console Output
 ==============
