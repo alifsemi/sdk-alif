@@ -15,8 +15,9 @@ MIPI camera sensors:
 
 - ARX3A0 Camera Sensor
 - MT9M114 Camera Sensor
+- OV5675 Camera Sensor
 
-Both sensors transmit image data through the MIPI CSI-2 serial interface
+All sensors transmit image data through the MIPI CSI-2 serial interface
 while sensor configuration is performed using the I2C interface.
 
 Image Data Path::
@@ -79,7 +80,7 @@ The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and ener
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
@@ -90,8 +91,8 @@ Camera Sensor Support
 
    The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
+   - Alif E7 DevKit
+   - Alif E8 DevKit
 
 Features
 ----------
@@ -156,16 +157,16 @@ Selected ARX3A0 Camera Sensor Configurations
 - **Resolution**: 560x560
 - **Output Format**: RAW Bayer10
 
-Build an ARX3A0 Camera Application with Zephyr
+Build an ARX3A0 Camera Sensor Application with Zephyr
 ======================================================
 
-Follow these steps to build the ARX3A0 camera application using the Alif Zephyr SDK:
+Follow these steps to build the ARX3A0 Camera Sensor application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -180,7 +181,7 @@ Follow these steps to build the ARX3A0 camera application using the Alif Zephyr 
 Executing Binary on the DevKit
 --------------------------------
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -245,7 +246,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 
@@ -256,8 +257,8 @@ Camera Sensor Support
 
    The MT9M114 camera sensor interfaces via MIPI-CSI (serial interface) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
+   - Alif E7 DevKit
+   - Alif E8 DevKit
 
 Hardware Connections and Setup
 ------------------------------
@@ -359,11 +360,11 @@ Build an MT9M114 Camera Sensor Application with Zephyr
 
 Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are for the Alif E7 and E8 DevKits.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for E7 DevKit (Standard CPI to AXI, HP core):
 
@@ -414,7 +415,7 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
 Executing Binary on the DevKit
 --------------------------------
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: bash
 
@@ -498,6 +499,165 @@ To convert a RAW10 (Y10) image to RGB format for viewing, run the following comm
    ./raw2rgbpnm -s 1288x728 -f Y10 input_image.bin output_image.pnm
 
 
+OV5675 Camera Sensor
+====================
+
+Overview
+--------
+
+The OV5675 is a high-performance, 1/5-inch, 5-megapixel CMOS RAW RGB
+PureCel image sensor that delivers 2592x1944 at 30 fps.
+
+The sensor provides full-frame, sub-sampled, and windowed 10-bit MIPI images through
+SCCB. It supports a 5 MP array at up to 30 fps, 10-bit output, user control of image
+quality, format, and output, and programmable processing such as defective pixel
+canceling.
+
+Features
+--------
+
+- Supported resolution: 1296x972, 1920x1080, 1280x720, 640x480
+- Frame rate: 30 fps
+- Compact 1/5th inch optical format
+- 2-lane MIPI interface
+
+Hardware Requirements and Setup
+-------------------------------
+
+- Alif DevKit
+- Debugger: JLink
+- OV5675 Camera Sensor
+
+Hardware Connections and Setup
+------------------------------
+
+Camera GPIO Configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- **P0_3**: Configured as ``CAM_XVCLK_A``.
+
+I2C GPIO Configuration
+^^^^^^^^^^^^^^^^^^^^^^
+
+- **P7_2**: Configured as ``I2C1_SDA_C``.
+- **P7_3**: Configured as ``I2C1_SCL_C``.
+
+Additional Features
+-------------------
+
+- Superior low-light performance
+- Ultra-low power
+- Maximum resolution: 2592 x 1944 pixels (RAW)
+- Output: RAW Bayer (10-bit)
+- MIPI CSI-2: 2 lanes, up to 800 Mbps
+- I2C control interface
+
+Required Config Features
+--------------------------
+
+- ``CONFIG_VIDEO=y``
+- ``CONFIG_VIDEO_MIPI_CSI2_DW=y``
+- ``CONFIG_LOG=y``
+- ``CONFIG_PRINTK=y``
+- ``CONFIG_STDOUT_CONSOLE=y``
+- ``CONFIG_I2C_TARGET=y``
+- ``CONFIG_I2C=y``
+- ``CONFIG_I2C_DW_CLOCK_SPEED=100``
+
+Software Requirements
+---------------------
+
+- **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
+- **West Tool**: For building Zephyr applications (installed via ``pip install west``)
+- **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
+- **SE Tools (optional)**: For loading binaries (refer to Alif documentation)
+- **Alif MIPI CSI2/Video/DPHY drivers**
+- **Zephyr I2C DesignWare**
+- **Alif OV5675 Camera Sensor Driver**
+
+Build an OV5675 Camera Sensor Application with Zephyr
+=====================================================
+
+Follow these steps to build the OV5675 Camera Sensor Application using the Alif Zephyr SDK:
+
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
+
+.. note::
+
+   The build command shown here is for the Alif E8 DevKit.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+
+2. Build command for E8 DevKit (HP core):
+
+.. code-block:: console
+
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/video/ -- \
+     -DDTC_OVERLAY_FILE="boards/serial_camera_ov5675_selfie.overlay" \
+     -DOVERLAY_CONFIG="boards/isp.conf"
+
+Executing Binary on the DevKit
+--------------------------------
+
+To execute binaries on the DevKit, follow the command:
+
+.. code-block:: console
+
+   west flash
+
+Console Output
+---------------
+
+The following output is observed in the console for the OV5675 sensor:
+
+.. code-block:: text
+
+   [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
+   *** Booting Zephyr OS build 0f64950f75c1 ***
+   [00:00:00.023,000] <inf> video_app: - Device name: isp@49046000
+   [00:00:00.023,000] <inf> video_app: Selected camera: Selfie
+   [00:00:00.023,000] <inf> video_app: - Capabilities:
+   [00:00:00.023,000] <inf> video_app:   Y10P width (min, max, step)[1296; 1296; 0] height (min, max, step)[972; 972; 0]
+   [00:00:00.023,000] <inf> video_app:   Y10P width (min, max, step)[1920; 1920; 0] height (min, max, step)[1080; 1080; 0]
+   [00:00:00.023,000] <inf> video_app:   Y10P width (min, max, step)[1280; 1280; 0] height (min, max, step)[720; 720; 0]
+   [00:00:00.023,000] <inf> video_app:   Y10P width (min, max, step)[640; 640; 0] height (min, max, step)[480; 480; 0]
+   [00:00:00.043,000] <inf> dphy_dw: RX-DDR clock: 400000000
+   [00:00:00.044,000] <inf> video_app: - format: PRGB 480x480
+   [00:00:00.044,000] <inf> video_app: Width - 480, Pitch - 1440, Height - 480, Buff size - 691200
+   [00:00:00.044,000] <inf> video_app: - addr - 0x2000060, size - 691200, bytesused - 0, resolution - 480x480
+   [00:00:00.054,000] <inf> video_app: capture buffer[0]: dump binary memory "/home/$USER/capture_0.bin" 0x02000060 0x020a8c5f -r
+   [00:00:00.054,000] <inf> video_app: - addr - 0x20a8c68, size - 691200, bytesused - 0, resolution - 480x480
+   [00:00:00.065,000] <inf> video_app: capture buffer[1]: dump binary memory "/home/$USER/capture_1.bin" 0x020a8c68 0x02151867 -r
+   [00:00:07.065,000] <inf> video_app: Capture started
+   [00:00:07.105,000] <inf> video_app: Got frame 0! size: 691200; timestamp 7105 ms
+   [00:00:07.105,000] <inf> video_app: FPS: 0.0
+   [00:00:07.137,000] <inf> video_app: Got frame 1! size: 691200; timestamp 7137 ms
+   [00:00:07.137,000] <inf> video_app: FPS: 31.250000
+   [00:00:07.169,000] <inf> video_app: Got frame 2! size: 691200; timestamp 7169 ms
+   [00:00:07.169,000] <inf> video_app: FPS: 31.250000
+   [00:00:07.200,000] <inf> video_app: Got frame 3! size: 691200; timestamp 7200 ms
+   [00:00:07.200,000] <inf> video_app: FPS: 32.258065
+   [00:00:07.232,000] <inf> video_app: Got frame 4! size: 691200; timestamp 7232 ms
+   [00:00:07.232,000] <inf> video_app: FPS: 31.250000
+   [00:00:07.263,000] <inf> video_app: Got frame 5! size: 691200; timestamp 7263 ms
+   [00:00:07.263,000] <inf> video_app: FPS: 32.258065
+   [00:00:07.295,000] <inf> video_app: Got frame 6! size: 691200; timestamp 7295 ms
+   [00:00:07.295,000] <inf> video_app: FPS: 31.250000
+   [00:00:07.327,000] <inf> video_app: Got frame 7! size: 691200; timestamp 7327 ms
+   [00:00:07.327,000] <inf> video_app: FPS: 31.250000
+   [00:00:07.358,000] <inf> video_app: Got frame 8! size: 691200; timestamp 7358 ms
+   [00:00:07.358,000] <inf> video_app: FPS: 32.258065
+   [00:00:07.390,000] <inf> video_app: Got frame 9! size: 691200; timestamp 7390 ms
+   [00:00:07.390,000] <inf> video_app: FPS: 31.250000
+   [00:00:07.390,000] <inf> video_app: Calling video flush.
+   [00:00:07.390,000] <inf> video_app: Calling video stream stop.
+
+Image conversion from RGB888 Planar to RGB888 interleaved
+----------------------------------------------------------
+
+To convert a RGB888 Planar image to RGB888 interleaved image a python utility can be used.
+
+
 Interpretation
 ==============
 
@@ -518,6 +678,16 @@ MT9M114 Sensor
 - Video capture operates at ~15 FPS with consistent frame delivery
 - The `mt9m114` driver, `csi2_dw` driver, `dphy_dw` driver, and `alif_video` driver were successfully verified
 - Frame size of 1,875,328 bytes accommodates the 1288x728 RAW10 format
+
+
+OV5675 Sensor
+-------------
+
+- The OV5675 sensor initializes successfully and provides the supported Y10P resolutions shown in the capabilities output.
+- MIPI DPHY RX-DDR clock operates at 400 MHz.
+- Video capture operates at approximately 31 to 32 FPS in the observed console output.
+- The ``csi2_dw``, ``dphy_dw``, and ``video_app`` components were successfully verified.
+- The captured frame size is 691,200 bytes for the 480x480 PRGB output shown in the console output.
 
 References and Dependencies
 ===========================

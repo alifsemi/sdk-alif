@@ -137,16 +137,16 @@ To successfully run the GT911 touchscreen application, you'll need the following
 
 .. include:: note.rst
 
-Build an Touch Sensing Application with Zephyr
-====================================================
+Build a Touch Sensing Application with Zephyr
+==============================================
 
-Follow these steps to build the GT911 touchscreen application using the Alif Zephyr SDK:
+Follow these steps to build the Touchscreen application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -167,6 +167,7 @@ Follow these steps to build the GT911 touchscreen application using the Alif Zep
      samples/subsys/input/input_dump \
      -S alif-ak-dk
 
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================

@@ -7,7 +7,7 @@ LPRTC
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the Low Power Real-Time Counter (LPRTC) driver IP provided by Synopsys and integrated into Alif Semiconductor Ensemble™ devices. The demo application uses the LPRTC module to generate interrupts at user-specified intervals, demonstrated through an alarm application.
+This document explains how to create, compile, and run a demo application for the Low Power Real-Time Counter (LPRTC) driver IP provided by Synopsys and integrated into Alif Semiconductor devices. The demo application uses the LPRTC module to generate interrupts at user-specified intervals, demonstrated through an alarm application.
 
 Furthermore, the LPRTC is integrated into the Alarm application as a demo application, where it functions as expected. The same demo app is also utilized by the RTC (Real-Time Clock) and LPTIMER. To facilitate configuration, separate overlay and config files for the RTC, UTIMER, and LPTIMER reside in the board’s directory of the Alarm application. Users can select these files using the west build command.
 
@@ -44,13 +44,13 @@ Build an LPRTC Application with Zephyr
 
 The LPRTC is integrated into the alarm application as a demonstration, shared with the LPTIMER and Utimer modules. Separate overlay and config files for LPRTC, LPTIMER, and Utimer are located in the board's directory within the alarm application. Users can select these files using the west build command.
 
-Follow these steps to build the LPRTC alarm application using the Alif Zephyr SDK:
+Follow these steps to build the LPRTC application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -62,7 +62,6 @@ Follow these steps to build the LPRTC alarm application using the Alif Zephyr SD
      -- \
      -DOVERLAY_CONFIG=boards/alif_rtc.conf \
      -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
-
 
 3. Build command for application on the M55 HE core:
 
@@ -76,12 +75,12 @@ Follow these steps to build the LPRTC alarm application using the Alif Zephyr SD
      -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
 
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -90,7 +89,7 @@ To execute binaries on the DevKit follow the command
 Loading Binaries with SE Tools
 ==============================
 
-For detailed instructions on loading executables using SE Tools, refer to the *Getting Started with ZAS for Ensemble* documentation.
+For detailed instructions on loading executables using SE Tools, refer to the *Getting Started with ZAS for Alif* documentation.
 
 Sample Output
 ===============

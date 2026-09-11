@@ -56,11 +56,11 @@ Build a CRC Application with Zephyr
 
 Follow these steps to build the CRC application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -79,11 +79,10 @@ Follow these steps to build the CRC application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/crc/
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Verifying CRC Algorithm in a Web CRC Calculator
-===============================================
+=================================================
 
 You can verify that the CRC output in a web CRC calculator matches the devKit output. Refer to a web `CRC Calculator`_ for validation.
 
@@ -227,13 +226,13 @@ CRC 32 Sample Code
 
         uint32_t crc_output;
 
-        params.data_in     = (uint8_t *)arr;
-        params.len         = ARRAY_SIZE(arr);
+        params.data_in     = (uint8_t *)input_value;
+        params.len         = ARRAY_SIZE(input_value);
         params.bit_swap    = TRUE;
         params.byte_swap   = TRUE;
         params.reflect     = TRUE;
         params.invert      = TRUE;
-        params.custum_poly = FALSE;
+        params.custom_poly = FALSE;
         params.data_out    = &crc_output;
     }
 
@@ -344,9 +343,111 @@ Flatboard Custom CRC 32 Output
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
    west flash
 
+
+CRC Power Management Demo
+=========================
+
+Overview
+--------
+
+This sample demonstrates Zephyr power management states combined with the
+Alif hardware CRC engine on RTSS cores. The application computes CRC over a
+known buffer, cycles through PM states, then repeats the CRC after each wake
+to verify that the CRC peripheral resumes correctly.
+
+PM states exercised (determined at runtime by capability predicates):
+
+- **S2RAM path** (HE TCM retention): Supports ``RUNTIME_IDLE``,
+  ``SUSPEND_TO_IDLE``, S2RAM STANDBY, and S2RAM STOP. Execution resumes
+  after each state.
+
+- **SOFT_OFF path** (MRAM boot, no retention): Supports ``RUNTIME_IDLE``,
+  ``SUSPEND_TO_IDLE``, and ``SOFT_OFF``. The system resets and restarts
+  ``main()`` after ``SOFT_OFF``.
+
+Building and Running
+--------------------
+
+Build the CRC Power Management sample for the supported HE and HP core
+configurations using the following commands.
+
+HE Core — TCM boot S2RAM (E7)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/alif_crc \
+     --snippets crc-pm-s2ram-tcm \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
+
+HE Core — MRAM boot SOFT_OFF (E7)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/alif_crc \
+     --snippets crc-pm-mram
+
+HP Core — MRAM boot SOFT_OFF (E7)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/pm/alif_crc \
+     --snippets crc-pm-mram
+
+Sample Output (S2RAM path)
+---------------------------
+
+.. code-block:: text
+
+   *** Booting Zephyr OS build ***
+   [00:00:00.000,000] <inf> crc_pm: alif_e8_dk (S2RAM): CRC PM demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+   [00:00:00.000,000] <inf> crc_pm: POWER STATE SEQUENCE:
+   [00:00:00.000,000] <inf> crc_pm:   1. PM_STATE_RUNTIME_IDLE
+   [00:00:00.000,000] <inf> crc_pm:   2. PM_STATE_SUSPEND_TO_IDLE
+   [00:00:00.000,000] <inf> crc_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+   [00:00:00.000,000] <inf> crc_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+   [00:00:00.000,000] <inf> crc_pm: === before RUNTIME_IDLE: CRC Compute ===
+   [00:00:00.000,000] <inf> crc_pm: CRC output: 0x000000E9
+   [00:00:00.000,000] <inf> crc_pm: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+   [00:00:18.001,000] <inf> crc_pm: Exited from RUNTIME_IDLE sleep
+   [00:00:18.001,000] <inf> crc_pm: Enter PM_STATE_SUSPEND_TO_IDLE for (10000 microseconds)
+   [00:00:18.002,000] <inf> crc_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:18.002,000] <inf> crc_pm: PM wakeup: SUSPEND_TO_IDLE (substate 0)
+   [00:00:18.002,000] <inf> crc_pm: PM exit:  SUSPEND_TO_IDLE (substate 0)
+   [00:00:18.012,000] <inf> crc_pm: Exited from PM_STATE_SUSPEND_TO_IDLE
+   [00:00:18.012,000] <inf> crc_pm: === after SUSPEND_TO_IDLE: CRC Compute ===
+   [00:00:18.012,000] <inf> crc_pm: CRC output: 0x000000E9
+   [00:00:18.012,000] <inf> crc_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+   [00:00:18.136,000] <inf> crc_pm: PM enter: SUSPEND_TO_RAM (substate 0)
+   [00:00:18.136,000] <inf> crc_pm: PM wakeup: SUSPEND_TO_RAM (substate 0)
+   [00:00:18.136,000] <inf> crc_pm: PM exit:  SUSPEND_TO_RAM (substate 0)
+   [00:00:24.067,000] <inf> crc_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:24.067,000] <inf> crc_pm: === after S2RAM STANDBY: CRC Compute ===
+   [00:00:24.067,000] <inf> crc_pm: CRC output: 0x000000E9
+   [00:00:29.068,000] <inf> crc_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+   [00:00:29.069,000] <inf> crc_pm: PM enter: SUSPEND_TO_IDLE (substate 0)
+   [00:00:29.069,000] <inf> crc_pm: PM wakeup: SUSPEND_TO_IDLE (substate 0)
+   [00:00:29.069,000] <inf> crc_pm: PM exit:  SUSPEND_TO_IDLE (substate 0)
+   [00:00:29.137,000] <inf> crc_pm: PM enter: SUSPEND_TO_RAM (substate 1)
+   [00:00:29.137,000] <inf> crc_pm: PM wakeup: SUSPEND_TO_RAM (substate 1)
+   [00:00:29.137,000] <inf> crc_pm: PM exit:  SUSPEND_TO_RAM (substate 1)
+   [00:00:38.086,000] <inf> crc_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:00:38.086,000] <inf> crc_pm: === after S2RAM STOP: CRC Compute ===
+   [00:00:38.086,000] <inf> crc_pm: CRC output: 0x000000E9
+   [00:00:43.087,000] <inf> crc_pm: === CRC PM SEQUENCE COMPLETED ===

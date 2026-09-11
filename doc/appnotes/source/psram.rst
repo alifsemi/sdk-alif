@@ -7,11 +7,11 @@ PSRAM
 Introduction
 =============
 
-The HexSPI0/OSPI0 SS0 instance is connected to the APS512XXN device. It operates on both x8 and x16 transfer mode. The ``x16-data-transfer-mode`` property must be available in the ``aps512xxn`` node to use x16 transfer mode. Currently, AP PSRAM support is only added for E8 Appkit board (``alif_e8_ak``).
+The HexSPI0/OSPI0 SS0 instance is connected to the APS512XXN device. It operates on both x8 and x16 transfer mode. The ``x16-data-transfer-mode`` property must be available in the ``aps512xxn`` node to use x16 transfer mode. Currently, AP PSRAM support is available only on the Alif E8 AppKit (``alif_e8_ak``).
 
 .. note::
 
-   DW OSPI controllers on ALIF boards support operation in either OctalSPI or HexSPI mode depending on the configuration. Hence, OSPI nodes can also be referred to as HexSPI (HSPI) nodes.
+   DW OSPI controllers on Alif boards support operation in either OctalSPI or HexSPI mode depending on the configuration. Hence, OSPI nodes can also be referred to as HexSPI (HSPI) nodes.
 
 Driver Description
 ==================
@@ -29,12 +29,12 @@ For debugging and console output:
 
 .. include:: note.rst
 
-Build an PSRAM Application with Zephyr
+Build a PSRAM Application with Zephyr
 ===========================================
 
 Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
    The PSRAM feature is supported **only** on the **Alif E8 AppKit**.
@@ -48,7 +48,6 @@ Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
    -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
    ../alif/samples/drivers/spi_psram/
 
-
 3. Build command for application on the M55 HP core:
 
 .. code-block:: console
@@ -57,11 +56,10 @@ Follow these steps to build the PSRAM Application using the Alif Zephyr SDK:
    -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
    ../alif/samples/drivers/spi_psram/
 
-
 Executing Binary on the AppKit
 ===============================
 
-To execute binaries on the AppKit follow the command
+To execute binaries on the AppKit, follow the command:
 
 .. code-block:: console
 

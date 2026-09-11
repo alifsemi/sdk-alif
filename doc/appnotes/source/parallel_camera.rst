@@ -48,7 +48,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 - Cypress Interconnect Board (CYUSB3ACC-004A)
@@ -60,10 +60,10 @@ Camera Sensor Support
 
    The MT9M114 camera sensor uses the Parallel Camera Interface (CPI) and is supported on the following DevKits:
 
-   - DevKit E7
-   - DevKit E8
-   - E1C
-   - B1 A5/A6
+   - Alif E7 DevKit
+   - Alif E8 DevKit
+   - Alif E1C DevKit
+   - Alif B1 DevKit
 
 Features
 ----------
@@ -227,7 +227,6 @@ Required Config Features
 Software Requirements
 -----------------------
 
-
 - **Alif SDK**: Clone from `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 - **West Tool**: For building Zephyr applications (installed via ``pip install west``)
 - **Arm GCC Compiler**: For compiling the application (part of the Zephyr SDK)
@@ -266,16 +265,15 @@ Build an MT9M114 Camera Sensor Application with Zephyr
 
 Follow these steps to build the MT9M114 Camera Sensor Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for the application with LPCAM interface (M55 HE core):
 
 .. code-block:: console
-
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
@@ -287,7 +285,6 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
 
 .. code-block:: console
 
-
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/video/ \
@@ -298,7 +295,6 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
 
 .. code-block:: console
 
-
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/drivers/video/ \
@@ -308,7 +304,7 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
 Executing Binary on the DevKit
 --------------------------------
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: bash
 
@@ -398,7 +394,6 @@ The reference image captured using the Camera Controller and MT9M114 Camera Sens
 
    Reference Image Captured using Camera Controller and MT9M114 Camera Sensor
 
-
 OV5640 Camera Sensor
 =======================
 
@@ -486,12 +481,11 @@ To configure the board:
 
    External XVCLK input support has not been tested and should not be used in the current configuration.
 
-
 GPIO Configuration
 -------------------
 
 The following GPIO pins are configured for the LPCAM interface on the
-E1C Startkit board.
+Alif E1C Starter Kit.
 
 LPCAM Interface
 ----------------
@@ -552,7 +546,6 @@ LPCAM application:
   - Zephyr I2C DesignWare Driver
   - Standard Zephyr OV5640 Camera Sensor Driver
 
-
 Selected OV5640 Camera Sensor Configurations
 -----------------------------------------------
 
@@ -574,10 +567,10 @@ Build an OV5640 Camera Sensor Application with Zephyr
 
 Follow these steps to build the OV5640 Camera Sensor Application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
-   The build commands shown here for the E1C Startkit board.
+   The build command shown here is for the Alif E1C Starter Kit.
 
 2. Build command for the application on the M55 HE core:
 
@@ -585,11 +578,10 @@ Follow these steps to build the OV5640 Camera Sensor Application using the Alif 
 
    west build -b alif_e1c_sk//rtss_he ../alif/samples/drivers/video/
 
-
 Executing Binary on the DevKit
 --------------------------------
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -627,7 +619,6 @@ Interpretation
 - The ``alif_video`` driver (LPCAM instances), ``ov5640`` driver, and
   ``i2c_dw`` driver are successfully verified.
 - The video capturing process has completed successfully.
-
 
 References and Dependencies
 -----------------------------

@@ -77,8 +77,8 @@ Pin Setup
 Connection
 ~~~~~~~~~~
 
-- **SDA**: Connect I2C0 instance P3_5 (J11-29) to I2C1 pin P7_2 (J11_3).
-- **SCL**: Connect I2C0 instance P3_4 (J11-27) to I2C1 pin P7_3 (J11_5).
+- **SDA**: Connect I2C0 instance P3_5 (J11_29) to I2C1 pin P7_2 (J11_3).
+- **SCL**: Connect I2C0 instance P3_4 (J11_27) to I2C1 pin P7_3 (J11_5).
 
 .. include:: note.rst
 
@@ -87,12 +87,11 @@ Build an I2C Application with Zephyr
 
 Follow these steps to build the I2C application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
-
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -103,8 +102,8 @@ Follow these steps to build the I2C application using the Alif Zephyr SDK:
      ../alif/samples/drivers/i2c_dw \
      -S alif-dk
 
-
-> If using an external **Environment 3 Click Board**, use the following build command for the M55 HP core:
+.. note::
+   If using an external **Environment 3 Click Board**, use the following build command for the M55 HP core:
 
 .. code-block:: console
 
@@ -123,8 +122,8 @@ Follow these steps to build the I2C application using the Alif Zephyr SDK:
      ../alif/samples/drivers/i2c_dw \
      -S alif-dk
 
-
-> If using an external **Environment 3 Click Board**, use the build command for application on the  M55 HE core:
+.. note::
+   If using an external **Environment 3 Click Board**, use the following build command for the M55 HE core:
 
 .. code-block:: console
 
@@ -133,14 +132,12 @@ Follow these steps to build the I2C application using the Alif Zephyr SDK:
      ../alif/samples/sensor/bme680/ \
      -S alif-dk
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -151,7 +148,7 @@ Console Output
 
 Upon reviewing the output logs, the I2C functionality has been successfully validated.
 
-.. code-block:: console
+.. code-block:: text
 
    Received a byte in slave : 0xaa
    Received a byte in slave : 0xab

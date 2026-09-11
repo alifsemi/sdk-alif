@@ -7,9 +7,13 @@ ADC12/24
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the Analog-to-Digital Conversion (ADC) 12-bit controller IP provided by Alif Semiconductor™ and integrated into Devkit devices.
+This application note explains how to create, build, and run a demo
+application for the Analog-to-Digital Converter (ADC) on Alif DevKit devices,
+with a focus on ADC12.
 
-The ADC12 supports 8 channels (6 external and 2 internal inputs). One temperature sensor is connected to all ADC12 instances at channel no. 6. The ADC12 works with both single-ended and differential inputs.
+ADC12 supports eight channels: six external inputs and two internal inputs. A
+temperature sensor is connected to channel 6 on all ADC12 instances. ADC12
+supports both single-ended and differential inputs.
 
 - **Single-Ended Input**:
 
@@ -24,7 +28,7 @@ The ADC12 supports 8 channels (6 external and 2 internal inputs). One temperatur
   - Single-channel scan
   - Continuous conversion
 
-**Note: In Balletto, Channel 7 (Vref) has been removed from the ADC12.**
+**Note:** On Balletto, channel 7 (Vref) is not available on ADC12.
 
 .. figure:: _static/adc12_diagram.png
    :alt: 12-Bit ADC Block Diagram
@@ -47,7 +51,7 @@ Build an ADC Application with Zephyr
 
 Follow these steps to build the ADC application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 
 .. note::
@@ -72,6 +76,7 @@ Follow these steps to build the ADC application using the Alif Zephyr SDK:
      ../alif/samples/drivers/adc \
      -S alif-adc
 
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 ADC Interface
 =============
@@ -126,7 +131,7 @@ Enable differential mode from the ADC sample application for operating ADC in di
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -136,5 +141,9 @@ Console Output
 ===============
 
 .. note::
-   The console output depends on the ADC configuration (e.g., single-ended or differential mode, channel selection, single-shot or continuous conversion). Refer to the ADC sample application (``../alif/samples/drivers/adc -S alif-adc``) for specific output details. Typically, the output includes voltage readings or temperature sensor data in a format defined by the application.
-
+   The console output depends on the ADC configuration, such as single-ended or
+   differential mode, channel selection, and single-shot or continuous
+   conversion. Refer to the ADC sample application in
+   ``../alif/samples/drivers/adc`` and build it with the ``-S alif-adc`` option
+   for the expected output. Typical output includes voltage readings or
+   temperature-sensor data in the format defined by the application.
