@@ -113,17 +113,17 @@ Device Tree Code Snippet
    };
 
 
-Build an DAC Application with Zephyr
-=========================================
+Build a DAC Application with Zephyr
+=====================================
 
 Follow these steps to build the DAC application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 
 2. Build command for application on the M55 HE core:
@@ -143,14 +143,12 @@ Follow these steps to build the DAC application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/dac
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
-==============================================
+================================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -161,9 +159,10 @@ Sample Output
 
 .. code-block:: text
 
+   *** Booting Zephyr OS build ***
    >>>Starting up the Zephyr DAC demo!!! <<<
 
-The sample Output will be as follows
+The sample output is as follows:
 
    .. figure:: _static/dac_sample_output.png
       :alt: DAC Sample Output

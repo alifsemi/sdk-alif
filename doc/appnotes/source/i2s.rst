@@ -55,8 +55,7 @@ Build an I2S Application with Zephyr
 
 Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
-
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 
 2. Build Command for the e7_dk I2S Echo Sample Application on HE
@@ -76,7 +75,6 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      samples/drivers/i2s/echo \
      -S alif-i2s-echo
-
 
 4. Build Commands for the b1_dk I2S output Sample Application
 
@@ -118,12 +116,12 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
    The codec application can be run only on the Eagle and Spark boards, as the on-board WM8904 codec is available on these boards. The Bolt board does not support this application.
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 

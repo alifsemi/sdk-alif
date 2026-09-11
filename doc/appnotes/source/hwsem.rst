@@ -22,7 +22,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the hwsem0_test M55 HE core:
 
@@ -63,13 +63,12 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
      -- \
      -DHWSEM_ALL=ON
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit, follow the command:
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 
@@ -83,33 +82,137 @@ This section provides the console outputs for both single HWSEM and all HWSEM te
 Single HWSEM Test Output
 ------------------------
 
-.. code-block:: text
+.. code-block:: console
 
-    I: Hardware Semaphore (HWSEM) example on alif_e7_dk
-    I: hwsem_lock: HWSEM locked!
-    I: Locked HWSEM0!
-    I: Perform critical work here 1 !!!!
-    I: hwsem_lock: Already locked HWSEM is locked again
-    I: Locked HWSEM0!
-    I: Perform critical work here 2 !!!!
-    I: hwsem_unlock: HWSEM unlocked!
-    I: Unlocked HWSEM0!
-    I: hwsem_unlock: HWSEM unlocked!
-    I: Unlocked HWSEM0!
+   I: Hardware Semaphore (HWSEM) example on alif_e7_dk
+
+   I: Locked HWSEM0!
+
+   I: Perform critical work here 1 !!!!
+
+   I: Locked HWSEM0!
+
+   I: Perform critical work here 2 !!!!
+
+   I: Unlocked HWSEM0!
+
+   I: Unlocked HWSEM0!
 
 All HWSEM Output Log
 --------------------
 
-.. code-block:: text
+.. code-block:: console
 
-    I: Test all 16 Hardware Semaphores(HWSEM) on alif_e7_dk
-    I: hwsem_trylock: HWSEM locked!
-    I: Locked HWSEM0!
-    I: Perform critical work here 1 !!!!
-    I: hwsem_trylock: Already locked HWSEM is locked again
-    I: Locked HWSEM0!
-    I: Perform critical work here 2 !!!!
-    I: hwsem_unlock: HWSEM unlocked!
-    I: Unlocked HWSEM0!
-    ...
-    (repeat for HWSEM1 to HWSEM15 outputs)
+   I: Test all 16 Hardware Semaphores(HWSEM) on alif_e7_dk
+
+   I: Locked HWSEM0!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM0!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM0!
+   I: Unlocked HWSEM0!
+
+   I: Locked HWSEM1!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM1!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM1!
+   I: Unlocked HWSEM1!
+
+   I: Locked HWSEM2!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM2!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM2!
+   I: Unlocked HWSEM2!
+
+   I: Locked HWSEM3!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM3!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM3!
+   I: Unlocked HWSEM3!
+
+   I: Locked HWSEM4!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM4!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM4!
+   I: Unlocked HWSEM4!
+
+   I: Locked HWSEM5!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM5!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM5!
+   I: Unlocked HWSEM5!
+
+   I: Locked HWSEM6!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM6!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM6!
+   I: Unlocked HWSEM6!
+
+   I: Locked HWSEM7!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM7!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM7!
+   I: Unlocked HWSEM7!
+
+   I: Locked HWSEM8!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM8!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM8!
+   I: Unlocked HWSEM8!
+
+   I: Locked HWSEM9!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM9!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM9!
+   I: Unlocked HWSEM9!
+
+   I: Locked HWSEM10!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM10!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM10!
+   I: Unlocked HWSEM10!
+
+   I: Locked HWSEM11!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM11!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM11!
+   I: Unlocked HWSEM11!
+
+   I: Locked HWSEM12!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM12!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM12!
+   I: Unlocked HWSEM12!
+
+   I: Locked HWSEM13!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM13!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM13!
+   I: Unlocked HWSEM13!
+
+   I: Locked HWSEM14!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM14!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM14!
+   I: Unlocked HWSEM14!
+
+   I: Locked HWSEM15!
+   I: Perform critical work here 1 !!!!
+   I: Locked HWSEM15!
+   I: Perform critical work here 2 !!!!
+   I: Unlocked HWSEM15!
+   I: Unlocked HWSEM15!

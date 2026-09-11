@@ -89,7 +89,7 @@ The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and ener
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
@@ -100,7 +100,7 @@ Camera Sensor Support
 
    The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) with ISP and is supported on the following DevKits:
 
-   - DevKit E8
+   - Alif E8 DevKit
 
 Features
 ----------
@@ -194,15 +194,15 @@ Selected ISP Configurations
 .. include:: note.rst
 
 Build an ARX3A0 ISP Application with Zephyr
-======================================================
+============================================
 
 Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -229,7 +229,7 @@ Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK
 Executing Binary on the DevKit
 --------------------------------
 
-To execute the binary on the DevKit, run:
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -292,7 +292,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 
@@ -303,7 +303,7 @@ Camera Sensor Support
 
    The MT9M114 camera sensor interfaces via MIPI-CSI (serial interface) with ISP and is supported on the following DevKits:
 
-   - DevKit E8
+   - Alif E8 DevKit
 
 Hardware Connections and Setup
 ------------------------------
@@ -422,16 +422,16 @@ Selected ISP Configurations
 - **Output Resolution**: Configurable via ISP scaling
 - **Output Format**: RGB888 planar
 
-Build an MT9M114 ISP Application with Zephyr
-======================================================
+Build a MT9M114 ISP Application with Zephyr
+============================================
 
 Follow these steps to build the MT9M114 ISP (Selfie Camera) application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for E8 DevKit (Selfie Camera with ISP) on M55 HP core:
 
@@ -462,7 +462,7 @@ Follow these steps to build the MT9M114 ISP (Selfie Camera) application using th
 Executing Binary on the DevKit
 --------------------------------
 
-To execute the binary on the DevKit, run:
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: bash
 
@@ -473,7 +473,7 @@ Console Output
 
 The following output is observed in the console during execution of the MT9M114 ISP application:
 
-.. code-block:: console
+.. code-block:: text
 
    [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
    [00:00:00.000,000] <inf> mt9m114: MT9M114 initialization starting...

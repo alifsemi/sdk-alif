@@ -7,23 +7,22 @@ QDEC
 Introduction
 ============
 
-The Alif UTIMER IP on the Alif Devkit supports Quadrature Decoder (QDEC) mode, enabling precise position tracking of a mechanical rotary encoder. This mode is ideal for applications requiring angular position feedback, such as motor control, robotics, or user interface dials. This application note guides developers through configuring, building, and running a Zephyr-based QDEC application (``samples/sensor/qdec/``) using the UTIMER peripheral on the Alif Devkit.
+The Alif UTIMER IP on the Alif DevKit supports Quadrature Decoder (QDEC) mode, enabling precise position tracking of a mechanical rotary encoder. This mode is ideal for applications requiring angular position feedback, such as motor control, robotics, or user interface dials. This application note guides developers through configuring, building, and running a Zephyr-based QDEC application (``samples/sensor/qdec/``) using the UTIMER peripheral on the Alif DevKit.
 
 .. include:: prerequisites.rst
 
 .. include:: note.rst
 
-Build an QDEC Application with Zephyr
-=========================================
+Build a QDEC Application with Zephyr
+=====================================
 
 Follow these steps to build the QDEC application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
-
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -43,14 +42,12 @@ Follow these steps to build the QDEC application using the Alif Zephyr SDK:
      samples/sensor/qdec/ \
      -S alif-qdec
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
-=============================================
+=================================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -61,7 +58,7 @@ Expected Result
 
 Once the application is loaded and the mechanical encoder is connected:
 
-- The devkit runs the QDEC sample, reading the UTIMER counter in quadrature decoder mode.
+- The DevKit runs the QDEC sample, reading the UTIMER counter in quadrature decoder mode.
 - The angular position is printed every second to the console via UART4 (M55 HE core).
 
 Console Output

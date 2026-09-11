@@ -7,7 +7,7 @@ PDM
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the Pulse Density Modulation (PDM) controller IP provided by Alif Semiconductor™ and integrated into Ensemble™ devices. Key features include:
+This document explains how to create, compile, and run a demo application for the Pulse Density Modulation (PDM) controller IP provided by Alif Semiconductor and integrated into Alif devices. Key features include:
 
 - A PDM (Pulse Density Modulation) microphone produces 1-bit digital data streams in Pulse Density Modulated format.
 - The PDM Audio module supports up to eight audio channels, one microphone per channel.
@@ -208,11 +208,11 @@ Build a PDM and LPPDM Application with Zephyr
 
 Follow these steps to build the PDM and LPPDM application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -223,7 +223,6 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
      ../alif/samples/drivers/audio/dmic_alif \
      -S alif-pdm
 
-
 3. Build command for application on the M55 HP core:
 
 .. code-block:: console
@@ -233,11 +232,12 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
      ../alif/samples/drivers/audio/dmic_alif \
      -S alif-pdm
 
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -301,9 +301,9 @@ For multiple channels, consider enabling channels 0, 1, 2, and 3.
 
 11. Stop the application code.
 
-12. The PCM samples will be stored in the `pcmj_data` buffer. Print the base address of the `pcmj_data` buffer.
+12. The PCM samples will be stored in the `pcm_data` buffer. Print the base address of the `pcm_data` buffer.
 
-The text below shows channels 4 and 5 enabled, with the buffer address at 0x20000e74 and 60,000 PCM samples are stored in the `pcmj_data` buffer, and the stored PCM samples are being printed.
+The text below shows channels 4 and 5 enabled. The buffer address is ``0x20000e74``, and 60,000 PCM samples are stored in the ``pcm_data`` buffer and printed.
 
 PCM Samples Buffer (Channels 4 and 5, Address 0x20000e74)
 ---------------------------------------------------------
@@ -452,4 +452,126 @@ PDM Modes
       :align: center
 
       PDM Modes
+
+PM Support
+===========
+
+The PDM sample supports Zephyr Power Management (PM) states on Alif RTSS
+cores. The application verifies PDM audio capture after the system enters
+and exits the supported PM states.
+
+The following PM sequences are supported:
+
+* **S2RAM path (HE core, TCM boot)**
+
+  ``RUNTIME_IDLE`` -> ``SUSPEND_TO_IDLE`` -> ``S2RAM STANDBY`` ->
+  ``S2RAM STOP``
+
+* **SOFT_OFF path (MRAM boot)**
+
+  ``RUNTIME_IDLE`` -> ``SUSPEND_TO_IDLE`` -> ``SOFT_OFF``
+
+For the S2RAM path, PDM audio is recorded before entering each PM state and
+again after waking up. This verifies that the PDM block and DMA path resume
+correctly after the power state transition.
+
+HE cores use LPPDM and PDM, while HP cores use PDM.
+
+
+Building and Running PM Sample
+-------------------------------
+
+Follow these steps to build the PM Sample application using the Alif Zephyr SDK:
+
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
+
+.. note::
+   The build commands shown here are specifically for the Alif E7 DevKit.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+
+HE Core — TCM Boot S2RAM (E7)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build the PDM PM sample for the HE core using the following command:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/alif_pdm \
+     -S pdm-pm-s2ram-tcm \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
+
+
+HE Core — MRAM Boot SOFT_OFF (E7)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build the PDM PM sample for the HE core using the following command:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/alif_pdm \
+     -S pdm-pm-mram
+
+HP Core — MRAM Boot SOFT_OFF (E7)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build the PDM PM sample for the HP core using the following command:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/pm/alif_pdm \
+     -S pdm-pm-mram
+
+PM Test Sequence
+----------------
+
+The S2RAM PM test performs the following sequence:
+
+1. Record PDM audio before entering the PM states.
+2. Enter ``RUNTIME_IDLE`` and wake up.
+3. Enter ``SUSPEND_TO_IDLE`` and wake up.
+4. Record PDM audio after ``SUSPEND_TO_IDLE``.
+5. Enter ``S2RAM STANDBY`` and wake up.
+6. Record PDM audio after ``S2RAM STANDBY``.
+7. Enter ``S2RAM STOP`` and wake up.
+8. Record PDM audio after ``S2RAM STOP``.
+9. Complete the PM sequence.
+
+The SOFT_OFF configuration follows the ``RUNTIME_IDLE`` and
+``SUSPEND_TO_IDLE`` states before entering ``SOFT_OFF``. The system resets
+when it wakes from ``SOFT_OFF``.
+
+PM Support Verification
+-----------------------
+
+After each supported PM state, the application records PDM audio and checks
+that the PDM DMA path is operational.
+
+A successful test displays messages similar to the following:
+
+.. code-block:: text
+
+   PM enter: SUSPEND_TO_RAM (substate 0)
+   PM wakeup: SUSPEND_TO_RAM (substate 0)
+   PM exit:  SUSPEND_TO_RAM (substate 0)
+   === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   === after S2RAM STANDBY: PDM Audio Recording ===
+   Start recording audio...
+   PDM path: DMA
+   PDM recording completed: 60000 bytes captured
+
+The same verification is performed after the S2RAM STOP state. The test is
+completed when the application displays:
+
+.. code-block:: text
+
+   === PDM PM SEQUENCE COMPLETED ===
+
 

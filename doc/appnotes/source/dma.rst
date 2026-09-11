@@ -13,7 +13,7 @@ Direct Memory Access (DMA) enhances system performance by offloading the CPUs fr
 - **DMA1**: A dedicated DMA controller for the RTSS-HP core.
 - **DMA2**: A dedicated DMA controller for the RTSS-HE core.
 
-Since this core has numerous peripherals, we have a MUX for DMA0, which allows mapping peripherals to the DMA. This application note covers a sample test application for DMA with SPI (HE core).
+Since the platform has numerous peripherals, there is a MUX for DMA0, which allows mapping peripherals to the DMA. This application note covers a sample test application for DMA with SPI (HE core).
 
 .. include:: prerequisites.rst
 
@@ -32,16 +32,16 @@ The block diagram illustrates the hardware design of Zephyr DMA, showing the int
    Block Diagram of Zephyr DMA
 
 
-Build an DMA Application with Zephyr
-=========================================
+Build a DMA Application with Zephyr
+=====================================
 
 Follow these steps to build the DMA application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -179,7 +179,7 @@ DMA Instance Selection in Overlay File
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 

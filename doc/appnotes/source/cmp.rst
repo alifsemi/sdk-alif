@@ -19,8 +19,7 @@ This application note describes digital control to process data from the Analog 
 - **Configurable number of taps** for digital filtering.
 - **Interrupt generation** after filtering is applied.
 
-
-High Speed Comparator
+High-Speed Comparator
 -----------------------
 
 .. figure:: _static/cmp.png
@@ -136,7 +135,7 @@ Analog Comparator Operation
 Comparator Configuration Steps
 --------------------------------
 
-1. **Configure ``COMP_REG1``**:
+1. **Configure ``CMP_COMP_REG1``**:
    - Select the **positive input terminal**, **negative input terminal**, and set **hysteresis to 45 mV**.
 
 2. **Enable High-Speed Comparators** in ``COMP_REG1``:
@@ -178,16 +177,16 @@ This setup allows the comparator to detect the toggling signal on P0_0 (driven b
 
 .. include:: note.rst
 
-Build an CMP Application with Zephyr
-========================================
+Build a CMP Application with Zephyr
+====================================
 
 Follow these steps to build the CMP application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -208,13 +207,12 @@ Follow these steps to build the CMP application using the Alif Zephyr SDK:
      ../alif/samples/drivers/cmp \
      -S alif-cmp
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 
@@ -243,7 +241,7 @@ The following log is observed during execution of the Analog Comparator (CMP) ap
 LPCMP Console Output
 ======================
 
-.. code-block:: console
+.. code-block:: text
 
     [00:00:02.000,000] <inf> ALIF_CMP: start comparing
     [00:00:02.501,000] <inf> ALIF_CMP: Comparison Completed

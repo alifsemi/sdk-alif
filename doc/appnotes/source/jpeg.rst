@@ -106,11 +106,11 @@ Building the JPEG Application
 Follow these steps to build the JPEG application using the Alif Zephyr SDK:
 
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository,
-   please refer to the `ZAS User Guide`_
+   refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E8 boards.
-   For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 Standalone Static Image Test
 ----------------------------
@@ -140,7 +140,7 @@ c. Build command for the M55 HP core on Alif E4 Board:
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     -b alif_e4_dk/ae402fa0e5597xx0/rtss_hp \
      ../alif/samples/drivers/jpeg/ \
      -S alif-dk-ak
 
@@ -149,7 +149,7 @@ d. Build command for the M55 HE core on Alif E4 Board:
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     -b alif_e4_dk/ae402fa0e5597xx0/rtss_he \
      ../alif/samples/drivers/jpeg/ \
      -S alif-dk-ak
 
@@ -190,7 +190,7 @@ c. Build command for the M55 HP core on Alif E4 Board:
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     -b alif_e4_dk/ae402fa0e5597xx0/rtss_hp \
      ../alif/samples/drivers/video/ \
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay \
@@ -203,7 +203,7 @@ d. Build command for the M55 HE core on Alif E4 Board:
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     -b alif_e4_dk/ae402fa0e5597xx0/rtss_he \
      ../alif/samples/drivers/video/ \
      -- \
      -DDTC_OVERLAY_FILE="$PWD/../alif/samples/drivers/video/boards/serial_camera_arx3a0_selfie.overlay \
@@ -211,12 +211,12 @@ d. Build command for the M55 HE core on Alif E4 Board:
      -DOVERLAY_CONFIG="$PWD/../alif/samples/drivers/video/boards/isp.conf \
        $PWD/../alif/samples/drivers/video/boards/jpeg.conf"
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the board
 ==============================
 
-Follow the below command to execute binaries
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: bash
 

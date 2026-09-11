@@ -40,11 +40,11 @@ Build a UART Application with Zephyr
 
 Follow these steps to build the UART application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section *Setting Up and Building Zephyr Applications*.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for UART application on the M55 HP core (default output on UART2):
 
@@ -88,7 +88,7 @@ Once the build command completes successfully, executable images will be generat
 Executing Binary on the DevKit
 =================================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 

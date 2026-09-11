@@ -21,15 +21,15 @@ It enables interrupt-based communication between these processing entities.
 .. include:: note.rst
 
 Build an MHU Application with Zephyr
-========================================
+======================================
 
 Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build Command for the MHU0 Application on the M55-HE Core:
 
@@ -37,10 +37,9 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
+     samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HP_MHU0=on
-
+     -DCONFIG_HE_HP_S=y
 
 3. Build Command for the MHU0 Application on the M55-HP Core:
 
@@ -48,9 +47,9 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
+     samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HE_MHU0=on
+     -DCONFIG_HP_HE_R=y
 
 4. Build Command for the MHU1 Application on the M55-HE Core:
 
@@ -58,10 +57,10 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
+     samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HP_MHU1=on
-
+     -DCONFIG_HE_HP_S=y \
+     -DCONFIG_USE_MHU1=y
 
 5. Build Command for the MHU1 Application on the M55-HP Core:
 
@@ -69,18 +68,17 @@ Follow these steps to build the MHU application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/ipm/ipm_arm_mhuv2/ \
+     samples/drivers/ipm/ipm_arm_mhuv2/ \
      -- \
-     -DRTSS_HE_MHU1=on
+     -DCONFIG_HP_HE_R=y \
+     -DCONFIG_USE_MHU1=y
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ================================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 

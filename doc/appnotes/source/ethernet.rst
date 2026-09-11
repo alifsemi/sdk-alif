@@ -160,15 +160,15 @@ The DTS configuration for Ethernet is as follows:
 .. include:: note.rst
 
 Build an Ethernet DHCP Client Application with Zephyr
-==========================================================
+======================================================
 
 Follow these steps to build the Ethernet DHCP Client application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_.
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -189,8 +189,7 @@ Follow these steps to build the Ethernet DHCP Client application using the Alif 
      samples/net/dhcpv4_client \
      -S alif-dhcpv4-client
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
@@ -208,7 +207,7 @@ Procedure to Test DHCP Client Application
 
 - Ensure the MAC address and PHY configuration are correctly set in the Device Tree Source (DTS) file.
 
-- Build and flash the application to the target hardware (Ensemble DevKit).
+- Build and flash the application to the target hardware (Alif DevKit).
 
 - Connect the device to a network that includes an active DHCP server using an Ethernet cable.
 
