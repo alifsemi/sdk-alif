@@ -28,7 +28,7 @@ The Real-Time Processor cores are:
 Hardware Requirements
 ======================
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 
 Software Requirements
@@ -44,7 +44,22 @@ Software Requirements
 TensorFlow Lite
 ================
 
-The Alif Zephyr release supports building the ``tflm_ethosu`` Zephyr application for both the HE and HP M55 cores of the SoC. This application runs a model compiled using the Vela compiler. The model is integrated into the application as a C array and loaded into the Ethos NPU. The application verifies that the Ethos NPU (128 MACs for the HE M55 core and 256 MACs for the HP M55 core) is properly loaded and functioning.
+The Alif Zephyr release supports building the ``tflm_ethosu`` application
+for the RTSS-HE and RTSS-HP Cortex-M55 cores, and on the E8 DevKit for the
+APSS Cortex-A32 core with Ethos-U85. The application runs a keyword-spotting
+CNN compiled with the Vela compiler. The model is built into the application
+as a C array and loaded onto the Ethos NPU.
+
+Core and NPU restrictions:
+
+- **RTSS-HE**: Ethos-U55 with 128 MACs only.
+- **RTSS-HP**: Ethos-U55 with 256 MACs only.
+- **APSS** (E8 only): Ethos-U85 with 256 MACs only. Ethos-U55 is not
+  accessible from APSS.
+- **Ethos-U85**: 256 MACs on HE, HP, and APSS. Available on E4 and E8 only.
+
+The sample uses TCM, MRAM, and SRAM. It does not require external OSPI flash.
+All NPU builds use a ``-S`` snippet to apply the device-tree overlay.
 
 Build a tflm_ethosu Application Using the GCC Compiler
 ========================================================
@@ -52,7 +67,11 @@ Build a tflm_ethosu Application Using the GCC Compiler
 Follow these steps to prepare your tflm_ethosu application using the GCC compiler and the Alif Zephyr SDK:
 
 .. note::
-   The application is designed for the Alif Ensemble E8 DevKit. Modify the sample code as needed for other DevKits.
+   The example commands below cover B1, E1C, E7, and E8 DevKits.
+   For E4 (dual NPU), use the same ``-S`` and
+   ``-DETHOSU_TARGET_NPU_CONFIG`` pattern with
+   ``alif_e4_dk/ae402fa0e5597xx0/rtss_he`` or ``.../rtss_hp``.
+   Refer to the `ZAS User Guide`_ for workspace setup.
 
 1. Fetch the Alif Zephyr SDK source from the main branch at `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 
@@ -68,7 +87,7 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
     west update
 
-2. Navigate to the Zephyr directory
+2. Navigate to the Zephyr directory:
 
 .. code-block:: console
 
@@ -80,63 +99,172 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
       rm -rf build
 
-4. Build command for application on the Ethos-U85-256 HE core:
+Supported Boards
+----------------
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 12 12 12 52
+
+   * - Board
+     - U55
+     - U85
+     - APSS (this sample)
+     - Notes
+   * - B1
+     - Yes
+     - No
+     - No
+     - U55 on RTSS-HE only
+   * - E1C
+     - Yes
+     - No
+     - No
+     - U55 on RTSS-HE only
+   * - E4
+     - Yes
+     - Yes
+     - No
+     - Dual NPU on RTSS
+   * - E7
+     - Yes
+     - No
+     - No
+     - U55 on RTSS-HE and RTSS-HP. E7 has an APSS core, but this
+       sample cannot use U55 from APSS.
+   * - E8
+     - Yes
+     - Yes
+     - Yes
+     - Dual NPU on RTSS; APSS uses U85 with
+       ``ethos-u85-apss-enable``
+
+Building for Alif B1 DK
+-----------------------
+
+HE core with U55-128:
 
 .. code-block:: console
 
-   west build \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
-     -p always \
-     -- \
-     -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
-     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
+   west build -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+       -S ethos-u55-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
 
-5. Build command for application on the Ethos-U85-256 HP core:
+Building for Alif E1C DK
+------------------------
 
-.. code-block:: console
-
-   west build \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
-     -p always \
-     -- \
-     -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256 \
-     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu85.overlay"
-
-
-6. Build command for the application on the Ethos-U55-128 HE core:
+HE core with U55-128:
 
 .. code-block:: console
 
-   west build \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
-     -p always \
-     -- \
-     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
-     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+   west build -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+       -S ethos-u55-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
 
+Building for Alif E7 DK
+-----------------------
 
-7. Build command for the application on the Ethos-U55-256 HP core:
+HP core with U55-256:
 
 .. code-block:: console
 
-   west build \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-     ../alif/samples/modules/tflite-micro/tflm_ethosu/ \
-     -p always \
-     -- \
-     -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
-     -DEXTRA_DTC_OVERLAY_FILE="boards/enable_ethosu55.overlay"
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+       -S ethos-u55-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
 
+HE core with U55-128:
+
+.. code-block:: console
+
+   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+       -S ethos-u55-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif E8 DK
+-----------------------
+
+HP core with U55-256:
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+       -S ethos-u55-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
+
+HP core with U85-256:
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+       -S ethos-u85-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
+HE core with U55-128:
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       -S ethos-u55-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+APSS core (Cortex-A32) with U85-256:
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/apss \
+       -S ethos-u85-apss-enable \
+       ../alif/samples/modules/tflite-micro/tflm_ethosu \
+       -p always -- \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
+.. note::
+
+   The ``ethos-u85-apss-enable`` snippet defines the Ethos-U85 node with
+   GIC interrupt routing (GIC_SPI 355) and places the tensor arena in
+   non-cacheable SRAM1 so the NPU and CPU stay coherent without explicit
+   cache maintenance. This snippet applies only to
+   ``alif_e8_dk`` / ``alif_e8_ak`` APSS targets.
+
+Configuration Options
+---------------------
+
+**NPU configuration** (CMake, required):
+
+- ``ETHOSU_TARGET_NPU_CONFIG``: ``ethos-u55-128``, ``ethos-u55-256``, or
+  ``ethos-u85-256``
+
+**Snippets:**
+
+- ``-S ethos-u55-enable``: Ethos-U55 on RTSS cores
+- ``-S ethos-u85-enable``: Ethos-U85 on RTSS cores (E4 and E8 only)
+- ``-S ethos-u85-apss-enable``: Ethos-U85 on APSS (E8 only)
+
+**Performance tuning** (compile-time macros in the sample, defaults shown):
+
+- ``NUM_INFERENCE_TASKS``: worker threads (default: 1)
+- ``NUM_JOB_TASKS``: sender tasks (default: 2)
+- ``NUM_JOBS_PER_TASK``: inferences per task (default: 2)
 
 Executing Binary on the DevKit
 ================================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
-.. code-block:: console
+.. code-block:: text
 
    west flash
 
@@ -145,7 +273,7 @@ Console Output
 
 .. code-block:: text
 
-   [00:00:00.000,000] <dbg> ethos_u: ethosu_zephyr_init: Ethos-U DTS info. base_address=0x0x400e1000, secure_enable=1, privilege_enable=1
+   [00:00:00.000,000] <dbg> ethos_u: ethosu_zephyr_init: Ethos-U DTS info. base_address=0x400e1000, secure_enable=1, privilege_enable=1
    [00:00:00.012,000] <dbg> ethos_u: ethosu_zephyr_init: Version: major=0, minor=16, patch=0
    *** Booting Zephyr OS build Zephyr-Ensemble-E7-B0-RTSS-v0.2.2-Beta-24-g04bcddaf4962 ***
    sender 0: Sending inference. job=0x205d340, name=keyword_spotting_cnn_small_int8
@@ -318,7 +446,6 @@ Model Compiler Options
 - ``-t`` : Target NPU configuration
 - ``--output`` : Output ``.pte`` file name
 
-
 Building and Running
 ====================
 
@@ -329,11 +456,11 @@ Building for Alif E8 DK (HP Core with U55)
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
-
 
 Building for Alif E8 DK (HP Core with U85)
 ------------------------------------------
@@ -342,24 +469,37 @@ Building for Alif E8 DK (HP Core with U85)
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
        -S ethos-u85-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u85_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 
+Building for Alif E8 DK (HE Core with U85)
+------------------------------------------
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       -S ethos-u85-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u85_256.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 
 Building for Alif E7 DK (HP Core with U55)
-------------------------------------------
+----------------------------------------------
 
 .. code-block:: console
 
    west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_256.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
-
 
 Building for Alif E7 DK (HE Core with U55-128)
 ----------------------------------------------
@@ -368,16 +508,56 @@ Building for Alif E7 DK (HE Core with U55-128)
 
    west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
        -S ethos-u55-enable \
-       alif/samples/modules/executorch/kws_ethosu/ -- \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
        -DET_PTE_FILE_PATH=./kws_u55_128.pte \
        -DET_PTE_SECTION=.rodata.model \
        -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif E1C DK (HE Core with U55-128)
+------------------------------------------------
+
+.. code-block:: console
+
+   west build -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+       -S ethos-u55-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u55_128.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif B1 DK (HE Core with U55-128)
+----------------------------------------------
+
+.. code-block:: console
+
+   west build -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+       -S ethos-u55-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u55_128.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
+Building for Alif E8 DK (APSS Core, Cortex-A32, with U85)
+----------------------------------------------------------
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/apss \
+       -S ethos-u85-apss-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u85_256.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 
 
 Executing Binary on the DevKit
 ================================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -387,28 +567,57 @@ To execute binaries on the DevKit follow the command
 Sample Output
 =============
 
-.. code-block:: console
+.. code-block:: text
 
    *** Booting Zephyr OS build ***
 
-   ========================================
+   ===================================
    executorch Keyword Spotting Demo
-   ========================================
+   ===================================
 
    I [executorch:main.cpp:279 main()] Ethos-U backend registered successfully
    I [executorch:main.cpp:285 main()] Model PTE at 0x8021eb50, Size: 35280 bytes
    I [executorch:main.cpp:291 main()] Model data loaded. Size: 35280 bytes.
    I [executorch:main.cpp:303 main()] Model loaded, has 1 methods
    I [executorch:main.cpp:311 main()] Running method: forward
+   I [executorch:main.cpp:323 main()] Method allocator pool size: 1572864 bytes
+   I [executorch:main.cpp:338 main()] Setting up planned buffer 0, size 2464.
+   I [executorch:main.cpp:359 main()] Loading method...
+   I [executorch:main.cpp:373 main()] Method 'forward' loaded successfully
+   I [executorch:main.cpp:375 main()] Preparing input tensor with static KWS data...
+   I [executorch:main.cpp:376 main()] Input data size: 490 bytes
+   I [executorch:main.cpp:390 main()] Input prepared successfully
+   I [executorch:main.cpp:392 main()]
+   --- Starting inference ---
    I [executorch:main.cpp:408 main()] Inference completed in 107 ms
+   I [executorch:main.cpp:414 main()]
+   --- Inference Results ---
    I [executorch:main.cpp:418 main()] Predicted keyword: "left" (class 6)
-
+   I [executorch:main.cpp:422 main()]
+   Output tensor values:
+   I [executorch:main.cpp:430 main()]   output[0]: scalar_type=Float numel=12
+   I [executorch:main.cpp:442 main()]     [0] silence: -0.0672 (q: 0x77)
+   I [executorch:main.cpp:442 main()]     [1] unknown: 0.0218 (q: 0x82)
+   I [executorch:main.cpp:442 main()]     [2] yes: 0.0690 (q: 0x88)
+   I [executorch:main.cpp:442 main()]     [3] no: -0.0265 (q: 0x7c)
+   I [executorch:main.cpp:442 main()]     [4] up: -0.0511 (q: 0x79)
+   I [executorch:main.cpp:442 main()]     [5] down: -0.0586 (q: 0x78)
+   I [executorch:main.cpp:442 main()]     [6] left: 0.1220 (q: 0x8f)
+   I [executorch:main.cpp:442 main()]     [7] right: 0.0520 (q: 0x86)
+   I [executorch:main.cpp:442 main()]     [8] on: 0.0331 (q: 0x84)
+   I [executorch:main.cpp:442 main()]     [9] off: -0.0785 (q: 0x75)
+   I [executorch:main.cpp:442 main()]     [10] stop: -0.1192 (q: 0x70)
+   I [executorch:main.cpp:442 main()]     [11] go: -0.0369 (q: 0x7b)
+   I [executorch:main.cpp:454 main()]
+   --- Verification ---
+   I [executorch:main.cpp:460 main()] SUCCESS: Output shape verified (12 classes)
+   I [executorch:main.cpp:461 main()] (Value verification skipped - using untrained model)
+   I [executorch:main.cpp:484 main()]
    ========================================
-   Keyword Spotting Demo Complete
-   ========================================
-
-   Inference time: 107 ms
-   Result: PASS
+   I [executorch:main.cpp:485 main()] Keyword Spotting Demo Complete
+   I [executorch:main.cpp:486 main()] Inference time: 107 ms
+   I [executorch:main.cpp:487 main()] Result: PASS
+   I [executorch:main.cpp:488 main()] ========================================
 
 
 References

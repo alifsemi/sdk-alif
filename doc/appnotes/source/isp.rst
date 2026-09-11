@@ -60,7 +60,6 @@ Key features of MIPI CSI-2 include:
 
 These features enable MIPI CSI-2 to efficiently handle diverse pixel data formats, maintain precise synchronization, and deliver robust, error-resilient communication for image sensors.
 
-
 I2C Controller
 --------------
 
@@ -80,6 +79,82 @@ The IP accepts sensor input via the DVP interface and can be directly connected 
 
 Designed for seamless integration into SoCs, the ISP achieves low power consumption and a small silicon footprint for its class. Dynamic power consumption is minimized through extensive use of multi-level hierarchical clock gating, and leakage power is reduced by employing low-leakage, low-power standard cells.
 
+ISP Binning Support
+====================
+
+This application note describes how spatial binning is configured for the VeriSilicon ISP Pico
+instance driven by ``zephyr/drivers/video/isp_pico.c``. Binning is a compile-time
+and Devicetree feature. The driver copies the settings into the ISP port
+parameters, and the Alif ISP middleware programs the hardware when a stream is
+started.
+
+Overview
+--------
+
+ISP binning combines neighbouring pixels in the ISP pipeline. Horizontal and
+vertical step sizes (``hstep`` / ``vstep``) are passed to the Vivante MPI as
+``binHStep`` and ``binVStep``.
+
+ISP binning is independent of **sensor analog binning** (for example, the OV5675
+driver programming sensor registers). Sensor binning reduces the data that the
+sensor outputs. ISP binning is applied after the camera controller hands the
+frame to the ISP.
+
+Requirements
+------------
+
+All of the following must be true for binning to run:
+
+1. Kconfig ``CONFIG_ISP_LIB_BINNING_MODULE=y`` (depends on ``CONFIG_USE_ALIF_ISP_LIB``).
+2. Devicetree property ``binning-en`` on the ``vsi,isp-pico`` node.
+3. ``binning-hstep`` and ``binning-vstep`` should have valid values. Valid values
+   are 1–255, and only even values are allowed. Non-even values will result in failure
+   to configure binning.
+
+If ``binning-en`` is set and the Kconfig symbol is off, the driver fails the
+build. If the Kconfig symbol is on but ``binning-en`` is omitted, the driver
+stores ``enable = false`` and both steps as ``0``. The middleware still
+calls ``VSI_MPI_ISP_SetBinningAttr()`` with binning disabled.
+
+Devicetree
+----------
+
+Binding: ``zephyr/dts/bindings/video/vsi,isp-pico.yaml``.
+
+.. list-table::
+   :widths: 25 15 60
+   :header-rows: 1
+   :align: left
+
+   * - Property
+     - Type
+     - Description
+   * - ``binning-en``
+     - boolean
+     - Presence enables ISP binning for this instance.
+   * - ``binning-hstep``
+     - int
+     - Horizontal step. Required when ``binning-en`` is set. Range 1–255.
+   * - ``binning-vstep``
+     - int
+     - Vertical step. Required when ``binning-en`` is set. Range 1–255.
+
+When ``binning-en`` is **not** present, do not set the step properties. The
+driver forces both steps to ``0``.
+
+Example
+^^^^^^^
+
+.. code-block:: dts
+
+   &isp {
+           status = "okay";
+           binning-en;
+           binning-hstep = <2>;
+           binning-vstep = <2>;
+   };
+
+A complete configuration must also supply both step properties, or the driver will not compile.
 
 ARX3A0 Camera Sensor
 =======================
@@ -89,7 +164,7 @@ The ARX3A0 camera sensor, with a 1/10th-inch optical format, is compact and ener
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - ARX3A0 Camera Sensor (IAS1MOD-ARX3A0CSSC090110-GEVB)
 
@@ -100,7 +175,7 @@ Camera Sensor Support
 
    The ARX3A0 camera sensor interfaces via MIPI-CSI (serial interface) with ISP and is supported on the following DevKits:
 
-   - DevKit E8
+   - Alif E8 DevKit
 
 Features
 ----------
@@ -194,15 +269,15 @@ Selected ISP Configurations
 .. include:: note.rst
 
 Build an ARX3A0 ISP Application with Zephyr
-======================================================
+============================================
 
 Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HP core:
 
@@ -229,7 +304,7 @@ Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK
 Executing Binary on the DevKit
 --------------------------------
 
-To execute the binary on the DevKit, run:
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -279,7 +354,6 @@ The following output is observed in the console during execution of the ARX3A0 I
    [00:00:10.125,000] <inf> video_app: Calling video flush.
    [00:00:10.125,000] <inf> video_app: Calling video stream stop.
 
-
 MT9M114 Camera Sensor
 =======================
 
@@ -292,7 +366,7 @@ The MT9M114 is a system-on-a-chip (SoC) image sensor, programmable through a ser
 Hardware Requirements and Setup
 --------------------------------
 
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 - MT9M114 Camera Sensor
 
@@ -303,7 +377,7 @@ Camera Sensor Support
 
    The MT9M114 camera sensor interfaces via MIPI-CSI (serial interface) with ISP and is supported on the following DevKits:
 
-   - DevKit E8
+   - Alif E8 DevKit
 
 Hardware Connections and Setup
 ------------------------------
@@ -422,16 +496,16 @@ Selected ISP Configurations
 - **Output Resolution**: Configurable via ISP scaling
 - **Output Format**: RGB888 planar
 
-Build an MT9M114 ISP Application with Zephyr
-======================================================
+Build a MT9M114 ISP Application with Zephyr
+============================================
 
 Follow these steps to build the MT9M114 ISP (Selfie Camera) application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for E8 DevKit (Selfie Camera with ISP) on M55 HP core:
 
@@ -462,7 +536,7 @@ Follow these steps to build the MT9M114 ISP (Selfie Camera) application using th
 Executing Binary on the DevKit
 --------------------------------
 
-To execute the binary on the DevKit, run:
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: bash
 
@@ -473,7 +547,7 @@ Console Output
 
 The following output is observed in the console during execution of the MT9M114 ISP application:
 
-.. code-block:: console
+.. code-block:: text
 
    [00:00:00.000,000] <inf> csi2_dw: #rx_dphy_ids: 1
    [00:00:00.000,000] <inf> mt9m114: MT9M114 initialization starting...
@@ -539,7 +613,6 @@ The following output is observed in the console during execution of the MT9M114 
       [00:00:00.562,000] <err> csi2_dw: Review the Timings programmed to IPI. Resetting the IPI for now.
 
    These logs are non-fatal and do not impact normal frame capture operation. The CSI2 controller automatically recovers by resetting the IPI interface, and video capture continues successfully.
-
 
 .. note::
 

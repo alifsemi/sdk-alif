@@ -12,7 +12,7 @@ This document explains how to create, compile, and run a demo application for th
 Overview
 --------
 
-The Inter-IC Sound (I2S™) is a digital serial bus interface standard used for connecting digital audio devices. It is used to communicate Pulse-Code Modulation (PCM) audio data between integrated circuits in an electronic device. I2S uses separate lines Bit Clock (BCLK), Word Select (LRCLK / WS), Serial Data (SD), resulting in simpler receivers than those required for asynchronous communication systems that need to recover the clock from the data stream.
+The Inter-IC Sound (I2S™) is a digital serial bus interface standard used for connecting digital audio devices. It is used to communicate Pulse-Code Modulation (PCM) audio data between integrated circuits in an electronic device. I2S uses separate lines for Bit Clock (BCLK), Word Select (LRCLK / WS), and Serial Data (SD), resulting in simpler receivers than those required for asynchronous communication systems that need to recover the clock from the data stream.
 
 .. figure:: _static/i2s_hardware_connections.png
    :alt: I2S Hardware Connections
@@ -21,7 +21,6 @@ The Inter-IC Sound (I2S™) is a digital serial bus interface standard used for 
    I2S Hardware Connections
 
 .. include:: prerequisites.rst
-
 
 Hardware Setup I2S
 ------------------
@@ -55,9 +54,7 @@ Build an I2S Application with Zephyr
 
 Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
-
-
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build Command for the e7_dk I2S Echo Sample Application on HE
 
@@ -76,7 +73,6 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      samples/drivers/i2s/echo \
      -S alif-i2s-echo
-
 
 4. Build Commands for the b1_dk I2S output Sample Application
 
@@ -118,12 +114,12 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
    The codec application can be run only on the Eagle and Spark boards, as the on-board WM8904 codec is available on these boards. The Bolt board does not support this application.
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -138,11 +134,53 @@ Console Output
    Press "gpio@42002000" to toggle the echo effect
    Streams started
 
-
 Observations
 -------------
 * The echo application plays back (or echoes) the sound from the microphone through the connected speaker, enabling real-time audio feedback.
 
 * The output consists of sine wave samples.
 
+I2S Full Duplex Sample
+======================
 
+This sample demonstrates a basic full-duplex I2S application. It keeps RX and
+TX active at the same time, generates a transmit pattern, and separately
+monitors received audio blocks.
+
+The I2S device to be used by the sample is specified by defining a devicetree
+node label named ``i2s_rxtx`` or ``i2s2``/``i2s3`` for a shared controller, or
+separate node labels ``i2s_rx`` and ``i2s_tx`` if distinct devices are used.
+
+For meaningful RX data, connect the TX and RX signals externally or route the
+I2S stream through a direct loopback setup.
+
+Build command for the B1 DevKit I2S duplex sample on the M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/i2s_duplex \
+     -S i2s-duplex
+
+Console Output
+--------------
+
+.. code-block:: text
+
+   *** Booting Zephyr OS build ***
+   I2S full duplex sample
+   Sample setup: slab=0x2000a1b0 block_size=1764 bytes, block_count=12, samples_per_block=882, sample_frequency=44100 Hz
+   Streams started
+   RX block 0
+   TX: 0 1 2 3
+   RX: 0 1 2 3
+   Verification: PASS
+   RX block 1
+   TX: 882 883 884 885
+   RX: 882 883 884 885
+   Verification: PASS
+   RX block 2
+   TX: 1764 1765 1766 1767
+   RX: 1764 1765 1766 1767
+   Verification: PASS
