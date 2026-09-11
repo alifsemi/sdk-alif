@@ -1,4 +1,4 @@
-.. _cdc200:
+.. _parallel-display:
 
 ================
 Parallel Display
@@ -106,7 +106,7 @@ Hardware Requirements
 
 .. note::
 
-   The Parallel Display interface is supported on DevKit E7, DevKit E8, E1C, and B1 A5/A6.
+   The Parallel Display interface is supported on Alif E7 DevKit, Alif E8 DevKit, Alif E1C DevKit, and Alif B1 DevKit.
 
 CDC200 Controller
 -----------------
@@ -170,17 +170,20 @@ Hardware Setup
 
    Hardware Setup
 
-Build an CDC200 Application with Zephyr
-===========================================
+Build a CDC200 Application with Zephyr
+======================================
 
 Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
+.. note::
+   Parallel builds require ``-S parallel-display``. The same snippet applies on Alif
+   E7/E8 DevKit (80K heap) and on Alif E1C/B1 DevKit (DTCM framebuffer).
 
 2. Build command for application on the M55 HE core:
 
@@ -188,8 +191,8 @@ Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/display
-
+     ../alif/samples/drivers/display \
+     -S parallel-display
 
 3. Build command for application on the M55 HP core:
 
@@ -197,22 +200,24 @@ Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/display
+     ../alif/samples/drivers/display \
+     -S parallel-display
 
-
-Once the build command completes successfully, executable images will be generated and placed in the build/zephyr directory. Both .bin (binary) and .elf (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Required Config Features
 ========================
 
 The following config features are necessary to test the application:
 
-- ``CONFIG_HEAP_MEM_POOL_SIZE=81920``
+- ``CONFIG_HEAP_MEM_POOL_SIZE=81920`` (E7/E8)
+- ``CONFIG_FB_USES_DTCM_REGION=y`` (B1/E1C)
 - ``CONFIG_LOG=y``
 - ``CONFIG_DISPLAY=y``
-- ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y`` (to enable display driver debug logs)
+- ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y``
 
-These config features are already selected when building the test application.
+These config features are selected by ``-S parallel-display`` for the matching
+board family: heap size on E7/E8, DTCM framebuffer on B1/E1C.
 
 DTS Properties
 ==============
@@ -443,4 +448,191 @@ Known Issues
 ============
 
 - **Zephyr CDC200 Driver**: The Zephyr device driver for the CDC200 currently supports only ARGB8888, RGB888, and RGB565 formats. This is a limitation of the Zephyr framework and may be addressed in future releases.
-- **Demo Application (Layer 2)**: In the demo application, Layer 2 is designed to copy an image in ARGB8888 format directly from a C array to the framebuffer. Therefore, avoid using any format other than ARGB8888 for Layer 2. Layer 1 formats can be changed without issue. 
+- **Demo Application (Layer 2)**: In the demo application, Layer 2 is designed to copy an image in ARGB8888 format directly from a C array to the framebuffer. Therefore, avoid using any format other than ARGB8888 for Layer 2. Layer 1 formats can be changed without issue.
+
+PM Support
+==========
+
+.. note::
+
+   The following limitations apply to the display application. They apply to
+   the parallel display and the serial display, including the display
+   power-management sample (``samples/drivers/pm/display_pm``):
+
+   - On the Alif E8 DevKit, the M55 HE core runs when it boots from MRAM.
+     The display application does not run when the M55 HP core boots from MRAM.
+   - ``PM_STATE_SUSPEND_TO_IDLE`` is not supported for now. The console log
+     may list this state, but the application does not enter it.
+
+The ``samples/drivers/pm/display_pm`` sample demonstrates Zephyr power
+management states combined with a CDC200 parallel display pipeline on
+Alif RTSS cores. The application cycles through PM states and, after each wake, streams
+data stored in a buffer to the display, verifying that
+the CDC200 and panel driver resume correctly and
+reproduce a valid frame.
+
+PM states exercised (determined at runtime by capability predicates):
+
+- **S2RAM path** (TCM or SRAM0 retention): RUNTIME_IDLE →
+  S2RAM STANDBY → S2RAM STOP → idle loop
+- **SOFT_OFF path** (MRAM boot, no retention): RUNTIME_IDLE →
+  SOFT_OFF (system resets on wakeup)
+
+Building and Running the PM Sample
+----------------------------------
+
+Follow these steps to build the PM sample application using the Alif Zephyr SDK:
+
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
+
+HE Core — TCM boot S2RAM (Balletto B1)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build the display PM sample for the B1 HE core using the following command:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/pm/display_pm/ \
+     -S display-pm-s2ram-tcm -- \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
+
+HE Core — MRAM boot SOFT_OFF (Ensemble E7)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build the display PM sample for the E7 HE core using the following command:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/display_pm/ \
+     -S display-pm-mram
+
+HP Core — MRAM boot SOFT_OFF (Ensemble E7)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build the display PM sample for the E7 HP core using the following command:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/pm/display_pm/ \
+     -S display-pm-mram
+
+HE Core — MRAM boot SOFT_OFF (Ensemble E8)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build the display PM sample for the E8 HE core using the following command:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/pm/display_pm/ \
+     -S display-pm-mram
+
+HP Core — MRAM boot SOFT_OFF (Ensemble E8)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Build the display PM sample for the E8 HP core using the following command:
+
+.. code-block:: console
+
+   west build -p auto \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/pm/display_pm/ \
+     -S display-pm-mram
+
+.. note::
+
+   This image does not run. On the Alif E8 DevKit, the display application
+   does not run when the M55 HP core boots from MRAM. This applies to the
+   parallel display and the serial display.
+
+PM Support Verification
+-----------------------
+
+The output below is from an E8 DevKit HE core TCM-boot S2RAM run
+(``APP_PM_WAKEUP_DEBUG 0``, the default). Use the B1 S2RAM command above
+and replace the board with ``alif_e8_dk/ae822fa0e5597xx0/rtss_he``.
+Setting ``APP_PM_WAKEUP_DEBUG 1`` in ``main.c`` additionally prints
+``PM wakeup: NVIC ISPR[x] = 0x...`` lines on each resume.
+
+The console log lists ``PM_STATE_SUSPEND_TO_IDLE``. That state is not supported for now and is not entered.
+
+A successful S2RAM test displays messages similar to the following:
+
+.. code-block:: console
+
+   *** Booting Zephyr OS build ***
+   [00:00:00.001,000] <inf> disp_pm: alif_e8_dk (S2RAM): Display PM demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+   [00:00:00.001,000] <inf> disp_pm: POWER STATE SEQUENCE:
+   [00:00:00.001,000] <inf> disp_pm:   1. PM_STATE_RUNTIME_IDLE
+   [00:00:00.001,000] <inf> disp_pm:   2. PM_STATE_SUSPEND_TO_IDLE
+   [00:00:00.001,000] <inf> disp_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+   [00:00:00.001,000] <inf> disp_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+   [00:00:00.001,000] <inf> disp_pm: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+   [00:00:00.001,000] <inf> disp_pm: skip starting a new stream cycle this round
+   [00:00:00.001,000] <inf> disp_pm: Enabling CDC200 Device.
+   [00:00:00.001,000] <inf> disp_pm: Display init: cdc200@49031000, panel res (800, 480), fmt 25
+   [00:00:00.001,000] <dbg> disp_pm: display_init: Layer 1: en=1 res=(300,480) fmt=16
+   [00:00:00.001,000] <dbg> disp_pm: display_init: Layer 2: en=1 res=(300,68) fmt=8
+   [00:00:00.001,000] <inf> disp_pm: Display: suspending for PM cycle
+   [00:00:00.001,000] <inf> disp_pm: Display thread is now suspended (polling for resume)
+   [00:00:00.001,000] <inf> disp_pm: Display streaming is Suspended: for normal sleep
+   [00:00:18.002,000] <inf> disp_pm: Exited from RUNTIME_IDLE sleep
+   [00:00:18.002,000] <dbg> disp_pm: display_pm_thread_resume: Display: Try to Resume...
+   [00:00:18.002,000] <inf> disp_pm: Display: resume signal sent
+   [00:00:18.002,000] <inf> disp_pm: Display: resuming after PM wake
+   [00:00:18.053,000] <dbg> disp_pm: display_streaming_thread: Display: reinit complete, resuming streaming
+   [00:00:18.058,000] <inf> disp_pm: FB0 - 0x02013ec0, size - 288000
+   [00:00:28.169,000] <inf> disp_pm: Display: streaming cycle complete, waiting for next PM cycle
+   [00:00:28.169,000] <inf> disp_pm: Display streaming cycle OK (RUNTIME_IDLE)
+   [00:00:28.169,000] <inf> disp_pm: Request SUSPEND_TO_IDLE for 10000 us
+   [00:00:28.169,000] <inf> disp_pm: Display: suspending for PM cycle
+   [00:00:28.180,000] <inf> disp_pm: Exited from SUSPEND_TO_IDLE sleep
+   [00:00:28.180,000] <inf> disp_pm: Request S2RAM STANDBY for 6000000 us
+   [00:00:28.180,000] <inf> disp_pm: Display thread is now suspended (polling for resume)
+   [00:00:28.180,000] <inf> disp_pm: Display streaming is Suspended: for Deep Sleep
+   [00:00:28.290,000] <inf> disp_pm: PM enter: SUSPEND_TO_RAM (substate 0)
+   [00:00:28.290,000] <inf> disp_pm: PM wakeup: SUSPEND_TO_RAM (substate 0)
+   [00:00:28.290,000] <inf> disp_pm: PM exit:  SUSPEND_TO_RAM (substate 0)
+   [00:00:34.229,000] <dbg> disp_pm: display_pm_thread_resume: Display: Try to Resume...
+   [00:00:34.229,000] <inf> disp_pm: Display: resume signal sent
+   [00:00:34.229,000] <inf> disp_pm: Display stream is Resumed: for Deep Sleep
+   [00:00:34.229,000] <inf> disp_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:34.229,000] <inf> disp_pm: Display: resuming after PM wake
+   [00:00:34.280,000] <dbg> disp_pm: display_streaming_thread: Display: reinit complete, resuming streaming
+   [00:00:34.285,000] <inf> disp_pm: FB0 - 0x02013ec0, size - 288000
+   [00:00:44.396,000] <inf> disp_pm: Display: streaming cycle complete, waiting for next PM cycle
+   [00:00:44.396,000] <inf> disp_pm: Display streaming cycle OK (RUNTIME_IDLE)
+   [00:00:44.396,000] <inf> disp_pm: Main thread running - iteration 0 - tick: 44396
+   [00:00:44.396,000] <inf> disp_pm: Display: suspending for PM cycle
+   [00:00:46.397,000] <inf> disp_pm: Main thread running - iteration 1 - tick: 46397
+   [00:00:48.398,000] <inf> disp_pm: Main thread running - iteration 2 - tick: 48398
+   [00:00:50.399,000] <inf> disp_pm: Request S2RAM STOP for 9000000 us
+   [00:00:50.399,000] <inf> disp_pm: Display thread is now suspended (polling for resume)
+   [00:00:50.399,000] <inf> disp_pm: Display streaming is Suspended: for Deep Sleep
+   [00:00:50.452,000] <inf> disp_pm: PM enter: SUSPEND_TO_RAM (substate 1)
+   [00:00:50.452,000] <inf> disp_pm: PM wakeup: SUSPEND_TO_RAM (substate 1)
+   [00:00:50.452,000] <inf> disp_pm: PM exit:  SUSPEND_TO_RAM (substate 1)
+   [00:00:59.412,000] <dbg> disp_pm: display_pm_thread_resume: Display: Try to Resume...
+   [00:00:59.412,000] <inf> disp_pm: Display: resume signal sent
+   [00:00:59.412,000] <inf> disp_pm: Display stream is Resumed: for Deep Sleep
+   [00:00:59.412,000] <inf> disp_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:00:59.412,000] <inf> disp_pm: Display: resuming after PM wake
+   [00:00:59.464,000] <dbg> disp_pm: display_streaming_thread: Display: reinit complete, resuming streaming
+   [00:00:59.469,000] <inf> disp_pm: FB0 - 0x02013ec0, size - 288000
+   [00:01:09.580,000] <inf> disp_pm: Display: streaming cycle complete, waiting for next PM cycle
+   [00:01:09.580,000] <inf> disp_pm: Display streaming cycle OK (STOP)
+   [00:01:09.580,000] <inf> disp_pm: Main thread running - iteration 0 - tick: 69580
+   [00:01:09.580,000] <inf> disp_pm: Display: suspending for PM cycle
+   [00:01:11.581,000] <inf> disp_pm: Main thread running - iteration 1 - tick: 71581
+   [00:01:13.582,000] <inf> disp_pm: Main thread running - iteration 2 - tick: 73582
+   [00:01:15.583,000] <inf> disp_pm: === DISPLAY PM SEQUENCE COMPLETED ===
+

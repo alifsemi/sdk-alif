@@ -383,9 +383,9 @@ PM Sample Snippets
 
 Ready-to-use overlay files are provided by these capability-based snippets:
 
-* ``pm-system-off-s2ram-tcm`` — HE core, TCM boot (S2RAM STANDBY/STOP)
+* ``pm-system-off-s2ram-tcm`` — HE core, TCM boot (S2RAM STANDBY and STOP)
 * ``pm-system-off-mram`` — HE or HP, MRAM boot (SOFT_OFF)
-* ``pm-system-off-s2ram-sram0`` — HE or HP, SRAM0 data RAM (E8 only, S2RAM STANDBY/STOP)
+* ``pm-system-off-s2ram-sram0`` — HE or HP, SRAM0 data RAM (E8 only, S2RAM STANDBY and STOP)
 
-See the :ref:`alif-pm-states-sample` sample for build instructions and
+See the :ref:`appnote-zas-power-management` sample for build instructions and
 per-SoC overlay selection details.

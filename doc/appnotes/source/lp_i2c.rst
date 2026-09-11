@@ -7,7 +7,7 @@ LPI2C
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the LPI2C (Low Power Inter-Integrated Circuit) controller IP provided by Alif Semiconductor™ and integrated into Ensemble™ devices.
+This document explains how to create, compile, and run a demo application for the LPI2C (Low Power Inter-Integrated Circuit) controller IP provided by Alif Semiconductor and integrated into Alif devices.
 
 .. figure:: _static/lpi2c_block_diagram.png
    :alt: LPI2C Block Diagram
@@ -16,7 +16,6 @@ This document explains how to create, compile, and run a demo application for th
    LPI2C Block Diagram
 
 .. include:: prerequisites.rst
-
 
 LPI2C Interface
 ---------------
@@ -61,17 +60,15 @@ Connection
 .. include:: note.rst
 
 Build an LPI2C Application with Zephyr
-==========================================
+=======================================
 
 Follow these steps to build the LPI2C application using the Alif Zephyr SDK:
 
-
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
-
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -82,14 +79,13 @@ Follow these steps to build the LPI2C application using the Alif Zephyr SDK:
      ../alif/samples/drivers/lpi2c \
      -S alif-lpi2c
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -98,7 +94,6 @@ To execute binaries on the DevKit follow the command
 Console Output
 ================
 
-
 .. code-block:: text
 
    [00:00:00.000,000] <inf> ALIF_LPI2C: Start Master transmit and Slave receive
@@ -106,4 +101,3 @@ Console Output
    [00:00:00.002,000] <inf> ALIF_LPI2C: Start Slave transmit and Master receive
    [00:00:00.006,000] <inf> ALIF_LPI2C: Slave transmit and Master receive successful
    [00:00:00.006,000] <inf> ALIF_LPI2C: Transfer completed
-

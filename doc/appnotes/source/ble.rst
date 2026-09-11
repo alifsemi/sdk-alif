@@ -14,6 +14,12 @@ Introduction
 
 The Alif BLE host stack, integrated within the Balletto B1 ROM code, offers an alternative to the Zephyr BLE host stack, helping to conserve flash space.
 
+This application note uses the Heart Rate BLE profile sample
+(``samples/bluetooth/le_periph_hr``) on the Alif Balletto Development Kit.
+When running, the sample starts advertising and waits for a central to
+connect. After connection, the central should start notifications and the
+peripheral sends measurements every second. Notifications for the battery
+service are handled independently.
 
 Alif BLE Features
 =================
@@ -28,7 +34,7 @@ Prerequisites
 
 Hardware Requirements
 ---------------------
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 
 Software Requirements
@@ -41,16 +47,15 @@ Software Requirements
 
 .. include:: note.rst
 
-Build an BLE Application with Zephyr
-========================================
+Build a BLE Application with Zephyr
+=====================================
 
 Follow these steps to build the BLE application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
-   The build commands shown here are specifically for the B1C DevKit.
-   For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   BLE features are supported only on the Alif B1 DevKit (B1C), M55 HE core. They are not supported on other boards.
 
 2. Build command for application on the M55 HE core:
 
@@ -60,13 +65,12 @@ Follow these steps to build the BLE application using the Alif Zephyr SDK:
      -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
      ../alif/samples/bluetooth/le_periph_hr
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -75,7 +79,12 @@ To execute binaries on the DevKit follow the command
 Testing the BLE Application
 ===========================
 
-To test the BLE application, you'll need a mobile app that can scan BLE devices. Alif will also provide an app in the future, but it is currently in closed testing. If you need access, please contact your Alif representative.
+To test the BLE application, use a mobile app that can scan BLE devices. Alif will also provide an app in the future, but it is currently in closed testing. If you need access, please contact your Alif representative.
+
+The Heart Rate sample starts advertising and waits for a central to connect.
+After you connect, enable notifications. The peripheral then sends
+measurements every second. Battery-service notifications are handled
+independently.
 
 Console Output
 ===============

@@ -46,12 +46,11 @@ Build an OSPI Flash Application with Zephyr
 
 Follow these steps to build the OSPI Flash application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
-
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -71,8 +70,7 @@ Follow these steps to build the OSPI Flash application using the Alif Zephyr SDK
      -S ospi-flash \
      ../alif/samples/drivers/spi_flash
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 .. note::
 
@@ -83,11 +81,46 @@ Once the build command completes successfully, executable images will be generat
 
    This configuration enables XIP support for the OSPI Flash module.
 
+Boot an XIP Image from OSPI Flash
+---------------------------------
+
+Program a valid image at OSPI flash offset 0 before booting from XIP.
+``CONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE`` reads the initial stack pointer
+and reset vector from the XIP base and jumps there. Blank flash faults.
+
+To boot an image from OSPI Flash in XIP mode on the Alif E8 DevKit, enable
+both ``CONFIG_ALIF_OSPI_FLASH_XIP`` and ``CONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE``.
+``CONFIG_ALIF_OSPI_FLASH_XIP`` enables XIP support for the OSPI Flash module.
+``CONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE`` boots the image stored in OSPI Flash.
+With both options enabled, the application does not run the flash read, write,
+or erase tests, so the bootable binary stored in flash is left unchanged.
+
+Build command for the M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     -S ospi-flash \
+     ../alif/samples/drivers/spi_flash -- \
+     -DCONFIG_ALIF_OSPI_FLASH_XIP=y \
+     -DCONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE=y
+
+Build command for the M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     -S ospi-flash \
+     ../alif/samples/drivers/spi_flash -- \
+     -DCONFIG_ALIF_OSPI_FLASH_XIP=y \
+     -DCONFIG_ALIF_OSPI_FLASH_BOOT_XIP_IMAGE=y
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 
