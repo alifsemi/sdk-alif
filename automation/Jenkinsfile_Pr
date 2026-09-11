@@ -61,7 +61,7 @@ pipeline {
                     job_config.branch = "${CHANGE_TARGET}"
                     job_config.token  = GITHUB_TOKEN_PSW
                     job_config.pr_repo        = "${GITHUB_REPO_NAME}"
-                    job_config.changeId       = "${CHANGE_ID}"
+                    job_config.prNumber       = "${CHANGE_ID}"
                     job_config.zephyr_repo    = "zephyr_alif"
 
                     sh '''#!/bin/bash -xe
@@ -274,7 +274,7 @@ pipeline {
                             manifestCheckResult = common_funcs.checkManifestUpdate()
 
                             job_config.repo      = job_config.pr_repo
-                            job_config.changeId  = "${CHANGE_ID}"
+                            job_config.prNumber  = "${CHANGE_ID}"
                             def pr_response  = utils.github.getPullRequestBody(job_config)
                             if (pr_response?.contains('/pull/')) {
                                 def temp = pr_response.split('/pull/')[1]
@@ -292,7 +292,7 @@ pipeline {
                             }
                             if(zephyr_pr_number) {
                                 job_config.repo      = job_config.zephyr_repo
-                                job_config.changeId  = zephyr_pr_number
+                                job_config.prNumber  = zephyr_pr_number
 
                                 for (int i = 0; i < Math.min(2, pr_labels.size()); i++) {
                                     String label = pr_labels[i]
@@ -318,12 +318,12 @@ pipeline {
                         usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
                             job_config.label     = pr_labels[0]
                             job_config.repo      = job_config.pr_repo
-                            job_config.changeId  = "${CHANGE_ID}"
+                            job_config.prNumber  = "${CHANGE_ID}"
                             echo "Add labels     => ${job_config.label}"
                             utils.github.addLabel(job_config)
                             if(zephyr_pr_number) {
                                 job_config.repo      = job_config.zephyr_repo
-                                job_config.changeId  = zephyr_pr_number
+                                job_config.prNumber  = zephyr_pr_number
                                 echo "Add labels     => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
@@ -338,13 +338,13 @@ pipeline {
                     usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
                     job_config.label     = pr_labels[1]
                     job_config.repo      = job_config.pr_repo
-                    job_config.changeId  = "${CHANGE_ID}"
+                    job_config.prNumber  = "${CHANGE_ID}"
                     echo "Add labels     =>  ${job_config.label}"
                     utils.github.addLabel(job_config)
 
                     if(zephyr_pr_number) {
                         job_config.repo      = job_config.zephyr_repo
-                        job_config.changeId  = zephyr_pr_number
+                        job_config.prNumber  = zephyr_pr_number
                         echo "Add labels     => ${job_config.label}"
                         utils.github.addLabel(job_config)
                     }
@@ -352,7 +352,7 @@ pipeline {
                     if (manifestCheckResult.manifestStatus && manifestCheckResult.hasPullRequestRef) {
                         job_config.label     = pr_additional_label[0]
                         job_config.repo      = job_config.pr_repo
-                        job_config.changeId  = "${CHANGE_ID}"
+                        job_config.prNumber  = "${CHANGE_ID}"
                         echo "Add labels     => ${job_config.label}"
                         utils.github.addLabel(job_config)
                     }
