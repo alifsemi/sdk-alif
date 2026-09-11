@@ -17,6 +17,11 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/ztest.h>
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+#include <zephyr/drivers/regulator.h>
+extern const struct device *cam_enbuf;
+#endif
+
 /* CAM controller register offsets / bits used by test suite hooks. */
 #define CAM_CTRL		0x00
 #define CAM_CTRL_BUSY		BIT(2)
@@ -42,6 +47,8 @@
 #define PIPELINE_FORMAT		VIDEO_PIX_FMT_BGGR8
 #elif CONFIG_DT_HAS_OVTI_OV5640_ENABLED
 #define PIPELINE_FORMAT		VIDEO_PIX_FMT_RGB565
+#define SENSOR_WIDTH	160
+#define SENSOR_HEIGHT	120
 #elif CONFIG_DT_HAS_APTINA_MT9M114_ENABLED
 #define PIPELINE_FORMAT		VIDEO_PIX_FMT_GREY
 #else
