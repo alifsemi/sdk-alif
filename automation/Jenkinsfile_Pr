@@ -340,25 +340,27 @@ pipeline {
             script {
                 withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
                     usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
-                    job_config.label     = pr_labels[1]
-                    job_config.repo      = job_config.pr_repo
-                    job_config.prNumber  = "${CHANGE_ID}"
-                    echo "Add labels     =>  ${job_config.label}"
-                    utils.github.addLabel(job_config)
-
-                    if(zephyr_pr_number) {
-                        job_config.repo      = job_config.zephyr_repo
-                        job_config.prNumber  = zephyr_pr_number
-                        echo "Add labels     => ${job_config.label}"
-                        utils.github.addLabel(job_config)
-                    }
-
-                    if (manifestCheckResult.manifestStatus && manifestCheckResult.hasPullRequestRef) {
-                        job_config.label     = pr_additional_label[0]
+                    if (utils && utils.github) {
+                        job_config.label     = pr_labels[1]
                         job_config.repo      = job_config.pr_repo
                         job_config.prNumber  = "${CHANGE_ID}"
-                        echo "Add labels     => ${job_config.label}"
+                        echo "Add labels     =>  ${job_config.label}"
                         utils.github.addLabel(job_config)
+
+                        if(zephyr_pr_number) {
+                            job_config.repo      = job_config.zephyr_repo
+                            job_config.prNumber  = zephyr_pr_number
+                            echo "Add labels     => ${job_config.label}"
+                            utils.github.addLabel(job_config)
+                        }
+
+                        if (manifestCheckResult.manifestStatus && manifestCheckResult.hasPullRequestRef) {
+                            job_config.label     = pr_additional_label[0]
+                            job_config.repo      = job_config.pr_repo
+                            job_config.prNumber  = "${CHANGE_ID}"
+                            echo "Add labels     => ${job_config.label}"
+                            utils.github.addLabel(job_config)
+                        }
                     }
                 }
             }
