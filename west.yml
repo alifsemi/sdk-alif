@@ -28,7 +28,7 @@ manifest:
 
     - name: zephyr
       repo-path: zephyr_alif
-      revision: 596d71447c9726f12d17923a5476f225574f3807
+      revision: 50dd91215b2c5801af047472a42fd2e618b8a591
       import:
         # In addition to the zephyr repository itself,
         # Alif SDK fetches the needed projects
@@ -86,7 +86,7 @@ manifest:
 
     - name: dave2d
       repo-path: alif_dave2d-driver
-      revision: d667a8e47f13e2f39bc724d66def5230827b2808
+      revision: f8b3c70d59da9851f9f48c993c0db88eb3d1a313
       path: modules/drivers/dave2d
 
     - name: aipl
