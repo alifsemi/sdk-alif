@@ -11,6 +11,10 @@
 
 LOG_MODULE_DECLARE(video_app);
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+const struct device *cam_enbuf;
+#endif
+
 int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 {
 	int pitch;
@@ -120,4 +124,12 @@ void manual_suite_before(void *fixture)
 		video_stream_stop(video);
 		k_msleep(20);
 	}
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	cam_enbuf = DEVICE_DT_GET(DT_NODELABEL(cam_enbuf));
+
+	zassert_true(device_is_ready(cam_enbuf), "%s: device not ready.",
+		cam_enbuf->name);
+	zassert_equal(regulator_enable(cam_enbuf), 0,
+		"Failed to enable regulator");
+#endif
 }
