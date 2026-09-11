@@ -59,15 +59,15 @@ This sample demonstrates the following power states:
     * Substate 1 (STOP): Higher power savings.
 * **PM_STATE_SOFT_OFF**: Deepest sleep, no retention, full system reset on wakeup.
 
-The PM states exercised depend on the *capability* of the target, selected
+The PM states exercised depend on the capability of the target, selected
 via the build snippet. Two compile-time predicates drive the state machine:
 
 ``S2RAM_SUPPORTED``
-  True when SRAM0 is the configured data RAM (any core, E8 only) OR when
-  the HE core boots from TCM (TCM has hardware retention).
+   True when SRAM0 is the configured data RAM (any core, E8 only) or when
+   the HE core boots from TCM (TCM has hardware retention).
 
 ``SOFT_OFF_SUPPORTED``
-  True when ``S2RAM_SUPPORTED`` is false (mutually exclusive).
+   True when ``S2RAM_SUPPORTED`` is false. The two predicates are mutually exclusive.
 
 .. list-table:: Capability Matrix
    :header-rows: 1
@@ -80,10 +80,10 @@ via the build snippet. Two compile-time predicates drive the state machine:
      - HE only
      - RUNTIME_IDLE → SUSPEND_TO_IDLE → S2RAM STANDBY → S2RAM STOP
    * - ``pm-system-off-mram``
-     - HE + HP
+     - HE and HP
      - RUNTIME_IDLE → SUSPEND_TO_IDLE → SOFT_OFF
    * - ``pm-system-off-s2ram-sram0``
-     - HE + HP (E8 only)
+     - HE and HP (E8 only)
      - RUNTIME_IDLE → SUSPEND_TO_IDLE → S2RAM STANDBY → S2RAM STOP
 
 How to Use the Application
@@ -128,7 +128,7 @@ Follow these steps to build the Power Management Application using the Alif Zeph
     ../alif/samples/drivers/pm/system_off \
     -S pm-system-off-mram
 
-4. Build command for HE application (MRAM boot, SOFT_OFF):
+4. Build command for the HE application (MRAM boot, SOFT_OFF):
 
 .. code-block:: console
 
@@ -136,7 +136,7 @@ Follow these steps to build the Power Management Application using the Alif Zeph
     ../alif/samples/drivers/pm/system_off \
     -S pm-system-off-mram
 
-5. Build command for HE or HP application (SRAM0 S2RAM, E8 only):
+5. Build command for the HE or HP application (SRAM0 S2RAM, E8 only):
 
 .. code-block:: console
 
@@ -205,10 +205,10 @@ HE Core (TCM boot or MRAM boot)
    ./app-write-mram
 
 HP Core — SRAM0 S2RAM (E8 only)
---------------------------------
+---------------------------------
 
 For the HP SRAM0 S2RAM use case, two companion binaries are required
-alongside the Zephyr application.  See
+alongside the Zephyr application. See
 ``samples/drivers/pm/system_off/binaries/README.rst`` for the full setup
 and the SE Tools JSON configuration.
 

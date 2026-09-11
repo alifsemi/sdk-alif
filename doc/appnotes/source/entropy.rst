@@ -22,7 +22,7 @@ Follow these steps to build the Entropy application using the Alif Zephyr SDK:
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -32,7 +32,6 @@ Follow these steps to build the Entropy application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      tests/drivers/entropy/api
 
-
 3. Build command for application on the M55 HP core:
 
 .. code-block:: console
@@ -41,8 +40,7 @@ Follow these steps to build the Entropy application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      tests/drivers/entropy/api
 
-
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================

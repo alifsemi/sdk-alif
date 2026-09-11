@@ -11,7 +11,6 @@ Generic Note
 
 * For **MRAM memory**, the build system uses MRAM addresses by default; no additional configuration is required.
 
-
 **Debug Binary on the DevKit**
 
 * Use ``west debug`` to debug the application through J-Link.

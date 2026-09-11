@@ -26,21 +26,20 @@ The MRAM controller implements read cache and write buffer mechanism that enable
 - **Concurrent access**: Supports simultaneous read and write operations; up to four bus masters can write concurrently without coordination
 - **DMA support**: Direct Memory Access (DMA) write operations can transfer up to 128 bytes per cycle
 
-
 .. include:: prerequisites.rst
 
 .. include:: note.rst
 
 Build an MRAM Application with Zephyr
-=========================================
+=====================================
 
 Follow these steps to build the MRAM application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 2. Build command for application on the M55 HE core:
 
@@ -51,7 +50,6 @@ Follow these steps to build the MRAM application using the Alif Zephyr SDK:
      samples/subsys/fs/littlefs \
      -S alif-lfs-mram
 
-
 3. Build command for application on the M55 HP core:
 
 .. code-block:: console
@@ -61,11 +59,12 @@ Follow these steps to build the MRAM application using the Alif Zephyr SDK:
      samples/subsys/fs/littlefs \
      -S alif-lfs-mram
 
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -73,7 +72,6 @@ To execute binaries on the DevKit follow the command
 
 Console Output
 ================
-
 
 .. code-block:: text
 
