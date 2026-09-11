@@ -11,6 +11,37 @@
 
 LOG_MODULE_DECLARE(video_app);
 
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+const struct device *cam_enbuf;
+static int cam_supply_refs;
+#endif
+
+void cam_supply_on(void)
+{
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	cam_enbuf = DEVICE_DT_GET(DT_NODELABEL(cam_enbuf));
+	zassert_true(device_is_ready(cam_enbuf), "%s: device not ready.",
+		     cam_enbuf->name);
+	zassert_equal(regulator_enable(cam_enbuf), 0,
+		      "Failed to enable regulator");
+	cam_supply_refs++;
+#endif
+}
+
+void cam_supply_off(void)
+{
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+	if (cam_supply_refs == 0 || cam_enbuf == NULL) {
+		return;
+	}
+
+	/* Teardown must not zassert: a failure there aborts the runner. */
+	if (regulator_disable(cam_enbuf) == 0) {
+		cam_supply_refs--;
+	}
+#endif
+}
+
 int fourcc_to_pitch(uint32_t fourcc, uint32_t width)
 {
 	int pitch;

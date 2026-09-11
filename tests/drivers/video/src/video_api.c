@@ -94,6 +94,7 @@ void *api_suite_setup(void)
 #endif
 	zassert_true(device_is_ready(api_video),
 		"%s: device not ready", api_video->name);
+	cam_supply_on();
 	return NULL;
 }
 
@@ -114,6 +115,8 @@ void api_suite_teardown(void *data)
 		video_buffer_release(buf);
 		buf = NULL;
 	}
+
+	cam_supply_off();
 }
 
 /* -------------------------------------------------------------------------

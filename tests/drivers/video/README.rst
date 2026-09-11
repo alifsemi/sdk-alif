@@ -15,7 +15,8 @@ API (``video_get_caps``, ``video_set_format``, ``video_get_format``,
 ``video_set_signal``) and exercises end-to-end frame capture with one or
 more connected sensors.
 
-The test is organised into two ``ztest`` suites:
+The test is organised into two always-built ``ztest`` suites, plus one
+sensor-specific suite that is compiled in only when that sensor is in DT:
 
 ``cpi_manual_testcase``
   End-to-end / integration tests that bring up the full pipeline, capture
@@ -29,6 +30,14 @@ The test is organised into two ``ztest`` suites:
   start/stop idempotency, flush semantics, and
   the ``video_get_format``-before-``video_set_format`` regression.
 
+``ov5640_testcase``
+  OV5640-only tests in ``src/video_test_ov5640.c``. Linked only when
+  ``CONFIG_DT_HAS_OVTI_OV5640_ENABLED`` is set, so MT9M114 / ARX3A0
+  builds never register or skip these cases. Covers DVP mode walk,
+  unsupported format reject, HFLIP/VFLIP, test pattern, in-range
+  image-adjust controls, control range reject, and DVP
+  ``frmival`` ``-ENOTSUP``.
+
 Supported Sensors
 *****************
 
@@ -38,6 +47,8 @@ The pipeline format is selected at compile time from the device tree:
 | Sensor                         | Interface                 | Pixel format   |
 +================================+===========================+================+
 | ``aptina,mt9m114``             | Parallel CPI              | ``GREY``       |
++--------------------------------+---------------------------+----------------+
+| ``ovti,ov5640``                | Parallel LP-CPI (DVP)     | ``RGB565``     |
 +--------------------------------+---------------------------+----------------+
 | ``onnn,arx3a0``                | MIPI CSI-2                | ``RAW10``      |
 +--------------------------------+---------------------------+----------------+
@@ -95,6 +106,18 @@ MIPI CSI-2 + ARX3A0 (Standard Camera)
        <test_path> \
        -- -DDTC_OVERLAY_FILE=boards/serial_camera_arx3a0_standard.overlay
 
+LP-CPI + OV5640 (B1-SK, RTSS-HE)
+=================================
+
+The board overlay and conf fragment
+(``boards/alif_b1_sk_ab1c1f4m51820ph0_rtss_he.overlay`` and ``.conf``)
+are picked up from the board name. No extra overlay argument is required.
+
+.. code-block:: console
+
+   west build -p -b <board> \
+       <test_path>
+
 Flash and open a serial console at 115200 8N1 to observe the test output.
 
 Prj Options
@@ -151,8 +174,14 @@ Notes
 - ``cpi_api_testcase`` runs first and leaves the device stopped / drained
   before handing off to ``cpi_manual_testcase`` (see
   :c:func:`api_suite_teardown` in ``src/video_api.c``).
-- ``manual_suite_before`` is shared by both suites: it acquires the CAM /
+- ``ov5640_testcase`` is compiled in only for OV5640 boards; its teardown
+  restores QQVGA, clears HFLIP/VFLIP/test-pattern, and drains buffers.
+  Each case has an after hook that stops the stream and releases a buffer
+  when an assertion returns early.
+- ``manual_suite_before`` is shared by the suites: it acquires the CAM /
   ISP device handle and force-stops any in-flight capture left over from
-  a previous run (detected via the ``CAM_CTRL.BUSY`` bit).
+  a previous run (detected via the ``CAM_CTRL.BUSY`` bit). On OV5640 the
+  camera regulator is enabled once in each suite setup and disabled once
+  in that suite's teardown.
 - The ISP path (:dtcompatible:`vsi,isp-pico`) is only selected when
   ``CONFIG_USE_ALIF_ISP_LIB=y`` and the ``isp`` DT node is enabled.
