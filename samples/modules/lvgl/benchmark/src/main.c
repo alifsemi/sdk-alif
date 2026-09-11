@@ -30,6 +30,26 @@
 
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
+#if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
+static int display_panel_on(void)
+{
+	const struct device *panel_dev = DEVICE_DT_GET(DT_ALIAS(panel));
+	int ret;
+
+	if (!device_is_ready(panel_dev)) {
+		LOG_ERR("Display panel device not ready");
+		return -ENODEV;
+	}
+
+	ret = display_blanking_off(panel_dev);
+	if (ret) {
+		LOG_ERR("Failed to turn display panel on (%d)", ret);
+	}
+
+	return ret;
+}
+#endif
+
 /*
  * D/AVE 2D working memory (display lists, render buffers, ...). The LVGL D/AVE 2D
  * draw unit allocates from this heap inside lv_draw_dave2d_init(), which runs as
@@ -155,6 +175,12 @@ int main(void)
 			LOG_ERR("Failed to set DSI video mode (%d)", ret);
 			return 0;
 		}
+	}
+#endif
+
+#if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
+	if (display_panel_on()) {
+		return 0;
 	}
 #endif
 
