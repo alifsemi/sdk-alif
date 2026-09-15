@@ -14,6 +14,10 @@
 	memory-blocks   = <(ALIF_MRAM_MASK | ALIF_SRAM0_MASK)>;
 };
 
+&off_profile_soft_off {
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK | ALIF_SRAM0_MASK)>;
+};
+
 &gpio14 {
 	status = "okay";
 };
