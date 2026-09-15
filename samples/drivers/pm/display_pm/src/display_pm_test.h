@@ -15,6 +15,7 @@ int display_pm_thread_init(void);
 int display_pm_thread_start(void);
 int display_pm_thread_suspend(void);
 int display_pm_thread_resume(void);
+int display_pm_thread_stop(void);
 int display_pm_wait_streaming_done(void);
 
 #endif /* __DISPLAY_PM_TEST_H__ */
