@@ -255,7 +255,7 @@ static int display_init(void)
 	}
 
 	display_get_capabilities(panel_dev, &panel_caps);
-	display_blanking_off(panel_dev);
+	display_blanking_on(panel_dev);
 #endif /* defined(CONFIG_MIPI_DSI) */
 
 	display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
@@ -266,6 +266,7 @@ static int display_init(void)
 
 	LOG_INF("Enabling CDC200 Device.");
 	cdc200_set_enable(display_dev, true);
+	display_blanking_on(display_dev);
 	cdc200_get_capabilities(display_dev, &capabilities);
 
 	LOG_INF("Display init: %s, panel res (%d, %d), fmt %d", display_dev->name,
@@ -336,7 +337,7 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 		THREAD_TO_BE_SUSPEND = 1;
 	}
 
-	/* Initialize camera */
+	/* Initialize display */
 	ret = display_init();
 	if (ret) {
 		LOG_ERR("Display initialization failed: %d", ret);
@@ -357,41 +358,7 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 			 */
 			if (THREAD_TO_BE_SUSPEND) {
 				THREAD_SUSPENDED = 1;
-				LOG_INF("Display: suspending for PM cycle");
-
-#if defined(CONFIG_MIPI_DSI)
-				if (panel_dev) {
-					ret = pm_device_action_run(panel_dev,
-							PM_DEVICE_ACTION_SUSPEND);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("Panel PM suspend failed: %d", ret);
-					}
-				}
-
-				if (dsi_dev) {
-					ret = pm_device_action_run(dsi_dev,
-						PM_DEVICE_ACTION_SUSPEND);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("DSI PM suspend failed: %d", ret);
-					}
-				}
-
-				if (dphy_dev) {
-					ret = pm_device_action_run(dphy_dev,
-						PM_DEVICE_ACTION_SUSPEND);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("DPHY PM suspend failed: %d", ret);
-					}
-				}
-#endif /* defined(CONFIG_MIPI_DSI) */
-
-				if (display_dev) {
-					ret = pm_device_action_run(display_dev,
-						PM_DEVICE_ACTION_SUSPEND);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("CDC200 PM suspend failed: %d", ret);
-					}
-				}
+				LOG_INF("Display: putting thread into wait for PM resume");
 
 				/* Signal that we are now suspended */
 				k_sem_give(&display_pm_suspended_sem);
@@ -399,7 +366,13 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 				/* Block on semaphore - does not wake system like k_msleep */
 				k_sem_take(&display_pm_resume_sem, K_FOREVER);
 
-				LOG_INF("Display: resuming after PM wake");
+				/* Check if we were woken to stop rather than resume */
+				if (THREAD_TO_BE_STOPPED) {
+					LOG_INF("Display: thread stopping (suspend)");
+					return;
+				}
+
+				LOG_INF("Display: Woken up by PM resume");
 				THREAD_SUSPENDED = 0;
 
 				/*
@@ -413,45 +386,12 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 							PM_ALL_SUBSTATES);
 				pm_locks_held = true;
 
-				if (display_dev) {
-					ret = pm_device_action_run(display_dev,
-						PM_DEVICE_ACTION_RESUME);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("CDC200 PM resume failed: %d", ret);
-					}
-				}
-
-#if defined(CONFIG_MIPI_DSI)
-				if (dphy_dev) {
-					ret = pm_device_action_run(dphy_dev,
-						PM_DEVICE_ACTION_RESUME);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("DPHY PM resume failed: %d", ret);
-					}
-				}
-
-				if (dsi_dev) {
-					ret = pm_device_action_run(dsi_dev,
-						PM_DEVICE_ACTION_RESUME);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("DSI PM resume failed: %d", ret);
-					}
-				}
-
-				if (panel_dev) {
-					ret = pm_device_action_run(panel_dev,
-							PM_DEVICE_ACTION_RESUME);
-					if (ret && ret != -EALREADY && ret != -ENOSYS) {
-						LOG_ERR("Panel PM resume failed: %d", ret);
-					}
-				}
-#endif /* defined(CONFIG_MIPI_DSI) */
-
-				/* After STOP, DBSS was fully powered off. Give DPHY analog
-				 * (PLL, LDO, lane receivers) time to stabilize after power
-				 * domain re-enable before attempting MIPI link setup.
+				/* The PM framework already ran SUSPEND/RESUME on
+				 * every PM device in dependency order, so the
+				 * DPHY, CSI2, CPI and sensor are usable by the
+				 * time we get here. Only the pipeline format has
+				 * to be re-applied to start a new capture cycle.
 				 */
-				k_msleep(50);
 
 #if defined(CONFIG_MIPI_DSI)
 				display_set_orientation(panel_dev, DISPLAY_ORIENTATION_ROTATED_180);
@@ -460,7 +400,6 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 #endif /* defined(CONFIG_MIPI_DSI) */
 
 				cdc200_set_enable(display_dev, true);
-				LOG_DBG("Display: reinit complete, resuming streaming");
 			}
 
 			streaming_active = true;
@@ -534,6 +473,10 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 			k_msleep(10000);
 		}
 
+		display_blanking_on(panel_dev);
+		cdc200_set_enable(display_dev, false);
+		display_blanking_on(display_dev);
+
 		/* Release PM state locks after streaming is fully done */
 		if (pm_locks_held) {
 			pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
@@ -545,6 +488,7 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 		k_msleep(100);
 
 		streaming_active = false;
+
 		LOG_INF("Display: streaming cycle complete, waiting for next PM cycle");
 
 		/* Signal main thread that streaming cycle is done */
@@ -574,7 +518,8 @@ int display_pm_thread_init(void)
 
 int display_pm_thread_start(void)
 {
-	THREAD_TO_BE_SUSPEND = 0;
+	/* Stay suspended until main explicitly resumes after the first PM cycle. */
+	THREAD_TO_BE_SUSPEND = 1;
 	THREAD_SUSPENDED = 0;
 
 	k_thread_start(&thread_display);
@@ -583,20 +528,33 @@ int display_pm_thread_start(void)
 
 int display_pm_thread_suspend(void)
 {
+	int ret;
+
+	if (THREAD_SUSPENDED) {
+		return 0;
+	}
+
 	was_streaming = streaming_active;
 	THREAD_TO_BE_SUSPEND = 1;
 
 	/* Wait for thread to acknowledge suspend request */
-	k_sem_take(&display_pm_suspended_sem, K_FOREVER);
+	ret = k_sem_take(&display_pm_suspended_sem, K_FOREVER);
+	if (ret) {
+		LOG_ERR("Display thread did not acknowledge suspend (err: %d)", ret);
+		return ret;
+	}
 
 	LOG_INF("Display thread is now suspended (polling for resume)");
 
+	/* The PM framework suspends the video devices as part of the system
+	 * state transition, so nothing else is needed here.
+	 */
 	return 0;
 }
 
 int display_pm_thread_resume(void)
 {
-	LOG_DBG("Display: Try to Resume...");
+	LOG_INF("Display: Try to Resume...");
 
 	/* Reset stale signal from interrupted capture cycles */
 	k_sem_reset(&display_streaming_done_sem);
@@ -606,6 +564,31 @@ int display_pm_thread_resume(void)
 	k_sem_give(&display_pm_resume_sem);
 
 	LOG_INF("Display: resume signal sent");
+	return 0;
+}
+
+int display_pm_thread_stop(void)
+{
+	int ret;
+
+	LOG_INF("Display: requesting thread stop");
+
+	THREAD_TO_BE_STOPPED = 1;
+
+	/* Also clear suspend flag in case thread is currently suspended */
+	THREAD_TO_BE_SUSPEND = 0;
+
+	/* Wake thread if blocked on resume semaphore so it can check stop flag */
+	k_sem_give(&display_pm_resume_sem);
+
+	/* Wait for thread to finish */
+	ret = k_thread_join(&thread_display, K_SECONDS(5));
+	if (ret != 0) {
+		LOG_ERR("Display thread join failed or timed out (err: %d)", ret);
+		return ret;
+	}
+
+	LOG_INF("Display: thread stopped");
 	return 0;
 }
 

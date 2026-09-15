@@ -49,7 +49,7 @@ LOG_MODULE_REGISTER(disp_pm, LOG_LEVEL_DBG);
  * durations and overlay min-residency-us values must stay below this ceiling.
  */
 /* Sleep duration for PM_STATE_RUNTIME_IDLE */
-#define RUNTIME_IDLE_SLEEP_USEC (18 * 1000 * 1000)
+#define RUNTIME_IDLE_SLEEP_USEC (10 * 1000 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
 #define SUSPEND_IDLE_SLEEP_USEC (10 * 1000)
 /* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
@@ -149,15 +149,20 @@ static void alarm_callback_fn(const struct device *wakeup_dev,
 
 static int app_enter_normal_sleep(uint32_t sleep_usec)
 {
-#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
-	display_pm_thread_suspend();
+	int ret;
+
+	ret = display_pm_thread_suspend();
+	if (ret) {
+		LOG_ERR("Failed to suspend display thread: %d", ret);
+		return ret;
+	}
 	LOG_INF("Display streaming is Suspended: for normal sleep");
 
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 	k_sleep(K_USEC(sleep_usec));
 #else
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	struct counter_alarm_cfg alarm_cfg;
-	int ret;
 
 	alarm_cfg.flags = 0;
 	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
@@ -167,6 +172,7 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
 		LOG_ERR("Could not set the alarm");
+		display_pm_thread_resume();
 		return ret;
 	}
 	LOG_DBG("Set alarm for %u microseconds", sleep_usec);
@@ -174,6 +180,7 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 	k_sleep(K_USEC(sleep_usec));
 
 	if (!alarm_cb_status) {
+		display_pm_thread_resume();
 		return -1;
 	}
 	alarm_cb_status = 0;
@@ -184,20 +191,24 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 
 static int app_enter_deep_sleep(uint32_t sleep_usec)
 {
-#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
-	display_pm_thread_suspend();
+	int ret;
+
+	ret = display_pm_thread_suspend();
+	if (ret) {
+		LOG_ERR("Failed to suspend display thread: %d", ret);
+		return ret;
+	}
 	LOG_INF("Display streaming is Suspended: for Deep Sleep");
 
+#if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 	/**
 	 * Set a delay more than the min-residency-us configured so that
 	 * the sub-system will go to OFF state.
 	 */
 	k_sleep(K_USEC(sleep_usec));
 #else
-
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	struct counter_alarm_cfg alarm_cfg;
-	int ret;
 	/*
 	 * Set the alarm and delay so that idle thread can run
 	 */
@@ -205,6 +216,7 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
 		LOG_ERR("Failed to set the alarm (err %d)", ret);
+		display_pm_thread_resume();
 		return ret;
 	}
 
@@ -216,7 +228,11 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 	k_sleep(K_USEC(sleep_usec));
 #endif
 
-	display_pm_thread_resume();
+	ret = display_pm_thread_resume();
+	if (ret) {
+		LOG_ERR("Failed to resume display thread: %d", ret);
+		return ret;
+	}
 	LOG_INF("Display stream is Resumed: for Deep Sleep");
 
 	return 0;
@@ -275,9 +291,7 @@ static void pm_notify_pre_resume(enum pm_state state)
 		const struct gpio_dt_spec cam_disp_mux_gpio =
 			GPIO_DT_SPEC_GET(DT_NODELABEL(mipi_dsi), cam_disp_mux_gpios);
 		gpio_pin_configure_dt(&cam_disp_mux_gpio, GPIO_OUTPUT_ACTIVE);
-		sys_set_bits(CGU_CLK_ENA, BIT(7) | BIT(23));
 #endif
-		sys_set_bits(CGU_CLK_ENA, BIT(21) | BIT(23));
 	}
 }
 
@@ -406,6 +420,9 @@ int main(void)
 	}
 
 	LOG_INF("=== DISPLAY PM SEQUENCE COMPLETED ===");
+
+	display_pm_thread_stop();
+	LOG_INF("Display Streaming is Stopped (PM sequence done)");
 
 	app_pm_lock_deeper_states(true);
 	/* Demo complete — prevent SUSPEND_TO_IDLE so the idle spin stays in RUNTIME_IDLE */
