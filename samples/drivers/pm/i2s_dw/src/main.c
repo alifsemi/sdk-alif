@@ -214,6 +214,7 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 	 * Set the alarm and delay so that idle thread can run
 	 */
 	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
+	alarm_cfg.callback = alarm_callback_fn;
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
 		LOG_ERR("Failed to set the alarm (err %d)", ret);
