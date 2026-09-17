@@ -136,7 +136,7 @@ static int configure_jpeg_encoder(void)
 		return -ENODEV;
 	}
 
-	ret = video_set_format(jpeg_dev, VIDEO_EP_IN, &enc_in);
+	ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &enc_in);
 	if (ret) {
 		LOG_ERR("Failed to set JPEG encoder input format: %d", ret);
 		return ret;
