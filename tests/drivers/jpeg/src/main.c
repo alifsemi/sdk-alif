@@ -126,14 +126,15 @@ ZTEST(jpeg_hantro, test_jpeg_get_caps)
 	bool nv21_seen = false;
 	int ret;
 
-	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
-	zassert_equal(ret, 0, "video_get_caps failed: %d", ret);
-	zassert_not_null(caps.format_caps, "format_caps is NULL");
+	/* Input endpoint: the uncompressed formats over the full size range */
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_IN, &caps);
+	zassert_equal(ret, 0, "video_get_caps(EP_IN) failed: %d", ret);
+	zassert_not_null(caps.format_caps, "EP_IN format_caps is NULL");
 
 	for (int i = 0; caps.format_caps[i].pixelformat != 0; i++) {
 		const struct video_format_cap *c = &caps.format_caps[i];
 
-		TC_PRINT("Cap[%d]: 0x%08x %ux%u..%ux%u step=%ux%u\n", i,
+		TC_PRINT("IN Cap[%d]: 0x%08x %ux%u..%ux%u step=%ux%u\n", i,
 			 c->pixelformat,
 			 c->width_min, c->height_min,
 			 c->width_max, c->height_max,
@@ -155,13 +156,39 @@ ZTEST(jpeg_hantro, test_jpeg_get_caps)
 		}
 	}
 
-	zassert_true(nv12_seen, "NV12 missing from capabilities");
-	zassert_true(nv21_seen, "NV21 missing from capabilities");
+	zassert_true(nv12_seen, "NV12 missing from EP_IN capabilities");
+	zassert_true(nv21_seen, "NV21 missing from EP_IN capabilities");
 
-	/* Wrong endpoint */
-	ret = video_get_caps(jpeg_dev, VIDEO_EP_IN, &caps);
-	zassert_equal(ret, -EINVAL,
-		      "get_caps on EP_IN expected -EINVAL got %d", ret);
+	/* Output endpoint: compressed JPEG only */
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
+	zassert_equal(ret, 0, "video_get_caps(EP_OUT) failed: %d", ret);
+	zassert_not_null(caps.format_caps, "EP_OUT format_caps is NULL");
+	zassert_equal(caps.format_caps[0].pixelformat, VIDEO_PIX_FMT_JPEG,
+		      "EP_OUT cap[0] is 0x%08x, expected JPEG",
+		      caps.format_caps[0].pixelformat);
+	zassert_equal(caps.format_caps[1].pixelformat, 0,
+		      "EP_OUT should list exactly one format");
+
+	/*
+	 * Once a format is set, EP_OUT reports exactly the configured frame
+	 * size so a consumer such as UVC advertises what the encoder produces.
+	 */
+	struct video_format fmt = {
+		.pixelformat = VIDEO_PIX_FMT_NV12,
+		.width = 640, .height = 480, .pitch = 640,
+	};
+
+	ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &fmt);
+	zassert_equal(ret, 0, "set_format failed: %d", ret);
+
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
+	zassert_equal(ret, 0, "video_get_caps(EP_OUT) failed: %d", ret);
+	zassert_equal(caps.format_caps[0].pixelformat, VIDEO_PIX_FMT_JPEG,
+		      "EP_OUT pixfmt not JPEG after set_format");
+	zassert_equal(caps.format_caps[0].width_min, 640, "EP_OUT width_min");
+	zassert_equal(caps.format_caps[0].width_max, 640, "EP_OUT width_max");
+	zassert_equal(caps.format_caps[0].height_min, 480, "EP_OUT height_min");
+	zassert_equal(caps.format_caps[0].height_max, 480, "EP_OUT height_max");
 }
 
 ZTEST(jpeg_hantro, test_jpeg_set_format_valid)
@@ -235,17 +262,14 @@ ZTEST(jpeg_hantro, test_jpeg_set_format_invalid)
 	zassert_equal(ret, -ENOTSUP,
 		      "RGB565 expected -ENOTSUP got %d", ret);
 
-	/*
-	 * EP_IN is a valid endpoint for the encoder: the uncompressed frame is
-	 * presented on the input side
-	 */
+	/* The format is configured on the output endpoint only */
 	f = (struct video_format){
 		.pixelformat = VIDEO_PIX_FMT_NV12,
 		.width = 320, .height = 240, .pitch = 320,
 	};
 	ret = video_set_format(jpeg_dev, VIDEO_EP_IN, &f);
-	zassert_equal(ret, 0,
-		      "EP_IN set_format expected 0 got %d", ret);
+	zassert_equal(ret, -EINVAL,
+		      "EP_IN set_format expected -EINVAL got %d", ret);
 
 	/* Genuinely invalid endpoint */
 	ret = video_set_format(jpeg_dev, (enum video_endpoint_id)99, &f);
