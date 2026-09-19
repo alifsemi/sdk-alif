@@ -91,6 +91,8 @@ typedef struct {
 
 static app_env_t app_env;
 
+static void set_start_time(void);
+
 static void racp_response_opcode_pack(racp_resp_t *racp_response, uint8_t opcode, uint8_t status)
 {
 	racp_response->op_code = CGMS_RA_OPCODE_RSP_CODE;
@@ -570,6 +572,15 @@ static void on_control_req(uint8_t conidx, uint8_t char_type, uint16_t token, co
 			LOG_INF("Received SOCP Get Communication Interval command");
 			socp_response_opcode_pack(&socp_response, opcode,
 						  app_env.communication_interval);
+		} else if (opcode == CGMS_SPECIFIC_OPCODE_START_SESSION && length == 0) {
+			LOG_INF("Received SOCP Start Session command");
+			set_start_time();
+			socp_response_opcode_pack(&socp_response, opcode,
+						  CGMS_SPECIFIC_RSP_CODE_SUCCESS);
+		} else if (opcode == CGMS_SPECIFIC_OPCODE_STOP_SESSION && length == 0) {
+			LOG_INF("Received SOCP Stop Session command");
+			socp_response_opcode_pack(&socp_response, opcode,
+						  CGMS_SPECIFIC_RSP_CODE_SUCCESS);
 		} else {
 			LOG_INF("Unsupported SOCP opcode %u with length %u", opcode, length);
 			socp_response_opcode_pack(&socp_response, opcode,
