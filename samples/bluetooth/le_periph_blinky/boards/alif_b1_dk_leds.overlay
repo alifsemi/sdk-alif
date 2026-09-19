@@ -1,0 +1,7 @@
+/* Restore LED aliases to gpio4 after lpgpio.overlay remaps them. */
+/ {
+	aliases {
+		led0 = &aled0;
+		led2 = &aled2;
+	};
+};

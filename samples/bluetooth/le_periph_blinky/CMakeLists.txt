@@ -8,10 +8,16 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-# Include BLE Power Management snippet by default
-if(NOT pm-ble IN_LIST SNIPPET)
+# Include BLE Power Management snippet by default. Build with
+# -DPLAIN_BLINKY=1 to skip this and use the board's normal LED/button GPIOs.
+if(NOT PLAIN_BLINKY AND NOT pm-ble IN_LIST SNIPPET)
   set(SNIPPET pm-ble ${SNIPPET} CACHE STRING "" FORCE)
   set(EXTRA_DTC_OVERLAY_FILE ${CMAKE_CURRENT_SOURCE_DIR}/boards/lpgpio.overlay)
+  # DK boards have LEDs on gpio4; restore aliases after lpgpio.overlay remaps them
+  if(BOARD MATCHES "alif_b1_dk")
+    list(APPEND EXTRA_DTC_OVERLAY_FILE
+         ${CMAKE_CURRENT_SOURCE_DIR}/boards/alif_b1_dk_leds.overlay)
+  endif()
 endif()
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
@@ -20,3 +26,5 @@ project(le_periph_blinky)
 target_sources(app PRIVATE
 	src/main.c
 )
+
+target_sources_ifdef(CONFIG_CERT_BOOT_INFO app PRIVATE src/cert_boot.c)

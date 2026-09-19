@@ -1,0 +1,34 @@
+source "Kconfig.zephyr"
+
+config CERT_BOOT_INFO
+	bool "Print certification info at boot"
+	help
+	  Print board certification IDs during boot using printk.
+
+if CERT_BOOT_INFO
+
+config CERT_BRAND_NAME
+	string "Brand name"
+	default ""
+
+config CERT_MODEL_NAME
+	string "Model name"
+	default ""
+
+config CERT_FCC_ID
+	string "FCC certification ID"
+	default ""
+
+config CERT_ISED_ID
+	string "ISED certification ID"
+	default ""
+
+config CERT_NCC_ID
+	string "NCC certification ID"
+	default ""
+
+config CERT_MIC_ID
+	string "MIC certification ID"
+	default ""
+
+endif # CERT_BOOT_INFO
