@@ -1,0 +1,22 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/{
+	aliases {
+		apssmhu0r = &apss_rtsshe_mhu0_r;
+		apssmhu0s = &rtsshe_apss_mhu0_s;
+		apssmhu1r = &apss_rtsshe_mhu1_r;
+		apssmhu1s = &rtsshe_apss_mhu1_s;
+		rtssmhu0r = &rtsshp_rtsshe_mhu0_r;
+		rtssmhu0s = &rtsshe_rtsshp_mhu0_s;
+		rtssmhu1r = &rtsshp_rtsshe_mhu1_r;
+		rtssmhu1s = &rtsshe_rtsshp_mhu1_s;
+	};
+};
