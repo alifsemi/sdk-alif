@@ -125,14 +125,14 @@ The CDC (Color Display Controller) includes blending logic that combines the col
 Hardware Requirements
 =====================
 
-- Alif Devkit
+- Alif DevKit
 
 .. note::
 
    The following displays are supported:
 
-   - **MW405-ILI9806E** (2-lane serial): DevKit E7, DevKit E8
-   - **ILI9488** (1-lane serial): E1C, B1 A5/A6
+   - **MW405-ILI9806E** (2-lane serial): Alif E7 DevKit, Alif E8 DevKit
+   - **ILI9488** (1-lane serial): Alif E1C DevKit, Alif B1 DevKit
 
 CDC200 Controller
 -----------------
@@ -291,7 +291,9 @@ The following config features are necessary to test the application:
 - ``CONFIG_MIPI_DSI=y``
 - ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y`` (to enable display driver debug logs)
 
-These config features are already selected when building the test application.
+These config features are already selected when building with ``-S serial-display``.
+The snippet applies 2-lane overlays on Alif E7/E8 DevKit and AppKit, and 1-lane plus
+the shared B1/E1C Spark overlay on Alif B1 DevKit and Alif E1C DevKit.
 
 DTS Properties
 ==============
@@ -462,61 +464,66 @@ The DTS entry for the FW-405 serial panel has the following tweakable properties
 .. include:: note.rst
 
 Build a CDC200 Application in Zephyr
-========================================
+======================================
 
-Follow these steps to build CDC200 application using the Alif Zephyr SDK:
+Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
-   The build commands shown here are for the Alif E7 DevKit, E8 DevKit, and B1 DK.
+   The build commands shown here are for the Alif E7 DevKit, E8 DevKit, and B1 DevKit.
 
-2. Build command for the E7 HE application (2lane):
+.. note::
+   Serial builds require ``-S serial-display-2lane`` on E7/E8 (DevKit and AppKit)
+   or ``-S serial-display-1lane`` on B1/E1C.
+
+2. Build command for the E7 HE application (2-lane):
 
 .. code-block:: console
-
 
    west build -p always \
     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-3. Build command for the E7 HP application (2lane):
+3. Build command for the E7 HP application (2-lane):
 
 .. code-block:: console
 
-
    west build -p always \
     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-4. Build command for the E8 HE application (2lane):
+4. Build command for the E8 HE application (2-lane):
 
 .. code-block:: console
 
 
    west build -p always \
     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-5. Build command for the E8 HP application (2lane):
+5. Build command for the E8 HP application (2-lane):
 
 .. code-block:: console
 
-
    west build -p always \
     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-    ../alif/samples/drivers/display -S serial-display-2lane
+    ../alif/samples/drivers/display \
+    -S serial-display-2lane
 
-6. Build command for the B1 DK HE application (1lane):
+6. Build command for the B1 DevKit HE application (1-lane):
 
 .. code-block:: console
 
    west build -p always \
     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
-    ../alif/samples/drivers/display -S serial-display-1lane
+    ../alif/samples/drivers/display/ \
+    -S serial-display-1lane
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
-
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Validating CDC200
 =================
@@ -531,32 +538,31 @@ The output screen is configured with the following layer settings:
 - Pixel where Layer 2 starts (x, y) = (0, 0)
 - Pixel where Layer 2 ends (x, y) = (0, 0)
 
-Output Logs for 2lane
+Output Logs for 2-lane
 ----------------------
 
 The following are the output logs observed on minicom:
 
 .. code-block:: console
 
-   [00:00:00.244,000] <inf> panel_mw405: MW-405 Configuration.
-
-   [00:00:00.326,000] <inf> disp: Rotating the display by 180 degrees
-   [00:00:00.327,000] <inf> disp: Enable Ensemble-DSI Device video mode.
-   [00:00:00.327,000] <inf> disp: Panel Orientation - 2
-   [00:00:00.327,000] <inf> disp: Display sample for cdc200@49031000
-   [00:00:00.327,000] <inf> disp: Enabling CDC200 Device.
-   [00:00:00.327,000] <inf> disp: Display Capabilities
-   [00:00:00.327,000] <inf> disp: Panel resolution, supported formats - (480, 800), 25
-   [00:00:00.327,000] <inf> disp: CDC200 orientation - 0
-   [00:00:00.327,000] <inf> disp: Display Capabilities layer 1:
-   [00:00:00.327,000] <inf> disp:  layer_enabled - 1
-   [00:00:00.327,000] <inf> disp:  (x_res, y_res) - (480, 800)
-   [00:00:00.327,000] <inf> disp:  curr_pix_fmt - 1
-   [00:00:00.327,000] <inf> disp: Display Capabilities layer 2:
-   [00:00:00.327,000] <inf> disp:  layer_enabled - 0
-   [00:00:00.327,000] <inf> disp:  (x_res, y_res) - (0, 0)
-   [00:00:00.327,000] <inf> disp:  curr_pix_fmt - 0
-   [00:00:00.327,000] <inf> disp: FB0 - 0x02000000, size - 1152000
+   *** Booting Zephyr OS build ***
+   [00:00:00.272,000] <inf> disp: Rotating the display by 180 degrees
+   [00:00:00.272,000] <inf> disp: Enable Ensemble-DSI Device video mode.
+   [00:00:00.272,000] <inf> disp: Panel Orientation - 2
+   [00:00:00.272,000] <inf> disp: Display sample for cdc200@49031000
+   [00:00:00.272,000] <inf> disp: Enabling CDC200 Device.
+   [00:00:00.272,000] <inf> disp: Display Capabilities
+   [00:00:00.272,000] <inf> disp: Panel resolution, supported formats - (320, 480), 25
+   [00:00:00.272,000] <inf> disp: CDC200 orientation - 0
+   [00:00:00.272,000] <inf> disp: Display Capabilities layer 1:
+   [00:00:00.272,000] <inf> disp:  layer_enabled - 1
+   [00:00:00.272,000] <inf> disp:  (x_res, y_res) - (320, 480)
+   [00:00:00.272,000] <inf> disp:  curr_pix_fmt - 1
+   [00:00:00.272,000] <inf> disp: Display Capabilities layer 2:
+   [00:00:00.272,000] <inf> disp:  layer_enabled - 0
+   [00:00:00.272,000] <inf> disp:  (x_res, y_res) - (0, 0)
+   [00:00:00.272,000] <inf> disp:  curr_pix_fmt - 0
+   [00:00:00.272,000] <inf> disp: FB0 - 0x20020000, size - 460800
 
 .. figure:: _static/serial_lane_2_display_output.png
    :alt: Serial Display Output
@@ -602,3 +608,97 @@ Known Issues
 - **Zephyr CDC200 Driver**: The Zephyr device driver for the CDC200 currently supports only ARGB8888, RGB888, and RGB565 formats. This is a limitation of the Zephyr framework and may be addressed in future releases.
 
 - **Demo Application (Layer 2)**: In the demo application, Layer 2 is designed to copy an image in ARGB8888 format directly from a C array to the framebuffer. Therefore, avoid using any format other than ARGB8888 for Layer 2. Layer 1 formats can be changed without issue.
+
+PM Support
+==========
+
+The ``samples/drivers/pm/display_pm`` sample demonstrates Zephyr power
+management states combined with a CDC200 + MIPI DSI display pipeline on
+Alif RTSS cores. The application cycles through PM states and, after each wake, streams
+data stored in a buffer to the display, verifying that
+the CDC200, DSI host, D-PHY, and panel driver all resume correctly and
+reproduce a valid frame.
+
+PM states exercised (determined at runtime by capability predicates):
+
+- **S2RAM path** (TCM or SRAM0 retention): RUNTIME_IDLE → SUSPEND_TO_IDLE →
+  S2RAM STANDBY → S2RAM STOP → idle loop
+- **SOFT_OFF path** (MRAM boot, no retention): RUNTIME_IDLE → SUSPEND_TO_IDLE →
+  SOFT_OFF (system resets on wakeup)
+
+Building and Running the PM Sample
+----------------------------------
+
+Follow these steps to build the PM sample application using the Alif Zephyr SDK:
+
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
+
+.. note::
+   The build commands shown here are specifically for the Alif E7 DevKit.
+   HE TCM and MRAM builds also apply to E8, E1C, and B1. The HP MRAM
+   build also applies to E8. To build the application for other boards,
+   modify the board name in the build command accordingly. For more
+   information, refer to the `ZAS User Guide`_, under the section
+   ``Setting Up and Building Zephyr Applications``.
+
+HE Core — TCM boot S2RAM (E7/E8/E1C/B1)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build the display PM sample for the HE core using the following command:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/display_pm \
+     -S display-pm-s2ram-tcm \
+     -DCONFIG_FLASH_BASE_ADDRESS=0x0 \
+     -DCONFIG_FLASH_LOAD_OFFSET=0x0 \
+     -DCONFIG_FLASH_SIZE=256
+
+HE Core — MRAM boot SOFT_OFF (E7/E8/E1C/B1)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build the display PM sample for the HE core using the following command:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/pm/display_pm \
+     -S display-pm-mram
+
+HP Core — MRAM boot SOFT_OFF (E7/E8)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Build the display PM sample for the HP core using the following command:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/pm/display_pm \
+     -S display-pm-mram
+
+PM Support Verification
+-----------------------
+
+The output below is from an E7 DK HE core TCM-boot run
+(``APP_PM_WAKEUP_DEBUG 0``, the default). Setting
+``APP_PM_WAKEUP_DEBUG 1`` in ``main.c`` additionally prints
+``PM wakeup: NVIC ISPR[x] = 0x...`` lines on each resume.
+
+A successful S2RAM test displays messages similar to the following:
+
+.. code-block:: console
+
+   *** Booting Zephyr OS build 3a2b84d96961 ***
+   [00:00:00.000,000] <inf> disp_pm: alif_e7_dk (S2RAM): Display PM demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+   [00:00:00.000,000] <inf> disp_pm: POWER STATE SEQUENCE:
+   [00:00:00.001,000] <inf> disp_pm:   1. PM_STATE_RUNTIME_IDLE
+   [00:00:00.001,000] <inf> disp_pm:   2. PM_STATE_SUSPEND_TO_IDLE
+   [00:00:00.001,000] <inf> disp_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+   [00:00:00.001,000] <inf> disp_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+   [00:00:34.245,000] <inf> disp_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+   [00:00:59.444,000] <inf> disp_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+   [00:01:16.864,000] <inf> disp_pm: === DISPLAY PM SEQUENCE COMPLETED ===

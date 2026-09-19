@@ -19,8 +19,7 @@ This application note describes digital control to process data from the Analog 
 - **Configurable number of taps** for digital filtering.
 - **Interrupt generation** after filtering is applied.
 
-
-High Speed Comparator
+High-Speed Comparator
 -----------------------
 
 .. figure:: _static/cmp.png
@@ -136,7 +135,7 @@ Analog Comparator Operation
 Comparator Configuration Steps
 --------------------------------
 
-1. **Configure ``COMP_REG1``**:
+1. **Configure ``CMP_COMP_REG1``**:
    - Select the **positive input terminal**, **negative input terminal**, and set **hysteresis to 45 mV**.
 
 2. **Enable High-Speed Comparators** in ``COMP_REG1``:
@@ -178,16 +177,33 @@ This setup allows the comparator to detect the toggling signal on P0_0 (driven b
 
 .. include:: note.rst
 
-Build an CMP Application with Zephyr
-========================================
+Build a CMP Application with Zephyr
+====================================
 
 Follow these steps to build the CMP application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the
+   build command accordingly. For more information, refer to the
+   `ZAS User Guide`_, under the section
+   ``Setting Up and Building Zephyr Applications``.
+
+   The ``alif-cmp`` snippet enables **cmp0** and disables **lpcmp**.
+   The application builds only when a ``alif,cmp`` compatible node is
+   ``okay`` in the devicetree.
+
+   To use **LPCMP**, set ``status = "okay"`` on the ``lpcmp`` node and
+   ``status = "disabled"`` on ``cmp0`` in an application overlay.
+
+   On boards such as the Alif E7 DevKit RTSS-HP, the **CMP2** and **CMP3**
+   pins are shared with **UART2**. Before building a CMP2/CMP3 configuration,
+   move the console to **UART4** so those pins are free.
+
+   LPCMP is supported on the Alif E7 DevKit RTSS-HE and RTSS-HP, but the
+   board has no LPCMP output pinouts.
 
 2. Build command for application on the M55 HE core:
 
@@ -198,7 +214,6 @@ Follow these steps to build the CMP application using the Alif Zephyr SDK:
      ../alif/samples/drivers/cmp \
      -S alif-cmp
 
-
 3. Build command for application on the M55 HP core:
 
 .. code-block:: console
@@ -208,13 +223,58 @@ Follow these steps to build the CMP application using the Alif Zephyr SDK:
      ../alif/samples/drivers/cmp \
      -S alif-cmp
 
+LPCMP Build
+-----------
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+The snippet overlay leaves ``lpcmp`` disabled. To run LPCMP, add an
+application overlay that contains:
+
+.. code-block:: dts
+
+   &cmp0 {
+           status = "disabled";
+   };
+
+   &lpcmp {
+           status = "okay";
+   };
+
+Then build with the same ``-S alif-cmp`` command used for CMP0.
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
+
+Supported Boards
+================
+
+The ``alif-cmp`` snippet applies a board overlay for these targets:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 28 18 54
+
+   * - Board
+     - Cores
+     - West board target (example)
+   * - Alif E7 DevKit / AppKit
+     - RTSS-HE, RTSS-HP
+     - ``alif_e7_dk/ae722f80f55d5xx/rtss_he``
+   * - Alif E8 DevKit / AppKit
+     - RTSS-HE, RTSS-HP
+     - ``alif_e8_dk/ae822fa0e5597xx0/rtss_he``
+   * - Alif E1C DevKit
+     - RTSS-HE
+     - ``alif_e1c_dk/ae1c1f4051920hh/rtss_he``
+   * - Alif B1 DevKit
+     - RTSS-HE
+     - ``alif_b1_dk/ab1c1f4m51820hh0/rtss_he``
+
+E7 and E8 use ``alif_e4_e7_e8_dk.overlay`` (LED on GPIO12 pin 3).
+B1 and E1C use ``alif_b1_e1c_dk.overlay`` (LED on GPIO4 pin 5).
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 
@@ -243,9 +303,10 @@ The following log is observed during execution of the Analog Comparator (CMP) ap
 LPCMP Console Output
 ======================
 
-.. code-block:: console
+When LPCMP is enabled (and ``cmp0`` is disabled), the following log is observed.
+The toggling comparison messages are not printed for LPCMP.
+
+.. code-block:: text
 
     [00:00:02.000,000] <inf> ALIF_CMP: start comparing
     [00:00:02.501,000] <inf> ALIF_CMP: Comparison Completed
-
-
