@@ -4,12 +4,47 @@ common:
     - display
   depends_on: display
   harness: ztest
+  harness_config:
+    fixture: fixture_display
+  timeout: 180
+  filter: dt_compat_enabled("tes,cdc-2.1")
   platform_allow:
     - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
     - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
   integration_platforms:
     - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
 
 tests:
-  drivers.display.cdc200:
-    filter: dt_compat_enabled("alif,cdc200")
+  # Parallel RGB on all CDC200 targets. App boards/<board>.overlay applies
+  # automatically when present (B1 panel timing, E1C console UART).
+  drivers.display.cdc200: {}
+
+  # MW405 / ILI9806E 2-lane MIPI-DSI (E7/E8 DK).
+  drivers.display.cdc200.mipi_2lane:
+    extra_dtc_overlay_files:
+      - boards/serial_display_2lane.overlay
+    extra_conf_files:
+      - boards/serial_display.conf
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+  # ILI9488 1-lane MIPI-DSI (E1C / B1 DK).
+  drivers.display.cdc200.mipi_1lane:
+    extra_dtc_overlay_files:
+      - boards/serial_display_1lane.overlay
+    extra_conf_files:
+      - boards/serial_display.conf
+    platform_allow:
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
