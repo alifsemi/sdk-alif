@@ -20,13 +20,15 @@
 };
 
 &off_profile_standby {
-	memory-blocks = <(ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
+	memory-blocks = <(ALIF_SRAM0_MASK |
+			  ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
 			  ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
 			  ALIF_SERAM_MASK | ALIF_MRAM_MASK)>;
 };
 
 &off_profile_stop {
-	memory-blocks = <(ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
+	memory-blocks = <(ALIF_SRAM0_MASK |
+			  ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
 			  ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
 			  ALIF_SERAM_MASK | ALIF_MRAM_MASK)>;
 };
