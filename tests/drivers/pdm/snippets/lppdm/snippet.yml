@@ -1,0 +1,6 @@
+name: lppdm
+
+boards:
+  /(alif_b1|alif_e1c|alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_lppdm.overlay
