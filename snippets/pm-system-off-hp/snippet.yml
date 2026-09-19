@@ -1,3 +1,0 @@
-name: pm-system-off-hp
-append:
-  EXTRA_DTC_OVERLAY_FILE: snippet.overlay

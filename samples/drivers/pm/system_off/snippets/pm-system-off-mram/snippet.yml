@@ -1,0 +1,10 @@
+name: pm-system-off-mram
+append:
+  EXTRA_CONF_FILE: prj.conf
+boards:
+  /.*rtss_he.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_mram_he.overlay
+  /.*rtss_hp.*/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pm_mram_hp.overlay
