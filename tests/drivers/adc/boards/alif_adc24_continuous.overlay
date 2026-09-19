@@ -1,0 +1,9 @@
+&adc0 {
+	status = "disabled";
+};
+
+
+&adc24 {
+	adc_conversion_mode	= "CONTINUOUS_CONVERSION";
+	status = "okay";
+};
