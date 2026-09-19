@@ -13,7 +13,7 @@ Direct Memory Access (DMA) enhances system performance by offloading the CPUs fr
 - **DMA1**: A dedicated DMA controller for the RTSS-HP core.
 - **DMA2**: A dedicated DMA controller for the RTSS-HE core.
 
-Since this core has numerous peripherals, we have a MUX for DMA0, which allows mapping peripherals to the DMA. This application note covers a sample test application for DMA with SPI (HE core).
+Since the platform has numerous peripherals, there is a MUX for DMA0, which allows mapping peripherals to the DMA. This application note covers a sample test application for DMA with SPI (HE core).
 
 .. include:: prerequisites.rst
 
@@ -32,18 +32,18 @@ The block diagram illustrates the hardware design of Zephyr DMA, showing the int
    Block Diagram of Zephyr DMA
 
 
-Build an DMA Application with Zephyr
-=========================================
+Build a DMA Application with Zephyr
+====================================
 
 Follow these steps to build the DMA application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+----------------
 
-2. Build command for application on the M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
 .. code-block:: console
 
@@ -51,8 +51,7 @@ Follow these steps to build the DMA application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/drivers/spi_dw -S alif-dk
 
-
-3. Build command for application on the M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
 .. code-block:: console
 
@@ -60,6 +59,140 @@ Follow these steps to build the DMA application using the Alif Zephyr SDK:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/drivers/spi_dw -S alif-dk
 
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/spi_dw -S alif-dk
 
 Ensure that the DMA-related configurations are enabled in ``../alif/samples/drivers/spi_dw/prj.conf``:
 
@@ -179,7 +312,7 @@ DMA Instance Selection in Overlay File
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 

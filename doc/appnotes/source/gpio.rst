@@ -1,8 +1,8 @@
 .. _appnote-gpio:
 
-==========================================
+====================================
 General-Purpose Input/Output (GPIO)
-==========================================
+====================================
 
 Introduction
 ============
@@ -63,21 +63,121 @@ Build a GPIO Application with Zephyr
 
 Follow these steps to build the GPIO application using the Alif Zephyr SDK:
 
-For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are for the Alif E8 DevKit.
-   To build for other boards, modify the board name accordingly.
+Alif E7 DevKit
+---------------
 
-1. Build a blinky application on the M55 HP core:
+Build a blinky application on the M55 HE core for the SoC variant ``ae722f80f55d5xx``:
 
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      samples/basic/blinky
 
-2.  Build a blinky application on the M55 HE core:
+Build a blinky application on the M55 HP core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HP core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a blinky application on the M55 HE core for the SoC variant ``ae302f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HP core for the SoC variant ``ae302f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae302f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HP core for the SoC variant ``ae302f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     samples/basic/button/ \
+     -S alif-button
+
+Alif E7 AppKit
+---------------
+
+Build a blinky application on the M55 HE core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HP core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HP core for the SoC variant ``ae722f80f55d5xx``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     samples/basic/button/ \
+     -S alif-button
+
+Alif E8 DevKit
+---------------
+
+Build a blinky application on the M55 HE core for the SoC variant ``ae822fa0e5597xx0``:
 
 .. code-block:: console
 
@@ -85,7 +185,24 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
      samples/basic/blinky
 
-3. Build a button application on the M55 HP core:
+Build a blinky application on the M55 HP core for the SoC variant ``ae822fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae822fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HP core for the SoC variant ``ae822fa0e5597xx0``:
 
 .. code-block:: console
 
@@ -94,14 +211,176 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
      samples/basic/button/ \
      -S alif-button
 
-4.  Build a button application on the M55 HE core:
+Build a blinky application on the M55 HE core for the SoC variant ``ae402fa0e5597xx0``:
 
 .. code-block:: console
 
    west build -p always \
-     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HP core for the SoC variant ``ae402fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae402fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
      samples/basic/button/ \
      -S alif-button
+
+Build a button application on the M55 HP core for the SoC variant ``ae402fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     samples/basic/button/ \
+     -S alif-button
+
+Alif E8 AppKit
+---------------
+
+Build a blinky application on the M55 HE core for the SoC variant ``ae822fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HP core for the SoC variant ``ae822fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae822fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HP core for the SoC variant ``ae822fa0e5597xx0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     samples/basic/button/ \
+     -S alif-button
+
+Alif E1C DevKit
+----------------
+
+Build a blinky application on the M55 HE core for the SoC variant ``ae1c1f4051920hh``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ae1c1f4051920hh``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Alif B1 DevKit
+---------------
+
+Build a blinky application on the M55 HE core for the SoC variant ``ab1c1f4m51820ph0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HE core for the SoC variant ``ab1c1f4m51820hh0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HE core for the SoC variant ``ab1c1f1m41820hh0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     samples/basic/blinky
+
+Build a blinky application on the M55 HE core for the SoC variant ``ab1c1f1m41820ph0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     samples/basic/blinky
+
+Build a button application on the M55 HE core for the SoC variant ``ab1c1f4m51820ph0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HE core for the SoC variant ``ab1c1f4m51820hh0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HE core for the SoC variant ``ab1c1f1m41820hh0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Build a button application on the M55 HE core for the SoC variant ``ab1c1f1m41820ph0``:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     samples/basic/button/ \
+     -S alif-button
+
+Executing Binary on the DevKit
+===============================
+
+To execute the binaries on the DevKit, follow the command:
+
+.. code-block:: console
+
+   west flash
 
 Console Output
 ==============

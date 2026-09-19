@@ -7,7 +7,7 @@ PDM
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the Pulse Density Modulation (PDM) controller IP provided by Alif Semiconductor™ and integrated into Ensemble™ devices. Key features include:
+This document explains how to create, compile, and run a demo application for the Pulse Density Modulation (PDM) controller IP provided by Alif Semiconductor and integrated into Alif devices. Key features include:
 
 - A PDM (Pulse Density Modulation) microphone produces 1-bit digital data streams in Pulse Density Modulated format.
 - The PDM Audio module supports up to eight audio channels, one microphone per channel.
@@ -204,17 +204,17 @@ The DevKit has internal PDM microphones. To test LPPDM channels 0 and 1, connect
 .. include:: note.rst
 
 Build a PDM and LPPDM Application with Zephyr
-===================================================
+===============================================
 
 Follow these steps to build the PDM and LPPDM application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build command for application on the M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
 .. code-block:: console
 
@@ -223,8 +223,7 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
      ../alif/samples/drivers/audio/dmic_alif \
      -S alif-pdm
 
-
-3. Build command for application on the M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
 .. code-block:: console
 
@@ -233,11 +232,162 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
      ../alif/samples/drivers/audio/dmic_alif \
      -S alif-pdm
 
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Alif E7 AppKit
+---------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Alif E8 AppKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/audio/dmic_alif \
+     -S alif-pdm
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -301,9 +451,9 @@ For multiple channels, consider enabling channels 0, 1, 2, and 3.
 
 11. Stop the application code.
 
-12. The PCM samples will be stored in the `pcmj_data` buffer. Print the base address of the `pcmj_data` buffer.
+12. The PCM samples will be stored in the `pcm_data` buffer. Print the base address of the `pcm_data` buffer.
 
-The text below shows channels 4 and 5 enabled, with the buffer address at 0x20000e74 and 60,000 PCM samples are stored in the `pcmj_data` buffer, and the stored PCM samples are being printed.
+The text below shows channels 4 and 5 enabled, with the buffer address at 0x20000e74 and 60,000 PCM samples are stored in the `pcm_data` buffer, and the stored PCM samples are being printed.
 
 PCM Samples Buffer (Channels 4 and 5, Address 0x20000e74)
 ---------------------------------------------------------
@@ -316,7 +466,6 @@ PCM Samples Buffer (Channels 4 and 5, Address 0x20000e74)
    [00:00:00.000,000] <inf> PDM: memslab: 0x200003d4
 
    [00:00:00.000,000] <inf> PDM: channel_map 30 block size: 7530
-
    Start Speaking or Play some Audio!
    Stop recording
 
@@ -447,9 +596,8 @@ An alternative to `ffplay` is to use the Audacity player. Download and install A
 PDM Modes
 =========
 
-   .. figure:: _static/pdm_modes.png
-      :alt: PDM Modes
-      :align: center
+.. figure:: _static/pdm_modes.png
+   :alt: PDM Modes
+   :align: center
 
-      PDM Modes
-
+   PDM Modes

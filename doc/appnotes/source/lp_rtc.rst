@@ -7,7 +7,7 @@ LPRTC
 Introduction
 ============
 
-This document explains how to create, compile, and run a demo application for the Low Power Real-Time Counter (LPRTC) driver IP provided by Synopsys and integrated into Alif Semiconductor Ensemble™ devices. The demo application uses the LPRTC module to generate interrupts at user-specified intervals, demonstrated through an alarm application.
+This document explains how to create, compile, and run a demo application for the Low Power Real-Time Counter (LPRTC) driver IP provided by Synopsys and integrated into Alif Semiconductor devices. The demo application uses the LPRTC module to generate interrupts at user-specified intervals, demonstrated through an alarm application.
 
 Furthermore, the LPRTC is integrated into the Alarm application as a demo application, where it functions as expected. The same demo app is also utilized by the RTC (Real-Time Clock) and LPTIMER. To facilitate configuration, separate overlay and config files for the RTC, UTIMER, and LPTIMER reside in the board’s directory of the Alarm application. Users can select these files using the west build command.
 
@@ -44,27 +44,15 @@ Build an LPRTC Application with Zephyr
 
 The LPRTC is integrated into the alarm application as a demonstration, shared with the LPTIMER and Utimer modules. Separate overlay and config files for LPRTC, LPTIMER, and Utimer are located in the board's directory within the alarm application. Users can select these files using the west build command.
 
-Follow these steps to build the LPRTC alarm application using the Alif Zephyr SDK:
+Follow these steps to build the LPRTC application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+----------------
 
-2. Build command for application on the M55 HP core:
-
-.. code-block:: console
-
-   west build -p always \
-     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     samples/drivers/counter/alarm/ \
-     -- \
-     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
-     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
-
-
-3. Build command for application on the M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
 .. code-block:: console
 
@@ -75,13 +63,203 @@ Follow these steps to build the LPRTC alarm application using the Alif Zephyr SD
      -DOVERLAY_CONFIG=boards/alif_rtc.conf \
      -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
 
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     samples/drivers/counter/alarm/ \
+     -- \
+     -DOVERLAY_CONFIG=boards/alif_rtc.conf \
+     -DDTC_OVERLAY_FILE=boards/alif_rtc.overlay
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -90,7 +268,7 @@ To execute binaries on the DevKit follow the command
 Loading Binaries with SE Tools
 ==============================
 
-For detailed instructions on loading executables using SE Tools, refer to the *Getting Started with ZAS for Ensemble* documentation.
+For detailed instructions on loading executables using SE Tools, refer to the *Getting Started with ZAS for Alif* documentation.
 
 Sample Output
 ===============
@@ -99,20 +277,23 @@ The sample alarm application will run continuously until manually stopped, gener
 
 .. code-block:: text
 
-
    Counter alarm sample
 
    Set alarm in 2 sec (65536 ticks)
    !!! Alarm !!!
    Now: 65372
+
    Set alarm in 4 sec (131072 ticks)
    !!! Alarm !!!
    Now: 65376
+
    Set alarm in 8 sec (262144 ticks)
    !!! Alarm !!!
    Now: 65384
+
    Set alarm in 16 sec (524288 ticks)
    !!! Alarm !!!
    Now: 65400
+
    Set alarm in 32 sec (1048576 ticks)
 

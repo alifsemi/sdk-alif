@@ -16,15 +16,16 @@ This document provides detailed instructions on how to create, compile, and run 
 Build a HWSEM Application with Zephyr
 =====================================
 
-Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
+Follow these steps to build the HWSEM sample application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_.
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build command for application on the hwsem0_test M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, hwsem0_test M55 HE core:
 
 .. code-block:: console
 
@@ -33,7 +34,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
      ../alif/samples/drivers/ipm/ipm_alif_hwsem
 
 
-3. Build command for application on the hwsem_test_all M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, hwsem_test_all M55 HE core:
 
 .. code-block:: console
 
@@ -44,7 +45,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
      -DHWSEM_ALL=ON
 
 
-4. Build command for application on the hwsem0_test M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, hwsem0_test M55 HP core:
 
 .. code-block:: console
 
@@ -53,7 +54,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
      ../alif/samples/drivers/ipm/ipm_alif_hwsem
 
 
-5. Build command for application on the hwsem_test_all M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, hwsem_test_all M55 HP core:
 
 .. code-block:: console
 
@@ -63,13 +64,216 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
      -- \
      -DHWSEM_ALL=ON
 
+Build for SoC variant ``ae302f80f55d5xx``, hwsem0_test M55 HE core:
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae302f80f55d5xx``, hwsem_test_all M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+
+Build for SoC variant ``ae302f80f55d5xx``, hwsem0_test M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae302f80f55d5xx``, hwsem_test_all M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, hwsem0_test M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae722f80f55d5xx``, hwsem_test_all M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+
+Build for SoC variant ``ae722f80f55d5xx``, hwsem0_test M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae722f80f55d5xx``, hwsem_test_all M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem0_test M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem_test_all M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem0_test M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem_test_all M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+Build for SoC variant ``ae402fa0e5597xx0``, hwsem0_test M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae402fa0e5597xx0``, hwsem_test_all M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+
+Build for SoC variant ``ae402fa0e5597xx0``, hwsem0_test M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae402fa0e5597xx0``, hwsem_test_all M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem0_test M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem_test_all M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem0_test M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem
+
+
+Build for SoC variant ``ae822fa0e5597xx0``, hwsem_test_all M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/ipm/ipm_alif_hwsem/ \
+     -- \
+     -DHWSEM_ALL=ON
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ==============================
 
-To execute binaries on the DevKit, follow the command:
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 

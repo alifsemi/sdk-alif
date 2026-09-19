@@ -11,9 +11,11 @@ This application note describes digital control to process data from the Analog 
 
 - The **High-Speed Comparator (CMP)** module is a rail-to-rail, multi-input, analog comparator with programmable reference voltage and hysteresis.
 - Reference voltage can be sourced from:
+
   - DAC6,
   - Internal VREF, or
   - External pins.
+
 - **Programmable hysteresis**: from 0 mV to 45 mV.
 - **Comparator result inverter** (polarity control).
 - **Configurable number of taps** for digital filtering.
@@ -136,16 +138,19 @@ Analog Comparator Operation
 Comparator Configuration Steps
 --------------------------------
 
-1. **Configure ``COMP_REG1``**:
+1. **Configure ``CMP_COMP_REG1``**:
+
    - Select the **positive input terminal**, **negative input terminal**, and set **hysteresis to 45 mV**.
 
 2. **Enable High-Speed Comparators** in ``COMP_REG1``:
+
    - **Bit 28**: Enable for ``COMPHS0``
    - **Bit 29**: Enable for ``COMPHS1``
    - **Bit 30**: Enable for ``COMPHS2``
    - **Bit 31**: Enable for ``COMPHS3``
 
 3. **Polarity Control** (register ``CMP_POLARITY_CTRL`` at offset ``0x08``):
+
    - Write ``0x1`` to **invert** the ``Comp_in`` signal.
    - If set to ``0x0``, ``Comp_in`` passes **directly** (via synchronizer) without inversion before sampling.
 
@@ -157,6 +162,7 @@ Comparator Configuration Steps
    - **Bits [11:8] = 0x5**: Requires ``Comp_in`` to be **stable for 5 consecutive samples** with a different value than ``Comp_out`` before updating ``Comp_out``.
 
 5. **Prescaler Control** (register ``CMP_PRESCALER_CTRL`` at offset ``0x14``):
+
    - Write ``0x8`` → Comparator input is sampled **every 8 system clocks** (i.e., at clocks 0, 8, 16, 24, 32, …).
    - Samples at intermediate clocks are **ignored**.
 
@@ -178,18 +184,19 @@ This setup allows the comparator to detect the toggling signal on P0_0 (driven b
 
 .. include:: note.rst
 
-Build an CMP Application with Zephyr
+Build a CMP Application with Zephyr
 ========================================
 
-Follow these steps to build the CMP application using the Alif Zephyr SDK:
+Follow these steps to build the CMP sample application using the Alif Zephyr
+SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
-.. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+Alif E7 DevKit
+---------------
 
-2. Build command for application on the M55 HE core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
 
 .. code-block:: console
 
@@ -198,8 +205,7 @@ Follow these steps to build the CMP application using the Alif Zephyr SDK:
      ../alif/samples/drivers/cmp \
      -S alif-cmp
 
-
-3. Build command for application on the M55 HP core:
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
 
 .. code-block:: console
 
@@ -208,13 +214,162 @@ Follow these steps to build the CMP application using the Alif Zephyr SDK:
      ../alif/samples/drivers/cmp \
      -S alif-cmp
 
+Build for SoC variant ``ae302f80f55d5xx``, M55 HE core:
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ae302f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_dk/ae302f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Alif E7 AppKit
+----------------
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e7_ak/ae722f80f55d5xx/rtss_hp \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Alif E8 DevKit
+---------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ae402fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae402fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Alif E8 AppKit
+----------------
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Alif E1C DevKit
+----------------
+
+Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e1c_dk/ae1c1f4051920hh/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Alif B1 DevKit
+---------------
+
+Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ab1c1f4m51820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f4m51820hh0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820hh0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Build for SoC variant ``ab1c1f1m41820ph0``, M55 HE core:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_b1_dk/ab1c1f1m41820ph0/rtss_he \
+     ../alif/samples/drivers/cmp \
+     -S alif-cmp
+
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, run:
 
 .. code-block:: console
 
@@ -243,7 +398,7 @@ The following log is observed during execution of the Analog Comparator (CMP) ap
 LPCMP Console Output
 ======================
 
-.. code-block:: console
+.. code-block:: text
 
     [00:00:02.000,000] <inf> ALIF_CMP: start comparing
     [00:00:02.501,000] <inf> ALIF_CMP: Comparison Completed

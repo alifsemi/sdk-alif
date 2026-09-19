@@ -28,7 +28,7 @@ Prerequisites
 
 Hardware Requirements
 ---------------------
-- Alif Devkit
+- Alif DevKit
 - Debugger: JLink
 
 Software Requirements
@@ -41,18 +41,18 @@ Software Requirements
 
 .. include:: note.rst
 
-Build an BLE Application with Zephyr
-========================================
+Build a BLE Application with Zephyr
+====================================
 
 Follow these steps to build the BLE application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr
+repository, refer to the `ZAS User Guide`_.
 
 .. note::
-   The build commands shown here are specifically for the B1C DevKit.
-   For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   The BLE features are supported **only** on **B1C DevKit** for HE core. It is not applicable to other boards.
 
-2. Build command for application on the M55 HE core:
+Build command for application on the M55 HE core:
 
 .. code-block:: console
 
@@ -61,12 +61,12 @@ Follow these steps to build the BLE application using the Alif Zephyr SDK:
      ../alif/samples/bluetooth/le_periph_hr
 
 
-Once the build command completes successfully, executable images will be generated and placed in the `build/zephyr` directory. Both `.bin` (binary) and `.elf` (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Executing Binary on the DevKit
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute binaries on the DevKit, follow the command:
 
 .. code-block:: console
 
@@ -82,17 +82,17 @@ Console Output
 
 .. code-block:: text
 
-  [00:00:00.000,000] <inf> dma_pl330: Device dma2@400c0000 initialized
+   [00:00:00.000,000] <inf> dma_pl330: Device dma2@400c0000 initialized
 
-  [00:00:00.409,000] <dbg> main: main: Waiting for init...
+   [00:00:00.409,000] <dbg> main: main: Waiting for init...
 
-  [00:00:00.418,000] <dbg> main: on_gapm_process_complete: gapm process completed successfully
-  [00:00:00.419,000] <dbg> main: main: Init complete!
+   [00:00:00.418,000] <dbg> main: on_gapm_process_complete: gapm process completed successfully
+   [00:00:00.419,000] <dbg> main: main: Init complete!
 
-  [00:00:00.420,000] <dbg> main: on_adv_created: Advertising activity created, index 0, selected tx power 0
-  [00:00:00.420,000] <dbg> main: on_adv_actv_proc_cmp: Advertising activity is created
-  [00:00:00.420,000] <dbg> main: on_adv_actv_proc_cmp: Advertising data is set
-  [00:00:00.421,000] <dbg> main: on_adv_actv_proc_cmp: Scan data is set
-  [00:00:00.422,000] <inf> address: Device Identity Address: C9:43:C9:55:A4:D1
-  [00:00:00.422,000] <inf> address: Advertising has been started, address: C9:43:C9:55:A4:D1
-  [00:00:01.419,000] <dbg> main: service_process: Waiting for peer connection...
+   [00:00:00.420,000] <dbg> main: on_adv_created: Advertising activity created, index 0, selected tx power 0
+   [00:00:00.420,000] <dbg> main: on_adv_actv_proc_cmp: Advertising activity is created
+   [00:00:00.420,000] <dbg> main: on_adv_actv_proc_cmp: Advertising data is set
+   [00:00:00.421,000] <dbg> main: on_adv_actv_proc_cmp: Scan data is set
+   [00:00:00.422,000] <inf> address: Device Identity Address: C9:43:C9:55:A4:D1
+   [00:00:00.422,000] <inf> address: Advertising has been started, address: C9:43:C9:55:A4:D1
+   [00:00:01.419,000] <dbg> main: service_process: Waiting for peer connection...
