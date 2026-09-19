@@ -1,0 +1,31 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * PM S2RAM overlay for HP core with SRAM0 as data RAM.
+ *
+ * The aipm_off vtor-address points to the first-stage loader at MRAM
+ * 0x80100000 so the SE restores execution there on wakeup.
+ *
+ */
+
+#include "pm_sram0_common.overlay"
+
+&timer0 {
+	status = "disabled";
+};
+
+&utimer5 {
+	status = "disabled";
+};
+
+&aipm_off {
+	vtor-address = <0x80100000>;
+};

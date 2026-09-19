@@ -1,0 +1,32 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * B1 HE: I2C0 (master) + I2C1 (slave).
+ * PM: TCM boot S2RAM (E1C/B1 memory masks).
+ * Console: uart2 (from pm_tcm_common.overlay).
+ */
+
+#include "pm_tcm_e1c_b1.overlay"
+
+/ {
+	aliases {
+		master-i2c = &i2c0;
+		slave-i2c = &i2c1;
+	};
+};
+
+&i2c0 {
+	status = "okay";
+};
+
+&i2c1 {
+	status = "okay";
+};
