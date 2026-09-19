@@ -4,5 +4,45 @@ config TEST_RTC_WRAP_MODE
 	bool "To Test RTC in wrap mode"
 	default n
 	help
-	  Enable testing of RTC wrap mode functionality
+	  Enable RTC wrap-around tests in this application. With wrap
+	  enabled, the counter rolls from its maximum value back to
+	  zero instead of saturating. This option compiles those cases
+	  so wrap behaviour and alarm handling at the boundary can be
+	  checked. Enable it with the rtc-wrap-prescaler snippet.
+
+config TEST_RTC_PRESCALER
+	bool "To Test RTC Prescaler"
+	default n
+	help
+	  Enable RTC prescaler timing tests in this application. The
+	  prescaler divides the 32 kHz clock so tick period and alarm
+	  spacing can be measured against an expected tick count. The
+	  default snippet uses prescaler 16384 (2 Hz, 0.5 s per tick).
+	  Enable it with the rtc-wrap-prescaler snippet.
+
+config TEST_RTC_CLK_SOURCE
+	bool "To Test LPRTC alarm on LFXO and LFRC"
+	default n
+	help
+	  Enable LPRTC clock-source tests that run an alarm on both
+	  32 kHz AON sources. The current source is read from the SE
+	  run profile field aon_clk_src (LFRC or LFXO). An alarm is
+	  run on that source, then only aon_clk_src is switched and
+	  the alarm is run again. Other run-profile fields are left
+	  unchanged. Alarm latency is checked against 2000 ms as 100
+	  percent, with a wider tolerance on LFRC than LFXO. Enable
+	  it with the rtc-clk-source snippet.
+
+config TEST_RTC_SUSPEND_WAKE
+	bool "To Test LPRTC wakeup from SOFT_OFF / S2RAM"
+	default n
+	select PM
+	help
+	  Enable the test_rtc_suspend_wake suite. It programs an LPRTC
+	  alarm and enters SOFT_OFF when booted from MRAM, or
+	  SUSPEND_TO_RAM when booted from HE TCM, then checks that the
+	  alarm wakes the core. Off and run profiles are set from the
+	  test thread, not from idle. Enable it with the
+	  rtc-suspend-wake snippet.
+
 source "Kconfig.zephyr"

@@ -1,0 +1,4 @@
+name: rtc-wrap-prescaler
+append:
+  EXTRA_DTC_OVERLAY_FILE: alif_rtc_wrap_prescaler.overlay
+  EXTRA_CONF_FILE: alif_rtc_wrap_prescaler.conf
