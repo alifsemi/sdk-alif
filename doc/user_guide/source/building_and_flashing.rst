@@ -277,7 +277,7 @@ for SE-UART device communication.
 
    .. code-block:: console
 
-      export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.111.00_DEV
+      export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.112.00_DEV
 
 3. Set device permissions:
 

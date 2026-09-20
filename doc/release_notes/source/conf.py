@@ -14,7 +14,7 @@ import shutil
 project = 'Release Notes of Zephyr Alif SDK'
 copyright = '2025-2026, Alif Semiconductor'
 author = 'Alif Semiconductor'
-release = '2.3.0'
+release = '2.4.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

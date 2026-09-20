@@ -55,7 +55,7 @@ Ensure you have the following debugger available to proceed with your project se
 
 
 2. **Alif Security Toolkit:**
-    - SE version is 1.110
+    - SE version is 1.112
 
     * Available at `Alif Toolkit Download`_
 

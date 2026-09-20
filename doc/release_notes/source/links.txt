@@ -1,8 +1,8 @@
 .. ### This page lists links used in Alif docs.
 
-.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.3.0/user_guide.pdf
+.. _`ZAS User Guide`: https://github.com/alifsemi/sdk-alif/releases/download/v2.4.0/user_guide.pdf
 .. _`Alif Trademarks`: https://alifsemi.com/legal
-.. _`Alif Security Toolkit`: https://alifsemi.com/download/APFW0001
+.. _`Alif Security Toolkit`: https://alifsemi.com/download/APFW0002
 .. _`Alif SDK`: https://github.com/alifsemi/sdk-alif
 .. _`Alif SDK - Zephyr`: https://github.com/alifsemi/zephyr_alif
 .. _`Alif SDK - HAL`: https://github.com/alifsemi/hal_alif
