@@ -264,13 +264,7 @@ for SE-UART device communication.
       If the device is still not recognized, check for loose connections or try a
       different USB port.
 
-2. Install the ``fdt`` Python module:
-
-   .. code-block:: console
-
-      pip install fdt
-
-3. Set up the Alif Security Toolkit:
+2. Set up the Alif Security Toolkit:
 
    Extract the toolkit and export its directory before running ``west flash``.
    Ensure the toolkit is properly configured for your DevKit.
@@ -285,7 +279,7 @@ for SE-UART device communication.
 
       export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.111.00_DEV
 
-4. Set device permissions:
+3. Set device permissions:
 
    .. note::
 
@@ -296,7 +290,7 @@ for SE-UART device communication.
 
       sudo chmod 666 /dev/ttyACM0
 
-5. Flash the application:
+4. Flash the application:
 
    From the Zephyr build directory, rebuild the binary and flash it to your board:
 
@@ -314,7 +308,7 @@ for SE-UART device communication.
 
       west flash --com-port=ACM0
 
-6. Debug the application:
+5. Debug the application:
 
    From the zephyr build directory, start a debug session on your board:
 
@@ -322,7 +316,7 @@ for SE-UART device communication.
 
       west debug
 
-7. The application boots automatically:
+6. The application boots automatically:
 
    a. Open a serial console application on the host PC with a baud rate of 115200.
 
