@@ -277,7 +277,7 @@ for SE-UART device communication.
 
    .. code-block:: console
 
-      export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.111.00_DEV
+      export ALIF_SE_TOOLS_DIR=/home/<username>/app-release-exec-linux-SE_FW_1.112.00_DEV
 
 3. Set device permissions:
 
@@ -338,6 +338,11 @@ Advanced Multicore Flash Support (Ensemble DevKit Only)
 
 For multicore applications on the Alif Ensemble DevKit, additional binaries
 can be programmed for multiple CPU cores in a single flash operation.
+
+.. note::
+
+   Multicore boot was tested minimally and does not yet cover the full range
+   of core and boot-mode combinations.
 
 The supported CPU cores are:
 
