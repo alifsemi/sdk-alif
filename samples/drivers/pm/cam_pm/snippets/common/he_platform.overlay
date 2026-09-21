@@ -32,7 +32,7 @@
 };
 
 &suspend_idle {
-	status = "disabled";
+	status = "okay";
 };
 
 /* === AIPM Profiles === */
