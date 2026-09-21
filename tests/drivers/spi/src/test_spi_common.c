@@ -395,6 +395,65 @@ static void configure_lpspi_for_dma2(void)
 }
 #endif /* LPSPI(SPI4) dma2 */
 
+/* dma2 */
+#if SPI_TEST_NODE_DMA_IS(spi0, dma2)
+static void configure_spi0_for_dma2(void)
+{
+	const uint32_t rx_req = 16U;
+	const uint32_t tx_req = 20U;
+	const uint32_t group = 2U;
+	uint32_t regdata;
+
+	LOG_INF("Configuring spi0 for dma2");
+
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
+			EVTRTRLOCAL_DMA_CTRL0 + (rx_req * 4));
+
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+	regdata |= (1 << rx_req);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
+			EVTRTRLOCAL_DMA_CTRL0 + (tx_req * 4));
+
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+	regdata |= (1 << tx_req);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+
+}
+#endif
+/* dma2 */
+#if SPI_TEST_NODE_DMA_IS(spi1, dma2)
+static void configure_spi1_for_dma2(void)
+{
+	const uint32_t rx_req = 17U;
+	const uint32_t tx_req = 21U;
+	const uint32_t group = 2U;
+	uint32_t regdata;
+
+	LOG_INF("Configuring spi1 for dma2");
+
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
+			EVTRTRLOCAL_DMA_CTRL0 + (rx_req * 4));
+
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+	regdata |= (1 << rx_req);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+
+	sys_write32(DMA_CTRL_ENA |
+			(0 << DMA_CTRL_ACK_TYPE_Pos) | group,
+			EVTRTRLOCAL_DMA_CTRL0 + (tx_req * 4));
+
+	regdata = sys_read32(EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+	regdata |= (1 << tx_req);
+	sys_write32(regdata, EVTRTRLOCAL_DMA_ACK_TYPE0 + (group * 4));
+
+}
+#endif
+
 /* dma0 */
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(dma0), arm_dma_pl330, okay)
 
@@ -534,6 +593,14 @@ static int spi_test_configure_dma(void)
 	configure_spi1_for_dma0();
 #endif
 #endif /* dma0 */
+
+#if SPI_TEST_NODE_DMA_IS(spi0, dma2)
+	configure_spi0_for_dma2();
+#endif
+
+#if SPI_TEST_NODE_DMA_IS(spi1, dma2)
+	configure_spi1_for_dma2();
+#endif
 
 	LOG_INF("DMA routing setup done");
 	return 0;
