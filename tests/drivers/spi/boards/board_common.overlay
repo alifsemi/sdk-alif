@@ -45,8 +45,8 @@
   #define CONSOLE          uart4
   #define UART_DISABLED    uart2
 #else
-  #define CONSOLE          uart2
-  #define UART_DISABLED    uart4
+  #define CONSOLE          lpuart
+  #define UART_DISABLED    uart2
 #endif
 
 /* --- SPI0 pinmux ------------------------------------------------------ */
@@ -166,6 +166,15 @@
   #define LPSPI_SS_GPIO_PIN   PIN_P2_0__GPIO
   #define LPSPI_SS_GPIO_BANK  gpio2
   #define LPSPI_SS_GPIO_NUM   0
+#endif
+
+/* --- DMA controller for SPI0/SPI1 ---------------------------------- */
+#if ALIF_BOARD == ALIF_BOARD_E1C || ALIF_BOARD == ALIF_BOARD_B1
+  #define SPI_DMA          dma2
+  #define SPI_DMA_EVTRTR   evtrtr2
+#else
+  #define SPI_DMA          dma0
+  #define SPI_DMA_EVTRTR   evtrtr0
 #endif
 
 #endif /* ALIF_BOARD_COMMON_OVERLAY */
