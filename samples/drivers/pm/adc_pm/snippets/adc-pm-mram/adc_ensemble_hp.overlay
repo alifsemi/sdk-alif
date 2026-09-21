@@ -1,0 +1,20 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Ensemble HP (E7/E8): ADC0 temperature-sensor conversions around PM states.
+ * PM: MRAM boot SOFT_OFF (HP, LPTIMER0 wakeup).
+ */
+
+#include "pm_mram_hp.overlay"
+
+&adc0 {
+	status = "okay";
+};
