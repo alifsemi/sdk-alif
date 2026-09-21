@@ -397,10 +397,12 @@ static void camera_capture_thread(void *p1, void *p2, void *p3)
 				THREAD_SUSPENDED = 0;
 
 				/*
-				 * Lock deeper PM states during camera resume
-				 * sequence to prevent S2RAM from trashing
-				 * hardware state mid-reinit.
+				 * Lock idle and deep PM states during camera
+				 * resume. SUSPEND_TO_IDLE (IWIC) would otherwise
+				 * fire on sensor re-init sleeps and break D-PHY/ISP.
 				 */
+				pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE,
+							 PM_ALL_SUBSTATES);
 				pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM,
 							 PM_ALL_SUBSTATES);
 				pm_policy_state_lock_get(PM_STATE_SOFT_OFF,
@@ -470,6 +472,8 @@ static void camera_capture_thread(void *p1, void *p2, void *p3)
 				video_flush(video_dev, VIDEO_EP_OUT, true);
 				/* Release PM policy locks acquired earlier before exiting. */
 				if (pm_locks_held) {
+					pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE,
+								 PM_ALL_SUBSTATES);
 					pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM,
 								 PM_ALL_SUBSTATES);
 					pm_policy_state_lock_put(PM_STATE_SOFT_OFF,
@@ -573,6 +577,7 @@ static void camera_capture_thread(void *p1, void *p2, void *p3)
 		if (pm_locks_held) {
 			pm_policy_state_lock_put(PM_STATE_SOFT_OFF, PM_ALL_SUBSTATES);
 			pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+			pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 			pm_locks_held = false;
 		}
 
