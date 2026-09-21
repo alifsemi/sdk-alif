@@ -6,9 +6,9 @@ Viewfinder Sample
 Overview
 ********
 
-This sample captures continuous frames from an ARX3A0 or MT9M114 camera
-sensor and displays them on the MIPI DSI panel. The camera feeds frames
-via MIPI CSI-2 to the CAM controller.
+This sample captures continuous frames from an ARX3A0, MT9M114 or OV5675
+camera sensor and displays them on the MIPI DSI panel.
+The camera feeds frames via MIPI CSI-2 to the CAM controller.
 On E8 targets, the ISP is included in the pipeline for image processing
 (demosaic, scalar, color conversion). On E7 targets, the ISP is not used:
 ARX3A0 frames are demosaiced in software via AIPL; MT9M114 outputs
@@ -31,6 +31,10 @@ The functional behaviour is:
   outputs RGB565 at 648x488. With ISP it outputs Y10P; the ISP
   converts to YUV420. ``CONFIG_ISP_LIB_CSM_MODULE`` must stay enabled
   or MT9 frames look black/green.
+* OV5675 (CSI, E8 + ISP only) uses the same CSI-2 path. The sensor
+  outputs Y10P at 640x480. The ISP converts to YUV420 and scales to
+  the 480x480 preview. Compact modules use I2C address 0x10; legacy
+  modules use 0x36.
 
 The display output is shown on the MIPI DSI panel (480x800), with the
 camera image occupying the top 480x480 region and the Alif logo
@@ -62,11 +66,17 @@ For E8 with MT9M114 and ISP::
      -DDTC_OVERLAY_FILE=boards/mt9m114_mipi_isp_viewfinder.overlay \
      -DOVERLAY_CONFIG="boards/isp.conf;boards/serial_camera_mt9m114.conf"
 
+For E8 with OV5675 and ISP::
+
+   west build -b <board> -- \
+     -DDTC_OVERLAY_FILE=boards/ov5675_mipi_isp_viewfinder.overlay \
+     -DOVERLAY_CONFIG=boards/isp.conf
+
 Requirements
 ************
 
 The sample utilizes the CAM Controller IP, MIPI CSI-2 receiver
-(Synopsys DesignWare), and the ARX3A0/MT9M114 camera sensor.
+(Synopsys DesignWare), and the ARX3A0/MT9M114/OV5675 camera sensor.
 On E8, the Alif ISP is also used in the pipeline.
 The AIPL (Alif Image Processing Library) is used for color conversion
 and demosaicing.
@@ -76,6 +86,7 @@ Tested Sensors
 
 * ARX3A0 (CSI)
 * MT9M114 (CSI)
+* OV5675 (CSI)
 
 Sample Output
 *************
