@@ -30,3 +30,52 @@ config TEST_UART_DMA
 	  options in dma.conf (EXTRA_CONF_FILE=dma.conf) and apply
 	  snippet alif-uart-dma so zephyr,devnode1 is DMA-wired
 	  (per-board overlay selected by the snippet).
+
+config TEST_STRESS
+	bool "Enable UART TX stress test suite"
+	help
+	  Build src/uart_stress.c and register uart_stress. Sends large
+	  interrupt-driven TX bursts on zephyr,devnode1 (300 KiB and
+	  1 250 000 bytes). Uses the overlay current-speed as baud rate.
+
+config TEST_PERFORMANCE
+	bool "Enable UART external-loopback performance test suite"
+	help
+	  Build src/uart_perf.c and register uart_performance. Requires
+	  a physical TX-RX connection between zephyr,devnode1 and
+	  zephyr,devnode2. Measures timed 1 KiB and 25 KiB transfers at
+	  115200, 921600, 2500000, and 5000000 baud. Unsupported rates
+	  are skipped at runtime.
+
+config TEST_UART_LINE_ERRORS
+	bool "Enable UART line-break and false-start-bit tests"
+	select UART_LINE_CTRL
+	select UART_NS16550_LINE_CTRL
+	help
+	  Build src/uart_line_errors.c. Needs TX-RX wire between
+	  zephyr,devnode1 and zephyr,devnode2.
+
+	  UART_LINE_CTRL enables the public uart_line_ctrl_set() API.
+	  UART_NS16550_LINE_CTRL hooks the ns16550 driver (LCR break).
+	  Without the second option uart_line_ctrl_set(BRK) returns
+	  -ENOSYS and the suite skips.
+
+config TEST_UART_FIFO
+	  bool "Enable UART FIFO 32/33rd-byte boundary suite"
+	  help
+		Build src/uart_fifo_depth.c and register uart_fifo. TX 33rd
+		byte is also built with TEST_INTERNAL_LB. RX 33rd byte needs
+		a physical TX-RX wire (enable this flag or TEST_EXTERNAL_LB).
+
+config TEST_UART_LPUART
+	bool "Enable LPUART suite"
+	help
+		Build src/uart_lpuart.c and register uart_lpuart. Use
+		boards/alif_lpuart.overlay so zephyr,devnode1 is lpuart.
+
+config TEST_UART_HOTPLUG
+	bool "Enable UART hard-plug / unplug suite"
+	help
+		Build src/uart_hotplug.c and register uart_hotplug. Needs a
+		TX-RX wire. Unmounts TX mid-transfer, checks RX stall latency
+		and lost bytes, then remounts and recovers.
