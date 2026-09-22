@@ -1,0 +1,19 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+# Placeholder node that only carries an OSPI0 pinctrl state so the loader can
+# own a pinctrl_dev_config (via PINCTRL_DT_DEFINE) and apply the state at run
+# time. Including pinctrl-device.yaml is what makes gen_defines type the
+# `pinctrl-0` property as phandles (otherwise the pinctrl phandle/child macros
+# are not emitted for the node).
+
+description: OSPI pinctrl state holder (no driver, runtime pin switching only)
+
+compatible: "vnd,ospi-pinctrl-holder"
+
+include: [pinctrl-device.yaml]
