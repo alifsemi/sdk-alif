@@ -42,7 +42,8 @@ Alif SDMMC Features
 The Alif SDMMC driver supports the following features:
 
 - **SDMMC v4.1 Compliance**: Ensures compatibility with modern SD card standards.
-- **Bus Width**: Supports 1-bit and 4-bit configurations.
+- **Bus Width**: Supports 1-bit and 4-bit configurations. External eMMC
+  (via an SD-to-eMMC converter in the SD slot) is supported in 4-bit mode.
 - **Voltage**: Operates at 3.3V on all Alif boards, and at both 3.3V and
   1.8V on Alif E8 DevKit and E8 AppKit.
 - **ADMA2**: Enables efficient data transfers with Advanced DMA.
@@ -270,6 +271,60 @@ Sample Output
    [FILE] TestFile34.txt (size = 5757)
    [FILE] some.dat (size = 5757)
    [FILE] some9.txt (size = 5757)
+
+eMMC (4-bit)
+------------
+
+There is no onboard eMMC on the Alif DevKits. eMMC is used as an external
+device in the SD card slot through an SD-to-eMMC converter.
+
+Use the same FatFS sample and board as the SD card builds above. Change only
+the snippet from ``alif-sdmmc`` to ``alif-emmc``.
+
+For example, DevKit-E8 HP:
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/subsys/fs/fs_sample/ \
+     -S alif-emmc
+
+The eMMC must be formatted as FAT. The volume is mounted at ``/SD2:``.
+
+.. note::
+
+   The ``sdhc_dwc: CMD error`` messages for CMD8 during eMMC boot are expected.
+   The SD stack first probes for an SD memory card by sending **SD CMD8**
+   (Send Interface Condition, argument ``0x000001aa``). eMMC does not implement
+   SD CMD8, so the command times out (``0x00010000``). After the retries the
+   stack logs ``Card does not support CMD8, assuming legacy card`` and continues
+   with MMC initialization. This is not a failure.
+
+   Do not confuse this with **MMC CMD8** (``SEND_EXT_CSD``), which is a different
+   command and is used later on the MMC path.
+
+Sample Output
+"""""""""""""
+
+.. code-block:: console
+
+   [00:00:01.028,000] <err> sdhc_dwc: CMD error event: 0x00010000
+   [00:00:01.034,000] <err> sdhc_dwc: CMD: 0x081a ARG: 0x000001aa XFER: 0x0000 RSP01: 0x00000000 PSTATE: 0x03ff0000, cc:0
+   ...
+   [00:00:01.228,000] <inf> sd: Card does not support CMD8, assuming legacy card
+   [00:00:01.335,000] <inf> sd: Card switched to 1.8V signaling
+   [00:00:01.341,000] <inf> sd: CID decoding not supported for MMC
+   [00:00:01.348,000] <inf> sd: Using Legacy MMC will have slow initialization
+   [00:00:01.386,000] <inf> sd: Card block count is 122159104, block size is 512
+   [00:00:01.396,000] <inf> main: Block count 122159104
+   Sector size 512
+   Memory Size(MB) 59648
+   Disk mounted.
+
+   Listing dir /SD2: ...
+   [FILE] some.dat (size = 1024)
+   [DIR ] some
 
 WiFi Shell Sample
 -----------------
