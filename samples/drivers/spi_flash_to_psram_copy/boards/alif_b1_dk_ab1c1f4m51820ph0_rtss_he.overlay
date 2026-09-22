@@ -1,0 +1,190 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+/* Keep the Debug Subsystem (DBSS) powered so a debugger stays connected. */
+&aipm_run_default {
+	aipm-power-domains = <(ALIF_PD_SSE700_AON_MASK |
+			       ALIF_PD_SYST_MASK | ALIF_PD_SESS_MASK |
+			       ALIF_PD_DBSS_MASK)>;
+};
+
+/*
+ * Combined OSPI0 configuration: both the external OSPI flash (SS1_B / P2_1)
+ * and the HyperRAM PSRAM (SS0_A / P0_2) share the single OSPI0 controller,
+ * the SCLK, the D0..D7 data lines and the RXDS strobe.
+ *
+ * Build this WITHOUT the `ospi-flash` / `ospi-psram` snippets -- this overlay
+ * already declares both devices and all pinctrl states.
+ *
+ * KEY: the two devices must NOT be muxed onto the bus at the same time. When
+ * the PSRAM chip-select (SS0_A) is muxed while the flash performs an octal-DDR
+ * read, the physically-present HyperRAM loads the shared RXDS strobe and the
+ * read never completes (hang). The loader (flash_to_psram.c) therefore owns
+ * two pinctrl states and swaps them every chunk so that exactly one device is
+ * connected to the bus at a time; the deselected device's chip-select is
+ * parked on GPIO (released) so it stays fully quiescent.
+ *
+ * The PSRAM (memc) driver is `zephyr,deferred-init`: it never runs. The loader
+ * drives the OSPI0 HAL directly to alternate flash reads and PSRAM XiP writes.
+ */
+
+/ {
+	aliases {
+		spi-flash0 = &ospi_flash;
+		spi-psram = &ospi_ram;
+	};
+
+	/*
+	 * Helper nodes that let the loader apply either pin state at run time.
+	 * They carry no `reg` (the Alif pinctrl driver ignores it) and a
+	 * placeholder compatible (`vnd,ospi-pinctrl-holder`, no driver) so that
+	 * gen_defines types `pinctrl-0` as phandles and PINCTRL_DT_DEFINE() in
+	 * the loader can own a pinctrl_dev_config for each state. Keeping the
+	 * custom "psram" state off &ospi0 avoids breaking the flash driver's
+	 * PINCTRL_DT_DEFINE.
+	 */
+	ospi0_flash_pins: ospi0-flash-pins {
+		compatible = "vnd,ospi-pinctrl-holder";
+		pinctrl-0 = <&pinctrl_ospi0_flash>;
+		pinctrl-names = "default";
+	};
+
+	ospi0_psram_pins: ospi0-psram-pins {
+		compatible = "vnd,ospi-pinctrl-holder";
+		pinctrl-0 = <&pinctrl_ospi0_psram>;
+		pinctrl-names = "default";
+	};
+};
+
+&pinctrl {
+	/*
+	 * The board default `pinctrl_ahi_trace` muxes the AHI-trace UART onto
+	 * three OSPI0 pins (P4_2 = SCLK, P4_1 = RXDS, P3_6 = D6), which clobbers
+	 * the flash bus at boot and hangs the first read. Re-route trace to the
+	 * P8 pins (matches the vendor `ospi-flash` snippet) so OSPI0 keeps them.
+	 */
+	pinctrl_ahi_trace: pinctrl_ahi_trace {
+		group0 {
+			pinmux = <PIN_P8_7__EXT_TX_B>,
+				 <PIN_P8_3__EXT_RTS_B>,
+				 <PIN_P8_5__EXT_TRACE_B>;
+			read-enable = <0x0>;
+		};
+	};
+
+	/*
+	 * FLASH bus state: SCLK + flash CS (SS1_B) driven, data/strobe as input,
+	 * PSRAM CS (P0_2) parked on GPIO so the HyperRAM is released.
+	 */
+	pinctrl_ospi0_flash: pinctrl_ospi0_flash {
+		group0 {
+			pinmux = <PIN_P4_2__OSPI0_SCLK_A>,
+				 <PIN_P2_1__OSPI0_SS1_B>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+
+		group1 {
+			pinmux = <PIN_P4_1__OSPI0_RXDS_A>,
+				 <PIN_P3_0__OSPI0_D0_A>,
+				 <PIN_P3_1__OSPI0_D1_A>,
+				 <PIN_P3_2__OSPI0_D2_A>,
+				 <PIN_P3_3__OSPI0_D3_A>,
+				 <PIN_P3_4__OSPI0_D4_A>,
+				 <PIN_P3_5__OSPI0_D5_A>,
+				 <PIN_P3_6__OSPI0_D6_A>,
+				 <PIN_P3_7__OSPI0_D7_A>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+
+		group2 {
+			/* Park PSRAM CS as GPIO input -> HyperRAM released. */
+			pinmux = <PIN_P0_2__GPIO>;
+			read-enable = <0x1>;
+		};
+	};
+
+	/*
+	 * PSRAM bus state: SCLK + PSRAM CS (SS0_A) driven, data/strobe as input,
+	 * flash CS (P2_1) parked on GPIO so the flash is released.
+	 */
+	pinctrl_ospi0_psram: pinctrl_ospi0_psram {
+		group0 {
+			pinmux = <PIN_P4_2__OSPI0_SCLK_A>,
+				 <PIN_P0_2__OSPI0_SS0_A>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+
+		group1 {
+			pinmux = <PIN_P4_1__OSPI0_RXDS_A>,
+				 <PIN_P3_0__OSPI0_D0_A>,
+				 <PIN_P3_1__OSPI0_D1_A>,
+				 <PIN_P3_2__OSPI0_D2_A>,
+				 <PIN_P3_3__OSPI0_D3_A>,
+				 <PIN_P3_4__OSPI0_D4_A>,
+				 <PIN_P3_5__OSPI0_D5_A>,
+				 <PIN_P3_6__OSPI0_D6_A>,
+				 <PIN_P3_7__OSPI0_D7_A>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+
+		group2 {
+			/* Park flash CS as GPIO input -> flash released. */
+			pinmux = <PIN_P2_1__GPIO>;
+			read-enable = <0x1>;
+		};
+	};
+};
+
+&ospi0 {
+	/*
+	 * Boot state = flash pins so the flash driver comes up cleanly. The
+	 * loader re-applies this (or the PSRAM state) as it alternates.
+	 *
+	 * cs-pin = 1 -> flash uses SS1_B. Controller timing here is the flash
+	 * known-good set (ddr-drive-edge=1, rx-ds-delay=11); the loader
+	 * reprograms ddr-drive-edge/rx-ds-delay to the PSRAM values around each
+	 * XiP write. xip-wait-cycles / xip-base-address are the PSRAM XiP set.
+	 */
+	pinctrl-0 = <&pinctrl_ospi0_flash>;
+	pinctrl-names = "default";
+
+	cs-pin = <1>;
+	baud2-delay = <1>;
+	rx-ds-delay = <11>;
+	xip-wait-cycles = <7>;
+	tx-fifo-threshold = <64>;
+	ddr-drive-edge = <1>;
+	clocks = <&clockctrl ALIF_OSPI_CLK>;
+	xip-base-address = <0xA0000000 0x10000000>;
+	bus-speed = <80000000>;
+	status = "okay";
+
+	ospi_ram: hyperram {
+		compatible = "issi,is66wvhxx";
+		size = <DT_SIZE_M(64)>;
+		/* Never brought up as a Zephyr device; the loader drives XiP. */
+		zephyr,deferred-init;
+		status = "okay";
+	};
+};
+
+&ospi_flash {
+	status = "okay";
+};
