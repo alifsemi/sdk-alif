@@ -126,14 +126,15 @@ ZTEST(jpeg_hantro, test_jpeg_get_caps)
 	bool nv21_seen = false;
 	int ret;
 
-	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
-	zassert_equal(ret, 0, "video_get_caps failed: %d", ret);
-	zassert_not_null(caps.format_caps, "format_caps is NULL");
+	/* Input endpoint: the uncompressed formats over the full size range */
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_IN, &caps);
+	zassert_equal(ret, 0, "video_get_caps(EP_IN) failed: %d", ret);
+	zassert_not_null(caps.format_caps, "EP_IN format_caps is NULL");
 
 	for (int i = 0; caps.format_caps[i].pixelformat != 0; i++) {
 		const struct video_format_cap *c = &caps.format_caps[i];
 
-		TC_PRINT("Cap[%d]: 0x%08x %ux%u..%ux%u step=%ux%u\n", i,
+		TC_PRINT("IN Cap[%d]: 0x%08x %ux%u..%ux%u step=%ux%u\n", i,
 			 c->pixelformat,
 			 c->width_min, c->height_min,
 			 c->width_max, c->height_max,
@@ -155,13 +156,39 @@ ZTEST(jpeg_hantro, test_jpeg_get_caps)
 		}
 	}
 
-	zassert_true(nv12_seen, "NV12 missing from capabilities");
-	zassert_true(nv21_seen, "NV21 missing from capabilities");
+	zassert_true(nv12_seen, "NV12 missing from EP_IN capabilities");
+	zassert_true(nv21_seen, "NV21 missing from EP_IN capabilities");
 
-	/* Wrong endpoint */
-	ret = video_get_caps(jpeg_dev, VIDEO_EP_IN, &caps);
-	zassert_equal(ret, -EINVAL,
-		      "get_caps on EP_IN expected -EINVAL got %d", ret);
+	/* Output endpoint: compressed JPEG only */
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
+	zassert_equal(ret, 0, "video_get_caps(EP_OUT) failed: %d", ret);
+	zassert_not_null(caps.format_caps, "EP_OUT format_caps is NULL");
+	zassert_equal(caps.format_caps[0].pixelformat, VIDEO_PIX_FMT_JPEG,
+		      "EP_OUT cap[0] is 0x%08x, expected JPEG",
+		      caps.format_caps[0].pixelformat);
+	zassert_equal(caps.format_caps[1].pixelformat, 0,
+		      "EP_OUT should list exactly one format");
+
+	/*
+	 * Once a format is set, EP_OUT reports exactly the configured frame
+	 * size so a consumer such as UVC advertises what the encoder produces.
+	 */
+	struct video_format fmt = {
+		.pixelformat = VIDEO_PIX_FMT_NV12,
+		.width = 640, .height = 480, .pitch = 640,
+	};
+
+	ret = video_set_format(jpeg_dev, VIDEO_EP_IN, &fmt);
+	zassert_equal(ret, 0, "set_format failed: %d", ret);
+
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
+	zassert_equal(ret, 0, "video_get_caps(EP_OUT) failed: %d", ret);
+	zassert_equal(caps.format_caps[0].pixelformat, VIDEO_PIX_FMT_JPEG,
+		      "EP_OUT pixfmt not JPEG after set_format");
+	zassert_equal(caps.format_caps[0].width_min, 640, "EP_OUT width_min");
+	zassert_equal(caps.format_caps[0].width_max, 640, "EP_OUT width_max");
+	zassert_equal(caps.format_caps[0].height_min, 480, "EP_OUT height_min");
+	zassert_equal(caps.format_caps[0].height_max, 480, "EP_OUT height_max");
 }
 
 ZTEST(jpeg_hantro, test_jpeg_set_format_valid)
@@ -174,6 +201,8 @@ ZTEST(jpeg_hantro, test_jpeg_set_format_valid)
 		{ VIDEO_PIX_FMT_NV12, 640, 480, 640, "NV12" },
 		{ VIDEO_PIX_FMT_NV21, 320, 240, 320, "NV21" },
 	};
+	struct video_format got = { 0 };
+	int ret;
 
 	for (int i = 0; i < (int)ARRAY_SIZE(cases); i++) {
 		struct video_format set = {
@@ -182,16 +211,15 @@ ZTEST(jpeg_hantro, test_jpeg_set_format_valid)
 			.height = cases[i].h,
 			.pitch  = cases[i].pitch,
 		};
-		struct video_format got = { 0 };
-		int ret;
 
-		ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &set);
+		ret = video_set_format(jpeg_dev, VIDEO_EP_IN, &set);
 		zassert_equal(ret, 0,
 			      "set_format %s failed: %d", cases[i].name, ret);
 
-		ret = video_get_format(jpeg_dev, VIDEO_EP_OUT, &got);
+		/* The uncompressed input format round-trips on the input endpoint */
+		ret = video_get_format(jpeg_dev, VIDEO_EP_IN, &got);
 		zassert_equal(ret, 0,
-			      "get_format %s failed: %d", cases[i].name, ret);
+			      "get_format(EP_IN) %s failed: %d", cases[i].name, ret);
 		zassert_equal(got.pixelformat, cases[i].pixfmt,
 			      "%s pixfmt mismatch", cases[i].name);
 		zassert_equal(got.width,  cases[i].w,
@@ -200,7 +228,79 @@ ZTEST(jpeg_hantro, test_jpeg_set_format_valid)
 			      "%s height mismatch", cases[i].name);
 		zassert_equal(got.pitch,  cases[i].pitch,
 			      "%s pitch mismatch",  cases[i].name);
+
+		/* The output endpoint reports JPEG at the same size */
+		ret = video_get_format(jpeg_dev, VIDEO_EP_OUT, &got);
+		zassert_equal(ret, 0,
+			      "get_format(EP_OUT) %s failed: %d", cases[i].name, ret);
+		zassert_equal(got.pixelformat, VIDEO_PIX_FMT_JPEG,
+			      "%s EP_OUT pixfmt not JPEG", cases[i].name);
+		zassert_equal(got.width,  cases[i].w,
+			      "%s EP_OUT width mismatch",  cases[i].name);
+		zassert_equal(got.height, cases[i].h,
+			      "%s EP_OUT height mismatch", cases[i].name);
+		zassert_equal(got.pitch, 0,
+			      "%s EP_OUT pitch should be 0", cases[i].name);
 	}
+
+	/*
+	 * The advertised output format is accepted on the output endpoint: it
+	 * sets the encode size and keeps the input pixel format. The last case
+	 * above left NV21 with a 320 byte stride, narrower than the new width,
+	 * so the stride is raised to a packed one.
+	 */
+	struct video_format jpeg = {
+		.pixelformat = VIDEO_PIX_FMT_JPEG,
+		.width = 800, .height = 600,
+	};
+
+	ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &jpeg);
+	zassert_equal(ret, 0, "set_format(EP_OUT, JPEG) failed: %d", ret);
+
+	ret = video_get_format(jpeg_dev, VIDEO_EP_OUT, &got);
+	zassert_equal(ret, 0, "get_format(EP_OUT) failed: %d", ret);
+	zassert_equal(got.pixelformat, VIDEO_PIX_FMT_JPEG, "EP_OUT pixfmt not JPEG");
+	zassert_equal(got.width, 800, "EP_OUT width mismatch");
+	zassert_equal(got.height, 600, "EP_OUT height mismatch");
+
+	ret = video_get_format(jpeg_dev, VIDEO_EP_IN, &got);
+	zassert_equal(ret, 0, "get_format(EP_IN) failed: %d", ret);
+	zassert_equal(got.pixelformat, VIDEO_PIX_FMT_NV21,
+		      "EP_IN pixfmt changed by set_format(EP_OUT, JPEG)");
+	zassert_equal(got.width, 800, "EP_IN width not updated");
+	zassert_equal(got.height, 600, "EP_IN height not updated");
+	zassert_equal(got.pitch, 800, "EP_IN pitch not raised to the new width");
+}
+
+/*
+ * Earlier releases configured the uncompressed input format through
+ * VIDEO_EP_OUT. That use is deprecated but must keep working, with the
+ * same effect as on VIDEO_EP_IN.
+ */
+ZTEST(jpeg_hantro, test_jpeg_set_format_legacy_output_endpoint)
+{
+	struct video_format set = {
+		.pixelformat = VIDEO_PIX_FMT_NV12,
+		.width = 640, .height = 480, .pitch = 640,
+	};
+	struct video_format got = { 0 };
+	int ret;
+
+	ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &set);
+	zassert_equal(ret, 0, "legacy set_format(EP_OUT, NV12) failed: %d", ret);
+
+	ret = video_get_format(jpeg_dev, VIDEO_EP_IN, &got);
+	zassert_equal(ret, 0, "get_format(EP_IN) failed: %d", ret);
+	zassert_equal(got.pixelformat, VIDEO_PIX_FMT_NV12, "EP_IN pixfmt mismatch");
+	zassert_equal(got.width, 640, "EP_IN width mismatch");
+	zassert_equal(got.height, 480, "EP_IN height mismatch");
+	zassert_equal(got.pitch, 640, "EP_IN pitch mismatch");
+
+	ret = video_get_format(jpeg_dev, VIDEO_EP_OUT, &got);
+	zassert_equal(ret, 0, "get_format(EP_OUT) failed: %d", ret);
+	zassert_equal(got.pixelformat, VIDEO_PIX_FMT_JPEG, "EP_OUT pixfmt not JPEG");
+	zassert_equal(got.width, 640, "EP_OUT width mismatch");
+	zassert_equal(got.height, 480, "EP_OUT height mismatch");
 }
 
 ZTEST(jpeg_hantro, test_jpeg_set_format_invalid)
@@ -235,14 +335,19 @@ ZTEST(jpeg_hantro, test_jpeg_set_format_invalid)
 	zassert_equal(ret, -ENOTSUP,
 		      "RGB565 expected -ENOTSUP got %d", ret);
 
-	/* Wrong endpoint */
+	/* JPEG is an output format: not valid on the input endpoint */
 	f = (struct video_format){
-		.pixelformat = VIDEO_PIX_FMT_NV12,
-		.width = 320, .height = 240, .pitch = 320,
+		.pixelformat = VIDEO_PIX_FMT_JPEG,
+		.width = 320, .height = 240,
 	};
 	ret = video_set_format(jpeg_dev, VIDEO_EP_IN, &f);
+	zassert_equal(ret, -ENOTSUP,
+		      "EP_IN JPEG expected -ENOTSUP got %d", ret);
+
+	/* Genuinely invalid endpoint */
+	ret = video_set_format(jpeg_dev, (enum video_endpoint_id)99, &f);
 	zassert_equal(ret, -EINVAL,
-		      "EP_IN set_format expected -EINVAL got %d", ret);
+		      "invalid endpoint set_format expected -EINVAL got %d", ret);
 }
 
 ZTEST(jpeg_hantro, test_jpeg_set_get_ctrl_quality)
