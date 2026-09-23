@@ -33,7 +33,7 @@ int jpeg_encode(const struct device *jdev, struct video_buffer *nv12,
 	uint16_t quality = JPEG_QUALITY;
 	int ret;
 
-	ret = video_set_format(jdev, VIDEO_EP_OUT, &jfmt);
+	ret = video_set_format(jdev, VIDEO_EP_IN, &jfmt);
 	if (ret) {
 		LOG_ERR("set_format failed: %d", ret);
 		return ret;
