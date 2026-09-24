@@ -79,10 +79,7 @@ Implementation notes:
   cable is unplugged or the bus is suspended. If the host stops reading without
   closing the stream, a 2 s send timeout ends the capture session.
 * The class streams frame data **zero-copy**: the USB controller reads directly
-  from the capture / JPEG buffers. On these Alif SoCs the DWC3 controller can
-  only bus-master the non-secure RAM region, so the class's USB buffer pool is
-  placed there by the SoC linker script (``soc/alif/*/common/alif_ns.ld``);
-  the capture buffers already live in USB-reachable RAM.
+  from the capture / JPEG buffers.
 
 Requirements
 ************
