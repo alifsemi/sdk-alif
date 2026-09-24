@@ -21,6 +21,7 @@ from west import log
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
 import apply_executorch_overrides
+import install_cmsis_nn
 
 
 class ExecutorchSetup(WestCommand):
@@ -119,6 +120,13 @@ class ExecutorchSetup(WestCommand):
         #   - ethos-u-vela     (Ethos-U compiler, needed for --delegate)
         # We pass --disable-ethos-u-deps to skip FVP/toolchain downloads, then
         # --enable-vela to re-enable only the vela+tosa pieces.
+        #
+        # --disable-cortex-m-deps skips setup.sh's pip install of cmsis_nn.
+        # The pinned CMSIS-NN pyproject.toml is incompatible with
+        # scikit-build-core 1.x, so a cold pip cache fails setup. cmsis_nn is
+        # installed afterwards from that same commit with the build-metadata
+        # fix. The FVP run below must skip it too: a wheel installed from a
+        # local checkout does not satisfy setup.sh's git URL.
         arm_setup_script = executorch_path / 'examples' / 'arm' / 'setup.sh'
         if arm_setup_script.exists():
             log.inf('Running examples/arm/setup.sh (tosa_serializer + ethos-u-vela)...')
@@ -128,6 +136,7 @@ class ExecutorchSetup(WestCommand):
                         'bash', str(arm_setup_script),
                         '--disable-ethos-u-deps',
                         '--enable-vela',
+                        '--disable-cortex-m-deps',
                     ],
                     cwd=executorch_path / 'examples' / 'arm',
                     check=True,
@@ -140,6 +149,11 @@ class ExecutorchSetup(WestCommand):
         else:
             log.wrn(f'examples/arm/setup.sh not found at {arm_setup_script}')
 
+        log.inf('Installing Cortex-M CMSIS-NN Python package...')
+        if install_cmsis_nn.install(executorch_path) != 0:
+            log.err('Failed to install CMSIS-NN Python package')
+            return 1
+
         # Step 6: Run examples/arm/setup.sh with FVP/baremetal toolchain (OPTIONAL).
         # Only needed for simulation with Arm Corstone FVP, not for real hardware.
         if getattr(args, 'fvp', False):
@@ -147,7 +161,11 @@ class ExecutorchSetup(WestCommand):
                 log.inf('Running examples/arm/setup.sh (FVP tools)...')
                 try:
                     subprocess.run(
-                        ['bash', str(arm_setup_script), '--i-agree-to-the-contained-eula'],
+                        [
+                            'bash', str(arm_setup_script),
+                            '--i-agree-to-the-contained-eula',
+                            '--disable-cortex-m-deps',
+                        ],
                         cwd=executorch_path / 'examples' / 'arm',
                         check=True,
                         capture_output=False
