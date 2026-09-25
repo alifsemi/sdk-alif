@@ -1,12 +1,14 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
  *
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
  *
  */
+
+#include "alif_e8_common.overlay"
 
 /* Use SRAM1 for additional memory - E8 has 4MB SRAM1 */
 &sram1 {

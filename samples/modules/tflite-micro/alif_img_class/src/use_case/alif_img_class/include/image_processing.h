@@ -41,6 +41,15 @@
 #define CIMAGE_RGB_HEIGHT_MAX   CIMAGE_Y
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
 #elif RTE_OV5675_CAMERA_SENSOR_ENABLE // OV5675 RTE
+#if defined(CONFIG_BOARD_ALIF_E8_AK)
+#define CIMAGE_X                (640)
+#define CIMAGE_Y                (480)
+#define CIMAGE_COLOR_CORRECTION (0)
+#define CIMAGE_EXPOSURE_CALC    (0)
+#define CIMAGE_RGB_WIDTH_MAX    CIMAGE_X
+#define CIMAGE_RGB_HEIGHT_MAX   CIMAGE_Y
+#define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
+#else
 #define CIMAGE_X                (1296)
 #define CIMAGE_Y                (972)
 #define CIMAGE_COLOR_CORRECTION (0)
@@ -48,6 +57,7 @@
 #define CIMAGE_RGB_WIDTH_MAX    (800)
 #define CIMAGE_RGB_HEIGHT_MAX   (800)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
+#endif
 #elif RTE_MT9M114_CAMERA_SENSOR_ENABLE // MT9M114 RTE
 /*
  * With MIPI (CONFIG_MT9M114_PARALLEL_INIT=n) the largest advertised Y10P mode

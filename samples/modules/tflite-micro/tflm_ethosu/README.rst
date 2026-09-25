@@ -143,6 +143,39 @@ Building for Alif E8 DK
    for RTSS cores. The tensor arena is placed in SRAM1 to ensure cache coherency
    with the NPU without explicit cache maintenance.
 
+Building for Alif E8 AK
+-----------------------
+
+**HP Core with U55-256:**
+
+.. code-block:: console
+
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+      -S ethos-u55-enable \
+      alif/samples/modules/tflite-micro/tflm_ethosu \
+      -p always -- \
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256
+
+**HP Core with U85-256:**
+
+.. code-block:: console
+
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+      -S ethos-u85-enable \
+      alif/samples/modules/tflite-micro/tflm_ethosu \
+      -p always -- \
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+
+**HE Core with U55-128:**
+
+.. code-block:: console
+
+   west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+      -S ethos-u55-enable \
+      alif/samples/modules/tflite-micro/tflm_ethosu \
+      -p always -- \
+      -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128
+
 Configuration Options
 *********************
 

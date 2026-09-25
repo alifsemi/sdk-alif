@@ -16,9 +16,10 @@ The example runs ClassifyImageHandler() in a loop. They key steps are:
 There is also separate thread which updates LVGL graphics.
 
 ## Supported hardware
-Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
-Alif E8-DK HP & MT9M114 MIPI serial camera (+ISP) & MW-405 display
-Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
+- Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
+- Alif E8-DK HP & MT9M114 MIPI serial camera (+ISP) & MW-405 display
+- Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
+- Alif E8-AK HP & OV5675 serial camera (+ISP) & MW-405 display
 
 
 ## Prerequisites
@@ -43,6 +44,7 @@ Pass `ov5675.conf` via `-DOVERLAY_CONFIG` to set the required buffer pool size (
 arx3a0:
 ```
 west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0.overlay serial_camera.overlay"
+west flash
 ```
 
 ## Building and running: E8-DK
@@ -51,31 +53,49 @@ Note: The build commands below are for U55. To build the same examples for U85, 
 arx3a0:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0_selfie.overlay serial_camera.overlay"
+west flash
 ```
 
 mt9m114:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera.overlay" -DOVERLAY_CONFIG="mt9m114.conf"
+west flash
 ```
 
 mt9m114 & ISP:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera_isp.overlay serial_camera_mt9m114_isp.overlay" -DOVERLAY_CONFIG="mt9m114.conf;isp.conf"
+west flash
 ```
 
 arx3a0 & ISP:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
+west flash
 ```
 
 ov5675:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/modules/tflite-micro/alif_img_class --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera.overlay" -DOVERLAY_CONFIG="ov5675.conf"
+west flash
 ```
 
 ov5675 & ISP:
 ```
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/modules/tflite-micro/alif_img_class --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
+west flash
+```
+
+## Building and running: E8-AK
+ov5675:
+```
+west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera.overlay" -DOVERLAY_CONFIG="ov5675.conf"
+west flash
+```
+ov5675 & ISP:
+```
+west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_img_class -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
+west flash
 ```
 
 ## Expected output

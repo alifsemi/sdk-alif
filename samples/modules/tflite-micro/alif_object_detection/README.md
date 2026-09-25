@@ -16,9 +16,10 @@ The example runs ObjectDetectionHandler() in a loop. They key steps are:
 There is also separate thread which updates LVGL graphics.
 
 ## Supported hardware
-Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
-Alif E7-DK HP & E8-DK HP & MT9M114 MIPI serial camera (+ISP on E8) & MW-405 display
-Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
+- Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
+- Alif E7-DK HP & E8-DK HP & MT9M114 MIPI serial camera (+ISP on E8) & MW-405 display
+- Alif E8-DK HP & OV5675 serial camera (+ISP) & MW-405 display
+- Alif E8-AK HP & OV5675 serial camera (non-ISP) & MW-405 display
 
 ## Prerequisites
 Before building, set up the MLEK resources (downloads and Vela-compiles the ML models):
@@ -82,6 +83,13 @@ ov5675 & ISP:
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
 ```
 
+## Building and running: E8-AK
+Note: The build command below is for U55.
+
+ov5675 & ISP:
+```
+west build -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
+```
 ## Building and running: StartKit-E1C
 StartKit-E1C has no display
 

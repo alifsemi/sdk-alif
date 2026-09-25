@@ -12,9 +12,10 @@ for the automatic speech recognition (ASR) use case.
 Use case has also push-to-talk feature which is enabled by default for the project.
 
 Push-to-talk:
+
 1. app starts by going to STOP mode
 2. wakeup via joystick button, keep pressed to record voice. Once button released/max time (~10s)
-   inference is run to recorded speech and printed to console
+   inference is run on the recorded speech and printed to console
 3. app goes back to STOP mode
 
 CONFIG_OUTPUT_TO_LINE_OUT can used to listen the recorded voice.
@@ -37,6 +38,7 @@ To build the sample, you first need to pull in the optional dependencies and set
 
 .. code-block:: console
 
+   west config manifest.group-filter -- +optional
    west config manifest.project-filter -- +alif-mlek
    west update
    python3 modules/alif-mlek/set_up_default_resources.py
@@ -45,16 +47,35 @@ The last command downloads the ML models and compiles them with Vela for the Eth
 The generated model and labels source code is produced automatically at CMake configure time.
 
 Build the sample for the Alif Ensemble Development Kit with the following command:
+
 .. code-block:: console
 
-	west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u55-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u55-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay
 
 Build the sample for the Alif Ensemble Development Kit using U85 with the following command:
+
 .. code-block:: console
 
-	west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u85-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u85-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 
 Build the sample for the Alif Balletto Development Kit with the following command:
+
 .. code-block:: console
 
-	west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u55-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay
+   west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u55-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay
+
+Build the sample for the Alif E8 Application Kit with the following command:
+
+.. code-block:: console
+
+   west build -p always -b alif_e8_ak/ae822fa0e5597xx0/rtss_he alif/samples/modules/tflite-micro/alif_asr -d build_asr -S ethos-u55-enable -- -DEXTRA_DTC_OVERLAY_FILE=sleep.overlay
+
+
+Flashing
+********
+1. Flash the ospi1.bin from build folder to ospi flash
+2. zephyp.bin from build folder can be flashed with the following command:
+
+.. code-block:: console
+
+   west flash

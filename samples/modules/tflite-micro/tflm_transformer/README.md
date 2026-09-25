@@ -9,7 +9,7 @@ This application demonstrates real-time transformer model inference using:
 - **Model**: BERT-Tiny (2 layers, 96 hidden, 869KB INT8 quantized)
 - **NPU**: ARM Ethos-U85 with 256 MACs
 - **RTOS**: Zephyr 4.1 with multi-threaded inference pipeline
-- **Board**: Alif Ensemble E8 Development Kit
+- **Board**: Alif Ensemble E8 Development Kit / Application Kit
 - **Cores**: Support for both RTSS_HP (1MB DTCM) and RTSS_HE (256KB DTCM)
 
 ### Key Features
@@ -63,7 +63,7 @@ This application demonstrates real-time transformer model inference using:
 
 ## Hardware Setup
 
-### Board: Alif Ensemble E8 Development Kit
+### Board: Alif Ensemble E8 Development Kit / Application Kit
 
 - **Processor**: Dual Cortex-M55 (RTSS_HP + RTSS_HE)
 - **NPU**: ARM Ethos-U85 (256 MACs)
@@ -82,7 +82,7 @@ This application demonstrates real-time transformer model inference using:
 
 ## Requirements
 
-- Alif Ensemble E8 Development Kit
+- Alif Ensemble E8 Development Kit or Application Kit
 - ARM Ethos-U85 NPU support
 - Zephyr SDK with TensorFlow Lite Micro module
 
@@ -95,22 +95,40 @@ and `enable_ethosu85.overlay` to enable the NPU.
 
 The HP core has 1MB DTCM, allowing a larger tensor arena (700KB).
 
+E8 Development Kit:
+
 ```bash
-cd zephyr
 west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
-    ../alif/samples/modules/tflite-micro/tflm_transformer \
+    alif/samples/modules/tflite-micro/tflm_transformer \
     -DDTC_OVERLAY_FILE="boards/alif_e8_dk_rtss_hp.overlay;boards/enable_ethosu85.overlay" -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+```
+
+E8 Application Kit:
+
+```bash
+west build -p always -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
+  alif/samples/modules/tflite-micro/tflm_transformer \
+  -DDTC_OVERLAY_FILE="boards/alif_e8_ak_rtss_hp.overlay;boards/enable_ethosu85.overlay" -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 ```
 
 ### Building for RTSS_HE Core
 
 The HE core has 256KB DTCM, using a smaller tensor arena (128KB).
 
+E8 Development Kit:
+
 ```bash
-cd zephyr
 west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
-    ../alif/samples/modules/tflite-micro/tflm_transformer \
+    alif/samples/modules/tflite-micro/tflm_transformer \
     -DDTC_OVERLAY_FILE="boards/alif_e8_dk_rtss_he.overlay;boards/enable_ethosu85.overlay" -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
+```
+
+E8 Application Kit:
+
+```bash
+west build -p always -b alif_e8_ak/ae822fa0e5597xx0/rtss_he \
+  alif/samples/modules/tflite-micro/tflm_transformer \
+  -DDTC_OVERLAY_FILE="boards/alif_e8_ak_rtss_he.overlay;boards/enable_ethosu85.overlay" -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256
 ```
 
 ### Flashing
