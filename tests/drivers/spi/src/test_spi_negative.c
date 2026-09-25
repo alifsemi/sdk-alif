@@ -58,64 +58,18 @@ static int do_loopback_xfer(const struct spi_config *cfg,
  */
 static void test_spi_negative_before(void *fixture)
 {
-	static struct spi_config cfg;
-
-	cfg = neg_test_cfg(SPI_TRANSFER_LSB,
-					     8U, SPI_FREQ_MHZ);
-	uint8_t tx[4] = {0x11, 0x22, 0x33, 0x44};
-	uint8_t rx[4];
-	struct spi_config cfg = neg_test_cfg(SPI_TRANSFER_LSB, 8U, SPI_FREQ_MHZ);
-	int ret = do_loopback_xfer(&cfg, tx, sizeof(tx), rx, sizeof(rx));
-
-	zassert_equal(ret, -EINVAL,
-		      "LSB-first: expected -EINVAL, got %d", ret);
+	test_before_func(fixture);
 }
 
-ZTEST(test_spi_negative, test_release_wrong_cfg)
+static int subtest_lsb_first(void)
 {
-	static struct spi_config cfg1;
-
-	cfg1 = neg_test_cfg(0, 8U, SPI_FREQ_MHZ);
-	uint8_t tx[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+	static struct spi_config cfg;
+	uint8_t tx[4] = {0x11, 0x22, 0x33, 0x44};
 	uint8_t rx[4];
 	int ret;
 
-	ret = do_loopback_xfer(&cfg1, tx, sizeof(tx), rx, sizeof(rx));
-	zassert_true(ret >= 0,
-		     "release_wrong: initial xfer failed %d", ret);
-
-	static struct spi_config cfg2;
-
-	cfg2 = neg_test_cfg(0, 16U, 2 * SPI_FREQ_MHZ);
-
-	ret = spi_release(controller_dev, &cfg2);
-	zassert_equal(ret, -EINVAL,
-		      "release_wrong: expected -EINVAL, got %d", ret);
-}
-
-ZTEST(test_spi_negative, test_freq_exceed)
-{
-	struct spi_config cfg = neg_test_cfg(0, 8U, UINT32_MAX);
-	uint8_t tx[4] = {0x11, 0x22, 0x33, 0x44};
-	uint8_t rx[4];
-	struct spi_config cfg = neg_test_cfg(0, 8U, UINT32_MAX);
-	int ret = do_loopback_xfer(&cfg, tx, sizeof(tx), rx, sizeof(rx));
-
-	zassert_equal(ret, -EINVAL,
-		      "freq_exceed: expected -EINVAL, got %d", ret);
-}
-
-static int subtest_null_buf(void)
-{
-	static struct spi_config cfg;
-
-	cfg = neg_test_cfg(SPI_OP_MODE_SLAVE,
-					     8U, SPI_FREQ_MHZ);
-	uint8_t tx[4] = {0x11, 0x22, 0x33, 0x44};
-	uint8_t rx[4];
-	int ret = do_loopback_xfer(&cfg, tx, sizeof(tx),
-				   rx, sizeof(rx));
-
+	cfg = neg_test_cfg(SPI_TRANSFER_LSB, 8U, SPI_FREQ_MHZ);
+	ret = do_loopback_xfer(&cfg, tx, sizeof(tx), rx, sizeof(rx));
 	if (ret != -EINVAL) {
 		LOG_ERR("  LSB-first: expected -EINVAL, got %d", ret);
 		return 1;
@@ -130,10 +84,6 @@ static int subtest_release_wrong_cfg(void)
 	cfg1 = neg_test_cfg(0, 8U, SPI_FREQ_MHZ);
 	uint8_t tx[4] = {0xDE, 0xAD, 0xBE, 0xEF};
 	uint8_t rx[4];
-	struct spi_buf tb = { .buf = tx, .len = sizeof(tx) };
-	struct spi_buf rb = { .buf = rx, .len = sizeof(rx) };
-	struct spi_buf_set ts = { .buffers = &tb, .count = 1 };
-	struct spi_buf_set rs = { .buffers = &rb, .count = 1 };
 	int ret;
 
 	ret = do_loopback_xfer(&cfg1, tx, sizeof(tx),
@@ -158,15 +108,30 @@ static int subtest_release_wrong_cfg(void)
 static int subtest_freq_exceed(void)
 {
 	static struct spi_config cfg;
-
-	cfg = neg_test_cfg(0, 8U, UINT32_MAX);
 	uint8_t tx[4] = {0x11, 0x22, 0x33, 0x44};
 	uint8_t rx[4];
-	int ret = do_loopback_xfer(&cfg, tx, sizeof(tx),
-				   rx, sizeof(rx));
+	int ret;
 
+	cfg = neg_test_cfg(0, 8U, UINT32_MAX);
+	ret = do_loopback_xfer(&cfg, tx, sizeof(tx), rx, sizeof(rx));
 	if (ret != -EINVAL) {
 		LOG_ERR("  freq_exceed: expected -EINVAL, got %d", ret);
+		return 1;
+	}
+	return 0;
+}
+
+static int subtest_word_exceed(void)
+{
+	static struct spi_config cfg;
+	uint8_t tx[4] = {0xAA, 0xBB, 0xCC, 0xDD};
+	uint8_t rx[4];
+	int ret;
+
+	cfg = neg_test_cfg(0, 33U, SPI_FREQ_MHZ);
+	ret = do_loopback_xfer(&cfg, tx, sizeof(tx), rx, sizeof(rx));
+	if (ret != -ENOTSUP) {
+		LOG_ERR("  word_exceed: expected -ENOTSUP, got %d", ret);
 		return 1;
 	}
 	return 0;
