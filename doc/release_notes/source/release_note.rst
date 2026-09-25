@@ -59,50 +59,92 @@ The following are the software components used in the latest release.
      - Version
      - Link
    * -  Alif SDK
-     - v2.3-zas-branch
+     - v2.4-zas-branch
      - `Alif SDK`_
    * -  Alif Zephyr RTOS
-     - v2.3-zas-branch
+     - v2.4-zas-branch
      - `Alif SDK - Zephyr`_
    * -  Alif SDK - HAL
-     - v2.3-zas-branch
+     - v2.4-zas-branch
      - `Alif SDK - HAL`_
    * -  Alif Secure Enclave (SE)
-     - v1.110
+     - v1.112
      - `Alif Security Toolkit`_
    * -  SE Host Services
-     - v0.50.10
+     - v0.50.12
      - `Alif SE Host Services`_
 
 .. note::
-   This release requires Secure Enclave software version v1.110 or later for proper operation.
+   This release requires Secure Enclave software version v1.112 or later for proper operation.
 
 New Features
 ------------
 
-SE Host Services
+Power Management
 ~~~~~~~~~~~~~~~~
 
-This release adds two new APIs to the SE Host Services component:
+- Added PM support for I3C, Display, PWM, QDEC, UTIMER, PDM, CRC, ADC, Camera, and I2S (``samples/drivers/pm/i2s_dw``).
 
-.. list-table::
-   :header-rows: 1
-   :widths: 30 70
+USB Device
+~~~~~~~~~~
 
-   * - **API**
-     - **Description**
-   * - process_toc_entry
-     - Request to process a TOC entry.
-   * - read_otp
-     - Read an OTP word specified by offset.
+- USB Device HID Joystick class support (``samples/subsys/usb/hid-joystick``).
+- USB Device CDC NCM class support (virtual Ethernet).
 
-I3C
-~~~
+Wireless
+~~~~~~~~
 
-- Power-management support for the DesignWare I3C controller (suspend/resume,
-  sleep pinctrl, DAT restore across S2RAM).
-- New sample ``samples/sensor/bmi323_pm``: poll the on-board BMI323 over I3C
-  after RUNTIME_IDLE, SUSPEND_TO_IDLE, and S2RAM (or SOFT_OFF on MRAM/HP).
+- Wi-Fi Direct autonomous Group Owner over SDIO
+  (``samples/net/wifi/shell`` with ``overlay-p2p.conf``).
+  Tested on Alif E8 DevKit with the Murata Type 1YN (CYW43439) module.
+
+Audio and DMA
+~~~~~~~~~~~~~
+
+- I2S full duplex support (``samples/drivers/i2s_duplex``).
+- DMA support for I2S, PDM, and UART.
+
+Memory and Storage
+~~~~~~~~~~~~~~~~~~
+
+- Infineon S80KS HyperRAM support (``alif,infineon-s80ks2564``) over OSPI1. Build with the Alif E8 DevKit target and ``alif_hex_s80ks.overlay``.
+- eMMC mode support in the SDHC driver.
+
+Camera, ISP, and Display
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+- OV5675 multi-resolution support (1296x972, 1920x1080, 1280x720, 640x480).
+- ISP spatial binning support.
+- Viewfinder application support (ARX3A0 / MT9M114 / OV5675 CSI preview on MIPI DSI).
+
+CPU Frequency and Clocks
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+- Backport of CPU frequency scaling from Zephyr 4.3 to ZAS 2.x (4.1 base).
+- Dynamic Frequency Scaling (DFS).
+- SysTick reconfiguration on frequency change.
+- Clock control driver uses SE-Services.
+
+AI Acceleration
+~~~~~~~~~~~~~~~
+
+- APSS Ethos-U85 support on E8 (Ethos-U55 is not accessible from APSS).
+
+Flashing
+~~~~~~~~
+
+- Multicore binary flash support in ``west flash``.
+
+Inter-processor Communication
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+- MHU doorbell sample (``samples/drivers/ipm/ipm_arm_mhu_doorbell``) for M55-HE to M55-HP and M55 to APSS shared-memory exchange.
+
+Display
+~~~~~~~
+
+- LVGL XML widgets sample (``samples/modules/lvgl/gui``) on the E8 DevKit MIPI-DSI MW405 panel, rendered with the D/AVE 2D GPU.
+- LVGL D/AVE 2D benchmark sample (``samples/modules/lvgl/benchmark``) on the same panel.
 
 Compatibility Notes
 -------------------
@@ -145,7 +187,7 @@ Communication Interfaces
    * - **Peripheral**
      - **Description**
    * - UART
-     - Synopsys DW_apb_uart supporting up to 8 ports. By default UART2 and UART4 are enabled and used as a console for RTSS-HE and RTSS-HP core respectively.
+     - Synopsys DW_apb_uart supporting up to 8 ports. By default UART2 and UART4 are enabled and used as a console for RTSS-HE and RTSS-HP core respectively. Supports DMA-based transfers (``echo_dma`` sample).
    * - SPI
      - Synopsys DWC_ssi full-duplex interface with 4 instances. SPI1 (master), SPI0/SPI2/SPI3 (slaves).
    * - I2C
@@ -159,7 +201,7 @@ Communication Interfaces
    * - LP-SPI
      - Low-power SPI controller capable of operating in deep sleep modes, enabling communication with external sensors and peripherals while minimizing power consumption, with wake-on-transfer support for event-driven applications in Zephyr.
    * - USB-Device
-     - USB device mode support using the Synopsys DWC3 controller with Alif’s UDC driver. Includes CDC-ACM class implementation to enable the board to function as a virtual COM port, allowing serial communication with a host PC. Supports standard USB device enumeration and data transfer in Zephyr RTOS.
+     - USB device mode support using the Synopsys DWC3 controller with Alif’s UDC driver. Includes CDC-ACM (virtual COM port), MSC (RAM disk, SD, OSPI), HID Joystick, and CDC NCM (virtual Ethernet).
    * - CAN-FD
      - Controller Area Network (CAN) driver for 2-wire bus communication used to transmit sensor data and control information between system components. Commonly used in automotive applications for reliable communication between Electronic Control Units (ECUs).
    * - TOF Sensor
@@ -211,7 +253,7 @@ Audio Interfaces
    * - **Peripheral**
      - **Description**
    * - I2S
-     - DW_apb_i2s up to four instances for digital audio.
+     - DW_apb_i2s up to four instances for digital audio. Supports full-duplex operation and DMA.
    * - LPI2S
      - Low-power DW_apb_lpi2s for digital audio signal processing.
    * - PDM
@@ -240,6 +282,8 @@ System Resources
      - Watchdog timer for fault detection.
    * - Clk-Ctrl
      - Clock control module manages peripheral clock generation and its gating.
+       Uses SE-Services for run-profile clock changes, with Dynamic Frequency
+       Scaling (DFS) and SysTick reconfiguration on CPU frequency change.
    * - PinMUX
      - Pin multiplexer controlling GPIO pin function selection and routing of peripheral signals to physical pins, enabling flexible I/O configuration.
    * - System Power Management (suspend to ram)
@@ -254,7 +298,7 @@ System Resources
    * - DMA
      - ARM PL330 DMA controller supporting memory-to-memory and
        memory-to-peripheral transfers, including user-supplied microcode
-       programs for custom transfer patterns.
+       programs for custom transfer patterns. DMA support added for I2S, PDM, and UART.
    * - EVTRTR
      - The Event Router (EVTRTR) is a module that can associate an event originated by one peripheral with an action executed by another.
 
@@ -294,10 +338,12 @@ Memory and Storage
        | **Macronix Flash (MX66UW)** support for high-speed execute-in-place (XIP) and data storage, with erase, read, and write operations through the Zephyr flash subsystem.
 
    * - SD
-     - Secure Digital host controller supporting SD/SDIO/MMC protocols for external memory card interfacing, including command queuing and data transfer at high-speed rates.
+     - Secure Digital host controller supporting SD/SDIO/MMC protocols for external memory card interfacing, including command queuing and data transfer at high-speed rates. Adds eMMC mode support in the SDHC driver.
 
    * - HexSPI support for AP memory PSRAM (APS512XXN)
      - HexSPI interface support for external APMEM device, enabling high-bandwidth external memory expansion.
+   * - S80KS HyperRAM
+     - Infineon S80KS HyperRAM (``alif,infineon-s80ks2564``) over OSPI1. Build with the Alif E8 DevKit target and ``alif_hex_s80ks.overlay``.
 
 Security and Data Integrity
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -342,7 +388,8 @@ AI Acceleration
      - The Ethos U-55/U-85 NPU is a hardware acceleration solution
        integrated into Alif’s microcontroller platforms that leverages Arm
        Ethos microNPUs to boost machine learning inference performance
-       for CNN and transformer models.
+       for CNN and transformer models. APSS on E8 supports Ethos-U85
+       (256 MACs); Ethos-U55 is not accessible from APSS.
 
 .. list-table::
    :header-rows: 1
@@ -360,7 +407,7 @@ AI Acceleration
    * - TFLite Micro
      - TensorFlow Lite Micro (TFLM) inference framework integrated with Arm Ethos-U NPU acceleration. Supports CNN and transformer models optimized with the Vela compiler for Ethos-U55 and Ethos-U85 NPUs across Ensemble and Balletto device families. The following samples are provided:
 
-       * **tflm_ethosu** — Keyword spotting CNN model with Vela optimization. Supports Ethos-U55 (128/256 MACs) and Ethos-U85 (256 MACs) across B1-DK, E1C-DK, E3-DK, E4-DK, E7-DK, and E8-DK.
+       * **tflm_ethosu** — Keyword spotting CNN model with Vela optimization. Supports Ethos-U55 (128/256 MACs) and Ethos-U85 (256 MACs) across B1-DK, E1C-DK, E3-DK, E4-DK, E7-DK, and E8-DK. On E8, APSS supports Ethos-U85 (256 MACs) with the ``ethos-u85-apss-enable`` snippet.
        * **tflm_transformer** — BERT-Tiny transformer inference on Ethos-U85 (E8-DK only). INT8 quantized model (869KB) with multi-threaded pipeline on RTSS_HP (700KB tensor arena) and RTSS_HE (128KB tensor arena).
        * **alif_kws** — Zephyr port of the Alif ML Embedded Evaluation Kit KWS use case. MicroNet KWS model with MFCC feature extraction. Supports E1C-DK, E3-DK, E7-DK, and B1-DK.
        * **alif_inference** — Generic inference runner for keyword spotting with live microphone input and MFCC processing. Supports E1C-DK, E3-DK, E7-DK, and B1-DK.
@@ -385,7 +432,7 @@ Camera Interfaces
    * - MIPI-CSI
      - MIPI Camera Serial Interface (CSI-2) supporting high-speed serial transmission of pixel data from image sensors (e.g., ARX3A0). Data is received via D-PHY, processed through the PHY Protocol Interface (PPI), unpacked by the MIPI CSI-2 host controller, and delivered via the Image Pixel Interface (IPI) to the Camera Pixel Interface (CPI) for storage in memory over AXI. Integrated with Zephyr’s video input subsystem for streaming and frame capture.
    * - ISP
-     - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, and color correction. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
+     - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, color correction, and spatial binning. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
    * - JPEG Encoder
      - VeriSilicon Hantro VC9000E hardware JPEG encoder for real-time compression of YUV420 (NV12/NV21) image frames. Supports configurable quality factor, hardware-accelerated quantization table programming, and JPEG header generation. Integrated with the video driver to enable camera capture-to-JPEG encoding pipelines in Zephyr-based applications.
 
@@ -408,6 +455,9 @@ Camera Sensors Support
    * - OV5640
      - Parallel (CPI)
      - E1C StartKit
+   * - OV5675
+     - Serial (MIPI-CSI)
+     - DevKit E7, DevKit E8
 
 Wireless Connectivity
 ~~~~~~~~~~~~~~~~~~~~~
@@ -426,13 +476,10 @@ Wireless Connectivity
        - **Alif BLE (ROM-based)** — Power-optimized stack using BLE ROM v1.2 for reduced flash/RAM footprint.
        - **Zephyr BLE** — Standard Zephyr Bluetooth implementation for portability.
 
-       **New in this release (Alif BLE stack)**
-
-       - Power management enabled by default across ROM-based BLE peripheral samples
-       - BLE PM snippet and LPGPIO wakeup support for Alif low-power modes
-       - PM support for LE Audio Auracast and unicast acceptor samples
-       - Legacy pairing workflow added to Alif BLE common libraries
-       - Common settings storage support shared by Alif BLE samples
+   * - Wi-Fi Direct
+     - Wi-Fi Direct autonomous Group Owner over SDIO
+       (``samples/net/wifi/shell`` with ``overlay-p2p.conf``).
+       Tested on Alif E8 DevKit with the Murata Type 1YN (CYW43439) module.
 
 Bug Fixes
 ---------
@@ -443,24 +490,28 @@ Bug Fixes
 
    * - **Component**
      - **Fix**
-   * - BLE Audio
-     - Fixed audio unicast initiator issue when opening a second channel using the host stack
-   * - SPI1 DMA
-     - Resolved inconsistent SPI1 DMA operation behavior
-   * - OSPI Boot
-     - Verified OSPI boot functionality
-   * - Power Management
-     - Fixed PM demo application error when running from HE-MRAM on Spark-A6
-   * - LP Camera
-     - Updated LP Camera overlay configuration to use I2C1 on B1-DK
-   * - Executorch
-     - Added support for Executorch on E1C
-   * - CMP
-     - Fixed CMP functionality on Balletto
+   * - CAN
+     - Fixes in the CAN driver
+   * - MIPI DSI
+     - Fixes in the MIPI DSI driver
    * - ADC
-     - Added testing and functional support for ADC on A1
-   * - Power Management
-     - Fixed PM sample application functionality on B1
+     - Fixes in the ADC driver
+   * - DAC
+     - Fixes in the DAC driver
+   * - CSI
+     - Fixes in the CSI driver
+   * - I3C
+     - Fixes in the I3C driver
+   * - IPM
+     - Fixes in the IPM driver
+   * - ETHOS
+     - Fixes in the ETHOS driver
+   * - SPI
+     - Fixes in the SPI driver
+   * - JPEG
+     - Fixes in the JPEG driver
+   * - CMP
+     - Fixes in the CMP driver
 
 Planned Deprecations
 --------------------
