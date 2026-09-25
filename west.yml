@@ -86,7 +86,7 @@ manifest:
 
     - name: dave2d
       repo-path: alif_dave2d-driver
-      revision: f8b3c70d59da9851f9f48c993c0db88eb3d1a313
+      revision: pull/11/head
       path: modules/drivers/dave2d
 
     - name: aipl
