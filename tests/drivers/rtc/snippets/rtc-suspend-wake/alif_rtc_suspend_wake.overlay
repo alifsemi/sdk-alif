@@ -1,0 +1,44 @@
+// SPDX-License-Identifier: Apache-2.0
+
+&timer0 {
+	status = "disabled";
+};
+
+&rtc0 {
+	status = "okay";
+};
+
+/*
+ * Enable both STOP (S2RAM) and SOFT_OFF. The test selects one at runtime:
+ * TCM boot (VTOR < 0x80000000) uses stop_s2ram; MRAM boot uses subsys_off.
+ * Do not leave rtc0 as zephyr,cortex-m-idle-timer — DW RTC has one compare
+ * channel, and the kernel would steal the alarm used for wakeup.
+ */
+&suspend_idle {
+	status = "disabled";
+};
+
+&standby_s2ram {
+	status = "disabled";
+};
+
+&stop_s2ram {
+	min-residency-us = <1000000>;
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <1000000>;
+	status = "okay";
+};
+
+&aipm_off {
+	status = "okay";
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	memory-blocks      = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+	wakeup-events      = <ALIF_WE_LPRTC>;
+	ewic-cfg           = <ALIF_EWIC_RTC_A>;
+};
