@@ -1,0 +1,52 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+common:
+  tags:
+    - drivers
+    - can
+  timeout: 600
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+  extra_conf_files:
+    - prj.conf
+
+tests:
+  drivers.can.alif.normal:
+    harness: ztest
+    extra_configs:
+      - CONFIG_CAN_FD_MODE=n
+    extra_dtc_overlay_files:
+      - boards/can_normal.overlay
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh/rtss_he
+
+  drivers.can.alif.normal.fd:
+    harness: ztest
+    extra_configs:
+      - CONFIG_CAN_FD_MODE=y
+    extra_dtc_overlay_files:
+      - boards/can_normal.overlay
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820hh/rtss_he
