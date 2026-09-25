@@ -1,0 +1,9 @@
+&adc0 {
+	status = "disabled";
+};
+
+&adc24 {
+	pga_enable;
+	pga_gain = "ADC_PGA_GAIN_42_DB";
+	status = "okay";
+};
