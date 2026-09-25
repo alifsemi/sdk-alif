@@ -31,6 +31,8 @@ Application Notes for the Zephyr Alif SDK
    i3c.rst
    isp.rst
    jpeg.rst
+   lvgl.rst
+   viewfinder.rst
    lp_timer.rst
    lp_i2c.rst
    lp_rtc.rst
@@ -77,10 +79,12 @@ Document History
    * - 1.3
      - Added support for DAC12, UTimer Counter, QDEC, and SDMMC
    * - 2.0
-     - Release with Zephyr v4.1.0. Added driver support for UART, SPI, I2C, LPI2C,I3C, LP-UART, LP-SPI, MIPI-DSI, CDC-200, LP-Timer, I2S, LPI2S, PDM, LPPDM, GPIO, MHU, HWSEM, RTC, WDT, Clk-Ctrl, PinMUX, Touch Screen, System Power, Management (suspend to ram), LP-GPIO, PWM, QDEC, UTimer Counter, MRAM, OSPI Flash, SD, CRC, Entropy, DAC 12, ADC 12/24, CPI, LP-CPI, Ethos.
+     - Release with Zephyr v4.1.0. Added driver support for UART, SPI, I2C, LPI2C, I3C, LP-UART, LP-SPI, MIPI-DSI, CDC-200, LP-Timer, I2S, LPI2S, PDM, LPPDM, GPIO, MHU, HWSEM, RTC, WDT, Clk-Ctrl, PinMUX, Touch Screen, System Power, Management (suspend to ram), LP-GPIO, PWM, QDEC, UTimer Counter, MRAM, OSPI Flash, SD, CRC, Entropy, DAC 12, ADC 12/24, CPI, LP-CPI, Ethos.
    * - 2.1
      - Added support for MIPI-CSI, CMP, ISP, USB-device, Ethernet.
    * - 2.2
      - Updated the document to include OV5640 parallel camera sensor, ultrasonic TOF sensor, CAN-FD, Macronix Flash (MX66UW), HexSPI support for AP memory PSRAM (APS512XXN), EVTRTR, UART HFOSC_CLK support, basic Power Management (I2S, SPI, I2C, UART), Deep Sleep IWIC support, and AI Acceleration section updates (Executorch, InferenceRunner, TFLite Micro samples).
    * - 2.3
      - Release with Zephyr v4.1.0. Added driver support for MT9M114 MIPI serial camera sensor, JPEG, Exposure modification support for ARX3A0 camera sensor, DTS-driven SE off/run profile setting, USB Device MSC support (SD/OSPI), SDIO Wi-Fi support, DMA support for UART, SPI, support for APSS.
+   * - 2.4
+     - Release with Zephyr v4.1.0. Added PM support for I3C, Display, PWM, QDEC, UTIMER, PDM, CRC, ADC, Camera, and I2S; Wi-Fi Direct support, DMA support for I2S, PDM, and UART, S80KS HyperRAM support, multicore binary flash support in west flash, I2S full duplex support, USB Device NCM and HID class support, OV5675 multi-resolution support, eMMC mode support in SDHC, APSS Ethos-U85 support, backport of CPU frequency scaling from Zephyr 4.3 to ZAS 2.x (4.1 base), Dynamic Frequency Scaling (DFS), SysTick reconfiguration on frequency change, clock control driver to use SE-Services, binning support in ISP, Viewfinder application support, MHU doorbell sample, and LVGL XML widgets sample. Fixes in CAN, MIPI DSI, ADC, DAC, CSI, I3C, IPM, ETHOS, SPI, JPEG, and CMP drivers.

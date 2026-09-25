@@ -11,7 +11,7 @@ This application note describes how to build and run SDMMC-based sample
 applications on Alif DevKits and AppKits. The SDMMC interface is used for
 SD card access (FatFS file system) and SDIO-based WiFi connectivity.
 
-Three sample applications are covered:
+Four sample applications are covered:
 
 - **FatFS File System Sample** (``samples/subsys/fs/fs_sample/``):
   Demonstrates SD card mounting, directory listing, and file read/write.
@@ -19,6 +19,11 @@ Three sample applications are covered:
 - **WiFi Shell** (``samples/net/wifi/shell``):
   Interactive shell for WiFi scanning and connectivity over SDIO.
   Supported on Alif E7 DevKit, E8 DevKit, and E8 AppKit.
+- **WiFi P2P Group Owner** (``samples/net/wifi/shell`` with
+  ``overlay-p2p.conf``):
+  Wi-Fi Direct autonomous Group Owner over SDIO. Tested on Alif E8
+  DevKit with the Murata Type 1YN (CYW43439) module. Requires one or
+  more Android phones.
 - **WiFi zperf** (``samples/net/zperf``):
   Network throughput and latency measurement over WiFi/SDIO.
   Supported on Alif E8 AppKit only.
@@ -56,7 +61,7 @@ Build SDMMC Applications
 =========================
 
 For instructions on fetching the Alif Zephyr SDK and navigating to the
-Zephyr repository, please refer to the `ZAS User Guide`_.
+Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
 
@@ -121,7 +126,7 @@ Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
      samples/subsys/fs/fs_sample/ \
      -S alif-sdmmc
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
@@ -158,12 +163,12 @@ Build for SoC variant ``ae1c1f4051920hh``, M55 HE core:
      samples/subsys/fs/fs_sample/ \
      -S alif-sdmmc
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output
 """""""""""""
@@ -204,12 +209,12 @@ Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
      samples/subsys/fs/fs_sample/ \
      -S alif-sdmmc
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output
 """""""""""""
@@ -250,12 +255,12 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
      samples/subsys/fs/fs_sample/ \
      -S alif-sdmmc
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output
 """""""""""""
@@ -305,7 +310,7 @@ The eMMC must be formatted as FAT. The volume is mounted at ``/SD2:``.
    command and is used later on the MMC path.
 
 Sample Output
-"""""""""""""
+^^^^^^^^^^^^^
 
 .. code-block:: console
 
@@ -349,8 +354,8 @@ supports the ``2FY`` module variant only.
    instructions on flashing and booting from MRAM.
 
 .. note::
-   Before building any wifi sample application, make sure to run ``west blobs fetch hal_infineon``
-   to fetch the required blobs files (Firmware, NVRAM, and CLM).
+   Before building any WiFi sample application, run ``west blobs fetch hal_infineon``
+   to fetch the required blobs files (firmware, NVRAM, and CLM).
 
 Alif E7 DevKit
 ^^^^^^^^^^^^^^
@@ -363,12 +368,12 @@ Build for SoC variant ``ae722f80f55d5xx``, M55 HP core:
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      samples/net/wifi/shell
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output — WiFi Module 1YN
 """"""""""""""""""""""""""""""""
@@ -419,12 +424,12 @@ Sample Output — WiFi Module 1YN
    28 bytes from 8.8.8.8 to 192.0.2.10: icmp_seq=1 ttl=117 time=13.36 ms
    28 bytes from 8.8.8.8 to 192.0.2.10: icmp_seq=3 ttl=117 time=14.19 ms
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output — WiFi Module 2FY
 """"""""""""""""""""""""""""""""
@@ -509,12 +514,12 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
      samples/net/wifi/shell
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output — WiFi Module 1YN
 """"""""""""""""""""""""""""""""
@@ -565,12 +570,12 @@ Sample Output — WiFi Module 1YN
    28 bytes from 8.8.8.8 to 10.0.0.233: icmp_seq=1 ttl=117 time=13.36 ms
    28 bytes from 8.8.8.8 to 10.0.0.233: icmp_seq=3 ttl=117 time=14.19 ms
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output — WiFi Module 2FY
 """"""""""""""""""""""""""""""""
@@ -655,12 +660,12 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
      -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
      samples/net/wifi/shell
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output — WiFi Module 2FY
 """"""""""""""""""""""""""""""""
@@ -734,6 +739,163 @@ Sample Output — WiFi Module 2FY
    28 bytes from 8.8.8.8 to 10.0.0.233: icmp_seq=1 ttl=117 time=13.36 ms
    28 bytes from 8.8.8.8 to 10.0.0.233: icmp_seq=3 ttl=117 time=14.19 ms
 
+WiFi P2P Group Owner Sample
+---------------------------
+
+The WiFi shell sample can be built with the P2P overlay
+(``samples/net/wifi/shell/overlay-p2p.conf``) so the board acts as a
+Wi-Fi Direct **autonomous Group Owner** (GO). Discovery, GO bring-up,
+and WPS-PBC provisioning are handled in the Infineon AIROC driver via
+WHD IOVARs (no wpa_supplicant). The GO runs a DHCPv4 server so Android
+clients receive an IPv4 address.
+
+This configuration has been tested on the **Alif E8 DevKit**, M55 HP
+core, with the **Murata Type 1YN** (CYW43439) module on SDIO. Testing
+requires **one or more Android phones** with Wi-Fi Direct.
+
+Implemented features
+^^^^^^^^^^^^^^^^^^^^
+
+- Autonomous Group Owner (fixed GO; no GO negotiation)
+- P2P device discovery / listen (device name from
+  ``CONFIG_AIROC_WIFI_P2P_DEVICE_NAME``, default ``AIROC-P2P``)
+- Provision Discovery and WPS Push-Button (PBC) registrar
+- GO SoftAP with WPA2-PSK (SSID/PSK from
+  ``CONFIG_AIROC_WIFI_P2P_GO_SSID`` / ``CONFIG_AIROC_WIFI_P2P_GO_PSK``,
+  defaults ``DIRECT-Al`` / ``12345678``)
+- DHCPv4 server on the GO (default GO address ``192.168.50.1``, pool
+  starting at ``192.168.50.10``)
+- Multiple Android clients on the same group, if each phone is invited
+  **one after another** (see the note below)
+
+Not supported
+^^^^^^^^^^^^^
+
+- P2P client (enrollee) and Group Owner negotiation
+- Persistent P2P groups
+- WPS PIN method (PBC only)
+- Concurrent STA association while the P2P GO is up
+
+.. note::
+
+   When several Android phones send a Wi-Fi Direct invite at the same
+   time, complete the first phone's join (authorized, DHCP lease,
+   optional ping) before inviting the next phone. Overlapping invites
+   can exhaust RX buffers and prevent later phones from getting an IP
+   address.
+
+.. note::
+
+   ``wifi p2p group remove`` followed by another ``wifi p2p group add``
+   does not restore a working GO data path. Clients may associate and
+   complete WPS, but DHCP and ICMP fail. Reboot the board before
+   starting a new group. Firmware may print ``Command failed`` during
+   ``group remove``; that is expected and is not a successful re-add.
+
+.. note::
+
+   The WiFi application binary must be executed from MRAM. Refer to the
+   `ZAS User Guide`_ for flashing and booting from MRAM.
+
+.. note::
+   Before building any WiFi sample application, run ``west blobs fetch hal_infineon``
+   to fetch the required blobs files (firmware, NVRAM, and CLM).
+
+Alif E8 DevKit
+^^^^^^^^^^^^^^
+
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core, with the P2P
+overlay. The board configuration remains in STA/AP form. P2P, the DHCPv4 server, and
+the WPS registrar (mbedTLS) are enabled by ``overlay-p2p.conf``.
+
+.. code-block:: console
+
+   west build -p always \
+     -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+     samples/net/wifi/shell \
+     -- -DEXTRA_CONF_FILE=overlay-p2p.conf
+
+Once the build command completes successfully, executable images will
+be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
+(binary) and ``.elf`` (Executable and Linkable Format) files will be
+available.
+
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+
+Sample Output — WiFi Module 1YN
+""""""""""""""""""""""""""""""""
+
+.. note::
+
+   The ``sdhc_dwc: CMD error`` messages seen during boot for CMD8 are
+   expected. See the WiFi Shell sample notes above.
+
+On the board console, start the autonomous GO (channel 6 / 2437 MHz):
+
+.. code-block:: console
+
+   uart:~$ wifi p2p group add -f 2437
+   P2P autonomous GO started
+     SSID=DIRECT-Al (PSK from CONFIG_AIROC_WIFI_P2P_GO_PSK)
+     Direct: phone lists AIROC-P2P; disc answers ProbeReq SSID=DIRECT-
+     Manual join: same SSID from the Wi-Fi list
+   Limitation: reboot before starting another GO (remove then add does not restore DHCP)
+   [00:00:12.018,000] <inf> infineon_airoc_wifi: P2P GO bring-up channel=6 chanspec=0x1006
+   [00:00:12.081,000] <inf> infineon_airoc_wifi: p2p_ifadd type=1 chanspec=0x1006 OK
+   [00:00:12.169,000] <inf> infineon_airoc_wifi: P2P GO SoftAP up (tertiary(bsscfg2/ifidx1))
+   [00:00:12.217,000] <inf> infineon_airoc_wifi: P2P GO: DHCPv4 server 192.168.50.1 (pool 192.168.50.10+)
+   [00:00:12.217,000] <inf> infineon_airoc_wifi: P2P autonomous GO started on channel 6 (SSID=DIRECT-Al)
+
+On each Android phone, open **Wi-Fi Direct** (or **Wi-Fi** →
+**Wi-Fi Direct**), wait until ``AIROC-P2P`` appears, then invite that
+device. Wait until the board shows ``station authorized`` and a DHCP
+lease before inviting another phone:
+
+.. code-block:: console
+
+   [00:00:23.360,000] <inf> infineon_airoc_wifi: P2P Provision Discovery REQ from 1a:9a:dc:3e:f8:8d
+   [00:00:23.407,000] <inf> infineon_airoc_wifi: WPS registrar armed (PBC)
+   [00:00:23.408,000] <inf> infineon_airoc_wifi: P2P Provision Discovery RSP sent
+   [00:00:24.737,000] <inf> infineon_airoc_wifi: AP/GO: station associating 1a:9a:dc:3e:f8:8d
+   [00:00:26.033,000] <inf> infineon_airoc_wifi: WPS: WSC_Done
+   [00:00:26.182,000] <inf> infineon_airoc_wifi: P2P GO: WPS PBC complete
+   [00:00:28.484,000] <inf> infineon_airoc_wifi: AP/GO: station authorized
+   uart:~$ net iface
+
+   Interface wlan0 (0x20000720) (WiFi) [1]
+   ===============================
+   Link addr : F0:3E:05:D7:F2:72
+   MTU       : 1544
+   Flags     : AUTO_START,IPv4
+   Device    : airoc-wifi (0x8023eeb8)
+   Status    : oper=UP, admin=UP, carrier=ON
+   Ethernet capabilities supported:
+           MAC address filtering
+   Ethernet PHY device: <none> (0)
+   IPv4 unicast addresses (max 1):
+           192.168.50.1/255.255.255.0 manual preferred infinite
+   IPv4 multicast addresses (max 2):
+           224.0.0.1
+   IPv4 gateway : 192.168.50.1
+   DHCPv4 lease time : 0
+   DHCPv4 renew time : 0
+   DHCPv4 server     : 0.0.0.0
+   DHCPv4 requested  : 0.0.0.0
+   DHCPv4 state      : disabled
+   DHCPv4 attempts   : 0
+
+   uart:~$ net dhcpv4 server status 1
+        Iface         Address          State       Expiry (sec)
+    1.  wlan0   192.168.50.10      ALLOCATED              86386
+   uart:~$ net ping 192.168.50.10 -c 1
+   PING 192.168.50.10
+   28 bytes from 192.168.50.10 to 192.168.50.1: icmp_seq=1 ttl=64 time=23.29 ms
+
+SSID and PSK can also be joined from the phone's normal Wi-Fi list
+(``DIRECT-Al`` / ``12345678`` unless overridden in Kconfig). Confirm the
+phone's IPv4 address in Android Wi-Fi details if ``net ping`` is not
+used.
+
 WiFi zperf Sample
 -----------------
 
@@ -754,8 +916,8 @@ supports the ``2FY`` WiFi module variant only.
    instructions on flashing and booting from MRAM.
 
 .. note::
-   Before building any wifi sample application, make sure to run ``west blobs fetch hal_infineon``
-   to fetch the required blobs files (Firmware, NVRAM, and CLM).
+   Before building any WiFi sample application, run ``west blobs fetch hal_infineon``
+   to fetch the required blobs files (firmware, NVRAM, and CLM).
 
 Alif E8 AppKit
 ^^^^^^^^^^^^^^
@@ -768,12 +930,12 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core:
      -b alif_e8_ak/ae822fa0e5597xx0/rtss_hp \
      samples/net/zperf
 
-Once build command completes successfully, executable images will
+Once the build command completes successfully, executable images will
 be generated and placed in the ``build/zephyr`` directory. Both ``.bin``
 (binary) and ``.elf`` (Executable and Linkable Format) files will be
 available.
 
-For Flashing and executing binary on Boards, Please refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
+For Flashing and executing the binary on boards, refer to the `Flashing the Application`_, and `Executing Binary on the Boards`_ section.
 
 Sample Output — WiFi Module 2FY
 """"""""""""""""""""""""""""""""
@@ -916,7 +1078,7 @@ Execute the flashing commands:
 Executing Binary on the Boards
 ===============================
 
-To execute binaries on the DevKit follow the command
+To execute the binary on the DevKit, follow the command:
 
 .. code-block:: console
 

@@ -1,4 +1,4 @@
-.. _cdc200:
+.. _parallel-display:
 
 ================
 Parallel Display
@@ -106,7 +106,7 @@ Hardware Requirements
 
 .. note::
 
-   The Parallel Display interface is supported on DevKit E7, DevKit E8, E1C, and B1 A5/A6.
+   The Parallel Display interface is supported on Alif E7 DevKit, Alif E8 DevKit, Alif E1C DevKit, and Alif B1 DevKit.
 
 CDC200 Controller
 -----------------
@@ -170,17 +170,20 @@ Hardware Setup
 
    Hardware Setup
 
-Build an CDC200 Application with Zephyr
-===========================================
+Build a CDC200 Application with Zephyr
+======================================
 
 Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
-1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_
+1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
+.. note::
+   Parallel builds require ``-S parallel-display``. The same snippet applies on Alif
+   E7/E8 DevKit (80K heap) and on Alif E1C/B1 DevKit (DTCM framebuffer).
 
 2. Build command for application on the M55 HE core:
 
@@ -188,8 +191,8 @@ Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
-     ../alif/samples/drivers/display
-
+     ../alif/samples/drivers/display \
+     -S parallel-display
 
 3. Build command for application on the M55 HP core:
 
@@ -197,22 +200,24 @@ Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
-     ../alif/samples/drivers/display
+     ../alif/samples/drivers/display \
+     -S parallel-display
 
-
-Once the build command completes successfully, executable images will be generated and placed in the build/zephyr directory. Both .bin (binary) and .elf (Executable and Linkable Format) files will be available.
+Once the build command completes successfully, executable images will be generated and placed in the ``build/zephyr`` directory. Both ``.bin`` (binary) and ``.elf`` (Executable and Linkable Format) files will be available.
 
 Required Config Features
 ========================
 
 The following config features are necessary to test the application:
 
-- ``CONFIG_HEAP_MEM_POOL_SIZE=81920``
+- ``CONFIG_HEAP_MEM_POOL_SIZE=81920`` (E7/E8)
+- ``CONFIG_FB_USES_DTCM_REGION=y`` (B1/E1C)
 - ``CONFIG_LOG=y``
 - ``CONFIG_DISPLAY=y``
-- ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y`` (to enable display driver debug logs)
+- ``CONFIG_DISPLAY_LOG_LEVEL_DBG=y``
 
-These config features are already selected when building the test application.
+These config features are selected by ``-S parallel-display`` for the matching
+board family: heap size on E7/E8, DTCM framebuffer on B1/E1C.
 
 DTS Properties
 ==============
@@ -443,4 +448,4 @@ Known Issues
 ============
 
 - **Zephyr CDC200 Driver**: The Zephyr device driver for the CDC200 currently supports only ARGB8888, RGB888, and RGB565 formats. This is a limitation of the Zephyr framework and may be addressed in future releases.
-- **Demo Application (Layer 2)**: In the demo application, Layer 2 is designed to copy an image in ARGB8888 format directly from a C array to the framebuffer. Therefore, avoid using any format other than ARGB8888 for Layer 2. Layer 1 formats can be changed without issue. 
+- **Demo Application (Layer 2)**: In the demo application, Layer 2 is designed to copy an image in ARGB8888 format directly from a C array to the framebuffer. Therefore, avoid using any format other than ARGB8888 for Layer 2. Layer 1 formats can be changed without issue.
