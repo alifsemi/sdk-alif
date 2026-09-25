@@ -8,4 +8,16 @@
  *
  */
 
-#include "alif_e8_common.overlay"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+#include "common.overlay"
+
+&gpio6 {
+	status = "okay";
+
+	gt911_touch_reset_hold {
+		gpio-hog;
+		gpios = <5 GPIO_ACTIVE_LOW>;
+		output-high;
+	};
+};

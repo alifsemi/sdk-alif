@@ -4,21 +4,8 @@
  *
  * You should have received a copy of the Alif Semiconductor Software
  * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  */
 
-/ {
-	aliases {
-		pdm-audio = &pdm;
-	};
-};
-
-&pdm {
-	status = "okay";
-};
-
-&ospi1 {
-	bus-speed = <100000000>;
-	status = "okay";
-};
+#include "alif_e8_common.overlay"
