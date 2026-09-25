@@ -7,5 +7,18 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  */
-
 #include "alif_e8_common.overlay"
+/ {
+	aliases {
+		pdm-audio = &pdm;
+		i2s-output = &i2s2;
+	};
+};
+
+&pdm {
+	status = "okay";
+};
+
+&i2s2 {
+	status = "okay";
+};
