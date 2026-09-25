@@ -37,3 +37,49 @@ tests:
     extra_configs:
       - CONFIG_TEST_UART_DMA=y
       - CONFIG_TEST_INTERNAL_LB=n
+
+  drivers.uart.stress:
+    extra_dtc_overlay_files:
+      - boards/alif_uart.overlay
+    extra_configs:
+      - CONFIG_TEST_STRESS=y
+      - CONFIG_TEST_INTERNAL_LB=n
+    timeout: 600
+
+  drivers.uart.perf:
+    build_only: true
+    extra_dtc_overlay_files:
+      - boards/alif_uart.overlay
+    extra_configs:
+      - CONFIG_TEST_PERFORMANCE=y
+      - CONFIG_TEST_INTERNAL_LB=n
+
+  drivers.uart.fifo:
+    extra_dtc_overlay_files:
+      - boards/alif_uart.overlay
+    extra_configs:
+      - CONFIG_TEST_UART_FIFO=y
+      - CONFIG_TEST_INTERNAL_LB=n
+
+  drivers.uart.lpuart:
+    extra_dtc_overlay_files:
+      - boards/alif_lpuart.overlay
+    extra_configs:
+      - CONFIG_TEST_UART_LPUART=y
+      - CONFIG_TEST_INTERNAL_LB=y
+
+  drivers.uart.hotplug:
+    build_only: true
+    extra_dtc_overlay_files:
+      - boards/alif_uart.overlay
+    extra_configs:
+      - CONFIG_TEST_UART_HOTPLUG=y
+      - CONFIG_TEST_INTERNAL_LB=n
+  drivers.uart.line_errors:
+    build_only: true
+    extra_dtc_overlay_files:
+      - boards/alif_uart.overlay
+    extra_configs:
+      - CONFIG_TEST_UART_LINE_ERRORS=y
+      - CONFIG_TEST_INTERNAL_LB=n
+      - CONFIG_UART_LINE_CTRL=y

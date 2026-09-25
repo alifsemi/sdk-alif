@@ -12,8 +12,8 @@
  * @brief UART test shared state, utility helpers, and test-suite registration.
  *
  * This file owns the global UART configuration structs and ISR-shared
- * variables consumed by uart_internal_loopback.c and
- * uart_external_loopback.c.  It also provides small helper functions
+ * variables consumed by the loopback, stress, and performance modules.
+ * It also provides small helper functions
  * (baud-rate look-up, config-result checking, IRQ-callback validation)
  * and the ZTEST_SUITE() declarations gated by Kconfig flags.
  */
@@ -286,6 +286,35 @@ ZTEST_SUITE(uart_internal_loopback, NULL, NULL, NULL, NULL, NULL);
 ZTEST_SUITE(uart_RTSCTS_suite, NULL, NULL, NULL, NULL, NULL);
 #endif
 
+#if CONFIG_TEST_STRESS
+/** TX stress suite — large interrupt-driven bursts on devnode1.
+ *  Enabled with CONFIG_TEST_STRESS=y.
+ */
+ZTEST_SUITE(uart_stress, NULL, NULL, NULL, NULL, NULL);
+#endif
+
+#if CONFIG_TEST_PERFORMANCE
+/** External-loopback performance suite — timed transfers between
+ *  devnode1 and devnode2.  Enabled with CONFIG_TEST_PERFORMANCE=y.
+ */
+ZTEST_SUITE(uart_performance, NULL, NULL, NULL, NULL, NULL);
+#endif
+#if CONFIG_TEST_UART_LINE_ERRORS
+ZTEST_SUITE(uart_line_errors, NULL, NULL, NULL, NULL, NULL);
+#endif
+
+#if CONFIG_TEST_INTERNAL_LB || CONFIG_TEST_EXTERNAL_LB || CONFIG_TEST_UART_FIFO
+/** FIFO depth / 33rd-byte boundary (TX always; RX needs a wire). */
+ZTEST_SUITE(uart_fifo, NULL, NULL, NULL, NULL, NULL);
+#endif
+
+#if CONFIG_TEST_UART_LPUART
+ZTEST_SUITE(uart_lpuart, NULL, NULL, NULL, NULL, NULL);
+#endif
+
+#if CONFIG_TEST_UART_HOTPLUG
+ZTEST_SUITE(uart_hotplug, NULL, NULL, NULL, NULL, NULL);
+#endif
 /*
  * The DMA async-API suite (uart_dma) is declared in uart_dma_tests.c
  * because it uses before/after hooks for per-test setup and buffer
