@@ -475,6 +475,45 @@ static int cmd_get_default_off_cfg(const struct shell *shell, size_t argc, char 
 	return 0;
 }
 
+static int cmd_get_banner(const struct shell *shell, size_t argc, char **argv)
+{
+	uint8_t banner[VERSION_RESPONSE_LENGTH] = {0};
+
+	se_service_get_se_revision(banner);
+	shell_print(shell, "SENC banner: %s", banner);
+
+	return 0;
+}
+
+static int cmd_get_device_data(const struct shell *shell, size_t argc, char **argv)
+{
+	get_device_revision_data_t version_data = {0};
+
+	se_service_system_get_device_data(&version_data);
+	shell_print(shell, "Device data:");
+	shell_print(shell, "revision_id: %04" PRIX32, version_data.revision_id);
+	shell_print(shell, "ALIF_PN: %.16s", version_data.ALIF_PN);
+	shell_print(shell, "LCS: %" PRIX8 "", version_data.LCS);
+	shell_fprintf_normal(shell, "SerialN: ");
+	for (int i = 0; i < 8; i++) {
+		shell_fprintf_normal(shell, "%02" PRIX8, version_data.SerialN[i]);
+	}
+	shell_fprintf_normal(shell, "\nMfgData: ");
+	for (int i = 0; i < 32; i++) {
+		shell_fprintf_normal(shell, "%02" PRIX8, version_data.MfgData[i]);
+	}
+
+	shell_print(shell, "\n *x-loc: %d", version_data.MfgData[3]);
+	shell_print(shell, " *y-loc: %d", version_data.MfgData[2]);
+	shell_print(shell, " *fab:   %d", version_data.MfgData[1] >> 7);
+	shell_print(shell, " *wafer: %d", version_data.MfgData[1] & 0b11111);
+	shell_print(shell, " *year:  %d", 2020 + version_data.MfgData[0]);
+	shell_print(shell, " *week:  %d", version_data.MfgData[7]);
+	shell_print(shell, " *lot:   %d", version_data.MfgData[6]);
+
+	return 0;
+}
+
 #define SET_RUN_HELP "set_run_cfg --power_profile <optional profile> --power_domains" \
 " <pwr domains in hex> --dcdc_voltage <750 - 850>\n --dcdc_mode <...> --aon_clk_src " \
 "<LFRC = 0, LFXO = 1> --run_clk_src <HFRC = 0, HFXO = 1, PLL = 2>\n" \
@@ -507,5 +546,7 @@ SHELL_STATIC_SUBCMD_SET_CREATE(
 	SHELL_CMD_ARG(set_run_cfg, NULL, SET_RUN_HELP, cmd_set_run_cfg, 0, 0),
 	SHELL_CMD_ARG(set_off_cfg, NULL, SET_OFF_HELP, cmd_set_off_cfg, 0, 0),
 	SHELL_CMD_ARG(clocks_set_divider, NULL, SET_CLK_HELP, cmd_set_clk_divider, 0, 0),
+	SHELL_CMD_ARG(get_banner, NULL, "Get the SE service banner", cmd_get_banner, 0, 0),
+	SHELL_CMD_ARG(get_device_data, NULL, "Get device data", cmd_get_device_data, 0, 0),
 	SHELL_SUBCMD_SET_END);
 SHELL_CMD_REGISTER(senc, &power_sub_cmds, "Secure Enclave configuration commands", NULL);
