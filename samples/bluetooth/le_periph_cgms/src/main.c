@@ -202,7 +202,7 @@ int main(void)
 	}
 
 	/* Share connection info */
-	service_conn(&ctrl);
+	service_conn_cgms(&ctrl);
 
 	/* Adding battery service */
 	config_battery_service();
