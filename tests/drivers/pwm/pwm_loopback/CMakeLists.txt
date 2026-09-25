@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 3.20.0)
+option(MRAM "Enable to run pinctrl in mram" OFF)
+option(OSPI "Enable to run pinctrl in ospi" OFF)
+
+if(MRAM)
+	set(DTC_OVERLAY_FILE "boards/alif_pwm.overlay ../../../boards/${BOARD}.overlay")
+elseif(OSPI)
+	set(DTC_OVERLAY_FILE "boards/alif_pwm.overlay ../../../boards/${BOARD}_ospi1.overlay")
+else()
+	set(DTC_OVERLAY_FILE "boards/alif_pwm.overlay")
+endif()
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(pwm_loopback)
+
+FILE(GLOB app_sources src/*.c)
+target_sources(app PRIVATE ${app_sources})
