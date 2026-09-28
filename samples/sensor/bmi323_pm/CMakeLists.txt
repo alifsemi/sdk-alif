@@ -7,6 +7,11 @@
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
 cmake_minimum_required(VERSION 3.20.0)
+
+# Reuse samples/drivers/pm/system_off snippets
+# (pm-system-off-s2ram-tcm / pm-system-off-mram / pm-system-off-s2ram-sram0).
+list(APPEND SNIPPET_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../drivers/pm/system_off)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(bmi323_pm)
 
