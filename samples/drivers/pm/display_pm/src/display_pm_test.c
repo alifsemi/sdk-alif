@@ -473,7 +473,9 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 			k_msleep(10000);
 		}
 
+#if defined(CONFIG_MIPI_DSI)
 		display_blanking_on(panel_dev);
+#endif /* defined(CONFIG_MIPI_DSI) */
 		cdc200_set_enable(display_dev, false);
 		display_blanking_on(display_dev);
 
