@@ -155,38 +155,39 @@ the ``alif-dk-ak`` overlay are unchanged from the sample above. The SoC
 is woken by the RTC (EWIC). The sensor GPIO INT pin is not used (it is
 not LPGPIO and cannot wake STOP/S2RAM).
 
-Sequence (HE TCM boot)::
+Sequence (HE TCM / E8 SRAM0 boot)::
 
   BMI323 poll
   RUNTIME_IDLE  (~18 s)  -> poll
   SUSPEND_TO_IDLE        -> poll
-  S2RAM STANDBY (~20 s)  -> poll
-  S2RAM STOP    (~22 s)  -> poll
+  S2RAM STANDBY (~6 s)   -> poll
+  S2RAM STOP    (~9 s)   -> poll
 
-MRAM boot and the HP core use SOFT_OFF instead of S2RAM (the system
-resets on wake).
+MRAM boot and HP without SRAM0 use SOFT_OFF instead of S2RAM (the
+system resets on wake).
 
 .. note::
    Do not leave a debugger attached if you want STOP/SOFT_OFF; it holds
    the core out of those states.
 
-Build command for the M55 HE core:
+Build command for the M55 HE core (TCM boot S2RAM):
 
 .. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
      ../alif/samples/sensor/bmi323_pm \
-     -S alif-dk-ak -S pm-system-off-he
+     -S alif-dk-ak -S pm-system-off-s2ram-tcm
 
-Build command for the M55 HP core (use ``pm-system-off-hp``):
+Build command for the M55 HP core (MRAM boot SOFT_OFF; use
+``pm-system-off-mram``). HE MRAM boot uses the same snippet:
 
 .. code-block:: console
 
    west build -p always \
      -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
      ../alif/samples/sensor/bmi323_pm \
-     -S alif-dk-ak -S pm-system-off-hp
+     -S alif-dk-ak -S pm-system-off-mram
 
 Flash with ``west flash`` as above. Example console output from
 ``alif_e8_dk`` RTSS_HE, TCM boot (other boards follow the same
@@ -194,41 +195,41 @@ sequence; accel/gyro values vary):
 
 .. code-block:: console
 
-    *** Booting Zephyr OS build 97fddffd316f ***
-    Device 0xef30 name is bmi323@69000003b810431000
-    [00:00:00.025,000] <inf> bmi323_pm: alif_e8_dk RTSS_HE (TCM boot): BMI323 PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)
-    [00:00:00.037,000] <inf> bmi323_pm: --- BMI323 poll before sleep ---
-    Accel AX: 0.025803; AY: -0.001220; AZ: 0.980331 g        Gyro GX: 0.030518; GY: 0.488288; GZ: -0.305180 deg/s
-    [00:00:00.066,000] <inf> bmi323_pm: POWER STATE SEQUENCE:
-    [00:00:00.072,000] <inf> bmi323_pm:   1. PM_STATE_RUNTIME_IDLE
-    [00:00:00.078,000] <inf> bmi323_pm:   2. PM_STATE_SUSPEND_TO_IDLE
-    [00:00:00.085,000] <inf> bmi323_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
-    [00:00:00.093,000] <inf> bmi323_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
-    [00:00:00.101,000] <inf> bmi323_pm:   5. (SOFT_OFF skipped - TCM boot, using retention)
-    [00:00:00.110,000] <inf> bmi323_pm: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
-    [00:00:18.119,000] <inf> bmi323_pm: Exited from RUNTIME_IDLE sleep
-    [00:00:18.125,000] <inf> bmi323_pm: --- BMI323 poll after RUNTIME_IDLE ---
-    Accel AX: 0.025376; AY: -0.001708; AZ: 0.980392 g        Gyro GX: 0.030518; GY: 0.503547; GZ: -0.274662 deg/s
-    [00:00:18.149,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_IDLE for (4000 microseconds)
-    [00:00:18.164,000] <inf> bmi323_pm: Exited from PM_STATE_SUSPEND_TO_IDLE
-    [00:00:18.171,000] <inf> bmi323_pm: --- BMI323 poll after SUSPEND_TO_IDLE ---
-    Accel AX: 0.023790; AY: -0.000549; AZ: 0.980514 g        Gyro GX: 0.045777; GY: 0.442511; GZ: -0.289921 deg/s
-    [00:00:18.195,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (20000000 microseconds)
-    [00:00:38.208,000] <inf> bmi323_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
-    [00:00:38.239,000] <inf> bmi323_pm: Main thread running - iteration 0 - tick: 38239
-    [00:00:40.249,000] <inf> bmi323_pm: Main thread running - iteration 1 - tick: 40249
-    [00:00:42.259,000] <inf> bmi323_pm: Main thread running - iteration 2 - tick: 42259
-    [00:00:44.269,000] <inf> bmi323_pm: --- BMI323 poll after S2RAM (STANDBY) ---
-    Accel AX: 0.026718; AY: -0.001647; AZ: 0.980880 g        Gyro GX: 0.106813; GY: 0.457770; GZ: -0.274662 deg/s
-    [00:00:44.298,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (22000000 microseconds)
-    [00:01:06.311,000] <inf> bmi323_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
-    [00:01:06.342,000] <inf> bmi323_pm: Main thread running - iteration 0 - tick: 66342
-    [00:01:08.352,000] <inf> bmi323_pm: Main thread running - iteration 1 - tick: 68352
-    [00:01:10.362,000] <inf> bmi323_pm: Main thread running - iteration 2 - tick: 70362
-    [00:01:12.371,000] <inf> bmi323_pm: --- BMI323 poll after S2RAM (STOP) ---
-    Accel AX: 0.025010; AY: 0.000488; AZ: 0.980270 g         Gyro GX: 0.045777; GY: 0.442511; GZ: -0.274662 deg/s
-    [00:01:12.400,000] <inf> bmi323_pm: Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)
-    [00:01:12.410,000] <inf> bmi323_pm: === BMI323 PM TEST COMPLETED ===
+    *** Booting Zephyr OS build c7432c33430e ***
+    Device 0xf4b0 name is bmi323@69000003b810431000
+    [00:00:00.032,000] <inf> bmi323_pm: alif_e8_dk (S2RAM): BMI323 PM states demo (RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM STANDBY, S2RAM STOP)
+    [00:00:00.045,000] <inf> bmi323_pm: --- BMI323 poll before sleep ---
+    Accel AX: 0.021350; AY: -0.010675; AZ: 0.978623 g        Gyro GX: 0.106813; GY: 0.457770; GZ: -0.289921 deg/s
+    [00:00:00.099,000] <inf> bmi323_pm: POWER STATE SEQUENCE:
+    [00:00:00.105,000] <inf> bmi323_pm:   1. PM_STATE_RUNTIME_IDLE
+    [00:00:00.111,000] <inf> bmi323_pm:   2. PM_STATE_SUSPEND_TO_IDLE
+    [00:00:00.117,000] <inf> bmi323_pm:   3. PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY)
+    [00:00:00.126,000] <inf> bmi323_pm:   4. PM_STATE_SUSPEND_TO_RAM (substate 1: STOP)
+    [00:00:00.134,000] <inf> bmi323_pm:   5. (SOFT_OFF skipped - using retention)
+    [00:00:00.141,000] <inf> bmi323_pm: Enter RUNTIME_IDLE sleep for (18000000 microseconds)
+    [00:00:18.151,000] <inf> bmi323_pm: Exited from RUNTIME_IDLE sleep
+    [00:00:18.157,000] <inf> bmi323_pm: --- BMI323 poll after RUNTIME_IDLE ---
+    Accel AX: 0.022448; AY: -0.012383; AZ: 0.979111 g        Gyro GX: 0.076295; GY: 0.457770; GZ: -0.244144 deg/s
+    [00:00:18.184,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_IDLE for (10000 microseconds)
+    [00:00:18.206,000] <inf> bmi323_pm: Exited from PM_STATE_SUSPEND_TO_IDLE
+    [00:00:18.213,000] <inf> bmi323_pm: --- BMI323 poll after SUSPEND_TO_IDLE ---
+    Accel AX: 0.023607; AY: -0.010614; AZ: 0.978379 g        Gyro GX: 0.045777; GY: 0.442511; GZ: -0.335698 deg/s
+    [00:00:18.240,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (6000000 microseconds)
+    [00:00:24.253,000] <inf> bmi323_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===
+    [00:00:24.292,000] <inf> bmi323_pm: Main thread running - iteration 0 - tick: 24292
+    [00:00:26.303,000] <inf> bmi323_pm: Main thread running - iteration 1 - tick: 26303
+    [00:00:28.313,000] <inf> bmi323_pm: Main thread running - iteration 2 - tick: 28313
+    [00:00:30.324,000] <inf> bmi323_pm: --- BMI323 poll after S2RAM (STANDBY) ---
+    Accel AX: 0.023363; AY: -0.011651; AZ: 0.978806 g        Gyro GX: 0.000000; GY: 0.473029; GZ: -0.244144 deg/s
+    [00:00:30.358,000] <inf> bmi323_pm: Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (9000000 microseconds)
+    [00:00:39.371,000] <inf> bmi323_pm: === Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) ===
+    [00:00:39.410,000] <inf> bmi323_pm: Main thread running - iteration 0 - tick: 39410
+    [00:00:41.421,000] <inf> bmi323_pm: Main thread running - iteration 1 - tick: 41421
+    [00:00:43.431,000] <inf> bmi323_pm: Main thread running - iteration 2 - tick: 43431
+    [00:00:45.442,000] <inf> bmi323_pm: --- BMI323 poll after S2RAM (STOP) ---
+    Accel AX: 0.021228; AY: -0.011590; AZ: 0.980148 g        Gyro GX: 0.061036; GY: 0.411993; GZ: -0.320439 deg/s
+    [00:00:45.476,000] <inf> bmi323_pm: Skipping PM_STATE_SOFT_OFF (using retention instead)
+    [00:00:45.484,000] <inf> bmi323_pm: === BMI323 PM TEST COMPLETED ===
 
 See ``samples/sensor/bmi323_pm/README.rst`` for the MRAM/HP SOFT_OFF log.
 
