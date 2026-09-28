@@ -23,7 +23,7 @@ common:
 tests:
   sample.sensor.bmi323_pm.he:
     extra_args:
-      - SNIPPET="alif-dk-ak;pm-system-off-he"
+      - SNIPPET="alif-dk-ak;pm-system-off-s2ram-tcm"
     platform_allow:
       - alif_e7_dk_rtss_he
       - alif_e1c_dk_rtss_he
@@ -33,7 +33,7 @@ tests:
       - alif_e7_dk_rtss_he
   sample.sensor.bmi323_pm.hp:
     extra_args:
-      - SNIPPET="alif-dk-ak;pm-system-off-hp"
+      - SNIPPET="alif-dk-ak;pm-system-off-mram"
     platform_allow:
       - alif_e7_dk_rtss_hp
       - alif_e8_dk_rtss_hp
