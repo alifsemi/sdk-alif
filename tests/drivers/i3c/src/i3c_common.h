@@ -19,7 +19,7 @@
 #define I3C_TEST_MAX_TARGETS 8
 
 /* Target configuration from DT or Kconfig */
-#define I3C_CONTROLLER_NODE DT_NODELABEL(i3c0)
+#define I3C_CONTROLLER_NODE DT_CHOSEN(zephyr_i3c)
 
 /* Get target count from DT - count i3c devices on bus */
 #if DT_HAS_COMPAT_STATUS_OKAY(bosch_bmi323)

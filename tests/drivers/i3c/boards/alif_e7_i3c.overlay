@@ -1,0 +1,40 @@
+/*
+ * Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/ {
+	chosen {
+		zephyr,i3c = &i3c0;
+	};
+	aliases {
+		bmi323 = &bmi323;
+	};
+};
+
+&i3c0 {
+	status = "okay";
+	od-thigh-min-ns = <41>;
+	od-tlow-min-ns = <200>;
+
+	bmi323: bmi323@690000077010431000 {
+		compatible = "bosch,bmi323";
+		reg = <0x69 0x0770 0x10431000>;
+		assigned-address = <0x09>;
+		int-gpios = <&gpio8 4 GPIO_ACTIVE_HIGH>;
+		status = "okay";
+	};
+};
+
+&gpio7 {
+	status = "okay";
+};
+
+&gpio8 {
+	status = "okay";
+};
