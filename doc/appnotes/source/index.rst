@@ -34,6 +34,7 @@ Application Notes for the Zephyr Alif SDK
    lp_timer.rst
    lp_i2c.rst
    lp_rtc.rst
+   system_timer.rst
    mhu.rst
    mipi_camera.rst
    mram.rst
