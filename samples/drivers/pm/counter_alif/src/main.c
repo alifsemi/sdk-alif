@@ -222,10 +222,11 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 	k_sleep(K_USEC(sleep_usec));
 #else
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
-	struct counter_alarm_cfg alarm_cfg;
+	struct counter_alarm_cfg alarm_cfg = {0};
 	int ret;
 
 	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
+	alarm_cfg.callback = alarm_callback_fn;
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
 		LOG_ERR("Failed to set the alarm (err %d)", ret);
