@@ -1,7 +1,10 @@
-/*
- * Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  * i2s_test_common.c - Helper implementations for the I2S test suite.
  */
@@ -20,10 +23,19 @@ LOG_MODULE_REGISTER(i2s_test_common, LOG_LEVEL_INF);
  * Memory slabs (shared by golden-vector suite)
  * -------------------------------------------------------------------------
  */
-K_MEM_SLAB_DEFINE(g_tx_slab, I2S_GOLDEN_BLOCK_SIZE,
-		  I2S_GOLDEN_NUM_TX_BLOCKS, 4);
-K_MEM_SLAB_DEFINE(g_rx_slab, I2S_GOLDEN_BLOCK_SIZE,
-		  I2S_GOLDEN_NUM_RX_BLOCKS, 4);
+static uint8_t __nocache __aligned(WB_UP(4))
+	g_tx_buf[I2S_GOLDEN_NUM_TX_BLOCKS * WB_UP(I2S_GOLDEN_BLOCK_SIZE)];
+static uint8_t __nocache __aligned(WB_UP(4))
+	g_rx_buf[I2S_GOLDEN_NUM_RX_BLOCKS * WB_UP(I2S_GOLDEN_BLOCK_SIZE)];
+
+STRUCT_SECTION_ITERABLE(k_mem_slab, g_tx_slab) =
+	Z_MEM_SLAB_INITIALIZER(g_tx_slab, g_tx_buf,
+				WB_UP(I2S_GOLDEN_BLOCK_SIZE),
+				I2S_GOLDEN_NUM_TX_BLOCKS);
+STRUCT_SECTION_ITERABLE(k_mem_slab, g_rx_slab) =
+	Z_MEM_SLAB_INITIALIZER(g_rx_slab, g_rx_buf,
+				WB_UP(I2S_GOLDEN_BLOCK_SIZE),
+				I2S_GOLDEN_NUM_RX_BLOCKS);
 
 /* -------------------------------------------------------------------------
  * Device accessors
@@ -258,16 +270,17 @@ int i2s_golden_run(const struct device *dev, uint32_t rate, uint8_t word_size,
 		goto out_stop;
 	}
 
-	k_sleep(K_MSEC(drain_ms));
-
 	ret = i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_DRAIN);
 	if (ret == -ENOSYS || ret == -ENOTSUP) {
 		k_sleep(K_MSEC(drain_ms));
 		(void)i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_DROP);
-	} else if (ret < 0 && ret != -EIO) {
-		LOG_INF("[i2s-golden] TX DRAIN failed: %d\n", ret);
+	} else if (ret < 0) {
+		LOG_INF("TX DRAIN failed rate=%u bits=%u rc=%d",
+			(unsigned int)rate, (unsigned int)word_size, ret);
 		rc = ret;
 		goto out_stop;
+	} else {
+		k_sleep(K_MSEC(drain_ms));
 	}
 
 	LOG_INF("[i2s-golden] TX PASS rate=%u bits=%u\n",

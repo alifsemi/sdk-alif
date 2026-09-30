@@ -1,0 +1,27 @@
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+#define I2S3_DMA_RX_CH  2
+#define I2S3_DMA_RX_REQ 27
+#define I2S3_DMA_TX_CH  3
+#define I2S3_DMA_TX_REQ 31
+
+/ {
+	aliases {
+		i2s-node0 = &i2s3;
+	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&evtrtr0 {
+	status = "okay";
+};
+
+i2s_rxtx: &i2s3 {
+	status = "okay";
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(I2S3_DMA_RX_CH, 1, 1) I2S3_DMA_RX_REQ>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(I2S3_DMA_TX_CH, 1, 1) I2S3_DMA_TX_REQ>;
+	dma-names = "rxdma", "txdma";
+};
