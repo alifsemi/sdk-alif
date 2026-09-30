@@ -11,6 +11,7 @@
 /*
  * B1 HE: LPSPI0 (master) + SPI1 (slave), DMA2, evtrtr2.
  * PM: MRAM boot SOFT_OFF (HE, RTC wakeup).
+ * Console: lpuart (overrides uart2 set by pm_mram_common.overlay).
  */
 
 #include "pm_mram_he.overlay"
@@ -18,10 +19,22 @@
 #include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
 
 / {
+	chosen {
+		zephyr,console    = &lpuart;
+		zephyr,shell-uart = &lpuart;
+	};
 	aliases {
 		master-spi = &lpspi0;
 		slave-spi = &spi1;
 	};
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	status = "okay";
 };
 
 &dma2 {

@@ -11,6 +11,9 @@
 /*
  * E8 HP: SPI1 (master) + SPI0 (slave), DMA0, evtrtr0.
  * PM: MRAM boot SOFT_OFF (HP, LPTIMER0 wakeup).
+ *
+ * UART2 (P1_0 / P1_1) clashes with SPI0. Move the console to UART4
+ * (P12_1 / P12_2).
  */
 
 #include "pm_mram_hp.overlay"
@@ -22,6 +25,17 @@
 		master-spi = &spi1;
 		slave-spi = &spi0;
 	};
+	chosen {
+		zephyr,console = &uart4;
+	};
+};
+
+&uart4 {
+	status = "okay";
+};
+
+&uart2 {
+	status = "disabled";
 };
 
 &dma0 {
