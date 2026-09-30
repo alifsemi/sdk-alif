@@ -13,19 +13,24 @@
 static int cert_boot_print(void)
 {
 	printk("*************************************\n");
-	printk("  Brand:   " CONFIG_CERT_BRAND_NAME "\n");
-	printk("  Model:   " CONFIG_CERT_MODEL_NAME "\n");
+	printk("  Manufacturer Name:   " CONFIG_CERT_MANUFACTURER_NAME "\n");
+	printk("  Country of origin:   " CONFIG_CERT_ORIGIN_NAME "\n");
+	printk("  Brand:               " CONFIG_CERT_BRAND_NAME "\n");
+	printk("  Model:               " CONFIG_CERT_MODEL_NAME "\n");
 	if (sizeof(CONFIG_CERT_FCC_ID) > 1) {
-		printk("  FCC ID:  " CONFIG_CERT_FCC_ID "\n");
+		printk("  FCC ID:              " CONFIG_CERT_FCC_ID "\n");
 	}
 	if (sizeof(CONFIG_CERT_ISED_ID) > 1) {
-		printk("  IC ID:   " CONFIG_CERT_ISED_ID "\n");
+		printk("  IC ID:               " CONFIG_CERT_ISED_ID "\n");
 	}
 	if (sizeof(CONFIG_CERT_NCC_ID) > 1) {
-		printk("  NCC ID:  " CONFIG_CERT_NCC_ID "\n");
+		printk("  NCC ID:              "     CONFIG_CERT_NCC_ID "\n");
 	}
 	if (sizeof(CONFIG_CERT_MIC_ID) > 1) {
-		printk("  MIC ID:  " CONFIG_CERT_MIC_ID "\n");
+		printk("  MIC ID:              "     CONFIG_CERT_MIC_ID "\n");
+	}
+	if (sizeof(CONFIG_CERT_KC_ID) > 1) {
+		printk("  KC ID:               "     CONFIG_CERT_KC_ID "\n");
 	}
 	printk("*************************************\n");
 	return 0;

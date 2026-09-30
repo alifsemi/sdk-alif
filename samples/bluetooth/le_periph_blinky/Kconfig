@@ -7,6 +7,14 @@ config CERT_BOOT_INFO
 
 if CERT_BOOT_INFO
 
+config CERT_MANUFACTURER_NAME
+	string "Manufacturer name"
+	default ""
+	
+config CERT_ORIGIN_NAME
+	string "Origin name"
+	default ""
+	
 config CERT_BRAND_NAME
 	string "Brand name"
 	default ""
@@ -29,6 +37,10 @@ config CERT_NCC_ID
 
 config CERT_MIC_ID
 	string "MIC certification ID"
+	default ""
+	
+config CERT_KC_ID
+	string "KC certification ID"
 	default ""
 
 endif # CERT_BOOT_INFO
