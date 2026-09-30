@@ -31,6 +31,7 @@
 
 #include <zephyr/kernel.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/display.h>
 #include <zephyr/logging/log.h>
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
@@ -43,6 +44,24 @@ LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 #endif
 
 static uint8_t D0_HEAP_ATTRS d0_heap[D1_HEAP_SIZE];
+
+static void display_panel_on(void)
+{
+#if DT_HAS_ALIAS(panel) && DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
+	const struct device *panel = DEVICE_DT_GET(DT_ALIAS(panel));
+
+	if (!device_is_ready(panel)) {
+		LOG_WRN("Display panel device not ready");
+		return;
+	}
+
+	int ret = display_blanking_off(panel);
+
+	if (ret) {
+		LOG_WRN("Display panel enable failed (%d), continuing", ret);
+	}
+#endif
+}
 
 static void crop_scale_example(void)
 {
@@ -372,6 +391,7 @@ int main(void)
 		LOG_ERR("Display initializing error");
 		return -1;
 	}
+	display_panel_on();
 
 #ifdef CONFIG_D1_MALLOC_D0LIB
 	/* Initialize D/AVE D0 heap */

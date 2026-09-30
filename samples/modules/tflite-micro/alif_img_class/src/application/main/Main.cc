@@ -32,6 +32,7 @@
 #include <zephyr/console/console.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/display.h>
 #include <soc_common.h>
 #include <se_service.h>
 
@@ -57,6 +58,24 @@
 #endif
 
 LOG_MODULE_REGISTER(Main);
+
+static void display_panel_on(void)
+{
+#if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
+	const struct device *panel_dev = DEVICE_DT_GET(DT_ALIAS(panel));
+
+	if (!device_is_ready(panel_dev)) {
+		LOG_WRN("Display panel device not ready");
+		return;
+	}
+
+	int ret = display_blanking_off(panel_dev);
+
+	if (ret) {
+		LOG_WRN("Display panel enable failed (%d), continuing", ret);
+	}
+#endif
+}
 
 extern void main_loop();
 
@@ -97,6 +116,8 @@ static int app_set_dsi_cdc()
 
 #if IS_ENABLED_CDC200
 	const struct device *display_dev = DEVICE_DT_GET(DISPLAY_NODE);
+	display_panel_on();
+
 	cdc200_set_enable(display_dev, true);
 	return 0;
 #endif
