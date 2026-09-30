@@ -3,8 +3,9 @@
 #
 # Twister test definitions for the Alif I2S driver test application.
 #
-# All entries apply the `i2s` snippet via SNIPPET=i2s so that the correct
-# devicetree overlay is selected per board (see snippets/i2s/snippet.yml).
+# Entries apply the `i2s` snippet via SNIPPET=i2s (see snippets/i2s/snippet.yml).
+# drivers.i2s.alif.dma replaces that with SNIPPET=i2s-dma. Do not pass both:
+# each snippet defines the i2s_rxtx label.
 #
 # Validation uses Zephyr's built-in ZTest harness only -- twister parses
 # the on-target ZTest output (PASS/FAIL/PROJECT EXECUTION ...) directly.
@@ -80,3 +81,16 @@ tests:
       - CONFIG_I2S_PLAY_HELLO_CODEC=y
     harness_config:
       fixture: audio_codec
+
+  drivers.i2s.alif.dma:
+    extra_args:
+      - SNIPPET=i2s-dma
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=y
+      - CONFIG_I2S_DMA=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+      - CONFIG_DMA=y
+      - CONFIG_DMA_PL330=y
+      - CONFIG_I2S_DW_USE_DMA=y
+    harness_config:
+      fixture: gpio_loopback

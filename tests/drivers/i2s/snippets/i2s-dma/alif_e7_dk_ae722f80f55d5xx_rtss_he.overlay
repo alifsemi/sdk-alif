@@ -1,0 +1,27 @@
+/*
+ * E7 DK RTSS-HE: LPI2S (i2s4) full-duplex DMA loopback.
+ * Wire: P13_5 (LPI2S_SDO) -> P13_4 (LPI2S_SDI)
+ */
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+/ {
+	aliases {
+		i2s-node0 = &i2s4;
+	};
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&evtrtr2 {
+	status = "okay";
+};
+
+i2s_rxtx: &i2s4 {
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 0, 1) 15>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(1, 0, 1) 14>;
+	dma-names = "txdma", "rxdma";
+	status = "okay";
+};

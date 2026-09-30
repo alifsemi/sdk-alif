@@ -1,0 +1,27 @@
+/*
+ * E7 DK RTSS-HP: I2S2 full-duplex DMA loopback.
+ * Wire: P8_2 (I2S2_SDO) -> P8_1 (I2S2_SDI)
+ */
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+/ {
+	aliases {
+		i2s-node0 = &i2s2;
+	};
+};
+
+&dma0 {
+	status = "okay";
+};
+
+&evtrtr0 {
+	status = "okay";
+};
+
+i2s_rxtx: &i2s2 {
+	dmas = <&evtrtr0 ALIF_DMA_ENCODE(0, 1, 1) 30>,
+	       <&evtrtr0 ALIF_DMA_ENCODE(1, 1, 1) 26>;
+	dma-names = "txdma", "rxdma";
+	status = "okay";
+};

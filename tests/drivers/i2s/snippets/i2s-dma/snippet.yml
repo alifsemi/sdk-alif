@@ -1,0 +1,22 @@
+name: i2s-dma
+
+boards:
+  /alif_e7_dk.*ae722f80f55d5xx.*rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e7_dk_ae722f80f55d5xx_rtss_he.overlay
+
+  /alif_e8_dk.*ae822fa0e5597xx0.*rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e8_dk_ae822fa0e5597xx0_rtss_he.overlay
+
+  /alif_e7_dk.*ae722f80f55d5xx.*rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e7_dk_ae722f80f55d5xx_rtss_hp.overlay
+
+  /alif_e8_dk.*ae822fa0e5597xx0.*rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e8_dk_ae822fa0e5597xx0_rtss_hp.overlay
+
+  /alif_b1_dk.*ab1c1f4m51820ph0.*rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_dk_ab1c1f4m51820ph0_rtss_he.overlay

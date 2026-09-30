@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Copyright Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -30,7 +30,7 @@ set(I2S_FUNCTIONAL FALSE)
 if(CONFIG_I2S_FUNCTIONAL_TESTS)
     if(CONFIG_I2S_FEATURES OR CONFIG_I2S_LOOPBACK OR
        CONFIG_I2S_PLAY_HELLO OR CONFIG_I2S_PLAY_HELLO_CODEC OR
-       CONFIG_I2S_FULL_DUPLEX)
+       CONFIG_I2S_FULL_DUPLEX OR CONFIG_I2S_DMA)
         set(I2S_FUNCTIONAL TRUE)
     endif()
 endif()
@@ -68,6 +68,11 @@ if(CONFIG_I2S_FUNCTIONAL_TESTS)
         # by not compiling their translation units.
         target_sources(app PRIVATE
             src/functional/test_i2s_features.c
+        )
+    elseif(CONFIG_I2S_DMA)
+        # Only the i2s_dma1 ZTEST_SUITE (test_same_instance_loopback).
+        target_sources(app PRIVATE
+            src/functional/test_i2s_dma.c
         )
     else()
         target_sources(app PRIVATE
