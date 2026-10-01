@@ -1,0 +1,5 @@
+&adc24 {
+			avg_sample_num		= <4>;
+
+};
+
