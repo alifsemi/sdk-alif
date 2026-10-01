@@ -8,4 +8,4 @@
  *
  */
 
-#include "alif_e8_common.overlay"
+/* Shared E8 overlay include for DK/AK boards. */

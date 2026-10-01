@@ -8,17 +8,4 @@
  *
  */
 
-/ {
-	aliases {
-		pdm-audio = &pdm;
-	};
-};
-
-&pdm {
-	status = "okay";
-};
-
-&ospi1 {
-	bus-speed = <100000000>;
-	status = "okay";
-};
+#include "alif_e8_common.overlay"

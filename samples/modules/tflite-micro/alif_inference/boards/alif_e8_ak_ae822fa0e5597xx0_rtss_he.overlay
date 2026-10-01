@@ -8,4 +8,12 @@
  *
  */
 
-#include "alif_e8_common.overlay"
+/ {
+	aliases {
+		pdm-audio = &pdm;
+	};
+};
+
+&pdm {
+	status = "okay";
+};

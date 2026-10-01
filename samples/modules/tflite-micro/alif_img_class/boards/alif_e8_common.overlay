@@ -8,4 +8,4 @@
  *
  */
 
-#include "alif_e8_common.overlay"
+#include "common.overlay"

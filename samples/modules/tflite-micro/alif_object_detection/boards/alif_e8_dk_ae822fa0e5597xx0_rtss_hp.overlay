@@ -10,7 +10,7 @@
 
 #include <zephyr/dt-bindings/gpio/gpio.h>
 
-#include "common.overlay"
+#include "alif_e8_common.overlay"
 
 /*
  * The MW405 flat board's GT911 touch controller shares i2c1 with the camera
