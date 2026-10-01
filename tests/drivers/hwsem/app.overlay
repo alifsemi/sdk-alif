@@ -1,0 +1,13 @@
+
+&sram1 {
+	reg = <0x02400000 DT_SIZE_K(4092)>;
+};
+
+&{/soc} {
+	hwsem_shm: memory@27ff000 {
+		compatible = "zephyr,memory-region", "mmio-sram";
+		reg = <0x027ff000 DT_SIZE_K(4)>;
+		zephyr,memory-region = "HWSEM_SHM";
+		zephyr,memory-attr = <DT_MEM_ARM_MPU_RAM_NOCACHE>;
+	};
+};
