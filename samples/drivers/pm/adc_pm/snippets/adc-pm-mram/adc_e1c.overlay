@@ -1,0 +1,36 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * E1C HE: ADC0 temperature-sensor conversions around PM states.
+ * PM: MRAM boot SOFT_OFF (HE, RTC wakeup).
+ * Console: lpuart (overrides uart2 set by pm_mram_common.overlay).
+ */
+
+#include "pm_mram_he.overlay"
+
+/ {
+	chosen {
+		zephyr,console    = &lpuart;
+		zephyr,shell-uart = &lpuart;
+	};
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&lpuart {
+	status = "okay";
+};
+
+&adc0 {
+	status = "okay";
+};
