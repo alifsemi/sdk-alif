@@ -34,6 +34,8 @@ Key Files
   TX/RX, sample-rate sweeps).
 - ``src/functional/test_i2s_playback.c``: ``hello_samples`` TX-only
   playback test.
+- ``src/functional/test_i2s_dma.c``: DMA loopback
+  (``test_same_instance_loopback``).
 - ``src/golden/test_i2s_golden_tx.c``: Golden-vector TX suite.
 - ``src/negative/test_i2s_negative.c``: Negative state-machine suite.
 - ``src/config/test_i2s_config.c``: Configuration matrix suite.
@@ -42,14 +44,18 @@ Key Files
 - ``snippets/i2s/``: Devicetree overlays applied via ``-S i2s`` (or
   ``SNIPPET=i2s`` under twister). The snippet covers all supported
   boards; there is no separate per-board ``boards/`` directory.
+- ``snippets/i2s-dma/``: Per-board DMA overlays applied via ``-S i2s-dma``
+  (or ``SNIPPET=i2s-dma``). One file per board: E7/E8 HE ``i2s4``,
+  E7 HP ``i2s2``, E8 HP ``i2s3``, B1 HE ``i2s0``. Do not combine with
+  ``-S i2s``; both snippets define ``i2s_rxtx``.
 - ``testcase.yaml``: Twister test definitions (all entries use
   ``harness: ztest``).
 
 Building and Running
 ====================
 
-The ``i2s`` snippet selects the correct overlay for each board
-automatically.
+The ``i2s`` snippet selects the IRQ overlay. ``-S i2s-dma`` selects the
+DMA overlay for that same board.
 
 Build and run the default test set:
 
@@ -67,6 +73,19 @@ Build with the loopback matrix only (requires the hardware wire below):
        tests/drivers/i2s \
        -- -DCONFIG_I2S_GPIO_LOOPBACK=y -DCONFIG_I2S_LOOPBACK=y
 
+Build the DMA loopback only (SDO wired to SDI):
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he -S i2s-dma \
+       tests/drivers/i2s \
+       -- -DCONFIG_I2S_FUNCTIONAL_TESTS=y \
+          -DCONFIG_I2S_DMA=y \
+          -DCONFIG_I2S_GPIO_LOOPBACK=y \
+          -DCONFIG_DMA=y \
+          -DCONFIG_DMA_PL330=y \
+          -DCONFIG_I2S_DW_USE_DMA=y
+
 Build the golden-vector suite with RX verification over the loopback
 wire:
 
@@ -78,7 +97,7 @@ wire:
           -DCONFIG_I2S_GPIO_LOOPBACK=y \
           -DCONFIG_I2S_LOOPBACK_VERIFY=y
 
-Supported boards (overlay supplied by ``snippets/i2s/snippet.yml``):
+Supported boards (``snippets/i2s/snippet.yml`` and ``snippets/i2s-dma/snippet.yml``):
 
 - ``alif_e7_dk/ae722f80f55d5xx/rtss_he``
 - ``alif_e7_dk/ae722f80f55d5xx/rtss_hp``
@@ -103,6 +122,8 @@ Functional sub-suite selectors (mutually exclusive; each compiles only the named
 - ``CONFIG_I2S_PLAY_HELLO=y``: Compile only the TX-only hello playback test.
 - ``CONFIG_I2S_PLAY_HELLO_CODEC=y``: Compile only the codec hello playback test.
 - ``CONFIG_I2S_FULL_DUPLEX=y``: Compile only the full-duplex test.
+- ``CONFIG_I2S_DMA=y``: Compile only the DMA loopback test. Use with
+  ``-S i2s-dma`` and ``CONFIG_I2S_DW_USE_DMA=y``.
 
 Loopback per-bit-depth switches (for single-rate golden loopback tests):
 
@@ -146,13 +167,15 @@ Key options in ``prj.conf``:
 - ``CONFIG_I2S=y``: Enable the I2S driver.
 - ``CONFIG_ZTEST=y``: Enable the ZTest framework.
 
-The driver uses FIFO + ISR, so ``CONFIG_DMA`` is not required.
+The default driver path is FIFO + ISR, so ``CONFIG_DMA`` is not required.
+``drivers.i2s.alif.dma`` enables ``CONFIG_DMA``, ``CONFIG_DMA_PL330``,
+and ``CONFIG_I2S_DW_USE_DMA`` together with the ``i2s-dma`` snippet.
 
 Running under Twister
 =====================
 
 The application ships a ``testcase.yaml`` so it can be discovered by
-Zephyr's ``twister`` runner. All five scenarios use ``harness: ztest``
+Zephyr's ``twister`` runner. Scenarios use ``harness: ztest``
 -- twister flashes the device and parses the on-target ZTest output
 directly (PASS/FAIL/PROJECT EXECUTION lines). No external pytest
 scripts are involved.
@@ -169,6 +192,9 @@ Defined scenarios:
   RX verification. Gated on ``gpio_loopback``.
 - ``drivers.i2s.alif.play_hello`` -- 10 s TX-only audio playback.
   Gated on the ``audio_codec`` fixture.
+- ``drivers.i2s.alif.dma`` -- 16-bit 48 kHz DMA loopback on one
+  instance. Uses ``SNIPPET=i2s-dma`` and the SDO-to-SDI wire. Gated on
+  ``gpio_loopback``.
 
 Fixture-gated scenarios are auto-skipped by twister when the
 corresponding ``--fixture <name>`` is not declared on the command line.
@@ -207,4 +233,5 @@ Golden-vector RX verification (also requires the loopback wire):
 
 The ``i2s`` snippet is applied automatically via ``extra_args:
 SNIPPET=i2s`` in ``testcase.yaml`` -- you do not need to pass
-``-S i2s`` again on the twister command line.
+``-S i2s`` again on the twister command line. ``drivers.i2s.alif.dma``
+replaces that with ``SNIPPET=i2s-dma``.

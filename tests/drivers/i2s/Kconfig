@@ -118,6 +118,14 @@ config I2S_LOOPBACK
 	  input on the target board. The exact pin pair depends on the board
 	  and overlay (see README.rst and the boards/ overlays).
 
+config I2S_DMA
+	bool "Run only the I2S DMA loopback test"
+	depends on I2S_FUNCTIONAL_TESTS
+	default n
+	help
+	  Compile only src/functional/test_i2s_dma.c. Requires the i2s-dma
+	  snippet and CONFIG_I2S_DW_USE_DMA=y.
+
 config I2S_FEATURES
 	bool "Run only the i2s_features ZTEST suite"
 	depends on I2S_FUNCTIONAL_TESTS
