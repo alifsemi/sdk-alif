@@ -1,0 +1,50 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+mainmenu "CAN Normal Mode Test"
+
+source "Kconfig.zephyr"
+
+config CAN_TEST_BITRATE_NOMINAL
+	int "Nominal bitrate for CAN tests (bits/s)"
+	default 500000
+	help
+	  Nominal bitrate used in CAN normal mode tests.
+	  Valid options: 125000, 250000, 500000, 1000000.
+
+config CAN_TEST_SAMPLE_POINT_NOMINAL
+	int "Nominal sample point (per mille)"
+	default 800
+	help
+	  Sample point in per mille (e.g. 800 = 80.0%).
+
+if CAN_FD_MODE
+
+config CAN_TEST_BITRATE_DATA
+	int "Data phase bitrate for CAN-FD tests (bits/s)"
+	default 2000000
+	help
+	  Data phase bitrate used in CAN-FD tests.
+	  Valid options: 1000000, 2000000, 5000000.
+
+config CAN_TEST_SAMPLE_POINT_DATA
+	int "Data phase sample point (per mille)"
+	default 800
+	help
+	  Data phase sample point in per mille.
+
+endif # CAN_FD_MODE
+
+config CAN_TEST_RX_TIMEOUT_MS
+	int "RX test timeout in milliseconds"
+	default 60000
+	help
+	  Timeout for RX tests waiting for external CANalyzer frames.
+	  Set to a large value (e.g. 60000) for manual testing.
+	  Set to a small value (e.g. 3000) for automated CI where
+	  frames are injected by a script.
