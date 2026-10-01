@@ -1,0 +1,18 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * HE <-> APSS MHU0 aliases used by the A32 master-shutdown handshake.
+ * Board already has apsshemhu0r/s; add apssmhu0r/s for the shared MHU helpers.
+ */
+
+/{
+	aliases {
+		apssmhu0r = &rtssapss_rtsshe_mhu0_r;
+		apssmhu0s = &rtsshe_rtssapss_mhu0_s;
+	};
+};
