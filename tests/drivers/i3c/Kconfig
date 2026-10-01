@@ -16,11 +16,10 @@ config I3C_ALL_TESTS
 	select I3C_CCC_TESTS
 	select I3C_IBI_TESTS
 	select I3C_NEGATIVE_TESTS
-	select I3C_STRESS_TESTS
 	help
 	  This option enables all standard I3C test suites including
 	  discovery tests, Common Command Code (CCC) tests, In-Band
-	  Interrupt (IBI) tests, negative tests, and stress tests.
+	  Interrupt (IBI) tests, negative tests.
 	  This is a convenience option for running comprehensive I3C
 	  controller validation. Note that I3C_SENSOR_TESTS is not
 	  included as it requires specific sensor hardware.
@@ -60,15 +59,6 @@ config I3C_NEGATIVE_TESTS
 	  transfers, zero-length transfers, oversized transfers, and
 	  CCC commands to invalid targets. These tests verify that the
 	  I3C controller properly handles and reports error conditions.
-
-config I3C_STRESS_TESTS
-	bool "Enable I3C stress test suite"
-	help
-	  This option enables the stress test suite which performs
-	  repeated operations including GETPID calls, read endurance
-	  tests, multi-message endurance tests, and CCC transfer
-	  interleave tests. These tests verify controller stability
-	  and reliability under sustained load across multiple targets.
 
 config I3C_SENSOR_TESTS
 	bool "Enable I3C sensor test suite"

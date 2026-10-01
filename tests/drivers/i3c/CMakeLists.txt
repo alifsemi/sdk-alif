@@ -12,8 +12,6 @@ set(I3C_IBI_SOURCES src/i3c_ibi.c ${I3C_COMMON_SOURCES})
 
 set(I3C_NEGATIVE_SOURCES src/i3c_negative.c ${I3C_COMMON_SOURCES})
 
-set(I3C_STRESS_SOURCES src/i3c_stress.c ${I3C_COMMON_SOURCES})
-
 set(I3C_SENSOR_SOURCES src/i3c_sensor.c ${I3C_COMMON_SOURCES})
 
 
@@ -31,10 +29,6 @@ endif()
 
 if(CONFIG_I3C_NEGATIVE_TESTS)
   target_sources(app PRIVATE ${I3C_NEGATIVE_SOURCES})
-endif()
-
-if(CONFIG_I3C_STRESS_TESTS)
-  target_sources(app PRIVATE ${I3C_STRESS_SOURCES})
 endif()
 
 if(CONFIG_I3C_SENSOR_TESTS)
