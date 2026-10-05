@@ -12,6 +12,7 @@
 
 #include <inttypes.h>
 #include <string>
+#include <string.h>
 #include <stdio.h>
 #include <vector>
 #include <zephyr/kernel.h>
@@ -118,6 +119,21 @@ __attribute__((section(".bss.tflm_arena"), aligned(16)))
 #endif
 uint8_t inferenceProcessTensorArena[NUM_INFERENCE_TASKS][TENSOR_ARENA_SIZE];
 
+#if defined(CONFIG_TFLM_ETHOSU_MODEL_COPY_TO_RAM)
+__attribute__((section(CONFIG_TFLM_ETHOSU_MODEL_RAM_SECTION), aligned(16)))
+uint8_t networkModelRam[sizeof(networkModelData)];
+#endif
+
+/* Model buffer handed to the NPU */
+const void *networkModel()
+{
+#if defined(CONFIG_TFLM_ETHOSU_MODEL_COPY_TO_RAM)
+	return networkModelRam;
+#else
+	return networkModelData;
+#endif
+}
+
 /* Allocate and initialize heap */
 void *allocateHeap(const size_t size)
 {
@@ -189,7 +205,7 @@ void inferenceSenderTask(void *_name, void *heap, void *_queue)
 	xInferenceJob jobs[NUM_JOBS_PER_TASK];
 	for (int n = 0; n < NUM_JOBS_PER_TASK; n++) {
 		auto &job = jobs[n];
-		job = xInferenceJob(modelName, DataPtr((void*)networkModelData, sizeof(networkModelData)),
+		job = xInferenceJob(modelName, DataPtr((void*)networkModel(), sizeof(networkModelData)),
 				    { DataPtr((void*)inputData, sizeof(inputData)) }, {},
 				    { DataPtr((void*)expectedOutputData, sizeof(expectedOutputData)) },
 				    &senderQueue);
@@ -234,6 +250,15 @@ int main()
 		k_tid_t id;
 	} threads[NUM_JOB_TASKS + NUM_INFERENCE_TASKS];
 	size_t nthreads = 0;
+
+#if defined(CONFIG_TFLM_ETHOSU_MODEL_COPY_TO_RAM)
+	memcpy(networkModelRam, networkModelData, sizeof(networkModelData));
+	printk("Model copied to RAM: %p -> %p (%zu bytes)\n", (const void *)networkModelData,
+	       (void *)networkModelRam, sizeof(networkModelData));
+#else
+	printk("Model location: %p (%zu bytes)\n", (const void *)networkModelData,
+	       sizeof(networkModelData));
+#endif
 
 	/* Allocate one global heap for all threads */
 	void *heapPtr = allocateHeap(256);

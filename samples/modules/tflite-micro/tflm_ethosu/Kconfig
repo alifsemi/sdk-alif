@@ -28,6 +28,14 @@ config ETHOSU_ARCH_U85
 		Enable support for Ethos-U85 NPU architecture.
 		This is set automatically by CMakeLists.txt based on ETHOSU_TARGET_NPU_CONFIG.
 
+config TFLM_ETHOSU_IMAGE_IN_OSPI
+	bool
+	default y if FLASH_BASE_ADDRESS >= 0xa0000000 && FLASH_BASE_ADDRESS < 0xe0000000
+	help
+		Set when the application image is linked to execute in place from
+		an OSPI XIP window (OSPI0 at 0xA0000000 or OSPI1 at 0xC0000000),
+		i.e. the Secure Enclave boots the image directly from OSPI flash.
+
 config MODEL_IN_EXT_FLASH
 	bool "Put ML model to external flash"
 	select FLASH
@@ -35,5 +43,24 @@ config MODEL_IN_EXT_FLASH
 	help
 		Initialize OSPI controller to XIP mode. Initialize the onboard flash device. Link ML model data to external flash address space.
 		In addition to normal zephyr.bin output, ospi1.bin is generated.
+
+config TFLM_ETHOSU_MODEL_COPY_TO_RAM
+	bool "Copy the ML model to RAM before running inference"
+	default y if TFLM_ETHOSU_IMAGE_IN_OSPI
+	help
+		Copy the Vela-compiled model (command stream and weights) from its
+		link location to a RAM buffer at startup and hand the RAM copy to
+		the NPU. Enabled by default when the image executes from OSPI XIP:
+		Ethos-U fetches from the OSPI XIP window set up by the boot
+		firmware end in an NPU command stream parse error, so the NPU
+		must only see the RAM copy.
+
+config TFLM_ETHOSU_MODEL_RAM_SECTION
+	string "Linker section of the RAM model copy"
+	depends on TFLM_ETHOSU_MODEL_COPY_TO_RAM
+	default ".bss.tflm_model_ram"
+	help
+		Linker input section for the RAM copy of the model. The default
+		places it in the core's DTCM together with the tensor arena.
 
 source "Kconfig.zephyr"
