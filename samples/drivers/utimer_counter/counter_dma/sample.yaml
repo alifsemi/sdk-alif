@@ -1,0 +1,50 @@
+sample:
+  name: UTIMER counter DMA trigger
+tests:
+  sample.drivers.utimer_counter.counter_dma:
+    tags:
+      - counter
+      - dma
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    required_snippets:
+      - utimer-dma
+    depends_on:
+      - counter
+      - dma
+    timeout: 40
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "UTIMER DMA trig: PASS"
+  sample.drivers.utimer_counter.counter_dma.b1:
+    tags:
+      - counter
+      - dma
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    required_snippets:
+      - utimer-dma
+    depends_on:
+      - counter
+      - dma
+    build_only: true
+  sample.drivers.utimer_counter.counter_dma.dma2_he:
+    tags:
+      - counter
+      - dma
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    required_snippets:
+      - utimer-dma
+      - utimer-dma2
+    depends_on:
+      - counter
+      - dma
+    build_only: true
