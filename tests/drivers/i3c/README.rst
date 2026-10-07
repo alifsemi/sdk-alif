@@ -68,8 +68,8 @@ Build and run all tests:
 
 .. code-block:: console
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp tests/drivers/i3c \
-     -DDTC_OVERLAY_FILE=boards/i3c_test.overlay \
+   west build -p always -b tests/drivers/i3c \
+     -DDTC_OVERLAY_FILE=boards/alif_e8_i3c.overlay \
      -DCONFIG_I3C_ALL_TESTS=y
    west flash
 
@@ -77,8 +77,8 @@ Build with specific test suite:
 
 .. code-block:: console
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp tests/drivers/i3c \
-     -DDTC_OVERLAY_FILE=boards/i3c_test.overlay \
+   west build -p always -b tests/drivers/i3c \
+     -DDTC_OVERLAY_FILE=boards/alif_e8_lpi3c.overlay \
      -DCONFIG_I3C_DISCOVERY_TESTS=y
 
 Test Suite Selection
@@ -90,7 +90,6 @@ Enable test suites via Kconfig:
 - ``CONFIG_I3C_CCC_TESTS=y``: CCC tests
 - ``CONFIG_I3C_IBI_TESTS=y``: IBI tests
 - ``CONFIG_I3C_NEGATIVE_TESTS=y``: Negative tests
-- ``CONFIG_I3C_STRESS_TESTS=y``: Stress tests
 - ``CONFIG_I3C_SENSOR_TESTS=y``: Sensor tests
 - ``CONFIG_I3C_ALL_TESTS=y``: All test suites
 
