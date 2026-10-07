@@ -1,0 +1,50 @@
+sample:
+  name: exerciser_app
+  description: >
+    Multi-peripheral exerciser. Board overlays (and E8 snippets) select
+    which workers run: LED, OSPI, SPI loopback, SD, USB CDC-ACM, BMI323,
+    WM8904, OV5675 viewfinder, Ethernet DHCPv4.
+
+common:
+  tags:
+    - drivers
+    - shell
+  depends_on:
+    - gpio
+  harness: console
+  harness_config:
+    type: multi_line
+    regex:
+      - "Exerciser App"
+
+tests:
+  sample.applications.exerciser_app:
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_b1_sk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_e1c_sk/ae1c1f4051920hh/rtss_he
+    integration_platforms:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    tags:
+      - spi
+      - flash
+      - usb
+      - sensor
+      - audio
+      - sd
+      - gpio
+
+  sample.applications.exerciser_app.e8_ak:
+    platform_allow:
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+    extra_args:
+      - SNIPPET="ov5675-cam;alif-dhcpv4-client;ospi-flash"
+    integration_platforms:
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+    tags:
+      - video
+      - net
+      - sd
+      - audio
+      - ospi_flash
