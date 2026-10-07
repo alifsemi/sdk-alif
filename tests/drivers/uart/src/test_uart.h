@@ -11,7 +11,7 @@
  * @brief UART test cases header file
  *
  * Common declarations for UART test suite covering internal/external
- * loopback and RTS/CTS flow-control tests on Alif platforms.
+ * loopback, RTS/CTS, stress, and performance tests on Alif platforms.
  */
 
 #ifndef TEST_UART_H_
@@ -22,13 +22,13 @@
 #include <zephyr/sys/util.h>
 
 #if !DT_HAS_CHOSEN(zephyr_devnode1)
-#error "UART test requires DT chosen node zephyr,devnode1. " \
-	"Apply boards/alif_uart.overlay or boards/alif_lpuart.overlay, or -S alif-uart-dma for the DMA suite."
+#error "Need DT chosen zephyr,devnode1 (alif_uart or alif_lpuart overlay)"
 #endif
 
-#if !DT_HAS_CHOSEN(zephyr_devnode2) && CONFIG_TEST_EXTERNAL_LB
-#error "External loopback test requires DT chosen node zephyr,devnode2. " \
-	"Apply boards/alif_uart.overlay (or pass -DDTC_OVERLAY_FILE=boards/alif_uart.overlay)."
+#if !DT_HAS_CHOSEN(zephyr_devnode2) && \
+	(CONFIG_TEST_EXTERNAL_LB || CONFIG_TEST_PERFORMANCE || \
+	 CONFIG_TEST_UART_LINE_ERRORS || CONFIG_TEST_UART_HOTPLUG)
+#error "Need DT chosen zephyr,devnode2 (apply boards/alif_uart.overlay)"
 #endif
 
 /** Maximum receive-buffer size shared across test modules. */

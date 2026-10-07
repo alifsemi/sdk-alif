@@ -17,3 +17,15 @@ endif()
 target_sources_ifdef(CONFIG_TEST_EXTERNAL_LB app PRIVATE src/uart_external_loopback.c)
 
 target_sources_ifdef(CONFIG_TEST_UART_DMA app PRIVATE src/uart_dma_tests.c)
+
+target_sources_ifdef(CONFIG_TEST_STRESS app PRIVATE src/uart_stress.c)
+
+target_sources_ifdef(CONFIG_TEST_PERFORMANCE app PRIVATE src/uart_perf.c)
+
+target_sources_ifdef(CONFIG_TEST_UART_LINE_ERRORS app PRIVATE src/uart_line_errors.c)
+
+if(CONFIG_TEST_INTERNAL_LB OR CONFIG_TEST_EXTERNAL_LB OR CONFIG_TEST_UART_FIFO)
+  target_sources(app PRIVATE src/uart_fifo_depth.c)
+endif()
+target_sources_ifdef(CONFIG_TEST_UART_LPUART app PRIVATE src/uart_lpuart.c)
+target_sources_ifdef(CONFIG_TEST_UART_HOTPLUG app PRIVATE src/uart_hotplug.c)
