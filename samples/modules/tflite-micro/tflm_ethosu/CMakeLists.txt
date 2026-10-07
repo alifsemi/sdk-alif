@@ -131,6 +131,10 @@ else()
         "  -DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256")
 endif()
 
+if(CONFIG_TFLM_ETHOSU_IMAGE_IN_OSPI)
+    message(STATUS "Image executes from OSPI XIP at ${CONFIG_FLASH_BASE_ADDRESS}")
+endif()
+
 project(tflm_ethosu_app)
 
 target_include_directories(app PRIVATE ../../../../include)
