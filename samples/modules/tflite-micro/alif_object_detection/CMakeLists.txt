@@ -159,6 +159,11 @@ target_sources(app PRIVATE
     ${OD_GENERATED_SOURCES}
 )
 
+if (CONFIG_APP_UVC_DISPLAY)
+    include(${ZEPHYR_BASE}/samples/subsys/usb/common/common.cmake)
+    target_sources(app PRIVATE src/use_case/object_detection/src/uvc_display.c)
+endif()
+
 target_link_libraries(app PRIVATE
     mlek::object_detection_impl
     alif_ui_api
