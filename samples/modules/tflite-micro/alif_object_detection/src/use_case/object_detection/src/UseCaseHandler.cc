@@ -39,6 +39,15 @@
 #include "lv_paint_utils.h"
 #endif
 
+#if defined(CONFIG_APP_UVC_DISPLAY)
+#include "uvc_display.h"
+
+/* With LVGL the UI renders to the UVC display; otherwise draw into it directly. */
+#if !defined(CONFIG_LVGL)
+#define UVC_DIRECT_DISPLAY
+#endif
+#endif
+
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
 
@@ -55,7 +64,12 @@ LOG_MODULE_REGISTER(UseCaseHandler);
 ASSERT_DIVISIBLE_BY_16(MIMAGE_X);
 #define MIMAGE_Y 192
 
-#ifdef USE_LVGL_ZOOM
+#if defined(CONFIG_APP_UVC_DISPLAY)
+/* The UVC display is small, and zooming the image every frame makes it flicker. */
+#define LIMAGE_X        MIMAGE_X
+#define LIMAGE_Y        MIMAGE_Y
+#define LV_ZOOM         (1 * 256)
+#elif defined(USE_LVGL_ZOOM)
 #define LIMAGE_X        MIMAGE_X
 #define LIMAGE_Y        MIMAGE_Y
 #define LV_ZOOM         (2 * 256)
@@ -89,7 +103,12 @@ static void lvgl_worker_thread(void*, void*, void*)
 
 namespace {
 lv_style_t boxStyle;
-lv_color_t  lvgl_image[LIMAGE_Y][LIMAGE_X] __attribute__((section("SRAM1.lcd_image_buf")));                      // 192x192x3 = 110,592 bytes
+#if DT_NODE_HAS_STATUS(DT_NODELABEL(sram1), okay)
+#define LVGL_IMAGE_SECTION __section("SRAM1.lcd_image_buf")
+#else
+#define LVGL_IMAGE_SECTION __section(".bss.lcd_image_buf")
+#endif
+lv_color16_t lvgl_image[LIMAGE_Y][LIMAGE_X] LVGL_IMAGE_SECTION;
 
 /* Pre-allocated pool of detection box objects to avoid per-frame alloc/free */
 static constexpr int MAX_DETECTION_BOXES = 10;
@@ -120,6 +139,16 @@ namespace app {
            const std::vector<object_detection::DetectionResult>& results,
            int imgInputCols, int imgInputRows);
 #endif /* CONFIG_LVGL */
+
+#if defined(UVC_DIRECT_DISPLAY)
+    /**
+     * @brief           Draw detection boxes into the pending UVC frame and send it.
+     * @param[in]       results            Vector of detection results to be displayed.
+     **/
+    static void PresentUvcFrame(
+           const std::vector<object_detection::DetectionResult>& results,
+           int imgInputCols, int imgInputRows);
+#endif /* UVC_DIRECT_DISPLAY */
 
     bool ObjectDetectionInit()
     {
@@ -156,6 +185,20 @@ namespace app {
         if (image_init(LIMAGE_X, LIMAGE_Y) != 0) {
             return false;
         }
+
+#if defined(CONFIG_APP_UVC_DISPLAY)
+#if defined(UVC_DIRECT_DISPLAY)
+        int uvcRet = uvc_display_init(MIMAGE_X, MIMAGE_Y);
+#else
+        int uvcRet = 0; /* initialised by the display driver */
+#endif
+        if (uvcRet == 0) {
+            uvcRet = uvc_display_start();
+        }
+        if (uvcRet != 0) {
+            LOG_WRN("UVC display unavailable (%d), continuing without it", uvcRet);
+        }
+#endif /* CONFIG_APP_UVC_DISPLAY */
 
         return true;
     }
@@ -222,6 +265,11 @@ namespace app {
         k_mutex_unlock(&lvgl_mutex);
 #endif /* CONFIG_LVGL */
 
+#if defined(UVC_DIRECT_DISPLAY)
+        /* Dropped (not an error) while the host is not streaming or still busy. */
+        (void)uvc_display_capture(imageDataPtr);
+#endif /* UVC_DIRECT_DISPLAY */
+
         const size_t copySz = inputTensor->Bytes();
 
         /* Run the pre-processing, inference and post-processing. */
@@ -250,6 +298,10 @@ namespace app {
 
         k_mutex_unlock(&lvgl_mutex);
 #endif /* CONFIG_LVGL */
+
+#if defined(UVC_DIRECT_DISPLAY)
+        PresentUvcFrame(results, inputImgCols, inputImgRows);
+#endif /* UVC_DIRECT_DISPLAY */
 
         if (!PresentInferenceResult(results)) {
             return false;
@@ -321,6 +373,28 @@ namespace app {
         }
     }
 #endif /* CONFIG_LVGL */
+
+#if defined(UVC_DIRECT_DISPLAY)
+    static void PresentUvcFrame(const std::vector<object_detection::DetectionResult>& results,
+                                int imgInputCols, int imgInputRows)
+    {
+        /* RGB565 green */
+        constexpr uint16_t boxColor = 0x07E0;
+
+        float xScale = (float) MIMAGE_X / imgInputCols;
+        float yScale = (float) MIMAGE_Y / imgInputRows;
+
+        for (const auto& result : results) {
+            uvc_display_draw_rect((int)floor(result.m_x0 * xScale),
+                                  (int)floor(result.m_y0 * yScale),
+                                  (int)ceil(result.m_w * xScale),
+                                  (int)ceil(result.m_h * yScale),
+                                  boxColor);
+        }
+
+        uvc_display_submit();
+    }
+#endif /* UVC_DIRECT_DISPLAY */
 
 } /* namespace app */
 } /* namespace alif */

@@ -1,0 +1,38 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+/* E1C USB Video Class virtual display. Use after the camera overlay. */
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+/* 628K for USB, the YUY2 frame and camera pool; 64K TGU-aligned. */
+&ns {
+	reg = <0x200e0000 DT_SIZE_K(640)>;
+	status = "okay";
+};
+
+/ {
+	/* 320x480 virtual display streamed as YUY2. */
+	chosen {
+		zephyr,display = &uvc_lcd;
+	};
+
+	uvc_lcd: uvc-lcd {
+		compatible = "alif,uvc-display";
+		width = <320>;
+		height = <480>;
+	};
+
+	uvc: uvc {
+		compatible = "zephyr,uvc-device";
+	};
+};

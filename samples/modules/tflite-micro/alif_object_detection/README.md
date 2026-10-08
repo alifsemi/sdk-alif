@@ -49,6 +49,11 @@ mt9m114:
 west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_mt9m114.overlay serial_camera.overlay" -DOVERLAY_CONFIG="mt9m114.conf"
 ```
 
+arx3a0 with USB UVC display:
+```
+west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_arx3a0.overlay;serial_camera.overlay;usb_uvc_e7.overlay" -DOVERLAY_CONFIG="uvc.conf"
+```
+
 ## Building and running: E8-DK
 Note: The build commands below are for U55. To build the same examples for U85, replace `-S ethos-u55-enable` with `-S ethos-u85-enable` and add `-DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256` to the `west build` command.
 
@@ -82,12 +87,31 @@ ov5675 & ISP:
 west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable   samples/modules/tflite-micro/alif_object_detection --   -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay serial_camera_isp.overlay" -DOVERLAY_CONFIG="isp.conf"
 ```
 
+ov5675 & ISP with USB UVC display:
+```
+west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="serial_camera_ov5675_selfie.overlay;serial_camera_isp.overlay;usb_uvc_e8.overlay" -DOVERLAY_CONFIG="isp.conf;uvc.conf"
+```
+
 ## Building and running: StartKit-E1C
 StartKit-E1C has no display
 
-ov5640:
+ov5640 headless:
 ```
 west build -b alif_e1c_sk/ae1c1f4051920hh/rtss_he -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="parallel_camera_ov5640.overlay" -DOVERLAY_CONFIG="ov5640.conf"
+```
+
+ov5640 & USB UVC display:
+
+Instead of a display, the board enumerates as a USB webcam ("Alif Object Detection") streaming
+uncompressed YUY2. With LVGL enabled (default in `uvc.conf`), the LVGL UI renders to a 320x480
+virtual display (`alif,uvc-display` in `usb_uvc_e1c.overlay`) that is streamed over UVC. Without LVGL
+(`CONFIG_LVGL=n`, `CONFIG_DISPLAY=n`), the 192x192 model input image is streamed with the detection
+boxes drawn on top. Open the camera with any UVC viewer, e.g.
+`ffplay -f v4l2 -input_format yuyv422 -video_size 320x480 /dev/videoN` or guvcview on Linux, or the
+Camera app on Windows. The application never waits for the host; frames are dropped while it is not
+reading.
+```
+west build -b alif_e1c_sk/ae1c1f4051920hh/rtss_he -S ethos-u55-enable samples/modules/tflite-micro/alif_object_detection -- -DEXTRA_DTC_OVERLAY_FILE="parallel_camera_ov5640.overlay;usb_uvc_e1c.overlay" -DOVERLAY_CONFIG="ov5640.conf;uvc.conf"
 ```
 
 ## Expected output

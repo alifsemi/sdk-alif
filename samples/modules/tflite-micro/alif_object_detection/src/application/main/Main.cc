@@ -62,9 +62,10 @@
 
 LOG_MODULE_REGISTER(Main);
 
+#if IS_ENABLED_CDC200 && DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
 static void display_panel_on(void)
 {
-#if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
+
 	const struct device *panel_dev = DEVICE_DT_GET(DT_ALIAS(panel));
 
 	if (!device_is_ready(panel_dev)) {
@@ -77,8 +78,8 @@ static void display_panel_on(void)
 	if (ret) {
 		LOG_WRN("Display panel enable failed (%d), continuing", ret);
 	}
-#endif
 }
+#endif
 
 extern void main_loop();
 
@@ -118,8 +119,8 @@ static int app_set_dsi_cdc()
 #endif
 
 #if IS_ENABLED_CDC200
-	const struct device *display_dev = DEVICE_DT_GET(DISPLAY_NODE);
 	display_panel_on();
+	const struct device *display_dev = DEVICE_DT_GET(DISPLAY_NODE);
 	cdc200_set_enable(display_dev, true);
 #endif
 
@@ -149,7 +150,7 @@ int main()
  */
 static int app_set_parameters(void)
 {
-#if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay))
+#if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay)) || defined(CONFIG_USB_DEVICE_STACK_NEXT)
 	int ret;
 	run_profile_t runp = (run_profile_t){0};
 
@@ -190,14 +191,20 @@ static int app_set_parameters(void)
 	runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK |
 		MIPI_PLL_DPHY_MASK | LDO_PHY_MASK;
 	runp.ip_clock_gating = CDC200_MASK | CAMERA_MASK | MIPI_CSI_MASK | MIPI_DSI_MASK;
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+	runp.phy_pwr_gating |= USB_PHY_MASK;
+	runp.ip_clock_gating |= USB_MASK;
+#endif
 
 	ret = se_service_set_run_cfg(&runp);
 	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
 
+#if (DT_NODE_HAS_STATUS(DT_NODELABEL(cam), okay))
 	/*
 	 * CPI Pixel clock - Generate XVCLK. Used by ARX3A0 & OV5675 sensors.
 	 */
 	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
+#endif
 #endif
 
 #if (DT_NODE_HAS_STATUS(DT_NODELABEL(lpcam), okay))

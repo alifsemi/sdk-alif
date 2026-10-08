@@ -1,0 +1,45 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ */
+
+/* USB Video Class virtual display for Ensemble E7 RTSS-HP. */
+
+/* USB DMA uses non-secure DTCM; the YUY2 frame is in SRAM0. */
+&ns {
+	reg = <0x200e8000 DT_SIZE_K(96)>;
+	status = "okay";
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+/* Disable the physical display pipeline. */
+&cdc200 {
+	status = "disabled";
+};
+
+&mipi_dsi {
+	status = "disabled";
+};
+
+/ {
+	chosen {
+		zephyr,display = &uvc_lcd;
+	};
+
+	uvc_lcd: uvc-lcd {
+		compatible = "alif,uvc-display";
+		width = <320>;
+		height = <480>;
+	};
+
+	uvc: uvc {
+		compatible = "zephyr,uvc-device";
+	};
+};
