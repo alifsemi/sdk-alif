@@ -13,17 +13,27 @@ config MODEL_SECTION
 # LVGL UI options only apply when the display stack is enabled.
 if LVGL
 
+# Fonts used by ScreenLayout.cc; the UVC display is smaller than a panel.
+config LV_FONT_MONTSERRAT_10
+	default y if APP_UVC_DISPLAY
+
+config LV_FONT_MONTSERRAT_12
+	default y if APP_UVC_DISPLAY
+
+config LV_FONT_MONTSERRAT_14
+	default y if APP_UVC_DISPLAY
+
 config LV_FONT_MONTSERRAT_16
 	default y
 
 config LV_FONT_MONTSERRAT_24
-	default y
+	default y if !APP_UVC_DISPLAY
 
 config LV_FONT_MONTSERRAT_28
-	default y
+	default y if !APP_UVC_DISPLAY
 
 config LV_FONT_MONTSERRAT_32
-	default y
+	default y if !APP_UVC_DISPLAY
 
 config LV_THEME_DEFAULT_DARK
 	default y
@@ -32,6 +42,18 @@ config LV_Z_MEM_POOL_SIZE
 	default 49152
 
 endif # LVGL
+
+config APP_UVC_DISPLAY
+	bool "Stream the camera image with detections as a USB webcam (UVC)"
+	depends on USBD_VIDEO_CLASS
+	default y
+	help
+	  Use USB Video Class as a display for headless builds: the board
+	  enumerates as a webcam streaming the camera frames with the detection
+	  boxes drawn on top. Enabled by uvc.conf and a platform UVC overlay.
+
+# Common options used by sample_usbd_init.c (only visible with USB_DEVICE_STACK_NEXT).
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
 
 source "Kconfig.zephyr"
 	

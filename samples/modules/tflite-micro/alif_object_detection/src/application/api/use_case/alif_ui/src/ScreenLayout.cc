@@ -28,7 +28,21 @@ static lv_style_t confident;
 static lv_style_t weak;
 static lv_style_t tiny;
 
-#define DISP_SCALE 2
+#if defined(CONFIG_APP_UVC_DISPLAY)
+/* Small virtual display streamed over USB (e.g. 320x480). */
+#define DISP_SCALE      1
+#define FONT_DEFAULT    lv_font_montserrat_14
+#define FONT_CONFIDENT  lv_font_montserrat_16
+#define FONT_WEAK       lv_font_montserrat_12
+#define FONT_TINY       lv_font_montserrat_10
+#else
+#define DISP_SCALE      2
+#define FONT_DEFAULT    lv_font_montserrat_28
+#define FONT_CONFIDENT  lv_font_montserrat_32
+#define FONT_WEAK       lv_font_montserrat_24
+#define FONT_TINY       lv_font_montserrat_16
+#endif
+
 void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int imgHeight, unsigned short imgZoom)
 {
     lv_obj_t *screen = lv_scr_act();
@@ -41,7 +55,7 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
     lv_style_set_bg_color(&style, lv_color_black());
 #endif
 
-    lv_style_set_text_font(&style, &lv_font_montserrat_28);
+    lv_style_set_text_font(&style, &FONT_DEFAULT);
     lv_obj_add_style(screen, &style, LV_PART_MAIN);
 
     /* Grid layout for the screen */
@@ -114,7 +128,7 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
 
     lv_style_init(&confident);
     lv_style_set_text_color(&confident, lv_color_hex(0x0080ff));
-    lv_style_set_text_font(&confident, &lv_font_montserrat_32);
+    lv_style_set_text_font(&confident, &FONT_CONFIDENT);
 
     lv_style_init(&weak);
 #if LV_THEME_DEFAULT_DARK == 0
@@ -122,10 +136,10 @@ void ScreenLayoutInit(const void *imgData, size_t imgSize, int imgWidth, int img
 #else
     lv_style_set_text_color(&weak, lv_color_hex(0x888888));
 #endif
-    lv_style_set_text_font(&weak, &lv_font_montserrat_24);
+    lv_style_set_text_font(&weak, &FONT_WEAK);
 
     lv_style_init(&tiny);
-    lv_style_set_text_font(&tiny, &lv_font_montserrat_16);
+    lv_style_set_text_font(&tiny, &FONT_TINY);
 
     /*Create a Label in the results area */
     labelHeader = lv_label_create(resultHolder);

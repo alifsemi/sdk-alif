@@ -91,15 +91,6 @@ static uint8_t image_data[CIMAGE_RGB_WIDTH_MAX * CIMAGE_RGB_HEIGHT_MAX * RGB_BYT
 	__section("SRAM0.camera_frame_bayer_to_rgb_buf");
 #endif
 
-#if CAMERA_OUTPUT_RGB565
-/*
- * Scratch buffer holding the centred RGB565 square cropped from the sensor
- * frame before it is expanded to RGB888. Lives in the default RAM (DTCM on
- * E1C) since the OV5640 path is only used on that part.
- */
-static uint8_t rgb565_crop[CIMAGE_RGB_WIDTH_MAX * CIMAGE_RGB_HEIGHT_MAX * RGB565_BYTES];
-#endif
-
 void aipl_cpu_cache_clean(const void *ptr, uint32_t size)
 {
 	sys_cache_data_flush_range((void *)ptr, size);
@@ -336,23 +327,16 @@ int get_image_data(uint8_t **output_image_data)
 	#if CAMERA_OUTPUT_RGB565
 	/*
 	 * OV5640 path: the sensor already delivers RGB565. Centre-crop to a
-	 * square and expand to the RGB888 the detector expects. The shared
+	 * square and expand to the RGB888 the detector expects in a single
+	 * pass, reading the crop window in place via the input pitch. The shared
 	 * resize stage below then scales the square down to the model input.
 	 */
 	uint32_t x0 = (CIMAGE_X - CIMAGE_RGB_WIDTH_MAX) / 2;
 	uint32_t y0 = (CIMAGE_Y - CIMAGE_RGB_HEIGHT_MAX) / 2;
+	const uint8_t *crop = raw_image + (y0 * CIMAGE_X + x0) * RGB565_BYTES;
 
-	aipl_ret = aipl_crop(raw_image, rgb565_crop,
-			     CIMAGE_X, CIMAGE_X, CIMAGE_Y, AIPL_COLOR_RGB565,
-			     x0, y0,
-			     x0 + CIMAGE_RGB_WIDTH_MAX, y0 + CIMAGE_RGB_HEIGHT_MAX);
-	if (aipl_ret != AIPL_ERR_OK) {
-		LOG_ERR("RGB565 crop failed with error code %d", aipl_ret);
-		return -1;
-	}
-
-	aipl_ret = aipl_color_convert(rgb565_crop, image_data,
-				      CIMAGE_RGB_WIDTH_MAX, CIMAGE_RGB_WIDTH_MAX,
+	aipl_ret = aipl_color_convert(crop, image_data,
+				      CIMAGE_X, CIMAGE_RGB_WIDTH_MAX,
 				      CIMAGE_RGB_HEIGHT_MAX,
 				      AIPL_COLOR_RGB565, AIPL_COLOR_RGB888);
 	if (aipl_ret != AIPL_ERR_OK) {
