@@ -266,6 +266,10 @@ Sample
 child, prints EXTSYS / AXI / AHB / APB, and checks SysTick against LPRTC.
 Snippets ``pstate-he`` and ``pstate-hp`` enable the demo rows only.
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`RTSS CPU Frequency P-states build commands <build-commands-cpu-freq-pstate>`.
+
 .. code-block:: console
 
    west build -p auto -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \

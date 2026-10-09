@@ -73,6 +73,10 @@ The example below uses the ``samples/hello_world`` application.
 
 **E8 DevKit**
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`Running Zephyr on the Cortex-A32 based APSS build commands <build-commands-apss-a32>`.
+
 .. code-block:: console
 
    west build -p always -b alif_e8_dk/ae822fa0e5597xx0/apss samples/hello_world

@@ -10,6 +10,7 @@ Application Notes for the Zephyr Alif SDK
    :maxdepth: 2
    :caption: Contents:
 
+   build_commands.rst
    apss_a32.rst
    adc.rst
    ble.rst

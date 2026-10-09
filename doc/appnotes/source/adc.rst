@@ -68,9 +68,7 @@ Follow these steps to build the ADC application using the Alif Zephyr SDK:
 
 .. note::
    The first commands are for the Alif E7 DevKit. B1 (Balletto A5) and E1C
-   examples follow. Change the SoC string if your kit uses a different
-   variant. Refer to the `ZAS User Guide`_, under
-   ``Setting Up and Building Zephyr Applications``.
+   examples follow. For the build commands for every supported target, refer to :ref:`ADC12/24 build commands <build-commands-adc>`.
 
 2. Build command for application on the M55 HP core:
 
