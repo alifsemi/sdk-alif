@@ -67,7 +67,7 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
 
 .. note::
    The build commands shown here are for the Alif E8 DevKit.
-   To build for other boards, modify the board name accordingly.
+   For the build commands for every supported target, refer to :ref:`General-Purpose Input/Output (GPIO) build commands <build-commands-gpio>`.
 
 1. Build a blinky application on the M55 HP core:
 

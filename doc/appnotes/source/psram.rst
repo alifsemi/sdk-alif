@@ -118,6 +118,10 @@ APS512XXN PSRAM (E8 AppKit)
 
 1. Build command for application on the M55 HE core:
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`PSRAM build commands <build-commands-psram>`.
+
 .. code-block:: console
 
    west build -p always \

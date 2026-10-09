@@ -109,10 +109,7 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
 
 .. note::
    The build commands shown here are specifically for the Alif E8 boards.
-   To build the application for other boards, modify the board name in the
-   build command accordingly. For more information, refer to the
-   `ZAS User Guide`_, under the section
-   ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`JPEG Encoder build commands <build-commands-jpeg>`.
 
 Standalone Static Image Test
 ----------------------------

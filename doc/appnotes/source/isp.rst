@@ -277,7 +277,7 @@ Follow these steps to build the ARX3A0 ISP application using the Alif Zephyr SDK
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`ISP build commands <build-commands-isp>`.
 
 2. Build command for application on the M55 HP core:
 
@@ -505,7 +505,7 @@ Follow these steps to build the MT9M114 ISP (Selfie Camera) application using th
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`ISP build commands <build-commands-isp>`.
 
 2. Build command for E8 DevKit (Selfie Camera with ISP) on M55 HP core:
 

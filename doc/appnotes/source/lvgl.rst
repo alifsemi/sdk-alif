@@ -28,6 +28,10 @@ Edit ``ui/screen_main.xml`` and rebuild to change the UI.
 RTSS-HE
 -------
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`LVGL build commands <build-commands-lvgl>`.
+
 .. code-block:: console
 
    west build -p always \

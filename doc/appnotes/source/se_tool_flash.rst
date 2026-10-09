@@ -30,6 +30,7 @@ Flashing the binary using the SE tool
 .. note::
    - This is an alternative process for flashing a binary onto the Alif Devkit
    - The build commands shown here are specifically for the Alif E7 DevKit.
+   - For the build commands for every supported target, refer to :ref:`SE Tool Flashing for Alif DevKits build commands <build-commands-se-tool-flash>`.
 
 Follow these steps to build the application:
 
