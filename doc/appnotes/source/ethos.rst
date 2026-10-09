@@ -75,6 +75,10 @@ Follow these steps to prepare your tflm_ethosu application using the GCC compile
 
 1. Fetch the Alif Zephyr SDK source from the main branch at `https://github.com/alifsemi/sdk-alif.git <https://github.com/alifsemi/sdk-alif.git>`_
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`Ethos NPU U-55/U85 build commands <build-commands-ethos>`.
+
 .. code-block:: console
 
     mkdir /home/$USER/sdk-alif

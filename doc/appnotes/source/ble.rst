@@ -56,6 +56,7 @@ Follow these steps to build the BLE application using the Alif Zephyr SDK:
 
 .. note::
    BLE features are supported only on the Alif B1 DevKit (B1C), M55 HE core. They are not supported on other boards.
+   For the build commands for every supported target, refer to :ref:`BLE build commands <build-commands-ble>`.
 
 2. Build command for application on the M55 HE core:
 

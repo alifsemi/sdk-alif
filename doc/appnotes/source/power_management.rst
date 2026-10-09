@@ -105,7 +105,7 @@ Follow these steps to build the Power Management Application using the Alif Zeph
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   For the build commands for every supported target, refer to :ref:`Power Management build commands <build-commands-power-management>`.
 
 
 2. Build command for the HE application (TCM boot, S2RAM with retention):

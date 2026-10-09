@@ -90,6 +90,10 @@ Follow these steps to build the CH201 ToF Application using the Alif Zephyr SDK:
 
 2. Build the example application for the M55 HE core:
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`CH201 Time-of-Flight (ToF) Sensor build commands <build-commands-ch201-tof>`.
+
 .. code-block:: console
 
    west build -p always \
