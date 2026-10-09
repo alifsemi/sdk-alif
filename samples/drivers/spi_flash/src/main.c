@@ -397,6 +397,8 @@ int main(void)
 	flash_param = flash_get_parameters(flash_dev);
 
 	printf("****Flash Configured Parameters******\n");
+	printf("* Bus Speed : %lu Hz\n",
+	       (unsigned long)DT_PROP(DT_PARENT(DT_ALIAS(spi_flash0)), bus_speed));
 	printf("* Num Of Sectors : %d\n", flash_param->num_of_sector);
 	printf("* Sector Size : %d\n", flash_param->sector_size);
 	printf("* Page Size : %d\n", flash_param->page_size);
