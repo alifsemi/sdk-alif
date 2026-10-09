@@ -1,0 +1,83 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * For HSPI0 Test with APS512XXN RAM
+ */
+
+/ {
+	aliases {
+		spi-psram = &aps512xxn;
+	};
+};
+
+&pinctrl_ospi0 {
+	group0 {
+		pinmux = <PIN_P2_0__OSPI0_D0_B>,
+			 <PIN_P2_1__OSPI0_D1_B>,
+			 <PIN_P2_2__OSPI0_D2_B>,
+			 <PIN_P2_3__OSPI0_D3_B>,
+			 <PIN_P2_4__OSPI0_D4_B>,
+			 <PIN_P2_5__OSPI0_D5_B>,
+			 <PIN_P2_6__OSPI0_D6_B>,
+			 <PIN_P2_7__OSPI0_D7_B>,
+			 <PIN_P16_0__OSPI0_D8_B>,
+			 <PIN_P16_1__OSPI0_D9_B>,
+			 <PIN_P16_2__OSPI0_D10_B>,
+			 <PIN_P16_3__OSPI0_D11_B>,
+			 <PIN_P16_4__OSPI0_D12_B>,
+			 <PIN_P16_5__OSPI0_D13_B>,
+			 <PIN_P16_6__OSPI0_D14_B>,
+			 <PIN_P16_7__OSPI0_D15_B>;
+		read-enable = <0x1>;
+		drive-strength = <12>;
+		slew-rate = <0x1>;
+		schmitt-enable = <0x0>;
+	};
+	group1 {
+		pinmux = <PIN_P3_0__OSPI0_SCLK_B>,
+			 <PIN_P3_1__OSPI0_SCLKN_B>,
+			 <PIN_P3_2__OSPI0_SS0_B>;
+		drive-strength = <12>;
+		slew-rate = <0x1>;
+		read-enable = <0x0>;
+		schmitt-enable = <0x0>;
+	};
+	group2 {
+		pinmux = <PIN_P1_6__OSPI0_RXDS_B>,
+			 <PIN_P8_5__OSPI0_RXDS1_A>;
+		read-enable = <0x1>;
+		drive-strength = <12>;
+		slew-rate = <0x1>;
+		schmitt-enable = <0x0>;
+	};
+};
+
+&ospi0 {
+	/* APS512XXN signal delays calibrated at 200 MHz on E8 AppKit. */
+	bus-speed = <200000000>;
+	enable-signal-delay;
+	txd-delays = <5 5 5 3 5 7 4 4 9 8 8 8 8 8 8 8>;
+	rxd-delays = <2 3 3 2 3 2 1 2 3 2 3 3 3 3 3 3>;
+	ssi-oe-n-delays = <0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0>;
+	rx-ds-delays = <8 3>;
+	txd-dm-delays = <7 5>;
+	dm-oe-n-delays = <0 0>;
+	sclk-delay = <0>;
+	sclkn-delay = <0>;
+	ss-n-delays = <0 0>;
+	ddr-drive-edge = <0>;
+	status = "okay";
+};
+
+&aps512xxn {
+	latency-code = <7>;
+	x16-data-transfer-mode;
+	status = "okay";
+};
