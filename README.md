@@ -23,6 +23,10 @@ Stay updated with the latest changes:
 
 For complete details on the latest released version, see the [Release Notes](https://github.com/alifsemi/sdk-alif/releases/download/v2.4.0/release_notes.pdf).
 
+## Build and view the documentation
+
+The User Guide, Application Notes, Release Notes, and SDK documentation can be built as HTML on your machine. See [doc/README.md](doc/README.md).
+
 ## Getting the Alif SDK
 
 To obtain or update the Alif SDK, you need **Git** and **West** installed.
