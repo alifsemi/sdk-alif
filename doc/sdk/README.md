@@ -4,20 +4,21 @@ This directory contains the Alif Semiconductor SDK technical documentation, whic
 
 ## Prerequisites
 
-See [alif/doc/README.md](../README.md) for complete prerequisites and installation instructions.
+See [doc/README.md](../README.md) for complete prerequisites and installation instructions.
 
 ## Building the Documentation
 
 ### HTML Output
 
-To build the documentation in HTML format:
+From the repository root, with the documentation virtual environment activated:
 
 ```bash
-cd alif/doc/sdk
+cd doc/sdk
 make html
+xdg-open build/html/index.html
 ```
 
-The output will be in `build/html/index.html`.
+The output is `build/html/index.html`.
 
 For a single-page HTML version:
 
