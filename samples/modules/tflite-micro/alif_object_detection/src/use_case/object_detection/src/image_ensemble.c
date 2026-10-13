@@ -79,8 +79,21 @@ static int output_height;
 /*
  * Camera fills the raw_image buffer.
  * Bayer->RGB conversion transfers into the rgb_image buffer.
+ *
+ * Without the ISP this holds the full sensor crop before it is resized to the
+ * model input. With the ISP, the hardware scaler already emits the size
+ * requested from image_init() (the 192x192 model input). Keeping the crop-sized
+ * buffer in that case overflows SRAM1 on E8: the OV5675 frame, the D/AVE 2D
+ * heap, the tensor arena and the LCD image do not fit in 4 MB.
  */
-static uint8_t image_data[CIMAGE_RGB_WIDTH_MAX * CIMAGE_RGB_HEIGHT_MAX * RGB_BYTES]
+#if ISP_ENABLED
+#define IMAGE_DATA_MAX_W 192
+#define IMAGE_DATA_MAX_H 192
+#else
+#define IMAGE_DATA_MAX_W CIMAGE_RGB_WIDTH_MAX
+#define IMAGE_DATA_MAX_H CIMAGE_RGB_HEIGHT_MAX
+#endif
+static uint8_t image_data[IMAGE_DATA_MAX_W * IMAGE_DATA_MAX_H * RGB_BYTES]
 #if defined(CONFIG_SOC_SERIES_E8)
 	__section("SRAM1.camera_frame_bayer_to_rgb_buf");
 #elif defined(CONFIG_SOC_SERIES_E1C)
@@ -168,6 +181,14 @@ int image_init(int req_output_width, int req_output_height)
 	int i = 0;
 	int ret;
 
+	if (req_output_width <= 0 || req_output_height <= 0 ||
+	    (size_t)req_output_width * (size_t)req_output_height * RGB_BYTES >
+		    sizeof(image_data)) {
+		LOG_ERR("Output %dx%d exceeds the RGB buffer (%zu bytes)",
+			req_output_width, req_output_height, sizeof(image_data));
+		return -1;
+	}
+
 	output_width = req_output_width;
 	output_height = req_output_height;
 
@@ -212,7 +233,14 @@ int image_init(int req_output_width, int req_output_height)
 			fmt.height = fcap->height_min;
 		}
 #else
-		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P) {
+		if (fcap->pixelformat == VIDEO_PIX_FMT_Y10P &&
+		    fcap->width_min == CIMAGE_X && fcap->height_min == CIMAGE_Y) {
+			/*
+			 * Select the exact resolution the image pipeline is built
+			 * for (CIMAGE_X x CIMAGE_Y). The downstream buffers, crop
+			 * math and RAW10->RAW8 conversion are dimensioned at compile
+			 * time, so no other resolution can be processed correctly.
+			 */
 			fmt.pixelformat = VIDEO_PIX_FMT_Y10P;
 			fmt.width = fcap->width_min;
 			fmt.height = fcap->height_min;
@@ -222,7 +250,13 @@ int image_init(int req_output_width, int req_output_height)
 	}
 
 	if (fmt.pixelformat == 0) {
-		LOG_ERR("Desired Pixel format is not supported.");
+#if CAMERA_OUTPUT_RGB565
+		LOG_ERR("Sensor does not advertise the required RGB565 %ux%u mode",
+			CIMAGE_X, CIMAGE_Y);
+#else
+		LOG_ERR("Sensor does not advertise the required Y10P %ux%u mode",
+			CIMAGE_X, CIMAGE_Y);
+#endif
 		return -1;
 	}
 
