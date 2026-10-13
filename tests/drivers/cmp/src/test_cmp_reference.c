@@ -13,6 +13,10 @@ LOG_MODULE_DECLARE(ALIF_CMP);
 
 ZTEST(cmp_Reference, test_Comp_ref_dac6)
 {
+	if (CMP_IS_LPCMP) {
+		LOG_INF("Skipping DAC6: LPCMP has no internal negative");
+		ztest_test_skip();
+	}
 #if defined(CONFIG_REF_DAC6)
 	zassert_true(!strcmp(CMP_NEGATIVE_INPUT, "CMP_NEG_IN3"),
 		"Expected negative_input CMP_NEG_IN3 for DAC6, got %s", CMP_NEGATIVE_INPUT);
@@ -25,6 +29,10 @@ ZTEST(cmp_Reference, test_Comp_ref_dac6)
 
 ZTEST(cmp_Reference, test_Comp_int_vref)
 {
+#if CMP_IS_LPCMP
+	LOG_INF("Skipping internal Vref: LPCMP negative is an external analog pin");
+	ztest_test_skip();
+#else
 #if defined(CONFIG_REF_VREF)
 	zassert_true(!strcmp(CMP_NEGATIVE_INPUT, "CMP_NEG_IN2"),
 		"Expected negative_input CMP_NEG_IN2 for internal Vref, got %s",
@@ -34,10 +42,16 @@ ZTEST(cmp_Reference, test_Comp_int_vref)
 #else
 	ztest_test_skip();
 #endif
+#endif
 }
 
 ZTEST(cmp_Reference, test_Comp_ref_external_pin)
 {
+#if CMP_IS_LPCMP
+	LOG_INF("LPCMP reference: external pin via %s (DC on P2_0)",
+		CMP_NEGATIVE_INPUT);
+	Comp_func(6);
+#else
 #if defined(CONFIG_REF_EXT)
 	zassert_true(!strcmp(CMP_NEGATIVE_INPUT, "CMP_NEG_IN0"),
 		"Expected negative_input CMP_NEG_IN0 for external pin, got %s", CMP_NEGATIVE_INPUT);
@@ -45,6 +59,7 @@ ZTEST(cmp_Reference, test_Comp_ref_external_pin)
 	Comp_func_ref_ext(6);
 #else
 	ztest_test_skip();
+#endif
 #endif
 }
 
