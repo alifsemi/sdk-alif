@@ -10,5 +10,15 @@ config MODEL_SECTION
 	string "Linker section where ML model is placed"
 	default ".rodata.tflm_model"
 
+config APP_DISPLAY_DIRECT_MODE
+	bool "Render LVGL directly into double-buffered CDC200 framebuffers"
+	depends on CDC200 && LVGL
+	help
+	  Use LVGL DIRECT render mode with two full-screen framebuffers: the
+	  CDC200 driver's own framebuffer plus one extra buffer allocated in
+	  SRAM0. The flush callback page-flips at vblank, which removes the
+	  tearing caused by copying partial renders into the framebuffer that
+	  is being scanned out. Costs one extra full-screen framebuffer of SRAM0.
+
 source "Kconfig.zephyr"
 	
