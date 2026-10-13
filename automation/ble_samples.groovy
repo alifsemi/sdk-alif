@@ -398,4 +398,26 @@ def checkManifestUpdate() {
     return result
 }
 
+def check_hal_alif() {
+    echo "Checking hal_alif PR update exist or not"
+
+    return sh(script: '''
+            cd  /root/alif/zephyr
+            awk '
+            /name: hal_alif/ { found=1; next }
+            found && /^[[:space:]]*-[[:space:]]*name:/ { print "2|"; exit }
+            found && /^[[:space:]]*revision:/ {
+                sub(/^[[:space:]]*revision:[[:space:]]*/, "")
+                print "0|" $0
+                exit
+            }
+            END {
+                if (!found) print "1|"
+            }
+            ' west.yml
+        ''',
+        returnStdout: true
+    ).trim()
+}
+
 return this
