@@ -80,6 +80,17 @@ zephyr_include_directories(
 	src/aipl/
 )
 
+if(CONFIG_LV_USE_DRAW_DAVE2D)
+	zephyr_include_directories(include)
+	zephyr_compile_definitions(ARM_CORTEX_M55_M85=1 BSP_CFG_DCACHE_ENABLED=1)
+endif()
+
+# .lvgl_heap and .lvgl_buf are separate Kconfig options. Include the script
+# when either one asks to be placed in SRAM0.
+if(CONFIG_LV_Z_MEMORY_POOL_CUSTOM_SECTION OR CONFIG_LV_Z_VDB_CUSTOM_SECTION)
+	zephyr_linker_sources(SECTIONS lvgl_sram.ld)
+endif()
+
 add_subdirectory(src/application/api/use_case/alif_ui)
 
 # ---------------------------------------------------------------------------

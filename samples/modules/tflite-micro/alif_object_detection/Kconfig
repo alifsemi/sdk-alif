@@ -41,6 +41,26 @@ config LV_THEME_DEFAULT_DARK
 config LV_Z_MEM_POOL_SIZE
 	default 49152
 
+# D/AVE 2D draws the UI. These defaults apply only while LVGL is enabled, so
+# the headless OV5640 build (CONFIG_LVGL=n) does not pull in the GPU.
+config LV_DEF_REFR_PERIOD
+	default 16
+
+config LV_Z_BITS_PER_PIXEL
+	default 16
+
+config LV_Z_VDB_CUSTOM_SECTION
+	default y
+
+config LV_Z_VDB_ALIGN
+	default 64
+
+config LV_Z_MEMORY_POOL_CUSTOM_SECTION
+	default y
+
+config LV_USE_DRAW_DAVE2D
+	default y
+
 endif # LVGL
 
 config APP_UVC_DISPLAY
@@ -54,6 +74,29 @@ config APP_UVC_DISPLAY
 
 # Common options used by sample_usbd_init.c (only visible with USB_DEVICE_STACK_NEXT).
 source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+# First default wins. Select Helium for the software draw ops the GPU does
+# not handle, without overriding the LVGL default when the display is off.
+choice LV_USE_DRAW_SW_ASM
+	default LV_DRAW_SW_ASM_HELIUM if LVGL
+endchoice
+
+choice LV_COLOR_DEPTH
+	default LV_COLOR_DEPTH_16 if LVGL
+endchoice
+
+config DAVE2D
+	default y if LVGL
+
+config APP_DISPLAY_DIRECT_MODE
+	bool "Render LVGL directly into double-buffered CDC200 framebuffers"
+	depends on CDC200 && LVGL
+	help
+	  Use LVGL DIRECT render mode with two full-screen framebuffers: the
+	  CDC200 driver's own framebuffer plus one extra buffer allocated in
+	  SRAM0. The flush callback page-flips at vblank, which removes the
+	  tearing caused by copying partial renders into the framebuffer that
+	  is being scanned out. Costs one extra full-screen framebuffer of SRAM0.
 
 source "Kconfig.zephyr"
 	

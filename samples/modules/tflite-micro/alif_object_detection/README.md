@@ -15,6 +15,11 @@ The example runs ObjectDetectionHandler() in a loop. They key steps are:
 
 There is also separate thread which updates LVGL graphics.
 
+## Display rendering
+Display builds default to LVGL partial rendering (`CONFIG_APP_DISPLAY_DIRECT_MODE` is off; set it in `prj.conf`). LVGL draws into a strip that is 10% of the panel, 76,800 bytes (75 KiB) for the 480×800 RGB565 MW405, and that strip is copied into the CDC200 framebuffer while the panel is scanning it out.
+
+For two full framebuffers, set `CONFIG_APP_DISPLAY_DIRECT_MODE=y` in `prj.conf`. Direct mode does not use the partial strip. It needs two full-screen RGB565 buffers, 480 × 800 × 2 = 768,000 bytes (750 KiB) each, 1,536,000 bytes (1500 KiB) together. LVGL draws into the back buffer and the flush callback page-flips at vertical blank, so the panel scans a finished frame while the next one is drawn. 
+
 ## Supported hardware
 - Alif E7-DK HP & E8-DK HP & ARX3A0 serial camera & MW-405 display
 - Alif E7-DK HP & E8-DK HP & MT9M114 MIPI serial camera (+ISP on E8) & MW-405 display

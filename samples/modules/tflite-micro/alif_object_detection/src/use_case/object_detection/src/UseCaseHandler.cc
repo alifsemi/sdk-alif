@@ -37,6 +37,12 @@
 #include "ScreenLayout.hpp"
 #include <lvgl.h>
 #include "lv_paint_utils.h"
+#include <zephyr/sys/util.h>
+#include <zephyr/cache.h>
+#if defined(CONFIG_APP_DISPLAY_DIRECT_MODE)
+#include <zephyr/drivers/display/cdc200.h>
+#include <zephyr/linker/section_tags.h>
+#endif
 #endif
 
 #if defined(CONFIG_APP_UVC_DISPLAY)
@@ -79,6 +85,35 @@ ASSERT_DIVISIBLE_BY_16(MIMAGE_X);
 #define LV_ZOOM         (1 * 256)
 #endif
 
+/* The OV5675 selfie module is mounted upside down. Reverse the rows of the
+ * packed RGB888 frame so the preview and the model see the same orientation.
+ */
+#if defined(CONFIG_DT_HAS_OVTI_OV5675_ENABLED)
+namespace {
+void rgb888_vflip(uint8_t *img, uint32_t width, uint32_t height)
+{
+    const uint32_t stride = width * 3;
+    uint8_t row[MIMAGE_X * 3];
+
+    if (width == 0 || height == 0 || stride > sizeof(row)) {
+        LOG_ERR("Cannot flip %" PRIu32 "x%" PRIu32 " RGB frame", width, height);
+        return;
+    }
+
+    uint8_t *top = img;
+    uint8_t *bottom = img + (height - 1) * stride;
+
+    while (top < bottom) {
+        memcpy(row, top, stride);
+        memcpy(top, bottom, stride);
+        memcpy(bottom, row, stride);
+        top += stride;
+        bottom -= stride;
+    }
+}
+} /* namespace */
+#endif
+
 #if defined(CONFIG_LVGL)
 K_THREAD_STACK_DEFINE(lvgl_thread_stack, 1024 * 4);
 static struct k_thread lvgl_thread;
@@ -103,6 +138,7 @@ static void lvgl_worker_thread(void*, void*, void*)
 
 namespace {
 lv_style_t boxStyle;
+
 #if DT_NODE_HAS_STATUS(DT_NODELABEL(sram1), okay)
 #define LVGL_IMAGE_SECTION __section("SRAM1.lcd_image_buf")
 #else
@@ -115,13 +151,117 @@ lv_style_t boxStyle;
 #else
 #error "Unsupported LVGL color depth"
 #endif
-LVGL_IMAGE_COLOR lvgl_image[LIMAGE_Y][LIMAGE_X] LVGL_IMAGE_SECTION;
+LVGL_IMAGE_COLOR lvgl_image[LIMAGE_Y][LIMAGE_X] LVGL_IMAGE_SECTION __aligned(128);
 
 /* Pre-allocated pool of detection box objects to avoid per-frame alloc/free */
 static constexpr int MAX_DETECTION_BOXES = 10;
 static lv_obj_t *boxPool[MAX_DETECTION_BOXES] = {};
 static int boxPoolSize = 0;
 };
+
+/*
+ * Partial mode copies this buffer into the CDC200 framebuffer. D/AVE 2D writes
+ * it from the GPU, so drop stale CPU cache lines before that copy. Also used
+ * when direct mode is selected but the CDC200 framebuffer cannot be adopted.
+ */
+extern "C" void lvgl_flush_cb_16bit(lv_display_t *display, const lv_area_t *area, uint8_t *px_map);
+
+static void partial_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+    uint32_t w = (uint32_t)(area->x2 - area->x1 + 1);
+    uint32_t h = (uint32_t)(area->y2 - area->y1 + 1);
+    uint32_t stride = ROUND_UP(w * (LV_COLOR_DEPTH / 8), LV_DRAW_BUF_STRIDE_ALIGN);
+
+    sys_cache_data_flush_and_invd_range(px_map, stride * h);
+    lvgl_flush_cb_16bit(disp, area, px_map);
+}
+
+static void display_partial_mode_init(void)
+{
+    lv_display_t *disp = lv_display_get_default();
+
+    if (disp == nullptr) {
+        LOG_ERR("No LVGL display; cannot install the partial flush");
+        return;
+    }
+
+    lv_display_set_flush_cb(disp, partial_flush_cb);
+    LOG_INF("Display in PARTIAL mode");
+}
+
+#if defined(CONFIG_APP_DISPLAY_DIRECT_MODE)
+#define DISPLAY_NODE DT_CHOSEN(zephyr_display)
+#define DISPLAY_FB_SIZE                                                    \
+    (DT_PROP(DISPLAY_NODE, width) * DT_PROP(DISPLAY_NODE, height) *        \
+     (LV_COLOR_DEPTH / 8))
+
+static uint8_t __alif_sram0_section __aligned(128) lvgl_back_fb[DISPLAY_FB_SIZE];
+
+static const struct device *const display_dev = DEVICE_DT_GET(DISPLAY_NODE);
+static uint8_t *direct_fb_front;
+
+static void direct_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
+    ARG_UNUSED(area);
+
+    if (lv_display_flush_is_last(disp)) {
+        struct cdc200_fb_desc fb;
+        int ret;
+
+        fb.fb_addr = px_map;
+        fb.fb_size = sizeof(lvgl_back_fb);
+
+        sys_cache_data_flush_range(px_map, fb.fb_size);
+        cdc200_swap_fb(display_dev, 0, &fb);
+
+        ret = cdc200_wait_vsync(display_dev, K_MSEC(50));
+        if (ret != 0) {
+            /* A missed semaphore can still leave the new buffer on screen. */
+            cdc200_get_framebuffer(display_dev, 0, &fb);
+            if (fb.fb_addr != px_map) {
+                ret = cdc200_wait_vsync(display_dev, K_MSEC(50));
+                cdc200_get_framebuffer(display_dev, 0, &fb);
+            }
+        }
+        if (ret != 0 && fb.fb_addr != px_map) {
+            uint8_t *scanned = (px_map == lvgl_back_fb) ? direct_fb_front : lvgl_back_fb;
+
+            LOG_ERR("CDC200 vblank timed out (%d)", ret);
+            /* LVGL activates buf2 when this callback returns. Keep the
+             * scanned buffer in buf1 so the next render stays off screen.
+             */
+            lv_display_set_buffers(disp, scanned, px_map, sizeof(lvgl_back_fb),
+                                   LV_DISPLAY_RENDER_MODE_DIRECT);
+        }
+    }
+
+    lv_display_flush_ready(disp);
+}
+
+static void display_direct_mode_init(void)
+{
+    lv_display_t *disp = lv_display_get_default();
+    struct cdc200_fb_desc front;
+
+    cdc200_get_framebuffer(display_dev, 0, &front);
+
+    if (disp == nullptr || front.fb_size != sizeof(lvgl_back_fb)) {
+        LOG_WRN("CDC200 framebuffer is %zu bytes, expected %zu (RGB565 layer 1?); "
+                "staying in PARTIAL mode", front.fb_size, sizeof(lvgl_back_fb));
+        display_partial_mode_init();
+        return;
+    }
+
+    direct_fb_front = front.fb_addr;
+
+    lv_display_set_buffers(disp, lvgl_back_fb, front.fb_addr, front.fb_size,
+                           LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_flush_cb(disp, direct_flush_cb);
+
+    LOG_INF("Display in DIRECT mode, framebuffers %p / %p",
+            (void *)lvgl_back_fb, (void *)front.fb_addr);
+}
+#endif /* CONFIG_APP_DISPLAY_DIRECT_MODE */
 #endif /* CONFIG_LVGL */
 
 namespace alif {
@@ -160,6 +300,12 @@ namespace app {
     bool ObjectDetectionInit()
     {
 #if defined(CONFIG_LVGL)
+#if defined(CONFIG_APP_DISPLAY_DIRECT_MODE)
+        display_direct_mode_init();
+#else
+        display_partial_mode_init();
+#endif
+
         LOG_DBG("ScreenLayoutInit");
 
         /* zero image data */
@@ -169,7 +315,7 @@ namespace app {
 
         lv_label_set_text_static(ScreenLayoutHeaderObject(), "Face Detection");
         lv_label_set_text_static(ScreenLayoutLabelObject(0), "Faces Detected: 0");
-        lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (24-bit)");
+        lv_label_set_text_static(ScreenLayoutLabelObject(1), "192px image (16-bit)");
 
         lv_style_init(&boxStyle);
         lv_style_set_bg_opa(&boxStyle, LV_OPA_TRANSP);
@@ -254,6 +400,10 @@ namespace app {
             LOG_ERR("Couldn't get image data");
             return false;
         }
+
+#if defined(CONFIG_DT_HAS_OVTI_OV5675_ENABLED)
+        rgb888_vflip(imageDataPtr, MIMAGE_X, MIMAGE_Y);
+#endif
 
 #if defined(CONFIG_LVGL)
         k_mutex_lock(&lvgl_mutex, K_FOREVER);
