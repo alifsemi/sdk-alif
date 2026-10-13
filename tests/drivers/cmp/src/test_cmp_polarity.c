@@ -13,13 +13,18 @@ LOG_MODULE_DECLARE(ALIF_CMP);
 
 ZTEST(cmp_Polarity, test_Comp_Polarity)
 {
+#if !CMP_HAS_POLARITY
+	TC_PRINT("Skipping polarity test: polarity_en is not applicable/enabled\n");
+	ztest_test_skip();
+#else
 	if (!CMP_POLARITY_EN) {
-		TC_PRINT("Skipping polarity test: polarity_en is not enabled in DTS\n");
+		TC_PRINT("Skipping polarity test: polarity_en is not applicable/enabled\n");
 		ztest_test_skip();
 		return;
 	}
 
 	Comp_func(5);
+#endif
 }
 
 ZTEST_SUITE(cmp_Polarity, NULL, NULL, NULL, NULL, NULL);
