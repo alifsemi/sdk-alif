@@ -36,8 +36,13 @@
 #define CIMAGE_Y                (972)
 #define CIMAGE_COLOR_CORRECTION (0)
 #define CIMAGE_EXPOSURE_CALC    (0)
-#define CIMAGE_RGB_WIDTH_MAX    (800)
-#define CIMAGE_RGB_HEIGHT_MAX   (800)
+/*
+ * Center-crop before demosaic. 800x800x3 (1.92 MB) plus the D/AVE 2D heap,
+ * tensor arena and LCD image overflow E8 SRAM1; 640x640x3 (1.23 MB) fits
+ * and is still well above the 192x192 model input.
+ */
+#define CIMAGE_RGB_WIDTH_MAX    (640)
+#define CIMAGE_RGB_HEIGHT_MAX   (640)
 #define CAMERA_OUTPUT_RGB565    (0)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
 #elif CONFIG_DT_HAS_APTINA_MT9M114_ENABLED

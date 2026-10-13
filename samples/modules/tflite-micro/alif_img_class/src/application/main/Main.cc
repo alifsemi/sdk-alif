@@ -33,8 +33,13 @@
 #include <zephyr/logging/log.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/display.h>
+#include <zephyr/linker/section_tags.h>
 #include <soc_common.h>
 #include <se_service.h>
+
+#if defined(CONFIG_DAVE2D)
+#include <dave_d0lib.h>
+#endif
 
 #define DISPLAY_NODE          DT_CHOSEN(zephyr_display)
 
@@ -188,6 +193,9 @@ static int app_set_parameters(void)
 	runp.phy_pwr_gating |= MIPI_TX_DPHY_MASK | MIPI_RX_DPHY_MASK |
 		MIPI_PLL_DPHY_MASK | LDO_PHY_MASK;
 	runp.ip_clock_gating = CDC200_MASK | CAMERA_MASK | MIPI_CSI_MASK | MIPI_DSI_MASK;
+#if defined(CONFIG_DAVE2D)
+	runp.ip_clock_gating |= GPU_MASK;
+#endif
 
 	ret = se_service_set_run_cfg(&runp);
 	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
@@ -200,6 +208,23 @@ static int app_set_parameters(void)
 
 	return 0;
 }
+
+#if defined(CONFIG_DAVE2D)
+#define DAVE2D_HEAP_SIZE (32 * 1024)
+static uint8_t __alif_sram1_section dave2d_heap[DAVE2D_HEAP_SIZE];
+
+static int dave2d_heap_init(void)
+{
+	if (!d0_initheapmanager(dave2d_heap, sizeof(dave2d_heap), d0_mm_fixed_range,
+				NULL, 0, 0, d0_mm_fixed_range, d0_ma_unified)) {
+		LOG_ERR("Failed to initialise the D/AVE 2D heap manager");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+SYS_INIT(dave2d_heap_init, POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+#endif
 
 SYS_INIT(app_set_parameters, PRE_KERNEL_1, 46);
 SYS_INIT(app_set_dsi_cdc, APPLICATION, APP_SET_DSI_CDC_PRIORITY);

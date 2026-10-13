@@ -45,8 +45,13 @@
 #define CIMAGE_Y                (972)
 #define CIMAGE_COLOR_CORRECTION (0)
 #define CIMAGE_EXPOSURE_CALC    (0)
-#define CIMAGE_RGB_WIDTH_MAX    (800)
-#define CIMAGE_RGB_HEIGHT_MAX   (800)
+/*
+ * Center-crop before demosaic. 800x800x3 (1.92 MB) plus the D/AVE 2D heap,
+ * tensor arena and LCD image overflow E8 SRAM1; 640x640x3 (1.23 MB) fits
+ * and is still ~2.9x the 224x224 model input.
+ */
+#define CIMAGE_RGB_WIDTH_MAX    (640)
+#define CIMAGE_RGB_HEIGHT_MAX   (640)
 #define CAM_BAYER_FORMAT        (AIPL_BAYER_GRBG)
 #elif RTE_MT9M114_CAMERA_SENSOR_ENABLE // MT9M114 RTE
 /*
