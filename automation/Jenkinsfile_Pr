@@ -119,11 +119,11 @@ pipeline {
                         usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
                         job_config.repo = "${GITHUB_REPO_NAME}"
                         for (String label : pr_labels) {
-                            echo "remove existing build label [$label]"
+                            echo "remove existing build label [$label] for repo ${job_config.repo}"
                             job_config.label = label
                             utils.github.removeLabel(job_config)
                         }
-                        echo "remove existing build label $pr_additional_label"
+                        echo "remove existing build label $pr_additional_label for repo ${job_config.repo}"
                         job_config.label = pr_additional_label[0]
                         utils.github.removeLabel(job_config)
                     }
@@ -300,6 +300,7 @@ pipeline {
                                     } else {
                                         echo("""Zephyr PR Number mis-match:
                                             ${zephyr_pr_number}(${manifestCheckResult.pullRequestNumber})""")
+                                        zephyr_pr_number = manifestCheckResult.pullRequestNumber
                                     }
                                 } else {
                                     echo("""Zephyr PR number not able to find, no web link in PR body, in diff
@@ -369,8 +370,10 @@ pipeline {
                                             hal_alif_pr_closed = 1
                                         }
 
-                                        def pr_response   = utils.github.getPullRequestBody(job_config)
-                                        def hal_pr_number = 0
+                                        job_config.repo      = job_config.zephyr_repo
+                                        job_config.prNumber  = zephyr_pr_number
+                                        def pr_response      = utils.github.getPullRequestBody(job_config)
+                                        def hal_pr_number    = 0
                                         if (pr_response instanceof String && pr_response.trim()) {
                                             def pullMatcher = pr_response =~ /alifsemi\/hal_alif\/pull\/(\d+)/
 
@@ -413,16 +416,16 @@ pipeline {
                                             for (int i = 0; i < Math.min(2, pr_labels.size()); i++) {
                                                 String label = pr_labels[i]
 
-                                                echo "remove existing build label [$label]"
+                                                echo "remove existing build label [$label] for repo ${job_config.repo}"
                                                 job_config.label = label
                                                 utils.github.removeLabel(job_config)
                                             }
 
-                                            echo "remove existing build label ManifestUpdateReq"
+                                            echo "remove existing build label ManifestUpdateReq for repo ${job_config.repo}"
                                             job_config.label = "ManifestUpdateReq"
                                             utils.github.removeLabel(job_config)
 
-                                            echo "remove existing build label BUILD_AWAITING"
+                                            echo "remove existing build label BUILD_AWAITING for repo ${job_config.repo}"
                                             job_config.label = "BUILD_AWAITING"
                                             utils.github.removeLabel(job_config)
                                         }
@@ -434,16 +437,16 @@ pipeline {
                                 for (int i = 0; i < Math.min(2, pr_labels.size()); i++) {
                                     String label = pr_labels[i]
 
-                                    echo "remove existing build label [$label]"
+                                    echo "remove existing build label [$label] for repo ${job_config.repo}"
                                     job_config.label = label
                                     utils.github.removeLabel(job_config)
                                 }
 
-                                echo "remove existing build label ManifestUpdateReq"
+                                echo "remove existing build label ManifestUpdateReq for repo ${job_config.repo}"
                                 job_config.label = "ManifestUpdateReq"
                                 utils.github.removeLabel(job_config)
 
-                                echo "remove existing build label BUILD_AWAITING"
+                                echo "remove existing build label BUILD_AWAITING for repo ${job_config.repo}"
                                 job_config.label = "BUILD_AWAITING"
                                 utils.github.removeLabel(job_config)
                             }
@@ -460,18 +463,18 @@ pipeline {
                             job_config.label     = pr_labels[0]
                             job_config.repo      = job_config.pr_repo
                             job_config.prNumber  = "${CHANGE_ID}"
-                            echo "Add labels     => ${job_config.label}"
+                            echo "Add labels for repo ${job_config.repo}   => ${job_config.label}"
                             utils.github.addLabel(job_config)
                             if(zephyr_pr_number && !zephyr_pr_closed) {
                                 job_config.repo      = job_config.zephyr_repo
                                 job_config.prNumber  = zephyr_pr_number
-                                echo "Add labels     => ${job_config.label}"
+                                echo "Add labels for repo ${job_config.repo}   => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
                             if(hal_alif_pr_number && !hal_alif_pr_closed) {
                                 job_config.repo      = "hal_alif"
                                 job_config.prNumber  = hal_alif_pr_number
-                                echo "Add labels     => ${job_config.label}"
+                                echo "Add labels for repo ${job_config.repo}  => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
                     }
@@ -489,20 +492,20 @@ pipeline {
                             job_config.label     = pr_labels[1]
                             job_config.repo      = job_config.pr_repo
                             job_config.prNumber  = "${CHANGE_ID}"
-                            echo "Add labels     =>  ${job_config.label}"
+                            echo "Add labels for repo ${job_config.repo}   =>  ${job_config.label}"
                             utils.github.addLabel(job_config)
 
                             if(zephyr_pr_number && !zephyr_pr_closed) {
                                 job_config.repo      = job_config.zephyr_repo
                                 job_config.prNumber  = zephyr_pr_number
-                                echo "Add labels for zephyr  => ${job_config.label}"
+                                echo "Add labels for repo ${job_config.repo}  => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
 
                             if(hal_alif_pr_number && !hal_alif_pr_closed) {
                                 job_config.repo      = "hal_alif"
                                 job_config.prNumber  = hal_alif_pr_number
-                                echo "Add labels for hal_alif => ${job_config.label}"
+                                echo "Add labels for repo ${job_config.repo} => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
 
@@ -510,14 +513,14 @@ pipeline {
                                 job_config.label     = pr_additional_label[0]
                                 job_config.repo      = job_config.pr_repo
                                 job_config.prNumber  = "${CHANGE_ID}"
-                                echo "Add labels     => ${job_config.label}"
+                                echo "Add labels for repo ${job_config.repo}   => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
                             if (hal_alif_pr_pull_head_flag) {
                                 job_config.label     = pr_additional_label[0]
                                 job_config.repo      = job_config.zephyr_repo
                                 job_config.prNumber  = zephyr_pr_number
-                                echo "Add labels     => ${job_config.label}"
+                                echo "Add labels for repo ${job_config.repo}   => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
                         }
