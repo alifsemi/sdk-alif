@@ -8,8 +8,22 @@
  *
  */
 
- / {
+#include <zephyr/dt-bindings/clock/alif_ensemble_clocks.h>
+
+/ {
+	aliases {
+		/* Used by the D/AVE 2D (d1) layer to locate the GPU node. */
+		d2-inst = &gpu2d;
+	};
+
 	soc {
+		gpu2d: dave2d@49040000 {
+			compatible = "tes,dave2d";
+			reg = <0x49040000 0x1000>;
+			interrupts = <332 2>;
+			clocks = <&clockctrl ALIF_GPU_CLK>;
+		};
+
 		cdc200: cdc200@49031000 {
 			width = <480>;
 			height = <800>;
