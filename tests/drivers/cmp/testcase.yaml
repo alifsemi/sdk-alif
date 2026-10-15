@@ -2,12 +2,45 @@ common:
   tags: drivers cmp
   depends_on: cmp
   harness: ztest
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
 tests:
   drivers.cmp:
-    platform_allow:
-      - alif_e7_dk/ae722f80f55d5xx/rtss_he
-      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
-    integration_platforms:
-      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_dtc_overlay_files:
+      - boards/alif_cmp1.overlay
+  drivers.cmp.lpcmp:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+  drivers.cmp.lpcmp.ref_ext:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_ref_ext.overlay
+  drivers.cmp.lpcmp.hys6:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_hys6.overlay
+  drivers.cmp.lpcmp.hys12:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_hys12.overlay
+  drivers.cmp.lpcmp.hys18:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_hys18.overlay
+  drivers.cmp.lpcmp.hys24:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_hys24.overlay
+  drivers.cmp.lpcmp.hys30:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_hys30.overlay
+  drivers.cmp.lpcmp.hys36:
+    extra_dtc_overlay_files:
+      - boards/alif_lpcmp.overlay
+      - boards/alif_lpcmp_hys36.overlay
