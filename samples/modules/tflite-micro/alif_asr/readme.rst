@@ -25,7 +25,7 @@ Requirements
 ************
 
 - Alif Ensemble or Balletto Development Kit
-- For Balletto Development Kit, some modifications are required to be done.
+- For Balletto and E1C Evaluation Kits, some modifications are required to be done.
 	- remove resistor R64
 	- add jumper wire between SW5 (P5_7) and P15_0 to use button as Push-to-talk button
 
@@ -45,6 +45,18 @@ To build the sample, you first need to pull in the optional dependencies and set
 
 The last command downloads the ML models and compiles them with Vela for the Ethos-U NPU.
 The generated model and labels source code is produced automatically at CMake configure time.
+
+*NOTE:* For Balletto and E1C Evaluation Kits, model needs to be compiled with Vela for a smaller arena.
+In the project root directory, run the following commands:
+
+.. code-block:: console
+
+    cd modules/alif-mlek
+    source resources_downloaded/env/bin/activate
+    vela --output-dir vela_output --accelerator-config ethos-u55-128 --optimise Size --config scripts/vela/ensemble_vela.ini --system-config RTSS_HE_SRAM_MRAM --memory-mode Shared_Sram resources_downloaded/asr/wav2letter_pruned_int8.tflite
+    cd ../..
+
+modules/alif-mlek/vela_output/wav2letter_pruned_int8_vela.tflite will be generated.
 
 Build the sample for the Alif Ensemble Development Kit with the following command:
 
@@ -73,7 +85,7 @@ Build the sample for the Alif E8 Application Kit with the following command:
 
 Flashing
 ********
-1. In this example the ospi1.bin is flashed to ospi flash and zephyr.bin is flashed to the internal flash.
+1. In this example the ospi0.bin or ospi1_b1.bin (depending on the board) is flashed to ospi flash and zephyr.bin is flashed to the internal flash.
 2. *HOX*  For E8 application kit, please run the byte swap on the ospi1.bin file before flashing:
    python3 alif/samples/modules/tflite-micro/alif_asr/misc/byte_swap_ospi1.py build_asr/zephyr/ospi1.bin
 3. When flashing the zephyr.bin, please use alif_asr.json from misc folder for flashing configuration.

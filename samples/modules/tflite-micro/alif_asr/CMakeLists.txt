@@ -118,14 +118,34 @@ if (NOT DEFINED ETHOS_U_NPU_CONFIG_ID)
 endif()
 
 # Model file path
-set(ASR_MODEL_PATH ${RESOURCES_PATH}/asr/wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite
+if (CONFIG_SOC_SERIES_B1 OR CONFIG_SOC_SERIES_E1C)
+    # Alif Balletto (B1) and Ensemble E1C have only ~1.5MB of on-chip RAM, so the
+    # default model (compiled with a 2MB arena) does not fit. Use a model compiled
+    # with Vela for a smaller arena (--optimise Size), see readme.
+    set(_asr_default_model ${MLEK_ROOT}/vela_output/wav2letter_pruned_int8_vela.tflite)
+    set(_asr_model_hint
+        "Run set_up_default_resources.py first:\n"
+        "  python3 ${MLEK_ROOT}/set_up_default_resources.py\n"
+        "Balletto and E1C need a model compiled with Vela for a smaller arena. Run in ${MLEK_ROOT}:\n"
+        "  vela --output-dir vela_output --accelerator-config ethos-u55-128 --optimise Size "
+        "--config scripts/vela/ensemble_vela.ini --system-config RTSS_HE_SRAM_MRAM "
+        "--memory-mode Shared_Sram resources_downloaded/asr/wav2letter_pruned_int8.tflite\n")
+else()
+    set(_asr_default_model
+        ${RESOURCES_PATH}/asr/wav2letter_pruned_int8_vela_${ETHOS_U_NPU_CONFIG_ID}.tflite)
+    set(_asr_model_hint
+        "Run set_up_default_resources.py first:\n"
+        "  python3 ${MLEK_ROOT}/set_up_default_resources.py\n")
+endif()
+
+# Can still be overridden with -DASR_MODEL_PATH=<path>
+set(ASR_MODEL_PATH ${_asr_default_model}
     CACHE FILEPATH "Path to the ASR TFLite model (Vela-compiled)")
 
 if (NOT EXISTS ${ASR_MODEL_PATH})
     message(FATAL_ERROR
         "ASR model not found at ${ASR_MODEL_PATH}\n"
-        "Run set_up_default_resources.py first:\n"
-        "  python3 ${MLEK_ROOT}/set_up_default_resources.py\n")
+        ${_asr_model_hint})
 endif()
 
 set(EXTRA_MODEL_CODE
