@@ -85,8 +85,7 @@ Follow these steps to build the CH201 ToF Application using the Alif Zephyr SDK:
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
 
 .. note::
-   The CH201 ToF feature is supported **only** on the **Alif E8 AppKit**.
-   It is not applicable to other boards.
+   CH201 is supported only on the Alif E8 AppKit. It is not supported on other boards.
 
 2. Build the example application for the M55 HE core:
 
