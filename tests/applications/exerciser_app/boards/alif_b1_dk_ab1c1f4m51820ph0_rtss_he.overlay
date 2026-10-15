@@ -1,0 +1,181 @@
+/*
+ * Copyright (c) 2025 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+/{
+	aliases {
+		spi-flash0 = &ospi_flash;
+		audio-codec = &audio_codec;
+		i2s-bus = &i2s0;
+		i2s-codec-tx = &i2s0;
+		master-spi = &lpspi0;
+	};
+};
+
+&pinctrl {
+	pinctrl_flash:pinctrl_flash {
+		group0 {
+			pinmux = <PIN_P4_2__OSPI0_SCLK_A>,
+				 <PIN_P2_1__OSPI0_SS1_B>;
+			read-enable = <0x0>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+		group1 {
+			pinmux = <PIN_P4_1__OSPI0_RXDS_A>,
+				 <PIN_P3_0__OSPI0_D0_A>,
+				 <PIN_P3_1__OSPI0_D1_A>,
+				 <PIN_P3_2__OSPI0_D2_A>,
+				 <PIN_P3_3__OSPI0_D3_A>,
+				 <PIN_P3_4__OSPI0_D4_A>,
+				 <PIN_P3_5__OSPI0_D5_A>,
+				 <PIN_P3_6__OSPI0_D6_A>,
+				 <PIN_P3_7__OSPI0_D7_A>;
+			read-enable = <0x1>;
+			drive-strength = <12>;
+			slew-rate = <0x1>;
+		};
+	};
+
+	pinctrl_ahi_trace: pinctrl_ahi_trace {
+		group0 {
+			pinmux = <PIN_P8_7__EXT_TX_B>,
+				 <PIN_P8_3__EXT_RTS_B>,
+				 <PIN_P8_5__EXT_TRACE_B>;
+			read-enable = < 0x0 >;
+		};
+	};
+};
+
+&ospi0 {
+	pinctrl-0 = <&pinctrl_flash>;
+	status = "okay";
+};
+
+&ospi_flash {
+	status = "okay";
+};
+
+#define SPI_MASTER_SS_SW_CONTROLLED_GPIO   0
+
+&dma2 {
+	status = "okay";
+};
+
+&lpspi0 {
+	status = "okay";
+
+	dmas = <&dma2 0 13>, <&dma2 1 12>;
+	dma-names = "txdma", "rxdma";
+
+#if SPI_MASTER_SS_SW_CONTROLLED_GPIO
+	cs-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
+	interrupts = <46 0>;
+#endif
+};
+
+#if SPI_MASTER_SS_SW_CONTROLLED_GPIO
+&pinctrl_lpspi0 {
+	group0 {
+		pinmux = < PIN_P1_3__LPSPI_MISO_A >,
+			 < PIN_P1_4__LPSPI_MOSI_A >,
+			 < PIN_P1_5__LPSPI_SCLK_A >,
+			 < PIN_P2_0__GPIO >;
+		read-enable = < 0x1 >;
+	};
+};
+
+&gpio2 {
+	status = "okay";
+};
+#endif
+ns: &ns {
+	reg = <0x20060000 DT_SIZE_K(512)>;
+	status = "okay";
+};
+
+/* GPIO0 is needed for SDHC sd-vsel regulator */
+&gpio0 {
+	status = "okay";
+};
+
+/* GPIO7 is needed for SDHC sd-pwr regulator */
+&gpio7 {
+	status = "okay";
+};
+
+sdhc: &sdhc {
+	status = "okay";
+	mmc {
+		status = "okay";
+		disk-name = "SD";
+	};
+};
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "Zephyr USB CDC-ACM";
+	};
+};
+
+&i3c0 {
+	status = "okay";
+
+	bmi323: bmi323@69000003b810431000 {
+		compatible = "bosch,bmi323";
+		reg = <0x69 0x03b8 0x10431000>;
+		/* Dynamic Address To Be Assigned To The Device */
+		assigned-address = <0xA>;
+		int-gpios	 = <&gpio6 6 GPIO_ACTIVE_HIGH>;
+		status		 = "okay";
+	};
+};
+
+&pinctrl_gpio6 {
+	group0 {
+		/* Enable only Port-6 Pin-6 */
+		pinmux = <PIN_P6_6__GPIO>;
+	};
+};
+
+&gpio6 {
+	pinctrl-0		= <&pinctrl_gpio6>;
+	pinctrl-names	= "default";
+	status			= "okay";
+};
+
+&i2s0 {
+	status = "okay";
+};
+
+&pinctrl_i2s0 {
+	group0 {
+		pinmux = <PIN_P2_4__I2S0_SDI_B>,
+				<PIN_P2_5__I2S0_SDO_B>,
+				<PIN_P1_6__I2S0_SCLK_A>,
+				<PIN_P1_7__I2S0_WS_A>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	audio_codec: wm8904@1a {
+		compatible = "wolfson,wm8904";
+		reg = <0x1a>;
+		clock-source = "MCLK";
+		status = "okay";
+	};
+};

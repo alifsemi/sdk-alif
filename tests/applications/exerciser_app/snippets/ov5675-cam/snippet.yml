@@ -1,0 +1,14 @@
+#
+# Copyright 2026 Alif Semiconductor.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: ov5675-cam
+
+boards:
+  # E8 Ensemble boards (gpio3 for cd, gpio14 for reset)
+  /(alif_e8).*/.*/rtss_(hp|he)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: ov5675_mipi_isp_viewfinder.overlay
+      EXTRA_CONF_FILE: isp.conf

@@ -1,0 +1,64 @@
+/*
+ * Copyright (c) 2025 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+#define SPI_MASTER_SS_SW_CONTROLLED_GPIO	0
+
+/ {
+
+	aliases {
+		master-spi = &lpspi0;
+	};
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&lpspi0 {
+	status = "okay";
+
+	dmas = <&dma2 0 13>, <&dma2 1 12>;
+	dma-names = "txdma", "rxdma";
+
+#if SPI_MASTER_SS_SW_CONTROLLED_GPIO
+	cs-gpios = <&gpio2 0 GPIO_ACTIVE_LOW>;
+	interrupts = <46 0>;
+#endif
+};
+
+#if SPI_MASTER_SS_SW_CONTROLLED_GPIO
+&pinctrl_lpspi0 {
+	group0 {
+		pinmux = < PIN_P1_3__LPSPI_MISO_A >,
+			 < PIN_P1_4__LPSPI_MOSI_A >,
+			 < PIN_P1_5__LPSPI_SCLK_A >,
+			 < PIN_P2_0__GPIO >;
+		read-enable = < 0x1 >;
+	};
+};
+
+&gpio2 {
+	status = "okay";
+};
+#endif
+ns: &ns {
+	reg = <0x20060000 DT_SIZE_K(512)>;
+	status = "okay";
+};
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+&zephyr_udc0 {
+	cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+		label = "Zephyr USB CDC-ACM";
+	};
+};
