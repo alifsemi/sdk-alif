@@ -1,0 +1,16 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https: //alifsemi.com/license
+#
+
+description: |
+  Virtual RGB565 display streamed to the host as a USB Video Class webcam
+  (YUY2). Requires a "zephyr,uvc-device" node labelled "uvc".
+
+compatible: "alif,uvc-display"
+
+include: display-controller.yaml
