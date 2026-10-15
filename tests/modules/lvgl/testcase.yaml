@@ -1,0 +1,18 @@
+common:
+  tags:
+    - modules
+    - lvgl
+    - dave2d
+    - gpu2d
+    - display
+  depends_on: display
+  harness: ztest
+  platform_allow:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+tests:
+  modules.lvgl.dave2d:
+    filter: dt_compat_enabled("tes,cdc-2.1")
