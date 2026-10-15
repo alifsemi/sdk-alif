@@ -1,0 +1,25 @@
+/*
+ * Copyright (c) 2026 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+ns: &ns {
+	status = "okay";
+};
+
+/* GPIO14 is needed for SDHC reset */
+&gpio14 {
+	status = "okay";
+};
+
+sdhc: &sdhc {
+	status = "okay";
+	/* eMMC is always present — no card-detect GPIO */
+	/delete-property/ cd-gpios;
+
+	mmc {
+		compatible = "zephyr,mmc-disk";
+		disk-name = "SD2";
+		status = "okay";
+	};
+};
