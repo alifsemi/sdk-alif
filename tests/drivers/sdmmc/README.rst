@@ -7,7 +7,7 @@ This test suite validates the Alif SD/MMC storage interface using the Ztest
 framework. It covers three layers of the storage stack and targets Alif boards
 with SDHC controller support enabled via the ``sdmmc-test`` snippet.
 
-Covered behaviors (SD card suite — 34 tests):
+Covered behaviors (SD card suite — 41 tests):
 
 - SDHC card presence detection
 - SDHC host controller properties (clock frequencies, bus width)
@@ -28,17 +28,37 @@ Covered behaviors (SD card suite — 34 tests):
 - stress: raw sector write/read (100 iterations)
 - stress: file create/delete cycling (20 iterations)
 - stress: disk deinit/reinit cycling (5 iterations)
+- speed modes: host f_max class (Default/SDR12, High Speed/SDR25, UHS)
+  and HS/SDR50/SDR104/DDR50/HS200/HS400 capability bits
+- transfer types: 4-bit bus, ADMA2/SDMA, single-block (1 x 512 B),
+  multi-block (8 x 512 B)
+- performance: raw and FAT write/read of CONFIG_SDMMC_TEST_PERF_KIB
+  (default 256 KiB) in 16 KiB chunks, plus single-block vs multi-block
+  timing for 4 KiB
+
+Do not switch the live card into a different UHS mode from the test
+(that would drop the FAT mount). Caps and f_max report what the host
+negotiated. Throughput numbers are informational; FAIL only on I/O error
+or zero kbps.
 
 Supported Boards
 ****************
 
-- ``alif_b1_dk/ab1c1f4m51820ph0/rtss_he``
-- ``alif_e7_dk/ae722f80f55d5xx/rtss_hp``
-- ``alif_e7_dk/ae722f80f55d5xx/rtss_he``
-- ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp``
-- ``alif_e8_dk/ae822fa0e5597xx0/rtss_he``
+Same testcode on every board. Only the snippet overlay changes.
 
-All tests run on all supported boards.
++-----------------------------------------------+--------+--------+
+| Board                                         | SD     | eMMC   |
++===============================================+========+========+
+| ``alif_e8_dk/ae822fa0e5597xx0/rtss_he``       | yes    | yes    |
++-----------------------------------------------+--------+--------+
+| ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp``       | yes    | yes    |
++-----------------------------------------------+--------+--------+
+| ``alif_e7_dk/ae722f80f55d5xx/rtss_he``        | yes    | yes    |
++-----------------------------------------------+--------+--------+
+| ``alif_e7_dk/ae722f80f55d5xx/rtss_hp``        | yes    | yes    |
++-----------------------------------------------+--------+--------+
+| ``alif_b1_dk/ab1c1f4m51820ph0/rtss_he``       | yes    | yes    |
++-----------------------------------------------+--------+--------+
 
 Test Coverage by Layer
 **********************
@@ -58,6 +78,12 @@ Test Coverage by Layer
 |                   | raw sector cycling, file create/delete,           |
 |                   | deinit/reinit cycling                             |
 +-------------------+---------------------------------------------------+
+| Speed modes       | Host f_max class, HS/UHS capability bits          |
++-------------------+---------------------------------------------------+
+| Transfer types    | 4-bit bus, ADMA2/SDMA, single- vs multi-block     |
++-------------------+---------------------------------------------------+
+| Performance       | Raw and FAT write/read kbps, single vs multi time |
++-------------------+---------------------------------------------------+
 
 Board-specific overlays are managed via the ``sdmmc-test`` snippet under:
 
@@ -74,6 +100,9 @@ Configuration
 Key Kconfig options in ``prj.conf``:
 
 - ``CONFIG_SDHC=y`` — enable SDHC driver (low-level tests)
+- ``CONFIG_SDMMC_TEST_PERF_SECTORS=32`` — I/O chunk (8–64 sectors,
+  default 32 = 16 KiB)
+- ``CONFIG_SDMMC_TEST_PERF_KIB=256`` — timed transfer size (16–1024 KiB)
 - ``CONFIG_SDMMC_TEST_DESTRUCTIVE_SECTOR_ZERO=y`` — enable the destructive
   raw sector 0 test (default n).
 
@@ -86,37 +115,57 @@ Key Kconfig options in ``prj.conf``:
 Building and Running
 ********************
 
-Build for alif_e7_dk/rtss_hp:
+Same test code, two snippets:
+
+- ``-DSNIPPET=sdmmc-test`` — SD slot, disk ``SD``, mount ``/SD:``
+- ``-DSNIPPET=emmc-test`` — on-board eMMC, disk ``SD2``, mount ``/SD2:``
+
+eMMC needs a FAT partition (same as ``fs_sample -S alif-emmc``). CMD8
+errors then legacy MMC are expected. UART should print
+``Storage disk=SD2 mount=/SD2:``.
+
+From ``zephyr/``. Replace ``-DSNIPPET=sdmmc-test`` with ``emmc-test`` for eMMC.
 
 .. code-block:: console
 
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_hp tests/drivers/sdmmc/ \
-       -DSNIPPET=sdmmc-test
+   # E8 HE
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=sdmmc-test
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=emmc-test
 
-Build for alif_e7_dk/rtss_he:
+   # E8 HP
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=sdmmc-test
 
-.. code-block:: console
+   # E7 HE
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=sdmmc-test
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=emmc-test
 
-   west build -b alif_e7_dk/ae722f80f55d5xx/rtss_he tests/drivers/sdmmc/ \
-       -DSNIPPET=sdmmc-test
+   # E7 HP
+   west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_hp \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=sdmmc-test
 
-Build for alif_e8_dk/rtss_hp:
+   # B1 HE
+   west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=sdmmc-test
+   west build -p always -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he \
+       ../alif/tests/drivers/sdmmc/ -DSNIPPET=emmc-test
 
-.. code-block:: console
+The dedicated eMMC suite (``../alif/tests/drivers/emmc -S alif-emmc``)
+is still valid on the same boards.
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp tests/drivers/sdmmc/ \
-       -DSNIPPET=sdmmc-test
+TestLink
+********
 
-Build for alif_e8_dk/rtss_he:
+Import into TestLink (keep SD and eMMC as separate suites — same case names):
 
-.. code-block:: console
+- SD (``-DSNIPPET=sdmmc-test``): ``testlink/testlink_sdmmc.xml``
+  (full 42-case ``sd_card`` suite on disk SD). Specs: ``testlink/TESTLINK_SPECS.rst``
+- eMMC (``-DSNIPPET=emmc-test``): ``testlink/testlink_emmc.xml``
+  (full 42-case ``sd_card`` suite on disk SD2). Specs: ``testlink/TESTLINK_SPECS_emmc.rst``
 
-   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he tests/drivers/sdmmc/ \
-       -DSNIPPET=sdmmc-test
-
-Build for alif_b1_dk/rtss_he:
-
-.. code-block:: console
-
-   west build -b alif_b1_dk/ab1c1f4m51820ph0/rtss_he tests/drivers/sdmmc/ \
-       -DSNIPPET=sdmmc-test
+Older dedicated eMMC suite (``test_emmc_*`` names):
+``alif/tests/drivers/emmc/testlink_emmc.xml``.

@@ -15,6 +15,8 @@
 #include <zephyr/drivers/disk.h>
 #include <zephyr/logging/log.h>
 #include <zephyr/fs/fs.h>
+#include <zephyr/sys/util.h>
+#include <zephyr/tc_util.h>
 #include <string.h>
 #include <errno.h>
 
@@ -25,14 +27,21 @@
 LOG_MODULE_REGISTER(test_sd, LOG_LEVEL_INF);
 
 /* ─── Configuration ─── */
-#define SD_DISK_NAME		"SD"
-#define SD_MOUNT_POINT		"/SD:"
-#define SD_TEST_FILE		"/SD:/test.txt"
-#define SD_STRESS_FILE		"/SD:/stress.txt"
-#define SD_HEALTH_FILE		"/SD:/HMON.TXT"
-#define SD_LARGE_FILE		"/SD:/large.bin"
-#define SD_DIR_PATH			"/SD:/testdir"
-#define SD_DIR_FILE			"/SD:/testdir/sub.txt"
+#define SD_DISK_NAME		CONFIG_SDMMC_TEST_DISK_NAME
+#define SD_MOUNT_POINT		CONFIG_SDMMC_TEST_MNT_POINT
+#define SD_TEST_FILE		SD_MOUNT_POINT "/test.txt"
+#define SD_STRESS_FILE		SD_MOUNT_POINT "/stress.txt"
+#define SD_HEALTH_FILE		SD_MOUNT_POINT "/HMON.TXT"
+#define SD_LARGE_FILE		SD_MOUNT_POINT "/large.bin"
+#define SD_PERF_FILE		SD_MOUNT_POINT "/perf.bin"
+#define SD_DIR_PATH		SD_MOUNT_POINT "/testdir"
+#define SD_DIR_FILE		SD_MOUNT_POINT "/testdir/sub.txt"
+#define SD_DEL_FILE		SD_MOUNT_POINT "/del.txt"
+#define SD_F1_FILE		SD_MOUNT_POINT "/f1.txt"
+#define SD_F2_FILE		SD_MOUNT_POINT "/f2.txt"
+#define SD_1BYTE_FILE		SD_MOUNT_POINT "/1byte.txt"
+#define SD_EMPTY_FILE		SD_MOUNT_POINT "/empty.txt"
+#define SD_NOSUCH_FILE		SD_MOUNT_POINT "/no_such_file.txt"
 
 #define TEST_CONTENT		"Hello SD card!\n"
 #define APPEND_CONTENT		"Appended line\n"
@@ -46,6 +55,12 @@ LOG_MODULE_REGISTER(test_sd, LOG_LEVEL_INF);
 #define FILE_CREATE_DEL_ITER	20
 #define DEINIT_REINIT_ITER		5
 #define LARGE_BUF_SIZE			2048
+#define PERF_SECTORS			CONFIG_SDMMC_TEST_PERF_SECTORS
+#define PERF_BYTES			(SECTOR_SIZE * PERF_SECTORS)
+#define PERF_TOTAL_KIB			CONFIG_SDMMC_TEST_PERF_KIB
+#define PERF_TOTAL_BYTES		(PERF_TOTAL_KIB * 1024U)
+#define PERF_TOTAL_SECTORS		(PERF_TOTAL_BYTES / SECTOR_SIZE)
+#define XFER_MULTI_SECTORS		8
 
 /* Raw sector test offset from end of disk to avoid FAT corruption */
 #define RAW_TEST_SECTOR_OFFSET  64
@@ -59,6 +74,9 @@ static uint8_t multi_rd[SECTOR_SIZE * 4] __aligned(4);
 static uint8_t multi_save[SECTOR_SIZE * 4] __aligned(4);
 static uint8_t large_wr[LARGE_BUF_SIZE] __aligned(4);
 static uint8_t large_rd[LARGE_BUF_SIZE] __aligned(4);
+static uint8_t perf_wr[PERF_BYTES] __aligned(4);
+static uint8_t perf_rd[PERF_BYTES] __aligned(4);
+static uint8_t perf_save[PERF_BYTES] __aligned(4);
 
 /* ─── State ─── */
 static FATFS sd_fat_fs;
@@ -167,11 +185,12 @@ static void sd_cleanup_test_files(void)
 		SD_STRESS_FILE,
 		SD_HEALTH_FILE,
 		SD_LARGE_FILE,
-		"/SD:/del.txt",
-		"/SD:/f1.txt",
-		"/SD:/f2.txt",
-		"/SD:/1byte.txt",
-		"/SD:/empty.txt",
+		SD_PERF_FILE,
+		SD_DEL_FILE,
+		SD_F1_FILE,
+		SD_F2_FILE,
+		SD_1BYTE_FILE,
+		SD_EMPTY_FILE,
 		SD_DIR_FILE,
 		SD_DIR_PATH,
 		NULL
@@ -198,6 +217,7 @@ static void *sd_suite_setup(void)
 	sdhc_dev = DEVICE_DT_GET(DT_NODELABEL(sdhc));
 	sdhc_dev_ready = device_is_ready(sdhc_dev);
 #endif
+	TC_PRINT("Storage disk=%s mount=%s\n", SD_DISK_NAME, SD_MOUNT_POINT);
 	return NULL;
 }
 
@@ -676,7 +696,7 @@ ZTEST(sd_card, test_sd_file_delete)
 {
 	struct fs_file_t file;
 	int ret;
-	const char *path = "/SD:/del.txt";
+	const char *path = SD_DEL_FILE;
 
 	/* Create file */
 	fs_file_t_init(&file);
@@ -705,8 +725,8 @@ ZTEST(sd_card, test_sd_file_delete)
  */
 ZTEST(sd_card, test_sd_multifile_integrity)
 {
-	const char *f1 = "/SD:/f1.txt";
-	const char *f2 = "/SD:/f2.txt";
+	const char *f1 = SD_F1_FILE;
+	const char *f2 = SD_F2_FILE;
 	const char *c1 = "FILE_ONE";
 	const char *c2 = "FILE_TWO";
 	struct fs_file_t file;
@@ -853,7 +873,7 @@ ZTEST(sd_card, test_sd_write_single_byte)
 	struct fs_file_t file;
 	char buf[4] = {0};
 	int ret;
-	const char *path = "/SD:/1byte.txt";
+	const char *path = SD_1BYTE_FILE;
 
 	fs_file_t_init(&file);
 	ret = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE | FS_O_TRUNC);
@@ -883,7 +903,7 @@ ZTEST(sd_card, test_sd_read_empty_file)
 	struct fs_file_t file;
 	char buf[16];
 	int ret;
-	const char *path = "/SD:/empty.txt";
+	const char *path = SD_EMPTY_FILE;
 
 	/* Create empty file */
 	fs_file_t_init(&file);
@@ -949,7 +969,7 @@ ZTEST(sd_card, test_sd_open_nonexistent)
 	int ret;
 
 	fs_file_t_init(&file);
-	ret = fs_open(&file, "/SD:/no_such_file.txt", FS_O_READ);
+	ret = fs_open(&file, SD_NOSUCH_FILE, FS_O_READ);
 	zassert_true(ret != 0, "Non-existent file opened successfully");
 }
 
@@ -1324,7 +1344,7 @@ ZTEST(sd_card, test_sd_stress_file_create_delete)
 	int ret;
 
 	for (int i = 0; i < FILE_CREATE_DEL_ITER; i++) {
-		snprintk(path, sizeof(path), "/SD:/tmp%02d.txt", i);
+		snprintk(path, sizeof(path), "%s/tmp%02d.txt", SD_MOUNT_POINT, i);
 
 		fs_file_t_init(&file);
 		ret = fs_open(&file, path, FS_O_CREATE | FS_O_WRITE);
@@ -1383,6 +1403,344 @@ ZTEST(sd_card, test_sd_stress_deinit_reinit)
 	/* Remount for cleanup */
 	ret = sd_ensure_mounted();
 	zassert_equal(ret, 0, "Remount failed (%d)", ret);
+}
+
+/********************************
+ *  Speed modes, transfer types, performance
+ *******************************/
+
+static uint32_t sd_kbps(uint32_t bytes, uint32_t ms)
+{
+	if (ms == 0U) {
+		ms = 1U;
+	}
+	return (bytes * 8U) / ms;
+}
+
+#if defined(CONFIG_SDHC)
+
+/*
+ * Purpose : Report SDHC speed-mode and voltage capabilities (not switch the card).
+ * Method  : sdhc_get_host_props(). Classify f_max: <=25 MHz Default/SDR12,
+ *           <=50 MHz High Speed/SDR25, else UHS.
+ * Pass    : f_max >= 25 MHz, 4-bit bus, HS or higher class.
+ */
+ZTEST(sd_card, test_sd_speed_modes)
+{
+	struct sdhc_host_props props;
+	const char *cls;
+	int ret;
+
+	if (!sdhc_dev_ready) {
+		ztest_test_skip();
+		return;
+	}
+
+	ret = sdhc_get_host_props(sdhc_dev, &props);
+	zassert_equal(ret, 0, "get_host_props %d", ret);
+
+	if (props.f_max <= 25000000U) {
+		cls = "Default/SDR12";
+	} else if (props.f_max <= 50000000U) {
+		cls = "High Speed/SDR25";
+	} else {
+		cls = "UHS (SDR50/SDR104/DDR50)";
+	}
+
+	TC_PRINT("Speed class from f_max=%u Hz: %s\n", props.f_max, cls);
+	TC_PRINT("Host timing caps: HS=%u SDR50=%u SDR104=%u DDR50=%u HS200=%u HS400=%u\n",
+		 props.host_caps.high_spd_support,
+		 props.host_caps.sdr50_support,
+		 props.host_caps.sdr104_support,
+		 props.host_caps.ddr50_support,
+		 props.host_caps.hs200_support,
+		 props.host_caps.hs400_support);
+	TC_PRINT("Signalling: 3.3V=%u 3.0V=%u 1.8V=%u\n",
+		 props.host_caps.vol_330_support,
+		 props.host_caps.vol_300_support,
+		 props.host_caps.vol_180_support);
+
+	zassert_true(props.f_max >= 25000000U, "f_max %u below 25 MHz", props.f_max);
+	zassert_true(props.host_caps.bus_4_bit_support, "4-bit required for HS SD");
+}
+
+/*
+ * Purpose : Bus width the SD slot advertises (1-bit identify, 4-bit data).
+ * Method  : host_caps.bus_4_bit / bus_8_bit. SD cards are 1/4-bit; 8-bit is eMMC.
+ * Pass    : 4-bit supported.
+ */
+ZTEST(sd_card, test_sd_xfer_bus_width)
+{
+	struct sdhc_host_props props;
+	int ret;
+
+	if (!sdhc_dev_ready) {
+		ztest_test_skip();
+		return;
+	}
+
+	ret = sdhc_get_host_props(sdhc_dev, &props);
+	zassert_equal(ret, 0);
+	TC_PRINT("Bus width: 4-bit=%u 8-bit=%u (SD uses 1 then 4; 8-bit is eMMC)\n",
+		 props.host_caps.bus_4_bit_support, props.host_caps.bus_8_bit_support);
+	zassert_true(props.host_caps.bus_4_bit_support, "4-bit bus not advertised");
+}
+
+/*
+ * Purpose : DMA transfer types the DWC host advertises (ADMA2 / SDMA).
+ * Method  : host_caps.adma_2_support / sdma_support. Driver uses these for
+ *           disk_access_read/write; PIO is not selected from the test.
+ * Pass    : At least one of ADMA2 or SDMA is set.
+ */
+ZTEST(sd_card, test_sd_xfer_dma_caps)
+{
+	struct sdhc_host_props props;
+	int ret;
+
+	if (!sdhc_dev_ready) {
+		ztest_test_skip();
+		return;
+	}
+
+	ret = sdhc_get_host_props(sdhc_dev, &props);
+	zassert_equal(ret, 0);
+	TC_PRINT("DMA: ADMA2=%u SDMA=%u ADMA3=%u\n",
+		 props.host_caps.adma_2_support,
+		 props.host_caps.sdma_support,
+		 props.host_caps.adma3_support);
+	zassert_true(props.host_caps.adma_2_support || props.host_caps.sdma_support,
+		     "no DMA advertised");
+}
+
+#endif /* CONFIG_SDHC */
+
+/*
+ * Purpose : Single-block transfer (CMD17/24, 1 x 512 B).
+ * Method  : disk_access write/read 1 sector near end of disk, restore.
+ * Pass    : Pattern matches after read-back.
+ */
+ZTEST(sd_card, test_sd_xfer_single_block)
+{
+	uint32_t sector;
+	int ret;
+
+	ret = sd_ensure_unmounted();
+	zassert_equal(ret, 0);
+	sector = sd_raw_test_sector();
+
+	ret = disk_access_read(SD_DISK_NAME, sector_save, sector, 1);
+	zassert_equal(ret, 0);
+	for (int i = 0; i < SECTOR_SIZE; i++) {
+		sector_wr[i] = (uint8_t)(0xA5 ^ i);
+	}
+	ret = disk_access_write(SD_DISK_NAME, sector_wr, sector, 1);
+	zassert_equal(ret, 0, "single-block write %d", ret);
+	memset(sector_rd, 0, SECTOR_SIZE);
+	ret = disk_access_read(SD_DISK_NAME, sector_rd, sector, 1);
+	zassert_equal(ret, 0, "single-block read %d", ret);
+	zassert_mem_equal(sector_wr, sector_rd, SECTOR_SIZE, "single-block mismatch");
+	ret = disk_access_write(SD_DISK_NAME, sector_save, sector, 1);
+	zassert_equal(ret, 0);
+	TC_PRINT("Single-block (1 x 512 B) OK\n");
+	ret = sd_ensure_mounted();
+	zassert_equal(ret, 0);
+}
+
+/*
+ * Purpose : Multi-block transfer (CMD18/25, 8 x 512 B).
+ * Method  : One disk_access call for 8 sectors. Restore afterwards.
+ * Pass    : Pattern matches.
+ */
+ZTEST(sd_card, test_sd_xfer_multi_block)
+{
+	uint32_t sector;
+	uint32_t bytes = XFER_MULTI_SECTORS * SECTOR_SIZE;
+	int ret;
+
+	ret = sd_ensure_unmounted();
+	zassert_equal(ret, 0);
+	zassert_true(sd_sector_count > RAW_TEST_SECTOR_OFFSET + XFER_MULTI_SECTORS);
+	sector = sd_raw_test_sector() - XFER_MULTI_SECTORS;
+
+	ret = disk_access_read(SD_DISK_NAME, perf_save, sector, XFER_MULTI_SECTORS);
+	zassert_equal(ret, 0, "save %d", ret);
+	for (uint32_t i = 0; i < bytes; i++) {
+		perf_wr[i] = (uint8_t)(i * 5U + 1U);
+	}
+	ret = disk_access_write(SD_DISK_NAME, perf_wr, sector, XFER_MULTI_SECTORS);
+	zassert_equal(ret, 0, "multi-block write %d", ret);
+	memset(perf_rd, 0, bytes);
+	ret = disk_access_read(SD_DISK_NAME, perf_rd, sector, XFER_MULTI_SECTORS);
+	zassert_equal(ret, 0, "multi-block read %d", ret);
+	zassert_mem_equal(perf_wr, perf_rd, bytes, "multi-block mismatch");
+	ret = disk_access_write(SD_DISK_NAME, perf_save, sector, XFER_MULTI_SECTORS);
+	zassert_equal(ret, 0, "restore %d", ret);
+	TC_PRINT("Multi-block (%u x 512 B) OK\n", XFER_MULTI_SECTORS);
+	ret = sd_ensure_mounted();
+	zassert_equal(ret, 0);
+}
+
+/*
+ * Purpose : Raw disk write/read throughput (chunked, unused end of card).
+ * Method  : Time PERF_TOTAL_BYTES as successive PERF_SECTORS multi-block
+ *           transfers. Verify each chunk. Region is unused tail; not restored.
+ * Pass    : I/O succeeds, kbps > 0. Printed rate is informational.
+ */
+ZTEST(sd_card, test_sd_perf_raw_rw)
+{
+	uint32_t start;
+	uint32_t done = 0;
+	uint32_t w_ms, r_ms, t0;
+	int ret;
+
+	ret = sd_ensure_unmounted();
+	zassert_equal(ret, 0);
+	zassert_true(sd_sector_count > RAW_TEST_SECTOR_OFFSET + PERF_TOTAL_SECTORS,
+		     "disk too small for %u KiB", PERF_TOTAL_KIB);
+	start = sd_raw_test_sector() - PERF_TOTAL_SECTORS;
+
+	for (uint32_t i = 0; i < PERF_BYTES; i++) {
+		perf_wr[i] = (uint8_t)(i ^ 0x5A);
+	}
+
+	t0 = k_uptime_get_32();
+	while (done < PERF_TOTAL_BYTES) {
+		uint32_t n = MIN(PERF_BYTES, PERF_TOTAL_BYTES - done);
+		uint32_t nsec = n / SECTOR_SIZE;
+
+		ret = disk_access_write(SD_DISK_NAME, perf_wr,
+					start + (done / SECTOR_SIZE), nsec);
+		zassert_equal(ret, 0, "perf write @%u %d", done, ret);
+		done += n;
+	}
+	w_ms = k_uptime_get_32() - t0;
+
+	done = 0;
+	t0 = k_uptime_get_32();
+	while (done < PERF_TOTAL_BYTES) {
+		uint32_t n = MIN(PERF_BYTES, PERF_TOTAL_BYTES - done);
+		uint32_t nsec = n / SECTOR_SIZE;
+
+		memset(perf_rd, 0, n);
+		ret = disk_access_read(SD_DISK_NAME, perf_rd,
+				       start + (done / SECTOR_SIZE), nsec);
+		zassert_equal(ret, 0, "perf read @%u %d", done, ret);
+		zassert_mem_equal(perf_wr, perf_rd, n, "raw mismatch @%u", done);
+		done += n;
+	}
+	r_ms = k_uptime_get_32() - t0;
+
+	TC_PRINT("Raw perf %u KiB: write %u kbps (%u ms) read %u kbps (%u ms)\n",
+		 PERF_TOTAL_KIB, sd_kbps(PERF_TOTAL_BYTES, w_ms), w_ms,
+		 sd_kbps(PERF_TOTAL_BYTES, r_ms), r_ms);
+	zassert_true(sd_kbps(PERF_TOTAL_BYTES, w_ms) > 0, "write throughput 0");
+	zassert_true(sd_kbps(PERF_TOTAL_BYTES, r_ms) > 0, "read throughput 0");
+	ret = sd_ensure_mounted();
+	zassert_equal(ret, 0);
+}
+
+/*
+ * Purpose : FAT file write/read throughput (same size as raw perf).
+ * Method  : Create /SD:/perf.bin, time chunked write and read, unlink.
+ * Pass    : Bytes match, kbps > 0.
+ */
+ZTEST(sd_card, test_sd_perf_file_rw)
+{
+	struct fs_file_t file;
+	uint32_t done;
+	uint32_t w_ms, r_ms, t0;
+	ssize_t n;
+	int ret;
+
+	for (uint32_t i = 0; i < PERF_BYTES; i++) {
+		perf_wr[i] = (uint8_t)(i ^ 0x3C);
+	}
+
+	fs_file_t_init(&file);
+	ret = fs_open(&file, SD_PERF_FILE, FS_O_CREATE | FS_O_WRITE);
+	zassert_equal(ret, 0, "open write %d", ret);
+	done = 0;
+	t0 = k_uptime_get_32();
+	while (done < PERF_TOTAL_BYTES) {
+		uint32_t chunk = MIN(PERF_BYTES, PERF_TOTAL_BYTES - done);
+
+		n = fs_write(&file, perf_wr, chunk);
+		zassert_equal(n, (ssize_t)chunk, "file write @%u %zd", done, n);
+		done += chunk;
+	}
+	w_ms = k_uptime_get_32() - t0;
+	ret = fs_close(&file);
+	zassert_equal(ret, 0);
+
+	fs_file_t_init(&file);
+	ret = fs_open(&file, SD_PERF_FILE, FS_O_READ);
+	zassert_equal(ret, 0, "open read %d", ret);
+	done = 0;
+	t0 = k_uptime_get_32();
+	while (done < PERF_TOTAL_BYTES) {
+		uint32_t chunk = MIN(PERF_BYTES, PERF_TOTAL_BYTES - done);
+
+		memset(perf_rd, 0, chunk);
+		n = fs_read(&file, perf_rd, chunk);
+		zassert_equal(n, (ssize_t)chunk, "file read @%u %zd", done, n);
+		zassert_mem_equal(perf_wr, perf_rd, chunk, "file mismatch @%u", done);
+		done += chunk;
+	}
+	r_ms = k_uptime_get_32() - t0;
+	ret = fs_close(&file);
+	zassert_equal(ret, 0);
+
+	TC_PRINT("File perf %u KiB: write %u kbps (%u ms) read %u kbps (%u ms)\n",
+		 PERF_TOTAL_KIB, sd_kbps(PERF_TOTAL_BYTES, w_ms), w_ms,
+		 sd_kbps(PERF_TOTAL_BYTES, r_ms), r_ms);
+	zassert_true(sd_kbps(PERF_TOTAL_BYTES, w_ms) > 0);
+	zassert_true(sd_kbps(PERF_TOTAL_BYTES, r_ms) > 0);
+	(void)fs_unlink(SD_PERF_FILE);
+}
+
+/*
+ * Purpose : Same byte count as N single-block vs one multi-block transfer.
+ * Method  : Time XFER_MULTI_SECTORS x 1-sector writes vs one N-sector write.
+ * Pass    : Both paths succeed. Times printed (multi-block should not be slower
+ *           by an order of magnitude on a healthy host).
+ */
+ZTEST(sd_card, test_sd_perf_single_vs_multi)
+{
+	uint32_t sector;
+	uint32_t single_ms, multi_ms, t0;
+	int ret;
+
+	ret = sd_ensure_unmounted();
+	zassert_equal(ret, 0);
+	zassert_true(sd_sector_count > RAW_TEST_SECTOR_OFFSET + XFER_MULTI_SECTORS);
+	sector = sd_raw_test_sector() - XFER_MULTI_SECTORS;
+
+	ret = disk_access_read(SD_DISK_NAME, perf_save, sector, XFER_MULTI_SECTORS);
+	zassert_equal(ret, 0);
+	for (int i = 0; i < XFER_MULTI_SECTORS * SECTOR_SIZE; i++) {
+		perf_wr[i] = (uint8_t)i;
+	}
+
+	t0 = k_uptime_get_32();
+	for (uint32_t s = 0; s < XFER_MULTI_SECTORS; s++) {
+		ret = disk_access_write(SD_DISK_NAME, perf_wr + s * SECTOR_SIZE,
+					sector + s, 1);
+		zassert_equal(ret, 0, "single %u %d", s, ret);
+	}
+	single_ms = k_uptime_get_32() - t0;
+
+	t0 = k_uptime_get_32();
+	ret = disk_access_write(SD_DISK_NAME, perf_wr, sector, XFER_MULTI_SECTORS);
+	multi_ms = k_uptime_get_32() - t0;
+	zassert_equal(ret, 0, "multi %d", ret);
+
+	ret = disk_access_write(SD_DISK_NAME, perf_save, sector, XFER_MULTI_SECTORS);
+	zassert_equal(ret, 0, "restore %d", ret);
+
+	TC_PRINT("Transfer %u x 512 B: single-block %u ms, multi-block %u ms\n",
+		 XFER_MULTI_SECTORS, single_ms, multi_ms);
+	ret = sd_ensure_mounted();
+	zassert_equal(ret, 0);
 }
 
 ZTEST_SUITE(sd_card, NULL, sd_suite_setup, sd_test_before, sd_test_after, sd_suite_teardown);
