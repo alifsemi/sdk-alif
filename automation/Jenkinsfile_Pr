@@ -32,7 +32,10 @@ def allTestApps             = [testAppList1, testAppList2]
 def gDocsOnlyChange         = false
 def zephyr_pr_number        = 0
 def zephyr_pr_closed        = 0
+def hal_alif_pr_number      = 0
+def hal_alif_pr_closed      = 0
 def manifestCheckResult     = [:]
+def hal_alif_pr_pull_head_flag = 0
 def job_config = [
     github_creds_id : "27c5d944-f190-4ab7-8c37-23cc43c7ce11"
 ]
@@ -271,28 +274,40 @@ pipeline {
                 qualityGates: [[threshold: 1, type: 'NEW', failure: true]],
                 enabledForFailure: true
             )
+            echo "post build operations"
             script {
                 if (utils && utils.github && common_funcs) {
                     withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
                         usernameVariable: 'GITHUB_TOKEN_USR', passwordVariable: 'GITHUB_TOKEN')]) {
-                            manifestCheckResult = common_funcs.checkManifestUpdate()
+                            try {
+                                manifestCheckResult = common_funcs.checkManifestUpdate()
 
-                            job_config.repo      = job_config.pr_repo
-                            job_config.prNumber  = "${CHANGE_ID}"
-                            def pr_response  = utils.github.getPullRequestBody(job_config)
-                            if (pr_response?.contains('/pull/')) {
-                                def temp = pr_response.split('alifsemi/zephyr_alif/pull/')[1]
-                                zephyr_pr_number = temp.split(/[^0-9]/)[0].toInteger()
-                                if (manifestCheckResult.pullRequestNumber == zephyr_pr_number) {
-                                    echo "Zephyr PR Number: ${zephyr_pr_number}"
+                                job_config.repo      = job_config.pr_repo
+                                job_config.prNumber  = "${CHANGE_ID}"
+                                def pr_response  = utils.github.getPullRequestBody(job_config)
+                                if (pr_response instanceof String && pr_response.trim()) {
+                                    def pullMatcher = pr_response =~ /alifsemi\/zephyr_alif\/pull\/(\d+)/
+
+                                    if (pullMatcher.find()) {
+                                        def prNumberString = pullMatcher.group(1)
+
+                                        if (prNumberString?.isInteger()) {
+                                            zephyr_pr_number = prNumberString.toInteger()
+                                        }
+                                    }
+                                    if (manifestCheckResult.pullRequestNumber == zephyr_pr_number) {
+                                        echo "Zephyr PR Number: ${zephyr_pr_number}"
+                                    } else {
+                                        echo("""Zephyr PR Number mis-match:
+                                            ${zephyr_pr_number}(${manifestCheckResult.pullRequestNumber})""")
+                                    }
                                 } else {
-                                    echo("""Zephyr PR Number mis-match:
-                                        ${zephyr_pr_number}(${manifestCheckResult.pullRequestNumber})""")
+                                    echo("""Zephyr PR number not able to find, no web link in PR body, in diff
+                                        found #PR-(${manifestCheckResult.pullRequestNumber})""")
+                                    zephyr_pr_number = manifestCheckResult.pullRequestNumber
                                 }
-                            } else {
-                                echo("""Zephyr PR number not able to find, no web link in PR body, in diff
-                                    found #PR-(${manifestCheckResult.pullRequestNumber})""")
-                                zephyr_pr_number = manifestCheckResult.pullRequestNumber
+                            } catch (Exception e) {
+                                echo "WARNING: Failed to process Zephyr PR information: ${e.message}"
                             }
 
                             if(zephyr_pr_number) {
@@ -304,9 +319,118 @@ pipeline {
                                     echo "Zephyr PR number #PR-${zephyr_pr_number} is closed or merged"
                                     zephyr_pr_closed = 1
                                 } else {
-                                    echo "Zephyr PR number #PR-${zephyr_pr_number} is not merged or closed"
+                                    echo "Zephyr PR number #PR-${zephyr_pr_number} is in open state"
+                                    try {
+                                        echo "Checking specific PR diff and try to find hal-alif update PR number"
+                                        def hal_alif_result = sh(script: '''
+                                                            awk '
+                                                            /name: hal_alif/ { found=1; next }
+                                                            found && /^[[:space:]]*-[[:space:]]*name:/ { print "2|"; exit }
+                                                            found && /^[[:space:]]*revision:/ {
+                                                                sub(/^[[:space:]]*revision:[[:space:]]*/, "")
+                                                                print "0|" $0
+                                                                exit
+                                                            }
+                                                            END {
+                                                                if (!found) print "1|"
+                                                            }
+                                                            ' ../zephyr/west.yml
+                                                        ''',
+                                                        returnStdout: true
+                                                    ).trim()
+
+                                        def hal_alif_parts              = hal_alif_result.split('\\|', 2)
+                                        def hal_alif_revision_flag      = hal_alif_parts[0].toInteger()
+                                        def hal_alif_revision           = hal_alif_parts.size() > 1 ? hal_alif_parts[1] : ''
+
+                                        echo "status   = ${hal_alif_revision_flag}"
+                                        echo "revision = ${hal_alif_revision}"
+                                        def hal_alif_matcher    = hal_alif_revision instanceof String ? (hal_alif_revision =~ /^pull\/(\d+)\/head$/) : null
+                                        def hal_alif_prNumber   = (hal_alif_matcher && hal_alif_matcher.find()) ? hal_alif_matcher.group(1) : ""
+
+                                        if (hal_alif_prNumber) {
+                                            echo "hal alif PR Number: ${hal_alif_prNumber}"
+                                            hal_alif_pr_pull_head_flag = 1
+                                        } else {
+                                            if (!hal_alif_revision_flag) {
+                                                job_config.repo = "hal_alif"
+                                                hal_alif_prNumber = utils.github.findPRforSpecificMergeSHA(job_config, hal_alif_revision)
+                                            } else {
+                                                echo "hal alif Invalid revision: ${hal_alif_revision}"
+                                                hal_alif_prNumber = 0
+                                            }
+                                        }
+
+                                        if(hal_alif_prNumber) {
+                                            hal_alif_pr_number = hal_alif_prNumber
+                                            echo "Found HAL_ALIF #PR${hal_alif_prNumber}"
+                                        } else {
+                                            echo "HAL_ALIF PR not found or PR CLOSED"
+                                            hal_alif_pr_closed = 1
+                                        }
+
+                                        def pr_response   = utils.github.getPullRequestBody(job_config)
+                                        def hal_pr_number = 0
+                                        if (pr_response instanceof String && pr_response.trim()) {
+                                            def pullMatcher = pr_response =~ /alifsemi\/hal_alif\/pull\/(\d+)/
+
+                                            if (pullMatcher.find()) {
+                                                def prNumberString = pullMatcher.group(1)
+
+                                                if (prNumberString?.isInteger()) {
+                                                    hal_pr_number = prNumberString.toInteger()
+                                                }
+                                            }
+                                            if (hal_alif_pr_number == hal_pr_number) {
+                                                echo "Hal_Alif PR Number: ${hal_pr_number}"
+                                            } else {
+                                                echo("""Hal_Alif PR Number mis-match:
+                                                    ${hal_pr_number}(${hal_alif_pr_number})""")
+                                            }
+                                            if(!hal_pr_number)
+                                                hal_alif_pr_number = hal_pr_number
+                                        } else {
+                                            echo("""Hal_Alif PR number not able to find, no web link in PR body,
+                                                found #PR-(${hal_alif_pr_number})""")
+                                            hal_pr_number = hal_alif_pr_number
+                                        }
+
+                                    } catch (Exception e) {
+                                        echo "WARNING: Failed to process Hal_Alif PR information: ${e.message}"
+                                    }
+                                    if(hal_alif_pr_number) {
+                                        job_config.repo      = "hal_alif"
+                                        job_config.prNumber  = hal_alif_pr_number
+
+                                        def halAlifPrStatus   = utils.github.getPullRequest(job_config)
+                                        if ( (halAlifPrStatus?.state == "closed") || (halAlifPrStatus?.merged) ) {
+                                            echo "Hal-Alif PR number #PR-${hal_alif_pr_number} is closed or merged"
+                                            hal_alif_pr_closed = 1
+                                        } else {
+                                            echo "Hal-Alif PR number #PR-${hal_alif_pr_number} is in open state"
+                                            job_config.repo = "hal_alif"
+                                            echo "Removing lables for hal_alif repo"
+                                            for (int i = 0; i < Math.min(2, pr_labels.size()); i++) {
+                                                String label = pr_labels[i]
+
+                                                echo "remove existing build label [$label]"
+                                                job_config.label = label
+                                                utils.github.removeLabel(job_config)
+                                            }
+
+                                            echo "remove existing build label ManifestUpdateReq"
+                                            job_config.label = "ManifestUpdateReq"
+                                            utils.github.removeLabel(job_config)
+
+                                            echo "remove existing build label BUILD_AWAITING"
+                                            job_config.label = "BUILD_AWAITING"
+                                            utils.github.removeLabel(job_config)
+                                        }
+                                    }
                                 }
 
+                                echo "Removing lables for zephyr repo"
+                                job_config.repo = job_config.zephyr_repo
                                 for (int i = 0; i < Math.min(2, pr_labels.size()); i++) {
                                     String label = pr_labels[i]
 
@@ -344,12 +468,19 @@ pipeline {
                                 echo "Add labels     => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
+                            if(hal_alif_pr_number && !hal_alif_pr_closed) {
+                                job_config.repo      = "hal_alif"
+                                job_config.prNumber  = hal_alif_pr_number
+                                echo "Add labels     => ${job_config.label}"
+                                utils.github.addLabel(job_config)
+                            }
                     }
                 }
             }
         }
 
         success {
+            echo "build operations is successfully compeleted"
             script {
                 if (utils && utils.github) {
                     withCredentials([usernamePassword(credentialsId: job_config.github_creds_id,
@@ -364,7 +495,14 @@ pipeline {
                             if(zephyr_pr_number && !zephyr_pr_closed) {
                                 job_config.repo      = job_config.zephyr_repo
                                 job_config.prNumber  = zephyr_pr_number
-                                echo "Add labels     => ${job_config.label}"
+                                echo "Add labels for zephyr  => ${job_config.label}"
+                                utils.github.addLabel(job_config)
+                            }
+
+                            if(hal_alif_pr_number && !hal_alif_pr_closed) {
+                                job_config.repo      = "hal_alif"
+                                job_config.prNumber  = hal_alif_pr_number
+                                echo "Add labels for hal_alif => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
 
@@ -372,6 +510,13 @@ pipeline {
                                 job_config.label     = pr_additional_label[0]
                                 job_config.repo      = job_config.pr_repo
                                 job_config.prNumber  = "${CHANGE_ID}"
+                                echo "Add labels     => ${job_config.label}"
+                                utils.github.addLabel(job_config)
+                            }
+                            if (hal_alif_pr_pull_head_flag) {
+                                job_config.label     = pr_additional_label[0]
+                                job_config.repo      = job_config.zephyr_repo
+                                job_config.prNumber  = zephyr_pr_number
                                 echo "Add labels     => ${job_config.label}"
                                 utils.github.addLabel(job_config)
                             }
