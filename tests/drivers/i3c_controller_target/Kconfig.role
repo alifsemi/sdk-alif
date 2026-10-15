@@ -1,0 +1,51 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+choice I3C_TEST_ROLE
+	prompt "I3C test role"
+	default I3C_TEST_CONTROLLER
+
+config I3C_TEST_CONTROLLER
+	bool "Build the controller image"
+
+config I3C_TEST_TARGET
+	bool "Build the target image"
+
+endchoice
+
+config I3C_TEST_STRESS_LOOPS
+	int "Controller stress iterations"
+	default 10
+	range 1 100
+	help
+	  Number of echo, IBI, and mixed iterations in the controller stress test.
+
+config I3C_TEST_BULK_BYTES
+	int "Bytes transferred by the bulk throughput test"
+	default 4096
+	range 256 1048576
+
+config I3C_TEST_BULK_CHUNK
+	int "Bulk transfer payload per transaction"
+	default 32
+	range 1 248
+	help
+	  Keep this within the smaller controller/target receive FIFO until
+	  threshold streaming has been validated on the selected instance.
+
+config I3C_TEST_ENABLE_HDR
+	bool "Run the controller HDR-DDR transfer test"
+	default y
+
+config I3C_TEST_HANDOFF
+	bool "Run capability-gated controller-role handoff tests"
+	default y
+
+config I3C_TEST_DISCOVER_WAIT_MS
+	int "Time to wait for the target hot-join"
+	default 20000
+	help
+	  Controller image: wait until the target raises hot-join and GETPID
+	  matches the test PID. The target image raises hot-join from its peer
+	  session.
+

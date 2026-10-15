@@ -1,0 +1,6 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+rsource "../Kconfig.role"
+
+source "Kconfig.zephyr"

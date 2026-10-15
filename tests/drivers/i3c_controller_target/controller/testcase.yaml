@@ -1,0 +1,33 @@
+common:
+  tags:
+    - drivers
+    - i3c
+    - controller
+  extra_conf_files:
+    - prj.conf
+  platform_allow:
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+
+tests:
+  drivers.i3c.controller:
+    extra_dtc_overlay_files:
+      - boards/alif_e8_i3c.overlay
+    extra_configs:
+      - CONFIG_I3C_TEST_CONTROLLER=y
+    integration_platforms:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+  drivers.i3c.controller.lpi3c:
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_dtc_overlay_files:
+      - boards/alif_e8_lpi3c.overlay
+    extra_configs:
+      - CONFIG_I3C_TEST_CONTROLLER=y
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
