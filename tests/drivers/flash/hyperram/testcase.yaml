@@ -1,0 +1,150 @@
+common:
+  tags:
+    - drivers
+    - memc
+    - psram
+    - hyperram
+  harness: ztest
+  timeout: 180
+  # Overlays are per scenario. Twister appends common extra_dtc_overlay_files
+  # onto each test, so the APS and S80KS bases must not share this section.
+  filter: dt_alias_exists("spi_psram")
+
+tests:
+  # APS512XXN. HyperRAM is the Kconfig default, so select PSRAM here.
+  drivers.hyperram.xip:
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+
+  # Timing overlays only change bus-speed / latency-code. They must be
+  # appended (extra_dtc_overlay_files), not passed as DTC_OVERLAY_FILE,
+  # which would replace alif_psram.overlay and drop pins + XIP window.
+  drivers.hyperram.xip.overlay_50mhz:
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_50Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+
+  drivers.hyperram.xip.overlay_100mhz:
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_100Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+
+  # 200 MHz needs a 400 MHz OSPI input clock (E7/E8). Balletto is 160 MHz.
+  drivers.hyperram.xip.overlay_200mhz:
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+      - boards/psram_200Mhz.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+
+  drivers.hyperram.xip.full_chip:
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+      - CONFIG_TEST_PSRAM_FULL_CHIP=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_he
+      - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+    timeout: 1800
+
+  # S80KS2564 functional cases on the default overlay (OSPI1, 40 MHz).
+  # 100 MHz and 200 MHz builds are not separate scenarios.
+  drivers.hyperram.s80ks:
+    extra_configs:
+      - CONFIG_TEST_HYPERRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_hex_s80ks.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+  drivers.hyperram.s80ks.full_chip:
+    extra_configs:
+      - CONFIG_TEST_HYPERRAM=y
+      - CONFIG_TEST_HYPERRAM_FULL_CHIP=y
+    extra_dtc_overlay_files:
+      - boards/alif_hex_s80ks.overlay
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    timeout: 1800
+
+  # ISSI IS66 HyperRAM on B1 OSPI0. Shared suite only (no latency property).
+  drivers.hyperram.issi:
+    extra_configs:
+      - CONFIG_TEST_ISSI_HYPERRAM=y
+    extra_dtc_overlay_files:
+      - boards/alif_b1_issi_hyperram.overlay
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+
+  # PSRAM on OSPI0, flash on OSPI1. Shared copy cases, not an S80KS build.
+  drivers.hyperram.flash_copy:
+    extra_args:
+      - SNIPPET=ospi-flash
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+      - CONFIG_TEST_PSRAM_FLASH_COPY=y
+      - CONFIG_FLASH=y
+      - CONFIG_CRC=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+    filter: dt_alias_exists("spi_flash0") and dt_alias_exists("spi_psram")
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    timeout: 300
+
+  drivers.hyperram.flash_copy.full_4mb:
+    extra_args:
+      - SNIPPET=ospi-flash
+    extra_configs:
+      - CONFIG_TEST_PSRAM=y
+      - CONFIG_TEST_PSRAM_FLASH_COPY=y
+      - CONFIG_TEST_PSRAM_FLASH_COPY_FULL=y
+      - CONFIG_FLASH=y
+      - CONFIG_CRC=y
+    extra_dtc_overlay_files:
+      - boards/alif_psram.overlay
+    filter: dt_alias_exists("spi_flash0") and dt_alias_exists("spi_psram")
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    timeout: 1800
