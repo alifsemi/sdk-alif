@@ -29,8 +29,11 @@ Requirements
 Supported Targets
 *****************
 
+* alif_e7_dk/ae722f80f55d5xx/rtss_hp
+* alif_e7_dk/ae722f80f55d5xx/rtss_he
 * alif_e8_dk/ae822fa0e5597xx0/rtss_hp
 * alif_e8_dk/ae822fa0e5597xx0/rtss_he
+* alif_e8_dk/ae822fa0e5597xx0/apss
 
 Building
 ********
@@ -54,6 +57,8 @@ Select the test case with the corresponding Kconfig option:
      - M55-HP to M55-HE MHU responder
    * - ``CONFIG_HE_A32_S``
      - M55-HE to A32 (APSS) MHU initiator/sender
+   * - ``CONFIG_A32_HE_R``
+     - A32 (APSS) responder for messages from M55-HE (A32 running Zephyr)
 
 By default MHU0 is used for communication. To use MHU1 instead, add
 ``-DCONFIG_USE_MHU1=y`` to the build command.
@@ -88,6 +93,15 @@ respond to communication started from A32:
 
    # M55-HE responds to communication from A32
    west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he samples/drivers/ipm/ipm_arm_mhuv2 -DCONFIG_APSS_R=y
+
+Building A32 (APSS) as responder to an M55-HE initiator. The A32 responder can run either
+Linux or Zephyr; the M55-HE side is the same in both cases. To build the Zephyr responder:
+
+.. code-block:: bash
+
+   # A32 (APSS) responder
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/apss samples/drivers/ipm/ipm_arm_mhuv2/ -DCONFIG_A32_HE_R=y
+
 
 Building M55-HE and M55-HP as responders to A32-initiated communication:
 
