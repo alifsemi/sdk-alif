@@ -106,6 +106,16 @@ const gapc_le_con_param_nego_with_ce_len_t preferred_connection_param = {
 /* Store advertising activity index for re-starting after disconnection */
 static uint8_t adv_actv_idx;
 
+/* Connection index awaiting a parameter update, and remaining retry attempts */
+static uint8_t conn_param_conidx;
+static uint8_t conn_param_retries;
+
+#define CONN_PARAM_UPDATE_DELAY K_MSEC(500)
+#define CONN_PARAM_UPDATE_MAX_RETRIES 3
+
+static void conn_param_update_work_handler(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(conn_param_update_work, conn_param_update_work_handler);
+
 /* HRPS callbacks */
 
 static void on_hrps_meas_send_complete(uint16_t status)
@@ -255,26 +265,52 @@ void service_process(void)
 static void on_gapc_proc_cmp_cb(uint8_t const conidx, uint32_t const metainfo,
 				uint16_t const status)
 {
+	/* The controller can reject the update with a transaction collision (0xBA)
+	 * when the peer is running its own LLCP procedure at the same time. Retry.
+	 */
+	if (status == LL_ERR_DIFF_TRANSACTION_COLLISION && conn_param_retries) {
+		conn_param_retries--;
+		LOG_WRN("Connection param update collided, retrying (%u left)",
+			conn_param_retries);
+		k_work_reschedule(&conn_param_update_work, CONN_PARAM_UPDATE_DELAY);
+		return;
+	}
+
 	if (status) {
 		LOG_ERR("GAPC LE connection param update failed %u", status);
-		return;
+	} else {
+		LOG_INF("GAPC LE connection param update success");
 	}
 
 	ctrl.connected = true;
 	k_sem_give(&conn_sem);
 
-	LOG_INF("Connection params updated");
 	power_mgr_log_flush();
 }
 
-static void app_connected_handle(uint8_t const con_idx)
+static void conn_param_update_work_handler(struct k_work *work)
 {
-	uint16_t const ret = gapc_le_update_params(con_idx, 0, &preferred_connection_param,
+	uint16_t const ret = gapc_le_update_params(conn_param_conidx, 0,
+						   &preferred_connection_param,
 						   on_gapc_proc_cmp_cb);
 
 	if (ret) {
 		LOG_ERR("GAPC LE connection param update start failed %u", ret);
+		/* Don’t block forever if the update procedure can’t be started. */
+		ctrl.connected = true;
+		k_sem_give(&conn_sem);
 	}
+}
+
+static void app_connected_handle(uint8_t const con_idx)
+{
+	conn_param_conidx = con_idx;
+	conn_param_retries = CONN_PARAM_UPDATE_MAX_RETRIES;
+
+	/* Defer the update so it does not collide with the peer's connection-setup
+	 * procedures (e.g. feature exchange) that run right after connection.
+	 */
+	k_work_reschedule(&conn_param_update_work, CONN_PARAM_UPDATE_DELAY);
 
 	LOG_DBG("Please enable notifications on peer device..");
 	power_mgr_log_flush();
