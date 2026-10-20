@@ -1,0 +1,33 @@
+/*
+ * Common USB + HID for all Alif boards. Joystick GPIOs stay in
+ * boards/<board>.overlay so a plain west build picks this up.
+ */
+
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
+&ns {
+	status = "okay";
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+/* Board SW0 has no zephyr,code; INPUT_GPIO_KEYS requires one. */
+&button0 {
+	status = "disabled";
+};
+
+/ {
+	hid_dev_0: hid_dev_0 {
+		compatible = "zephyr,hid-device";
+		interface-name = "HID0";
+		protocol-code = "none";
+		in-polling-period-us = <10000>;
+		in-report-size = <64>;
+	};
+};
