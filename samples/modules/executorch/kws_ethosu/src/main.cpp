@@ -136,6 +136,17 @@ unsigned char* ethosu_fast_scratch = ethosu_scratch_pool;
 }
 #endif
 
+/*
+ * The Ethos-U delegate passes the NPU pointers into the loaded .pte for the
+ * Vela command stream and weights, and BufferDataLoader does not copy. When
+ * the image executes from OSPI XIP, NPU reads of that window fail, so the
+ * program is loaded from this RAM copy instead.
+ */
+#if defined(CONFIG_KWS_ETHOSU_MODEL_COPY_TO_RAM)
+__attribute__((section(CONFIG_KWS_ETHOSU_MODEL_RAM_SECTION), aligned(16)))
+unsigned char model_pte_ram[sizeof(model_pte)];
+#endif
+
 namespace {
 
 static const char* kws_labels[] = {
@@ -348,7 +359,14 @@ int main(void) {
   size_t pte_size = sizeof(model_pte);
   ET_LOG(Info, "Model PTE at %p, Size: %lu bytes", model_pte, pte_size);
 
+#if defined(CONFIG_KWS_ETHOSU_MODEL_COPY_TO_RAM)
+  std::memcpy(model_pte_ram, model_pte, pte_size);
+  ET_LOG(Info, "Model copied to RAM: %p -> %p (%zu bytes)", model_pte,
+         model_pte_ram, pte_size);
+  const void* program_data = model_pte_ram;
+#else
   const void* program_data = model_pte;
+#endif
   size_t program_data_len = pte_size;
 
   auto loader = BufferDataLoader(program_data, program_data_len);
