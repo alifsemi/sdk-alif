@@ -1,6 +1,10 @@
-/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
 #include <zephyr/drivers/i2s.h>
@@ -45,11 +49,19 @@ LOG_MODULE_REGISTER(i2s_features_test, LOG_LEVEL_INF);
 #define I2S_DMACR_TX_EN_BIT BIT(17)
 #define I2S_FEATURE_LOOPBACK_BLOCK_COUNT 16U
 
-K_MEM_SLAB_DEFINE_STATIC(feature_mem_slab, I2S_FEATURE_BLOCK_SIZE, I2S_FEATURE_BLOCK_COUNT, 4);
-K_MEM_SLAB_DEFINE_STATIC(feature_rx_mem_slab, I2S_FEATURE_BLOCK_SIZE,
-			 I2S_FEATURE_LOOPBACK_BLOCK_COUNT, 4);
-K_MEM_SLAB_DEFINE_STATIC(feature_tx_mem_slab, I2S_FEATURE_BLOCK_SIZE,
-			 I2S_FEATURE_LOOPBACK_BLOCK_COUNT, 4);
+#define I2S_DMA_SLAB_DEFINE(name, block_size, num_blocks)		\
+	static uint8_t __nocache __aligned(WB_UP(4))			\
+		_##name##_buf[(num_blocks) * WB_UP(block_size)];	\
+	static STRUCT_SECTION_ITERABLE(k_mem_slab, name) =		\
+		Z_MEM_SLAB_INITIALIZER(name, _##name##_buf,		\
+				       WB_UP(block_size), num_blocks)
+
+I2S_DMA_SLAB_DEFINE(feature_mem_slab, I2S_FEATURE_BLOCK_SIZE,
+		    I2S_FEATURE_BLOCK_COUNT);
+I2S_DMA_SLAB_DEFINE(feature_rx_mem_slab, I2S_FEATURE_BLOCK_SIZE,
+		    I2S_FEATURE_LOOPBACK_BLOCK_COUNT);
+I2S_DMA_SLAB_DEFINE(feature_tx_mem_slab, I2S_FEATURE_BLOCK_SIZE,
+		    I2S_FEATURE_LOOPBACK_BLOCK_COUNT);
 
 struct i2s_feature_regs {
 	uint32_t ccr;
@@ -1578,6 +1590,11 @@ fd_cleanup:
 #ifndef CONFIG_I2S_FULL_DUPLEX
 ZTEST(i2s_features, test_dma_support_active_during_streaming)
 {
+	if (!IS_ENABLED(CONFIG_I2S_DW_USE_DMA)) {
+		LOG_INF("SKIP: FIFO interrupt path, DMACR DMA enables stay clear");
+		ztest_test_skip();
+		return;
+	}
 	const struct device *const rx_dev = DEVICE_DT_GET(I2S_RX_NODE);
 	const struct device *const tx_dev = DEVICE_DT_GET(I2S_TX_NODE);
 	uintptr_t tx_base_addr = DT_REG_ADDR(I2S_TX_NODE);
