@@ -1,0 +1,17 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+config TEST_GT911_INTERACTIVE
+	bool "Enable interactive GT911 touch tests"
+	default y
+	help
+	  Prompt an operator to tap, drag, and use multi-touch on the
+	  panel. This is the default for a board run. Set n for
+	  unattended CI; those cases skip.
+
+source "Kconfig.zephyr"
