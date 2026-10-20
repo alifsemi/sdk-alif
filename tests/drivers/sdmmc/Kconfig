@@ -6,6 +6,19 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
+config SDMMC_TEST_DISK_NAME
+	string "Disk access name (SD card or eMMC)"
+	default "SD"
+	help
+		Must match the DT disk-name. SD snippet uses "SD".
+		eMMC snippet uses "SD2" (zephyr,mmc-disk).
+
+config SDMMC_TEST_MNT_POINT
+	string "FAT mount point"
+	default "/SD:"
+	help
+		FATFS mount. SD: "/SD:". eMMC: "/SD2:".
+
 config SDMMC_TEST_DESTRUCTIVE_SECTOR_ZERO
 	bool "Enable destructive raw sector 0 test"
 	default n
@@ -14,5 +27,22 @@ config SDMMC_TEST_DESTRUCTIVE_SECTOR_ZERO
 		If the test aborts or power is lost, the SD card may be left
 		corrupted and require reformatting. Only enable for destructive
 		testing scenarios.
+
+config SDMMC_TEST_PERF_SECTORS
+	int "I/O chunk size in sectors for performance tests"
+	default 32
+	range 8 64
+	help
+		512-byte sectors per disk_access / fs_write chunk. Default
+		32 = 16 KiB. Total transfer size is CONFIG_SDMMC_TEST_PERF_KIB.
+
+config SDMMC_TEST_PERF_KIB
+	int "Performance transfer size in KiB"
+	default 256
+	range 16 1024
+	help
+		Total bytes timed by raw and FAT performance tests, transferred
+		in CONFIG_SDMMC_TEST_PERF_SECTORS chunks. Default 256 KiB.
+		Does not allocate a 256 KiB RAM buffer.
 
 source "Kconfig.zephyr"
