@@ -1,0 +1,47 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+config USE_KWS_PUSH_TO_TALK
+	bool "Use push to talk feature with KWS"
+	depends on AUDIO_DMIC
+	select TENSORFLOW_LITE_MICRO
+	select ARM_ETHOS_U
+	select CBPRINTF_FP_SUPPORT
+	select REQUIRES_FULL_LIBC
+	select CMSIS_DSP
+	select CMSIS_DSP_TRANSFORM
+	select CMSIS_DSP_FASTMATH
+	select CMSIS_DSP_COMPLEXMATH
+	default n
+	help
+		When enabled, the KWS will only be active when the push to talk button is pressed. When disabled, the KWS will always be active.
+
+if TENSORFLOW_LITE_MICRO
+
+config ACTIVATION_BUF_SECTION
+	string "Linker section where activation buffer (tensor arena) is placed"
+	default ".bss.activation_buf"
+
+config MODEL_IN_EXT_FLASH
+	bool "Put ML model to external flash"
+	select FLASH
+	select ALIF_OSPI_FLASH_XIP
+	help
+		Initialize OSPI controller to XIP mode. Initialize the onboard flash device. Link ML model data to external flash address space.
+		In addition to normal zephyr.bin output, ospi1.bin is generated. When enabled, the model memory section is set automatically (See BufAttributes.h)
+
+config MODEL_SECTION
+	string "Linker section where ML model is placed"
+	depends on !MODEL_IN_EXT_FLASH
+	default ".rodata.tflm_model"
+
+config ACTIVATION_BUF_SZ
+	hex "Tensor arena size"
+	default 0x20000
+
+endif # TENSORFLOW_LITE_MICRO

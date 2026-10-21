@@ -1,10 +1,10 @@
-#Copyright(C) Alif Semiconductor - All Rights Reserved.
-#Use, distribution and modification of this code is permitted under the
-#terms stated in the Alif Semiconductor Software License Agreement
+# Copyright(C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
 #
-#You should have received a copy of the Alif Semiconductor Software
-#License Agreement with this file.If not, please write to:
-#contact @alifsemi.com, or visit : https: // alifsemi.com/license
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file.If not, please write to:
+# contact @alifsemi.com, or visit : https: // alifsemi.com/license
 
 menu "Alif Bluetooth LE Audio Broadcast Source"
 
@@ -53,6 +53,21 @@ config INPUT_VOLUME_LEVEL
 	default 33
 	range 10 100
 
+config INPUT_VOLUME_STEP
+	int "Input volume adjustment step size"
+	default 3
+	range 1 10
+
+config INPUT_VOLUME_MIN
+	int "Minimum input volume level in percentage"
+	default 10
+	range 10 100
+
+config INPUT_VOLUME_MAX
+	int "Maximum input volume level in percentage"
+	default 50
+	range 10 100
+
 config AURACAST_AUTOSTART_CMD
 	string "Auto start command"
 
@@ -84,6 +99,8 @@ config AUDIO_IIR_COEF
 	int "IIR filter coefficient value"
 	default 0
 	range 0 32
+
+rsource "kws/Kconfig"
 
 menu "Logging"
 

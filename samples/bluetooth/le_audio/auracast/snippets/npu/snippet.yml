@@ -1,0 +1,4 @@
+name: npu
+append:
+  EXTRA_DTC_OVERLAY_FILE: kws.overlay
+  EXTRA_CONF_FILE: kws.conf
