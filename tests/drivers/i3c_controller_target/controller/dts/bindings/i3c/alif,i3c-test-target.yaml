@@ -1,0 +1,8 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+description: I3C test target described on the controller devicetree
+
+compatible: "alif,i3c-test-target"
+
+include: [i3c-device.yaml]
