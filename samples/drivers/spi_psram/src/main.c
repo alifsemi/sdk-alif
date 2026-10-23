@@ -16,8 +16,11 @@
 int main(void)
 {
 	const struct device *psram_dev = DEVICE_DT_GET(DT_ALIAS(spi_psram));
-	uint32_t *const ptr = (uint32_t *) DT_PROP_BY_IDX(DT_PARENT(DT_ALIAS(spi_psram)),
+	const uint32_t base_addr = DT_PROP_BY_IDX(DT_PARENT(DT_ALIAS(spi_psram)),
 						xip_base_address, 0);
+	const uint32_t bus_speed = DT_PROP(DT_PARENT(DT_ALIAS(spi_psram)), bus_speed);
+
+	volatile uint32_t *const ptr = (volatile uint32_t *)(uintptr_t)base_addr;
 	uint32_t total_errors = 0, ram_size;
 
 	ram_size = DT_PROP(DT_ALIAS(spi_psram), size);
@@ -28,7 +31,10 @@ int main(void)
 	}
 
 	printk("\nPSRAM XIP mode demo app started\n");
-
+	printk("Configured OSPI bus speed: %u Hz (%u MHz)\n",
+	       bus_speed, bus_speed / 1000000U);
+	printk("Test address range: 0x%08x - 0x%08x : %u MB\n\n",
+	       base_addr, base_addr + ram_size - 1U, ram_size / (1024 * 1024));
 	printk("Writing data to the XIP region:\n");
 
 	for (uint32_t index = 0; index < (ram_size/sizeof(uint32_t)); index++) {
@@ -38,14 +44,19 @@ int main(void)
 	printk("Reading back:\n");
 
 	for (uint32_t index = 0; index < (ram_size/sizeof(uint32_t)); index++) {
-		if (ptr[index] != index) {
-			printk("Data error at addr %x, got %x, expected %x\n",
-			(index * sizeof(uint32_t)), ptr[index], index);
+		uint32_t actual = ptr[index];
+
+		if (actual != index) {
+			uint32_t offset = index * sizeof(uint32_t);
+
+			printk("Data error at addr 0x%08x (offset 0x%08x), "
+			       "got 0x%08x, expected 0x%08x\n",
+			       base_addr + offset, offset, actual, index);
 			total_errors++;
 		}
 	}
 
-	printk("Done, total errors = %d\n", total_errors);
+	printk("Done, total errors = %u\n", total_errors);
 
 	return 0;
 }
