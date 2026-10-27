@@ -1,0 +1,146 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/*
+ * Enable RTSS P-state rows selected by Kconfig. The boot PLL stays okay
+ * in the SoC dtsi. Disabled rows do not become struct pstate objects.
+ */
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+#if defined(CONFIG_RTSS_HP)
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_PLL_200)
+&pstate_pll_200 {
+	status = "okay";
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_PLL_100)
+&pstate_pll_100 {
+	status = "okay";
+};
+#endif
+
+#else /* !CONFIG_RTSS_HP */
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_PLL_120)
+&pstate_pll_120 {
+	status = "okay";
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_PLL_80)
+&pstate_pll_80 {
+	status = "okay";
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_PLL_60)
+&pstate_pll_60 {
+	status = "okay";
+};
+#endif
+
+#endif /* CONFIG_RTSS_HP */
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_HFRC_76P8)
+&pstate_scaled_hfrc_76p8 {
+	status = "okay";
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_HFRC_38P4)
+&pstate_scaled_hfrc_38p4 {
+	status = "okay";
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_ALL) || \
+	defined(CONFIG_ALIF_TEST_PSTATE_HFRC_19P2)
+&pstate_scaled_hfrc_19p2 {
+	status = "okay";
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_HFRC_9P6)
+/ {
+	performance-states {
+		pstate_scaled_hfrc_9p6: pstate-scaled-hfrc-9p6 {
+			compatible = "alif,rtss-pstate";
+			load-threshold = <0>;
+			cpu-clk-freq = <ALIF_CLOCK_FREQ_76_8_RC_MHZ>;
+			clk-src = "hfrc";
+			scaled-clk-freq = <ALIF_SCALED_FREQ_RC_ACTIVE_9_6_MHZ>;
+		};
+	};
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_HFRC_4P8)
+/ {
+	performance-states {
+		pstate_scaled_hfrc_4p8: pstate-scaled-hfrc-4p8 {
+			compatible = "alif,rtss-pstate";
+			load-threshold = <0>;
+			cpu-clk-freq = <ALIF_CLOCK_FREQ_76_8_RC_MHZ>;
+			clk-src = "hfrc";
+			scaled-clk-freq = <ALIF_SCALED_FREQ_RC_ACTIVE_4_8_MHZ>;
+		};
+	};
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_HFRC_2P4)
+/ {
+	performance-states {
+		pstate_scaled_hfrc_2p4: pstate-scaled-hfrc-2p4 {
+			compatible = "alif,rtss-pstate";
+			load-threshold = <0>;
+			cpu-clk-freq = <ALIF_CLOCK_FREQ_76_8_RC_MHZ>;
+			clk-src = "hfrc";
+			scaled-clk-freq = <ALIF_SCALED_FREQ_RC_ACTIVE_2_4_MHZ>;
+		};
+	};
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_HFRC_1P2)
+/ {
+	performance-states {
+		pstate_scaled_hfrc_1p2: pstate-scaled-hfrc-1p2 {
+			compatible = "alif,rtss-pstate";
+			load-threshold = <0>;
+			cpu-clk-freq = <ALIF_CLOCK_FREQ_76_8_RC_MHZ>;
+			clk-src = "hfrc";
+			scaled-clk-freq = <ALIF_SCALED_FREQ_RC_ACTIVE_1_2_MHZ>;
+		};
+	};
+};
+#endif
+
+#if defined(CONFIG_ALIF_TEST_PSTATE_HFRC_0P6)
+/ {
+	performance-states {
+		pstate_scaled_hfrc_0p6: pstate-scaled-hfrc-0p6 {
+			compatible = "alif,rtss-pstate";
+			load-threshold = <0>;
+			cpu-clk-freq = <ALIF_CLOCK_FREQ_76_8_RC_MHZ>;
+			clk-src = "hfrc";
+			scaled-clk-freq = <ALIF_SCALED_FREQ_RC_ACTIVE_0_6_MHZ>;
+		};
+	};
+};
+#endif
