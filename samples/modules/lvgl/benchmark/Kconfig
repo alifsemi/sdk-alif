@@ -1,0 +1,39 @@
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+#
+
+mainmenu "LVGL D/AVE 2D benchmark"
+
+config APP_DAVE2D_HEAP_SIZE
+	int "D/AVE 2D heap size in bytes"
+	default 65536
+	help
+	  Size of the D/AVE 2D heap in SRAM1. The LVGL draw unit needs about
+	  24 KB (measured with APP_DAVE2D_HEAP_HWM). Must be a multiple of
+	  CONFIG_D0_FIXED_RANGE_ALIGNMENT.
+
+config APP_DAVE2D_HEAP_HWM
+	bool "Report the D/AVE 2D heap high-water mark"
+	help
+	  Fill the D/AVE 2D heap with a known pattern before the heap manager
+	  is initialised and, when the benchmark finishes, scan it for the
+	  highest byte that was ever written. The result is logged as the
+	  peak heap extent used and can be used to size APP_DAVE2D_HEAP_SIZE.
+
+config APP_LVGL_HEAP_STATS
+	bool "Report LVGL memory pool and main stack usage"
+	select SYS_HEAP_RUNTIME_STATS
+	select INIT_STACKS
+	select THREAD_STACK_INFO
+	help
+	  Log the current and peak usage of the LVGL memory pool
+	  (CONFIG_LV_Z_MEM_POOL_SIZE) and the peak usage of the main thread
+	  stack, which runs lv_timer_handler(), when the benchmark finishes.
+	  Can be used to size the pool and CONFIG_MAIN_STACK_SIZE.
+
+source "Kconfig.zephyr"

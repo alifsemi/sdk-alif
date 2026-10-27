@@ -28,6 +28,10 @@
 
 #include <dave_d0lib.h>
 
+#if defined(CONFIG_APP_LVGL_HEAP_STATS)
+#include <lvgl_mem.h>
+#endif
+
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
 #if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
@@ -63,11 +67,74 @@ static int display_panel_on(void)
  * them. In DIRECT mode the full-screen VDBs in SRAM0 double as the CDC200
  * scan-out framebuffers (zero-copy page-flip via cdc200_swap_fb).
  */
-#define DAVE2D_HEAP_SIZE (512 * 1024)
-static uint8_t __alif_sram1_section dave2d_heap[DAVE2D_HEAP_SIZE];
+#define DAVE2D_HEAP_SIZE CONFIG_APP_DAVE2D_HEAP_SIZE
+BUILD_ASSERT(DAVE2D_HEAP_SIZE % CONFIG_D0_FIXED_RANGE_ALIGNMENT == 0,
+	     "D/AVE 2D heap size must be a multiple of the d0 allocator alignment");
+static uint8_t __alif_sram1_section
+	__aligned(CONFIG_D0_FIXED_RANGE_ALIGNMENT) dave2d_heap[DAVE2D_HEAP_SIZE];
+
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+/*
+ * The D/AVE 2D fixed-range allocator is first-fit from the bottom of the heap
+ * and writes a block header right after every allocation it splits off, so the
+ * highest byte that no longer holds the fill pattern marks the peak extent.
+ */
+#define DAVE2D_HEAP_FILL 0xA5A5A5A5U
+
+static uint32_t dave2d_heap_hwm(void)
+{
+	const uint32_t *words = (const uint32_t *)dave2d_heap;
+	size_t i = DAVE2D_HEAP_SIZE / sizeof(uint32_t);
+
+	while (i > 0 && words[i - 1] == DAVE2D_HEAP_FILL) {
+		i--;
+	}
+
+	return i * sizeof(uint32_t);
+}
+#endif
+
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM) || defined(CONFIG_APP_LVGL_HEAP_STATS)
+static void benchmark_end_cb(const lv_demo_benchmark_summary_t *summary)
+{
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+	uint32_t hwm = dave2d_heap_hwm();
+#endif
+#if defined(CONFIG_APP_LVGL_HEAP_STATS)
+	struct sys_memory_stats stats;
+	size_t stack_size = k_current_get()->stack_info.size;
+	size_t stack_unused = 0;
+
+	lvgl_heap_stats(&stats);
+	(void)k_thread_stack_space_get(k_current_get(), &stack_unused);
+#endif
+
+	lv_demo_benchmark_summary_display(summary);
+
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+	LOG_INF("D/AVE 2D heap high-water mark: %u of %u bytes (%u%%)", (unsigned int)hwm,
+		(unsigned int)DAVE2D_HEAP_SIZE, (unsigned int)((hwm * 100U) / DAVE2D_HEAP_SIZE));
+#endif
+#if defined(CONFIG_APP_LVGL_HEAP_STATS)
+	LOG_INF("LVGL pool: %u allocated, %u peak of %u bytes (peak %u%%)",
+		(unsigned int)stats.allocated_bytes, (unsigned int)stats.max_allocated_bytes,
+		(unsigned int)CONFIG_LV_Z_MEM_POOL_SIZE,
+		(unsigned int)((stats.max_allocated_bytes * 100U) / CONFIG_LV_Z_MEM_POOL_SIZE));
+	LOG_INF("Main stack: %u peak of %u bytes (%u%%)", (unsigned int)(stack_size - stack_unused),
+		(unsigned int)stack_size,
+		(unsigned int)(((stack_size - stack_unused) * 100U) / stack_size));
+#endif
+}
+#endif
 
 static int dave2d_heap_init(void)
 {
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+	for (size_t i = 0; i < DAVE2D_HEAP_SIZE / sizeof(uint32_t); i++) {
+		((uint32_t *)dave2d_heap)[i] = DAVE2D_HEAP_FILL;
+	}
+#endif
+
 	if (!d0_initheapmanager(dave2d_heap, sizeof(dave2d_heap), d0_mm_fixed_range,
 				NULL, 0, 0, 0, d0_ma_unified)) {
 		LOG_ERR("Failed to initialise the D/AVE 2D heap manager");
@@ -200,6 +267,9 @@ int main(void)
 
 	setup_direct_mode(display_dev, disp);
 
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM) || defined(CONFIG_APP_LVGL_HEAP_STATS)
+	lv_demo_benchmark_set_end_cb(benchmark_end_cb);
+#endif
 	lv_demo_benchmark();
 
 	while (1) {

@@ -40,6 +40,14 @@ zephyr_include_directories(include)
 # for the whole build (the LVGL module needs them too, not just the app).
 zephyr_compile_definitions(ARM_CORTEX_M55_M85=1 BSP_CFG_DCACHE_ENABLED=1)
 
+# In DIRECT mode the LVGL VDBs are the scan-out framebuffers, so the CDC200
+# driver's own statically allocated layer-1 framebuffer (768 KB of SRAM0) is
+# never used after the first cdc200_swap_fb(). NO_RELOCATE_SRAM0 makes the
+# driver skip that allocation and start scanning out from the start of SRAM0,
+# which is where lvgl_sram.ld places the VDBs; main.c points it at the active
+# VDB before LVGL renders its first frame.
+zephyr_compile_definitions(NO_RELOCATE_SRAM0)
+
 # lv_demo_benchmark cycles through the widgets demo scenes, so both the
 # benchmark and widgets demo sources are required.
 target_sources_ifdef(CONFIG_LV_USE_DEMO_BENCHMARK app PRIVATE

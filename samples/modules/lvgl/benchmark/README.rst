@@ -79,14 +79,41 @@ What it takes to accelerate LVGL with D/AVE 2D
   globally-addressable SRAM banks where the CPU, GPU and CDC200 can all access
   them:
 
-  - the D/AVE 2D heap (512 KB) is placed in SRAM1 via ``__alif_sram1_section``;
+  - the D/AVE 2D heap (``CONFIG_APP_DAVE2D_HEAP_SIZE``, 64 KB by default) is
+    placed in SRAM1 via ``__alif_sram1_section``;
   - the two full-screen LVGL VDBs (``.lvgl_buf``) and memory pool
     (``.lvgl_heap``) are relocated to SRAM0 by :file:`lvgl_sram.ld`
     (``CONFIG_LV_Z_VDB_CUSTOM_SECTION`` / ``CONFIG_LV_Z_MEMORY_POOL_CUSTOM_SECTION``).
 
   In DIRECT mode the VDBs double as the CDC200 scan-out framebuffers (zero-copy
   page-flip via ``cdc200_swap_fb()``), so no separate framebuffer allocation is
-  needed.
+  needed. The sample defines ``NO_RELOCATE_SRAM0`` in :file:`CMakeLists.txt` so
+  the CDC200 driver does not reserve its own framebuffer either.
+
+  The 256 KB LVGL memory pool is larger than the 262136-byte limit of
+  ``CONFIG_SYS_HEAP_SMALL_ONLY`` (the default when DTCM is 256 KB), so
+  :file:`prj.conf` selects ``CONFIG_SYS_HEAP_AUTO``.
+
+Memory diagnostics
+******************
+
+Two optional Kconfig options report heap usage once the benchmark finishes:
+
+* ``CONFIG_APP_DAVE2D_HEAP_HWM`` - fills the D/AVE 2D heap with a pattern at
+  boot and logs the highest byte ever used (high-water mark).
+* ``CONFIG_APP_LVGL_HEAP_STATS`` - logs the current and peak usage of the LVGL
+  memory pool and the peak usage of the main thread stack (which runs
+  ``lv_timer_handler()``).
+
+.. code-block:: console
+
+   west build -p always -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       alif/samples/modules/lvgl/benchmark -- \
+       -DCONFIG_APP_DAVE2D_HEAP_HWM=y -DCONFIG_APP_LVGL_HEAP_STATS=y
+
+Size each heap at about twice the reported peak. Running out of D/AVE 2D heap
+is silent in the default configuration (missing shapes or text); enable
+``CONFIG_LV_LOG_LEVEL_WARN`` and ``CONFIG_ASSERT`` when testing smaller sizes.
 
 Display
 *******
