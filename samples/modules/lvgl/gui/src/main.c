@@ -26,6 +26,10 @@
 
 #include "ui_xml.h"
 
+#if defined(CONFIG_APP_LVGL_HEAP_STATS)
+#include <lvgl_mem.h>
+#endif
+
 LOG_MODULE_REGISTER(app, CONFIG_LOG_DEFAULT_LEVEL);
 
 #if DT_NODE_HAS_STATUS(DT_ALIAS(panel), okay)
@@ -58,11 +62,69 @@ static int panel_power_on(void)
  * rendering buffers + memory pool live in SRAM0 (see lvgl_sram.ld) - both
  * globally addressable so the GPU can reach them.
  */
-#define DAVE2D_HEAP_SIZE (512 * 1024)
-static uint8_t __alif_sram1_section dave2d_heap[DAVE2D_HEAP_SIZE];
+#define DAVE2D_HEAP_SIZE (64 * 1024)
+static uint8_t __alif_sram1_section
+	__aligned(CONFIG_D0_FIXED_RANGE_ALIGNMENT) dave2d_heap[DAVE2D_HEAP_SIZE];
+
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+/*
+ * The D/AVE 2D fixed-range allocator is first-fit from the bottom of the heap
+ * and writes a block header right after every allocation it splits off, so the
+ * highest byte that no longer holds the fill pattern marks the peak extent.
+ */
+#define DAVE2D_HEAP_FILL 0xA5A5A5A5U
+
+static uint32_t dave2d_heap_hwm(void)
+{
+	const uint32_t *words = (const uint32_t *)dave2d_heap;
+	size_t i = DAVE2D_HEAP_SIZE / sizeof(uint32_t);
+
+	while (i > 0 && words[i - 1] == DAVE2D_HEAP_FILL) {
+		i--;
+	}
+
+	return i * sizeof(uint32_t);
+}
+#endif
+
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM) || defined(CONFIG_APP_LVGL_HEAP_STATS)
+#define MEM_REPORT_INTERVAL_MS 10000
+
+static void mem_report(void)
+{
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+	uint32_t hwm = dave2d_heap_hwm();
+
+	LOG_INF("D/AVE 2D heap high-water mark: %u of %u bytes (%u%%)", (unsigned int)hwm,
+		(unsigned int)DAVE2D_HEAP_SIZE, (unsigned int)((hwm * 100U) / DAVE2D_HEAP_SIZE));
+#endif
+#if defined(CONFIG_APP_LVGL_HEAP_STATS)
+	struct sys_memory_stats stats;
+	size_t stack_size = k_current_get()->stack_info.size;
+	size_t stack_unused = 0;
+
+	lvgl_heap_stats(&stats);
+	(void)k_thread_stack_space_get(k_current_get(), &stack_unused);
+
+	LOG_INF("LVGL pool: %u allocated, %u peak of %u bytes (peak %u%%)",
+		(unsigned int)stats.allocated_bytes, (unsigned int)stats.max_allocated_bytes,
+		(unsigned int)CONFIG_LV_Z_MEM_POOL_SIZE,
+		(unsigned int)((stats.max_allocated_bytes * 100U) / CONFIG_LV_Z_MEM_POOL_SIZE));
+	LOG_INF("Main stack: %u peak of %u bytes (%u%%)", (unsigned int)(stack_size - stack_unused),
+		(unsigned int)stack_size,
+		(unsigned int)(((stack_size - stack_unused) * 100U) / stack_size));
+#endif
+}
+#endif
 
 static int dave2d_heap_init(void)
 {
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM)
+	for (size_t i = 0; i < DAVE2D_HEAP_SIZE / sizeof(uint32_t); i++) {
+		((uint32_t *)dave2d_heap)[i] = DAVE2D_HEAP_FILL;
+	}
+#endif
+
 	if (!d0_initheapmanager(dave2d_heap, sizeof(dave2d_heap), d0_mm_fixed_range,
 				NULL, 0, 0, 0, d0_ma_unified)) {
 		LOG_ERR("Failed to initialise the D/AVE 2D heap manager");
@@ -188,8 +250,23 @@ int main(void)
 
 	LOG_INF("XML widgets UI created");
 
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM) || defined(CONFIG_APP_LVGL_HEAP_STATS)
+	int64_t next_report = k_uptime_get() + MEM_REPORT_INTERVAL_MS;
+#endif
+
 	while (1) {
 		uint32_t sleep_ms = lv_timer_handler();
+
+#if defined(CONFIG_APP_DAVE2D_HEAP_HWM) || defined(CONFIG_APP_LVGL_HEAP_STATS)
+		int64_t now = k_uptime_get();
+
+		if (now >= next_report) {
+			mem_report();
+			next_report = now + MEM_REPORT_INTERVAL_MS;
+		}
+		/* LVGL pauses its refresh timer while the screen is unchanged. */
+		sleep_ms = MIN(sleep_ms, (uint32_t)(next_report - now));
+#endif
 
 		k_msleep(MIN(sleep_ms, INT32_MAX));
 	}
