@@ -26,13 +26,13 @@
 #include "gapc_sec.h"
 #include "gapm_le.h"
 #include "power_mgr.h"
-#include "main.h"
+#include "bluetooth.h"
 #include "auracast_source.h"
 #include "auracast_sink.h"
 #include "auracast_sd.h"
 #include "control_profile.h"
 
-LOG_MODULE_REGISTER(main, CONFIG_MAIN_LOG_LEVEL);
+LOG_MODULE_REGISTER(bluetooth, CONFIG_MAIN_LOG_LEVEL);
 
 enum gapm_meta {
 	META_CONFIG = 1,
@@ -62,8 +62,11 @@ struct connection_status {
 };
 
 static struct connection_status app_con_info = {
+	.addr = (gap_bdaddr_t){
+		.addr = {0},
+		.addr_type = 0xff,
+	},
 	.conidx = GAP_INVALID_CONIDX,
-	.addr.addr_type = 0xff,
 };
 
 #define BLE_THREAD_PRIORITY   1
@@ -367,11 +370,11 @@ static void on_gapc_pairing_req(uint8_t const conidx, uint32_t const metainfo,
 	LOG_DBG("Client %u pairing requested. auth_level:%u", conidx, auth_level);
 
 	gapc_pairing_t pairing_info = {
-		.auth = GAP_AUTH_REQ_SEC_CON_BOND,
 		.iocap = GAP_IO_CAP_DISPLAY_ONLY,
-		.ikey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
-		.key_size = GAP_KEY_LEN,
 		.oob = GAP_OOB_AUTH_DATA_NOT_PRESENT,
+		.auth = GAP_AUTH_REQ_SEC_CON_BOND,
+		.key_size = GAP_KEY_LEN,
+		.ikey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
 		.rkey_dist = GAP_KDIST_ENCKEY | GAP_KDIST_IDKEY,
 	};
 
@@ -970,7 +973,7 @@ int execute_shell_command(struct startup_params msg)
 		return -EINVAL;
 	}
 
-	struct startup_params *p_msg = malloc(sizeof(*p_msg));
+	struct startup_params *p_msg = (struct startup_params *)malloc(sizeof(*p_msg));
 
 	if (!p_msg) {
 		LOG_ERR("Failed to allocate memory for command");
@@ -1012,7 +1015,8 @@ static void ble_worker(void *p1, void *p2, void *p3)
 	LOG_INF("Type 'auracast help' to get started...");
 
 	while (1) {
-		struct startup_params *p_msg = k_queue_get(&ble_cmd_queue, K_FOREVER);
+		struct startup_params *p_msg =
+			(struct startup_params *)k_queue_get(&ble_cmd_queue, K_FOREVER);
 
 		if (!p_msg) {
 			continue;
@@ -1046,7 +1050,7 @@ static void ble_worker(void *p1, void *p2, void *p3)
 	}
 }
 
-int main(void)
+int configure_bluetooth(void)
 {
 	k_queue_init(&ble_cmd_queue);
 
