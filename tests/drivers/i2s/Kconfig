@@ -43,6 +43,22 @@ config I2S_NEGATIVE_TESTS
 	  Enable negative test cases to validate error handling and robustness
 	  of the I2S driver under invalid conditions.
 
+config I2S_STRESS_TESTS
+	bool "Enable I2S stress tests"
+	default n
+	help
+	  Repeated start/stop, underrun recovery, a 30 s 192 kHz transmit,
+	  and a trigger-fuzz run. Off by default because the suite takes
+	  about a minute.
+
+config I2S_PERF_TESTS
+	bool "Enable I2S performance tests"
+	default n
+	help
+	 Block period, throughput, datasheet sample rates, startup
+	 latency, and underrun margin. Off by default because the rate
+	 sweep holds each stream for one second.
+
 config I2S_CONFIG_TESTS
 	bool "Enable configuration tests"
 	default y

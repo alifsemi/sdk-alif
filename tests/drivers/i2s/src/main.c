@@ -7,10 +7,9 @@
  *
  * Suites registered here (each compiled conditionally via CMakeLists.txt):
  *   i2s_alif_functional - Loopback matrix, features, and playback tests
- *   i2s_alif_states    - State machine and transition tests
  *   i2s_alif_golden    - Golden vector tests across rates/bit depths
- *   i2s_alif_negative  - Error condition and negative tests
- *   i2s_alif_config    - Configuration and parameter tests
+ *   i2s_negative       - Error condition and negative tests
+ *   i2s_performance    - Period, throughput, rate, and latency measurements
  */
 
 #include <zephyr/ztest.h>
