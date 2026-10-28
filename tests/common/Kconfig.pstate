@@ -1,0 +1,107 @@
+# Copyright Alif Semiconductor - All Rights Reserved.
+# Use, distribution and modification of this code is permitted under the
+# terms stated in the Alif Semiconductor Software License Agreement
+#
+# You should have received a copy of the Alif Semiconductor Software
+# License Agreement with this file. If not, please write to:
+# contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+menu "Alif test P-state selection"
+
+config ALIF_TEST_PSTATE_ALL
+	bool "Run every PLL row and HFRC down to 19.2 MHz"
+	help
+	  Enable every extra PLL row for this core and the HFRC rows at
+	  76.8, 38.4, and 19.2 MHz. Slower HFRC dividers stay off because
+	  peripherals need a higher input clock. Select those with their
+	  own symbols. The boot PLL stays enabled.
+
+comment "PLL frequencies"
+
+config ALIF_TEST_PSTATE_PLL_200
+	bool "200 MHz PLL"
+	depends on RTSS_HP
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 200 MHz PLL row in addition to the boot PLL.
+
+config ALIF_TEST_PSTATE_PLL_100
+	bool "100 MHz PLL"
+	depends on RTSS_HP
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 100 MHz PLL row in addition to the boot PLL.
+
+config ALIF_TEST_PSTATE_PLL_120
+	bool "120 MHz PLL"
+	depends on !RTSS_HP
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 120 MHz PLL row in addition to the boot PLL.
+
+config ALIF_TEST_PSTATE_PLL_80
+	bool "80 MHz PLL"
+	depends on !RTSS_HP
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 80 MHz PLL row in addition to the boot PLL.
+
+config ALIF_TEST_PSTATE_PLL_60
+	bool "60 MHz PLL"
+	depends on !RTSS_HP
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 60 MHz PLL row in addition to the boot PLL.
+	  HP has no 60 MHz PLL row.
+
+comment "HFRC frequencies"
+
+config ALIF_TEST_PSTATE_HFRC_76P8
+	bool "76.8 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 76.8 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_38P4
+	bool "38.4 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 38.4 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_19P2
+	bool "19.2 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 19.2 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_9P6
+	bool "9.6 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 9.6 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_4P8
+	bool "4.8 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 4.8 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_2P4
+	bool "2.4 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 2.4 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_1P2
+	bool "1.2 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 1.2 MHz HFRC row in addition to the selected PLL rows.
+
+config ALIF_TEST_PSTATE_HFRC_0P6
+	bool "0.6 MHz HFRC"
+	depends on !ALIF_TEST_PSTATE_ALL
+	help
+	  Walk the 0.6 MHz HFRC row in addition to the selected PLL rows.
+
+endmenu
