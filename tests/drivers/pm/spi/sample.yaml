@@ -1,42 +1,59 @@
 sample:
-  name: Alif SPI Power Management Test
+  name: Alif SPI DW Power Management Test
   description: >
-    Validates Zephyr power management states (PM_STATE_RUNTIME_IDLE,
-    PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM, PM_STATE_SOFT_OFF) on Alif
-    RTSS cores while an SPI controller/peripheral loopback transfer runs concurrently,
-    using the ztest framework to verify SPI transactions are correctly suspended
-    and resumed across each power state transition.
+    ztest suite validating Zephyr power management states (PM_STATE_RUNTIME_IDLE,
+    PM_STATE_SUSPEND_TO_IDLE, PM_STATE_SUSPEND_TO_RAM STANDBY/STOP, PM_STATE_SOFT_OFF)
+    on Alif RTSS cores with an SPI DW DMA controller/peripheral loopback verified before
+    and after every resumable sleep; SOFT_OFF runs only the pre-sleep check because wakeup
+    resets the core. PM states are selected via build snippets: spi-dw-pm-s2ram-tcm
+    (HE TCM retention) and spi-dw-pm-mram (MRAM boot SOFT_OFF, HE or HP).
 common:
   tags:
     - power
     - pm
     - spi
+    - dma
+    - counter
     - rtc
     - drivers
   filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
   harness: console
-  harness_config:
-    type: multi_line
-    regex:
-      - "PM states demo"
-      - "SPI threads started"
-      - "PROJECT EXECUTION SUCCESSFUL"
+  depends_on:
+    - counter
+    - spi
 tests:
-  sample.pm.spi_pm_testcode.he:
-    extra_args:
-      - SNIPPET=spi-pm-he
+  drivers.pm.spi.s2ram_tcm:
     platform_allow:
       - alif_e7_dk_rtss_he
       - alif_e8_dk_rtss_he
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
     integration_platforms:
       - alif_e7_dk_rtss_he
-    depends_on:
-      - spi
-  sample.pm.spi_pm_testcode.hp:
     extra_args:
-      - SNIPPET=spi-pm-hp
+      - SNIPPET=spi-dw-pm-s2ram-tcm
+    harness_config:
+      type: multi_line
+      regex:
+        - "SPI DW PM test"
+        - "SPI threads started"
+        - "PROJECT EXECUTION SUCCESSFUL"
+  drivers.pm.spi.mram:
     platform_allow:
+      - alif_e7_dk_rtss_he
       - alif_e7_dk_rtss_hp
+      - alif_e8_dk_rtss_he
       - alif_e8_dk_rtss_hp
-    depends_on:
-      - spi
+      - alif_e1c_dk_rtss_he
+      - alif_b1_dk_rtss_he
+    integration_platforms:
+      - alif_e7_dk_rtss_he
+      - alif_e7_dk_rtss_hp
+    extra_args:
+      - SNIPPET=spi-dw-pm-mram
+    harness_config:
+      type: multi_line
+      regex:
+        - "SPI DW PM test"
+        - "SPI threads started"
+        - "Enter PM_STATE_SOFT_OFF"
