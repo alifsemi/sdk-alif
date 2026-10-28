@@ -1,0 +1,17 @@
+tests:
+  driver.usb.cdc-ncm:
+    depends_on: usb_device
+    tags: usb net ncm
+    harness: ztest
+    extra_args:
+      - DTC_OVERLAY_FILE=boards/alif_cdc_ncm.overlay
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp

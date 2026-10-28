@@ -1,0 +1,113 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * E8 DK (RTSS-HP) - MT9M114 sensor overlay:
+ *   MT9M114 (MIPI CSI-2) -> ISP (NV12 1280x720) -> Hantro JPEG encoder -> UVC.
+ *
+ * Merge this on top of the auto-applied board overlay
+ * alif_e8_dk_ae822fa0e5597xx0_rtss_hp.overlay with EXTRA_DTC_OVERLAY_FILE (see
+ * the README). The board overlay carries all the common E8 plumbing; this file
+ * adds the MT9M114 sensor node, the CSI input endpoint (single data lane), the
+ * Fast-mode I2C tuning, the fixed MIPI supply regulator and the GT911 touch
+ * reset-hold hog that the MT9M114 needs.
+ */
+
+#include <dt-bindings/i2c/i2c.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/video/video-interfaces.h>
+
+/* The MT9M114 needs Fast-mode I2C (the board overlay only enables i2c1). */
+&i2c1 {
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	/*
+	 * For Standard  speed LCNT=0  and HCNT=0
+	 * For Fast      speed LCNT=50 and HCNT=30
+	 * For Fast Plus speed LCNT=35 and HCNT=5
+	 */
+	hcnt-offset = <30>;
+	lcnt-offset = <50>;
+};
+
+/*
+ * The MW405 display board's GT911 touch controller shares i2c1 with the camera
+ * and defaults to 7-bit address 0x5D - the SAME address as the MT9M114, so the
+ * two collide on the bus. Touch is not used here, so hold the GT911 in reset
+ * (E8 DK RESETn on gpio6.5, active-low) via a GPIO hog for the life of the
+ * board, so it never drives i2c1. output-high asserts the active-low reset.
+ * Requires CONFIG_GPIO_HOGS=y (see mt9m114.conf). The ARX3A0 (address 0x36)
+ * and OV5675 (0x10) do not collide, so this is only needed for the MT9M114.
+ */
+&gpio6 {
+	status = "okay";
+
+	gt911_touch_reset_hold {
+		gpio-hog;
+		gpios = <5 GPIO_ACTIVE_LOW>;
+		output-high;
+	};
+};
+
+/ {
+	/*
+	 * MT9M114 MIPI supply. Unlike the ARX3A0 / OV5675 (which use a plain
+	 * power-gpios on the sensor node), the MT9M114 module is powered by a
+	 * fixed regulator held on for the life of the board.
+	 */
+	csi_cam_power: regulator-v1.2-v1.8v {
+		compatible = "regulator-fixed";
+
+		regulator-name = "MIPI supply";
+
+		enable-gpios = < &gpio7 5 GPIO_ACTIVE_HIGH >;
+
+		regulator-boot-on;
+		regulator-always-on;
+		status = "okay";
+	};
+};
+
+/* MT9M114 (I2C 0x5D) on the camera i2c-mux channel. */
+&cam_i2c_channel {
+	mt9m114_selfie: mt9m114_selfie@5d {
+		compatible = "aptina,mt9m114";
+		reg = <0x5d>;
+
+		reset-gpios = <&gpio14 4 GPIO_ACTIVE_LOW>;
+
+		status = "okay";
+
+		port {
+			mt9m114_csi2_ep_out0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = < 384000000 >;
+				data-lanes = <1>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "csi2_ep_in0";
+			};
+		};
+	};
+};
+
+/* CSI input endpoint: the MT9M114 uses a single data lane. */
+&csi {
+	ports {
+		port@0 {
+			reg = <0>;
+			csi2_ep_in0: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				link-frequencies = < 384000000 >;
+				data-lanes = <1>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "mt9m114_csi2_ep_out0";
+			};
+		};
+	};
+};
