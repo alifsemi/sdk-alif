@@ -90,8 +90,8 @@ The display pipeline (CDC200 controller, MIPI-DSI host, MW405 panel at
   ``zephyr,display``;
 * :file:`include/bsp_api.h` is the compatibility shim the LVGL 9.5.0 D/AVE 2D
   draw unit needs (it includes ``bsp_api.h``);
-* the D/AVE 2D heap (512 KB) lives in SRAM1 and the double-buffered full-screen
-  VDBs + LVGL memory pool are relocated to SRAM0 by :file:`lvgl_sram.ld`;
+* the D/AVE 2D heap (64 KB) lives in SRAM1 and the double-buffered full-screen
+  VDBs + LVGL memory pool (64 KB) are relocated to SRAM0 by :file:`lvgl_sram.ld`;
 * DIRECT-mode rendering is used: the two VDBs double as the CDC200 scan-out
   framebuffers and ``main.c`` page-flips via ``cdc200_swap_fb()`` at each vblank.
 
