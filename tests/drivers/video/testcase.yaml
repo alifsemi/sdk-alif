@@ -9,6 +9,7 @@ common:
     fixture: fixture_camera
   platform_allow:
     - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_b1_sk/ab1c1f4m51820ph0/rtss_he
     - alif_e1c_dk/ae1c1f4051920hh/rtss_he
     - alif_e8_dk/ae822fa0e5597xx0/rtss_he
     - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
@@ -16,6 +17,7 @@ common:
     - alif_e7_dk/ae722f80f55d5xx/rtss_hp
   integration_platforms:
     - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    - alif_b1_sk/ab1c1f4m51820ph0/rtss_he
     - alif_e1c_dk/ae1c1f4051920hh/rtss_he
     - alif_e8_dk/ae822fa0e5597xx0/rtss_he
     - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
@@ -76,3 +78,9 @@ tests:
       - video
       - cpi
       - csi2
+
+  # B1-SK OV5640 over LP-CPI (DVP). Uses the auto-picked board overlay.
+  drivers.video.cpi.ov5640:
+    filter: dt_compat_enabled("alif,cam") and dt_compat_enabled("ovti,ov5640")
+    platform_allow:
+      - alif_b1_sk/ab1c1f4m51820ph0/rtss_he
