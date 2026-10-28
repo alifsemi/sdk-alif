@@ -1,0 +1,177 @@
+# Representative PDM / LpPDM scenarios. Not exhaustive — see README.rst.
+# ZTEST name: test_pdm_*   for -S pdm   (&pdm)
+#             test_lppdm_* for -S lppdm (&lppdm)
+common:
+  tags: pdm
+  harness: ztest
+  timeout: 90
+
+.pdm_platforms: &pdm_platforms
+  - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+  - alif_e7_dk/ae722f80f55d5xx/rtss_he
+  - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+.lppdm_platforms: &lppdm_platforms
+  - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+  - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+  - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  - alif_e7_dk/ae722f80f55d5xx/rtss_he
+
+tests:
+  # --- PDM: E7/E8 HE + HP ---
+  drivers.pdm.mono.mode1.ch0:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    integration_platforms: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.pdm.mono.mode2.ch3:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH3=y
+      - CONFIG_TEST_PDM_MODE2=y
+  drivers.pdm.mono.mode3.ch0:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE3=y
+  drivers.pdm.mono.mode4.ch0:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE4=y
+  drivers.pdm.mono.mode5.ch0:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE5=y
+  drivers.pdm.mono.mode7.ch0:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE7=y
+  drivers.pdm.mono.mode8.ch0:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE8=y
+  drivers.pdm.stereo.mode1.ch0_1:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_CH1=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.pdm.stereo.mode1.ch2_3:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH2=y
+      - CONFIG_TEST_PDM_CH3=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.pdm.stereo.mode1.ch6_7:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH6=y
+      - CONFIG_TEST_PDM_CH7=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.pdm.stereo.mode6.ch4_5:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_MODE6=y
+  drivers.pdm.multi.mode1.ch0_1_2:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MULTI_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_CH1=y
+      - CONFIG_TEST_PDM_CH2=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.pdm.multi.mode6.ch0_1_4_5:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MULTI_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_CH1=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_MODE6=y
+  drivers.pdm.multi.mode9.ch4_5_6_7:
+    required_snippets:
+      - pdm
+    platform_allow: *pdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MULTI_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_CH6=y
+      - CONFIG_TEST_PDM_CH7=y
+      - CONFIG_TEST_PDM_MODE9=y
+
+  # --- LpPDM: B1 / E1C / E7 / E8 HE ---
+  drivers.lppdm.mono.mode1.ch0:
+    required_snippets:
+      - lppdm
+    platform_allow: *lppdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MONO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.lppdm.stereo.mode1.ch0_1:
+    required_snippets:
+      - lppdm
+    platform_allow: *lppdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH0=y
+      - CONFIG_TEST_PDM_CH1=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.lppdm.multi.mode6.ch4_5_6_7:
+    required_snippets:
+      - lppdm
+    platform_allow: *lppdm_platforms
+    extra_configs:
+      - CONFIG_TEST_PDM_MULTI_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_CH6=y
+      - CONFIG_TEST_PDM_CH7=y
+      - CONFIG_TEST_PDM_MODE6=y
