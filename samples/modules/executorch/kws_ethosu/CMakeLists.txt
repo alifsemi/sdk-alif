@@ -92,6 +92,10 @@ set(CONF_FILE "${CMAKE_CURRENT_SOURCE_DIR}/prj.conf")
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(executorch_kws_ethosu)
 
+if(CONFIG_KWS_ETHOSU_IMAGE_IN_OSPI)
+  message(STATUS "Image executes from OSPI XIP at ${CONFIG_FLASH_BASE_ADDRESS}")
+endif()
+
 # Core-type checks that need Kconfig, so they have to run after find_package().
 # The CONFIG_ARM_ETHOS_U* forcing above must stay before it, since Zephyr turns
 # CONFIG_-prefixed CMake cache variables into Kconfig assignments while

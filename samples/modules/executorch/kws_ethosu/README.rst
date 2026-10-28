@@ -317,6 +317,85 @@ node with GIC interrupt routing (``GIC_SPI 355``), and the SRAM1 memory region
 used for the NPU-visible buffers. Building for APSS without it fails with a
 message pointing at the snippet.
 
+Running with OSPI Flash
+***********************
+
+By default the image runs from MRAM. The Secure Enclave can also boot the whole
+image from OSPI1 NOR flash; the ``.pte`` model is part of that image. Prepare
+the workspace as described in :ref:`appnote-zephyr-hello-world-ospi` (MPU
+related changes) and link the image to the OSPI1 XIP window of the target core:
+
+- **RTSS-HP**: ``-DCONFIG_FLASH_BASE_ADDRESS=0xC0000000`` and
+  ``-DCONFIG_FLASH_LOAD_OFFSET=0x0``
+- **RTSS-HE**: ``-DCONFIG_FLASH_BASE_ADDRESS=0xC0200000`` and
+  ``-DCONFIG_FLASH_LOAD_OFFSET=0x0``
+
+``CONFIG_FLASH_LOAD_OFFSET=0x0`` is needed on both cores because the default
+MRAM code partition offset (``0x210000`` on RTSS-HP, ``0x10000`` on RTSS-HE)
+would otherwise be added to the OSPI base address.
+
+Building for Alif E8 DK from OSPI (HP Core with U55-256)
+=========================================================
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
+       -S ethos-u55-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u55_256.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-256 \
+       -DCONFIG_ARM_MPU=n \
+       -DCONFIG_FLASH_BASE_ADDRESS=0xC0000000 \
+       -DCONFIG_FLASH_LOAD_OFFSET=0x0
+
+Building for Alif E8 DK from OSPI (HE Core with U55-128)
+=========================================================
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       -S ethos-u55-enable \
+       alif/samples/modules/executorch/kws_ethosu/ \
+       -p always -- \
+       -DET_PTE_FILE_PATH=./kws_u55_128.pte \
+       -DET_PTE_SECTION=.rodata.model \
+       -DETHOSU_TARGET_NPU_CONFIG=ethos-u55-128 \
+       -DCONFIG_ARM_MPU=n \
+       -DCONFIG_FLASH_BASE_ADDRESS=0xC0200000 \
+       -DCONFIG_FLASH_LOAD_OFFSET=0x0
+
+For the U85 on either core, use ``-S ethos-u85-enable``, ``./kws_u85_256.pte``
+and ``-DETHOSU_TARGET_NPU_CONFIG=ethos-u85-256`` with the same OSPI options.
+
+OSPI Model Placement
+====================
+
+When the image is linked into an OSPI XIP window,
+``CONFIG_KWS_ETHOSU_MODEL_COPY_TO_RAM`` is enabled automatically: the ``.pte``
+is copied to DTCM at startup and the ExecuTorch program is loaded from that
+copy. The Ethos-U delegate hands the NPU pointers into the loaded program for
+the Vela command stream and weights, so the NPU only reads the RAM copy. NPU
+accesses to the OSPI XIP window set up by the boot firmware fail with
+``NPU status=0x00000010`` (command stream parse error). The console shows the
+copy at startup, here for RTSS-HP with U55-256:
+
+.. code-block:: console
+
+   I [executorch:main.cpp:360 main()] Model PTE at 0xc00200b0, Size: 34320 bytes
+   I [executorch:main.cpp:364 main()] Model copied to RAM: 0xc00200b0 -> 0x20000440 (34320 bytes)
+
+The source address is in the OSPI1 window of the core (``0xC0...`` on RTSS-HP,
+``0xC02...`` on RTSS-HE) and the destination is in that core's DTCM. The exact
+addresses depend on the build. The command stream and weight addresses in the
+Ethos-U driver debug output (``QBASE``, ``BASEP0``) then point at the DTCM copy
+through the global alias. The copy costs the size of the ``.pte`` in DTCM
+(about 34 KB for the KWS model) in addition to the Ethos-U scratch pools.
+Override the placement with ``CONFIG_KWS_ETHOSU_MODEL_RAM_SECTION`` (default
+``.bss.et_model_ram``), or force the copy for an MRAM build with
+``-DCONFIG_KWS_ETHOSU_MODEL_COPY_TO_RAM=y``.
+
 APSS Core Notes (Cortex-A32)
 ****************************
 
