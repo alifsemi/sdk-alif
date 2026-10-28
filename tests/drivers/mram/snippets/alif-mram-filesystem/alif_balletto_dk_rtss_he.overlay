@@ -1,0 +1,12 @@
+/* Shrink scratch from 64 KB → 56 KB to make room for 16 KB storage.
+ * scratch: 0x1B5800 + 56 KB = ends at 0x1C3800
+ * storage: 0x1C3800 + 16 KB = ends at 0x1C7800 (within 1824 KB MRAM)
+ * LittleFS needs ≥ 3 × 4 KB blocks; 16 KB gives 4 blocks.
+ */
+&scratch_partition {
+	reg = <0x001B5800 DT_SIZE_K(56)>;
+};
+
+&storage_partition {
+	reg = <0x001C3800 DT_SIZE_K(16)>;
+};
