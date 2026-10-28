@@ -89,6 +89,10 @@ Below are example build commands using the west tool for each configuration.
 
 This example builds the hello world sample for the RTSS-HE target on the alif_e7_dk/ae722f80f55d5xx/rtss_he board:
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`Building Hello World for OSPI NOR Flash build commands <build-commands-helloworld-ospi>`.
+
 .. code-block:: console
 
    west build -p always -b alif_e7_dk/ae722f80f55d5xx/rtss_he samples/hello_world \

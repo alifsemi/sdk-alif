@@ -29,7 +29,7 @@ Follow these steps to build the `fade_led` and `blinky_pwm` applications using t
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`PWM build commands <build-commands-pwm>`.
 
 2. Build command for fade_led application on the M55 HP core:
 
@@ -201,7 +201,7 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`PWM build commands <build-commands-pwm>`.
 
 HE Core — TCM Boot S2RAM (E8)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
