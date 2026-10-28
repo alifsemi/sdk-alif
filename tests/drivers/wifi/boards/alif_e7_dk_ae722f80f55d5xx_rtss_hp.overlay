@@ -1,0 +1,27 @@
+/* Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+ ns: &ns {
+	reg = <0x20028000 DT_SIZE_K(96)>;
+	status = "okay";
+};
+
+&gpio3 {
+	status = "okay";
+};
+
+sdhc: &sdhc {
+	compatible = "snps,dwc-sdhc";
+	status = "okay";
+	max-bus-freq = <25000000U>;
+
+	airoc-wifi {
+		compatible = "infineon,airoc-wifi";
+		status = "okay";
+	};
+};
