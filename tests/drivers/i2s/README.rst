@@ -39,24 +39,49 @@ Key Files
 - ``src/config/test_i2s_config.c``: Configuration matrix suite.
 - ``src/common/i2s_test_common.c``: Shared helpers (golden run, slabs).
 - ``src/common/i2s_golden_vectors.c``: Pre-computed reference vectors.
-- ``snippets/i2s/``: Devicetree overlays applied via ``-S i2s`` (or
-  ``SNIPPET=i2s`` under twister). The snippet covers all supported
-  boards; there is no separate per-board ``boards/`` directory.
+- ``snippets/i2s/``: FIFO interrupt path, applied via ``-S i2s``
+  (or ``SNIPPET=i2s`` under twister).
+- ``snippets/i2s-dma/``: DMA path for the loopback and golden-vector
+  suites, applied via ``-S i2s-dma``. ``snippet.yml`` picks the overlay:
+  ``alif_e7_e8_rtss_he_dma.overlay`` (group 0 on ``evtrtr2``),
+  ``alif_b1_rtss_he_dma.overlay`` (B1 and E1C),
+  ``alif_e7_rtss_hp_dma.overlay``, and ``alif_e8_rtss_hp_dma.overlay``.
+  Pick ``i2s`` or ``i2s-dma``. There is no ``boards/`` directory.
 - ``testcase.yaml``: Twister test definitions (all entries use
   ``harness: ztest``).
 
 Building and Running
 ====================
 
-The ``i2s`` snippet selects the correct overlay for each board
-automatically.
+The ``i2s`` snippet selects the FIFO interrupt overlay for each board.
+The ``i2s-dma`` snippet selects the same controller and attaches DMA.
 
-Build and run the default test set:
+Build and run the default test set (interrupt):
 
 .. code-block:: console
 
    west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he -S i2s \
        tests/drivers/i2s
+   west flash
+
+Build the loopback matrix on the DMA path (requires the wire below):
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he -S i2s-dma \
+       tests/drivers/i2s \
+       -- -DCONFIG_I2S_FUNCTIONAL_TESTS=y -DCONFIG_I2S_LOOPBACK=y \
+          -DCONFIG_I2S_GPIO_LOOPBACK=y
+   west flash
+
+Build the golden-vector suite on the DMA path (TX only, no wire):
+
+.. code-block:: console
+
+   west build -b alif_e8_dk/ae822fa0e5597xx0/rtss_he -S i2s-dma \
+       tests/drivers/i2s \
+       -- -DCONFIG_I2S_FUNCTIONAL_TESTS=n -DCONFIG_I2S_GOLDEN_TESTS=y \
+          -DCONFIG_I2S_NEGATIVE_TESTS=n -DCONFIG_I2S_CONFIG_TESTS=n
    west flash
 
 Build with the loopback matrix only (requires the hardware wire below):
@@ -78,7 +103,8 @@ wire:
           -DCONFIG_I2S_GPIO_LOOPBACK=y \
           -DCONFIG_I2S_LOOPBACK_VERIFY=y
 
-Supported boards (overlay supplied by ``snippets/i2s/snippet.yml``):
+Supported boards (overlay supplied by ``snippets/i2s/snippet.yml``
+and ``snippets/i2s-dma/snippet.yml``):
 
 - ``alif_e7_dk/ae722f80f55d5xx/rtss_he``
 - ``alif_e7_dk/ae722f80f55d5xx/rtss_hp``
@@ -134,7 +160,7 @@ exact pins depend on the board; see the header of each overlay in
 - E8 DK RTSS-HP: ``P9_3`` (I2S3_SDO) -> ``P9_0`` (I2S3_SDI)
 - E7/E8 DK RTSS-HE (LPI2S): ``P13_5`` (LPI2S_SDO) -> ``P13_4`` (LPI2S_SDI)
 - E7 DK RTSS-HP: ``P8_2`` (I2S2_SDO) -> ``P8_1`` (I2S2_SDI)
-- B1 DK RTSS-HE: ``P2_5`` (I2S0_SDO) -> ``P2_4`` (I2S0_SDI)
+- B1 DK RTSS-HE: ``P0_1`` (I2S0_SDO) -> ``P0_0`` (I2S0_SDI)
 
 Without the wire, loopback and RX-verify tests self-skip at runtime.
 
@@ -146,29 +172,36 @@ Key options in ``prj.conf``:
 - ``CONFIG_I2S=y``: Enable the I2S driver.
 - ``CONFIG_ZTEST=y``: Enable the ZTest framework.
 
-The driver uses FIFO + ISR, so ``CONFIG_DMA`` is not required.
+``-S i2s`` keeps the FIFO interrupt path, so ``CONFIG_DMA`` stays off.
+``-S i2s-dma`` sets ``CONFIG_DMA``, ``CONFIG_I2S_DW_USE_DMA``, and
+``CONFIG_NOCACHE_MEMORY``, and adds ``dmas`` / ``dma-names``
+(``rxdma``, ``txdma``) on that board's I2S node. Use it for the
+loopback and golden-vector suites. The loopback buffer and the golden
+slabs are placed in the nocache section because the driver does not
+maintain the cache around DMA.
 
 Running under Twister
 =====================
 
 The application ships a ``testcase.yaml`` so it can be discovered by
-Zephyr's ``twister`` runner. All five scenarios use ``harness: ztest``
+Zephyr's ``twister`` runner. Every scenario uses ``harness: ztest``
 -- twister flashes the device and parses the on-target ZTest output
 directly (PASS/FAIL/PROJECT EXECUTION lines). No external pytest
 scripts are involved.
 
 Defined scenarios:
 
-- ``drivers.i2s.alif.smoke`` -- default suite mix; no HW required.
-  Loopback / RX-verify cases inside it self-skip when the wire is
-  absent.
-- ``drivers.i2s.alif.features`` -- features ZTest suite only.
-- ``drivers.i2s.alif.loopback`` -- full bit-depth x rate loopback
-  matrix. Gated on the ``gpio_loopback`` twister fixture.
-- ``drivers.i2s.alif.golden_verify`` -- golden-vector TX with bit-exact
-  RX verification. Gated on ``gpio_loopback``.
-- ``drivers.i2s.alif.play_hello`` -- 10 s TX-only audio playback.
-  Gated on the ``audio_codec`` fixture.
+- ``drivers.i2s.alif.smoke`` -- default suite mix on the FIFO path; no HW required.
+- ``drivers.i2s.alif.features`` -- features suite only.
+- ``drivers.i2s.alif.loopback`` -- loopback matrix. Gated on ``gpio_loopback``.
+- ``drivers.i2s.alif.loopback_dma`` -- same matrix with ``SNIPPET=i2s-dma``.
+  Gated on ``gpio_loopback``.
+- ``drivers.i2s.alif.golden_verify`` -- golden-vector TX with RX verification.
+  Gated on ``gpio_loopback``.
+- ``drivers.i2s.alif.golden_dma`` -- golden-vector TX on the DMA path.
+  No wire required.
+- ``drivers.i2s.alif.play_hello`` -- TX-only playback. Gated on ``audio_codec``.
+- ``drivers.i2s.alif.play_hello_codec`` -- codec playback. Gated on ``audio_codec``.
 
 Fixture-gated scenarios are auto-skipped by twister when the
 corresponding ``--fixture <name>`` is not declared on the command line.
@@ -205,6 +238,26 @@ Golden-vector RX verification (also requires the loopback wire):
        --device-testing --device-serial /dev/ttyACM0 \
        --fixture gpio_loopback
 
+DMA loopback on E8 RTSS-HE with the SDO->SDI wire installed:
+
+.. code-block:: console
+
+   twister -T tests/drivers/i2s \
+       -p alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       -s drivers.i2s.alif.loopback_dma \
+       --device-testing --device-serial /dev/ttyACM0 \
+       --fixture gpio_loopback
+
+DMA golden-vector TX (no wire):
+
+.. code-block:: console
+
+   twister -T tests/drivers/i2s \
+       -p alif_e8_dk/ae822fa0e5597xx0/rtss_he \
+       -s drivers.i2s.alif.golden_dma \
+       --device-testing --device-serial /dev/ttyACM0
+
 The ``i2s`` snippet is applied automatically via ``extra_args:
 SNIPPET=i2s`` in ``testcase.yaml`` -- you do not need to pass
-``-S i2s`` again on the twister command line.
+``-S i2s`` again on the twister command line. The DMA scenarios pass
+``SNIPPET=i2s-dma`` themselves.

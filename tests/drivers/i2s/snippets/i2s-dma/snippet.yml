@@ -1,0 +1,28 @@
+# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# DMA path for the I2S test. Selects the same controller as snippets/i2s
+# and attaches rxdma/txdma. Pass -S i2s-dma instead of -S i2s.
+
+name: i2s-dma
+
+boards:
+   /(alif_b1|alif_e1c).*/.*/rtss_he/:
+    append:
+      EXTRA_CONF_FILE: i2s_dma.conf
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_rtss_he_dma.overlay
+
+   /(alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_CONF_FILE: i2s_dma.conf
+      EXTRA_DTC_OVERLAY_FILE: alif_e7_e8_rtss_he_dma.overlay
+
+   /alif_e7.*/.*/rtss_hp/:
+    append:
+      EXTRA_CONF_FILE: i2s_dma.conf
+      EXTRA_DTC_OVERLAY_FILE: alif_e7_rtss_hp_dma.overlay
+
+   /alif_e8.*/.*/rtss_hp/:
+    append:
+      EXTRA_CONF_FILE: i2s_dma.conf
+      EXTRA_DTC_OVERLAY_FILE: alif_e8_rtss_hp_dma.overlay

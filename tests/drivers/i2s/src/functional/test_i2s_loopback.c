@@ -1,7 +1,11 @@
 /*
- * Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  * test_i2s_loopback.c  —  I2S Alif Test Suite
  *
@@ -73,21 +77,14 @@ static const uint32_t __unused mx_rates[] = {
 };
 
 /* -------------------------------------------------------------------------
- * Shared backing buffers + slab (one per bit-depth, sized for 192 kHz max).
- * k_mem_slab_init() is called before each rate to set the exact block_size.
+ * One backing buffer, sized for the widest block (32-bit at 192 kHz).
+ * Cases run one at a time, and k_mem_slab_init() sets the block size
+ * before each rate, so every bit depth reuses this array. Five separate
+ * max-size buffers do not fit in RTSS-HE DTCM (256 KB).
  * -------------------------------------------------------------------------
  */
-static uint8_t __nocache __unused mx_12_buf[MX_MAX_BSZ16 * MX_SLAB_COUNT] __aligned(4);
-static uint8_t __nocache __unused mx_16_buf[MX_MAX_BSZ16 * MX_SLAB_COUNT] __aligned(4);
-static uint8_t __nocache __unused mx_20_buf[MX_MAX_BSZ32 * MX_SLAB_COUNT] __aligned(4);
-static uint8_t __nocache __unused mx_24_buf[MX_MAX_BSZ32 * MX_SLAB_COUNT] __aligned(4);
-static uint8_t __nocache __unused mx_32_buf[MX_MAX_BSZ32 * MX_SLAB_COUNT] __aligned(4);
-
-static struct k_mem_slab __unused mx_12_slab;
-static struct k_mem_slab __unused mx_16_slab;
-static struct k_mem_slab __unused mx_20_slab;
-static struct k_mem_slab __unused mx_24_slab;
-static struct k_mem_slab __unused mx_32_slab;
+static uint8_t __nocache mx_buf[MX_MAX_BSZ32 * MX_SLAB_COUNT] __aligned(4);
+static struct k_mem_slab mx_slab;
 
 /* -------------------------------------------------------------------------
  * Stream helpers (identical logic to test_loopback_allbits_allrates.c)
@@ -100,7 +97,6 @@ static int mx_configure_streams(const struct device *dev,
 
 	ret = i2s_configure(dev, I2S_DIR_BOTH, cfg);
 	if (ret == 0) {
-		LOG_INF("[mx] configured DIR_BOTH\n");
 		return 0;
 	}
 	if (ret != -ENOSYS && ret != -ENOTSUP) {
@@ -117,7 +113,6 @@ static int mx_configure_streams(const struct device *dev,
 		LOG_INF("[mx] TX configure failed (%d)\n", ret);
 		return ret;
 	}
-	LOG_INF("[mx] configured DIR_RX + DIR_TX separately\n");
 	return 0;
 }
 
@@ -128,7 +123,6 @@ static int mx_trigger_start(const struct device *dev)
 	for (uint32_t attempt = 0U; attempt < 3U; attempt++) {
 		ret = i2s_trigger(dev, I2S_DIR_BOTH, I2S_TRIGGER_START);
 		if (ret == 0) {
-			LOG_INF("[mx] started DIR_BOTH\n");
 			return 0;
 		}
 		if (ret == -ENOSYS || ret == -ENOTSUP) {
@@ -158,7 +152,6 @@ static int mx_trigger_start(const struct device *dev)
 		(void)i2s_trigger(dev, I2S_DIR_RX, I2S_TRIGGER_DROP);
 		return ret;
 	}
-	LOG_INF("[mx] started RX + TX separately\n");
 	return 0;
 }
 
@@ -284,7 +277,7 @@ static bool __unused mx_verify_12(const void *buf, uint32_t n_samples,
 		}
 	}
 	if (best_run >= pass_thr) {
-		LOG_INF("[mx-12] PASS: %uHz blk=%u phase=%u run=%u/%u\n",
+		LOG_INF("[mx-12] PASS: %uHz blk=%u phase=%u run=%u/%u",
 			 rate, blk_idx, best_phase, best_run, n_frames);
 		return true;
 	}
@@ -332,7 +325,7 @@ static bool __unused mx_verify_16(const void *buf, uint32_t n_samples,
 		}
 	}
 	if (best_run >= pass_thr) {
-		LOG_INF("[mx-16] PASS: %uHz blk=%u phase=%u run=%u/%u\n",
+		LOG_INF("[mx-16] PASS: %uHz blk=%u phase=%u run=%u/%u",
 			 rate, blk_idx, best_phase, best_run, n_frames);
 		return true;
 	}
@@ -380,7 +373,7 @@ static bool __unused mx_verify_20(const void *buf, uint32_t n_samples,
 		}
 	}
 	if (best_run >= pass_thr) {
-		LOG_INF("[mx-20] PASS: %uHz blk=%u phase=%u run=%u/%u\n",
+		LOG_INF("[mx-20] PASS: %uHz blk=%u phase=%u run=%u/%u",
 			 rate, blk_idx, best_phase, best_run, n_frames);
 		return true;
 	}
@@ -428,7 +421,7 @@ static bool __unused mx_verify_24(const void *buf, uint32_t n_samples,
 		}
 	}
 	if (best_run >= pass_thr) {
-		LOG_INF("[mx-24] PASS: %uHz blk=%u phase=%u run=%u/%u\n",
+		LOG_INF("[mx-24] PASS: %uHz blk=%u phase=%u run=%u/%u",
 			 rate, blk_idx, best_phase, best_run, n_frames);
 		return true;
 	}
@@ -493,7 +486,7 @@ static bool __unused mx_verify_32(const void *buf, uint32_t n_samples,
 		}
 	}
 	if (best_L >= pass_thr && best_R >= pass_thr) {
-		LOG_INF("[mx-32] PASS: %uHz blk=%u L_run=%u/%u R_run=%u/%u\n",
+		LOG_INF("[mx-32] PASS: %uHz blk=%u L_run=%u/%u R_run=%u/%u",
 			 rate, blk_idx, best_L, n_frames, best_R, n_frames);
 		return true;
 	}
@@ -539,18 +532,12 @@ static int __unused mx_run_one(uint32_t word_size, uint32_t rate,
 
 	k_mem_slab_init(slab, slab_buf, bsz, MX_SLAB_COUNT);
 
-	LOG_INF("[mx-%s] === %u-bit @ %u Hz ===\n", pfx, word_size, rate);
-	LOG_INF("[mx-%s] blk=%u B  frames=%u  slabs=%u\n",
-		 pfx, (uint32_t)bsz, spb / MX_CHANNELS, MX_SLAB_COUNT);
-
 	{
 		struct i2s_config zero = { 0 };
 
-		(void)i2s_trigger(dev, I2S_DIR_BOTH, I2S_TRIGGER_DROP);
 		(void)i2s_configure(dev, I2S_DIR_TX, &zero);
 		(void)i2s_configure(dev, I2S_DIR_RX, &zero);
 		k_sleep(K_MSEC(50));
-		LOG_INF("[mx-%s] streams reset\n", pfx);
 	}
 
 	const struct i2s_config cfg = {
@@ -589,7 +576,6 @@ static int __unused mx_run_one(uint32_t word_size, uint32_t rate,
 			return ret;
 		}
 	}
-	LOG_INF("[mx-%s] pre-queued %u blocks\n", pfx, MX_INITIAL_BLOCKS);
 
 	ret = mx_trigger_start(dev);
 	if (ret != 0) {
@@ -619,8 +605,6 @@ static int __unused mx_run_one(uint32_t word_size, uint32_t rate,
 			}
 			if (nz >= MX_NZ_THRESHOLD) {
 				wire_ok = true;
-				LOG_INF("[mx-%s] wire ok (nz=%u b=%u)\n",
-					 pfx, nz, b);
 			}
 		}
 
@@ -662,13 +646,27 @@ static int __unused mx_run_one(uint32_t word_size, uint32_t rate,
  */
 static void *mx_suite_setup(void)
 {
-	LOG_INF("[mx] boot settle: waiting 500 ms for SE-services IPC...\n");
 	k_sleep(K_MSEC(500));
-	LOG_INF("[mx] SE-services ready\n");
 	return NULL;
 }
 
 ZTEST_SUITE(i2s_alif_functional, NULL, mx_suite_setup, NULL, NULL, NULL);
+
+#define ZTEST_NAMED(suite, fn) ZTEST(suite, fn)
+
+#if DT_REG_ADDR(DT_ALIAS(i2s_node0)) == 0x43001000
+#if IS_ENABLED(CONFIG_I2S_DW_USE_DMA)
+#define LB_TC(b) test_dma_lpi2s_lb_##b##bit
+#else
+#define LB_TC(b) test_lpi2s_lb_##b##bit
+#endif
+#else
+#if IS_ENABLED(CONFIG_I2S_DW_USE_DMA)
+#define LB_TC(b) test_dma_i2s_lb_##b##bit
+#else
+#define LB_TC(b) test_i2s_lb_##b##bit
+#endif
+#endif
 
 /* =========================================================================
  * 5 ZTESTs — one per bit-depth, looping over all 8 rates.
@@ -678,106 +676,141 @@ ZTEST_SUITE(i2s_alif_functional, NULL, mx_suite_setup, NULL, NULL, NULL);
  * =========================================================================
  */
 
-ZTEST(i2s_alif_functional, test_lb_matrix_12bit)
+ZTEST_NAMED(i2s_alif_functional, LB_TC(12))
 {
 #if !defined(CONFIG_I2S_GPIO_LOOPBACK) || !CONFIG_I2S_GPIO_LOOPBACK
 	ztest_test_skip();
 #else
+	uint32_t n_pass = 0U;
+	uint32_t n_skip = 0U;
 	uint32_t n_fail = 0U;
 
 	for (uint32_t i = 0U; i < ARRAY_SIZE(mx_rates); i++) {
 		int rc = mx_run_one(12U, mx_rates[i],
-				    &mx_12_slab, mx_12_buf,
+				    &mx_slab, mx_buf,
 				    mx_fill_12, mx_verify_12, "12");
 
-		if (rc != 0 && rc != -ENODEV) {
+		if (rc == -ENODEV) {
+			n_skip++;
+		} else if (rc != 0) {
 			n_fail++;
+		} else {
+			n_pass++;
 		}
 	}
+	LOG_INF("12-bit: pass=%u skip=%u fail=%u", n_pass, n_skip, n_fail);
 	zassert_equal(n_fail, 0U,
 		      "[mx-12] %u rate(s) failed", n_fail);
 #endif
 }
 
-ZTEST(i2s_alif_functional, test_lb_matrix_16bit)
+ZTEST_NAMED(i2s_alif_functional, LB_TC(16))
 {
 #if !defined(CONFIG_I2S_GPIO_LOOPBACK) || !CONFIG_I2S_GPIO_LOOPBACK
 	ztest_test_skip();
 #else
+	uint32_t n_pass = 0U;
+	uint32_t n_skip = 0U;
 	uint32_t n_fail = 0U;
 
 	for (uint32_t i = 0U; i < ARRAY_SIZE(mx_rates); i++) {
 		int rc = mx_run_one(16U, mx_rates[i],
-				    &mx_16_slab, mx_16_buf,
+				    &mx_slab, mx_buf,
 				    mx_fill_16, mx_verify_16, "16");
 
-		if (rc != 0 && rc != -ENODEV) {
+		if (rc == -ENODEV) {
+			n_skip++;
+		} else if (rc != 0) {
 			n_fail++;
+		} else {
+			n_pass++;
 		}
 	}
+	LOG_INF("16-bit: pass=%u skip=%u fail=%u", n_pass, n_skip, n_fail);
 	zassert_equal(n_fail, 0U,
 		      "[mx-16] %u rate(s) failed", n_fail);
 #endif
 }
 
-ZTEST(i2s_alif_functional, test_lb_matrix_20bit)
+ZTEST_NAMED(i2s_alif_functional, LB_TC(20))
 {
 #if !defined(CONFIG_I2S_GPIO_LOOPBACK) || !CONFIG_I2S_GPIO_LOOPBACK
 	ztest_test_skip();
 #else
+	uint32_t n_pass = 0U;
+	uint32_t n_skip = 0U;
 	uint32_t n_fail = 0U;
 
 	for (uint32_t i = 0U; i < ARRAY_SIZE(mx_rates); i++) {
 		int rc = mx_run_one(20U, mx_rates[i],
-				    &mx_20_slab, mx_20_buf,
+				    &mx_slab, mx_buf,
 				    mx_fill_20, mx_verify_20, "20");
 
-		if (rc != 0 && rc != -ENODEV) {
+		if (rc == -ENODEV) {
+			n_skip++;
+		} else if (rc != 0) {
 			n_fail++;
+		} else {
+			n_pass++;
 		}
 	}
+	LOG_INF("20-bit: pass=%u skip=%u fail=%u", n_pass, n_skip, n_fail);
 	zassert_equal(n_fail, 0U,
 		      "[mx-20] %u rate(s) failed", n_fail);
 #endif
 }
 
-ZTEST(i2s_alif_functional, test_lb_matrix_24bit)
+ZTEST_NAMED(i2s_alif_functional, LB_TC(24))
 {
 #if !defined(CONFIG_I2S_GPIO_LOOPBACK) || !CONFIG_I2S_GPIO_LOOPBACK
 	ztest_test_skip();
 #else
+	uint32_t n_pass = 0U;
+	uint32_t n_skip = 0U;
 	uint32_t n_fail = 0U;
 
 	for (uint32_t i = 0U; i < ARRAY_SIZE(mx_rates); i++) {
 		int rc = mx_run_one(24U, mx_rates[i],
-				    &mx_24_slab, mx_24_buf,
+				    &mx_slab, mx_buf,
 				    mx_fill_24, mx_verify_24, "24");
 
-		if (rc != 0 && rc != -ENODEV) {
+		if (rc == -ENODEV) {
+			n_skip++;
+		} else if (rc != 0) {
 			n_fail++;
+		} else {
+			n_pass++;
 		}
 	}
+	LOG_INF("24-bit: pass=%u skip=%u fail=%u", n_pass, n_skip, n_fail);
 	zassert_equal(n_fail, 0U,
 		      "[mx-24] %u rate(s) failed", n_fail);
 #endif
 }
 
-ZTEST(i2s_alif_functional, test_lb_matrix_32bit)
+ZTEST_NAMED(i2s_alif_functional, LB_TC(32))
 {
 #if !defined(CONFIG_I2S_GPIO_LOOPBACK) || !CONFIG_I2S_GPIO_LOOPBACK
 	ztest_test_skip();
 #else
+	uint32_t n_pass = 0U;
+	uint32_t n_skip = 0U;
 	uint32_t n_fail = 0U;
 
 	for (uint32_t i = 0U; i < ARRAY_SIZE(mx_rates); i++) {
 		int rc = mx_run_one(32U, mx_rates[i],
-				    &mx_32_slab, mx_32_buf,
+				    &mx_slab, mx_buf,
 				    mx_fill_32, mx_verify_32, "32");
 
-		if (rc != 0 && rc != -ENODEV) {
+		if (rc == -ENODEV) {
+			n_skip++;
+		} else if (rc != 0) {
 			n_fail++;
+		} else {
+			n_pass++;
 		}
 	}
+	LOG_INF("32-bit: pass=%u skip=%u fail=%u", n_pass, n_skip, n_fail);
 	zassert_equal(n_fail, 0U,
 		      "[mx-32] %u rate(s) failed", n_fail);
 #endif
