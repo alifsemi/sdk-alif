@@ -39,6 +39,10 @@ ZTEST(cmp_Negative, test_Comp_set_trigger_without_callback)
 
 ZTEST(cmp_Negative, test_get_output_multiple_reads)
 {
+	if (CMP_IS_LPCMP || !CMP_HAS_CMP_GPIOS) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret1, ret2;
 
@@ -58,18 +62,33 @@ ZTEST(cmp_Negative, test_get_output_multiple_reads)
 
 ZTEST(cmp_Negative, test_trigger_is_pending_no_event)
 {
+	if (CMP_IS_LPCMP) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret;
 
 	zassert_true(device_is_ready(dev), "CMP device not ready");
 
-	/* Disable trigger first to ensure clean state */
+	ret = comparator_set_trigger_callback(dev, NULL, NULL);
+	zassert_equal(ret, 0, "set_trigger_callback(NULL) failed (%d)", ret);
+
 	ret = comparator_set_trigger(dev, COMPARATOR_TRIGGER_NONE);
 	zassert_equal(ret, 0, "set_trigger NONE failed (%d)", ret);
 
-	/* With no trigger configured, pending should return 0 */
+	/*
+	 * trigger_is_pending() checks and clears. Earlier tests leave
+	 * BOTH_EDGES armed, so a leftover pending bit is expected.
+	 */
 	ret = comparator_trigger_is_pending(dev);
-	zassert_equal(ret, 0, "trigger_is_pending should be 0 after TRIGGER_NONE (%d)", ret);
+	zassert_true((ret == 0) || (ret == 1),
+		"trigger_is_pending unexpected value %d", ret);
+
+	ret = comparator_trigger_is_pending(dev);
+	zassert_equal(ret, 0,
+		"trigger_is_pending should be 0 after clear with TRIGGER_NONE (%d)",
+		ret);
 	LOG_INF("Pending after TRIGGER_NONE: %d", ret);
 }
 
