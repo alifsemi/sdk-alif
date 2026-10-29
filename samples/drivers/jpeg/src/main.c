@@ -36,7 +36,8 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define TEST_JPEG_THUMB_RGB24      0
 #define TEST_JPEG_THUMB_JPEG       0
 #define TEST_JPEG_THUMB_PALETTE    0
-#define TEST_JPEG_QUALITY_LEVELS   1
+#define TEST_JPEG_QUALITY_LEVELS   0
+#define TEST_JPEG_CROPPING         1
 
 #if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
 /* Thumbnail dimensions */
@@ -125,6 +126,7 @@ struct jpeg_encode_cfg {
 	uint32_t height;
 	uint16_t quality;
 	const struct jpeg_thumbnail_info *thumbnail; /**< NULL = clear */
+	const struct jpeg_crop_config *crop;        /**< NULL = clear */
 	void *input_addr;
 };
 
@@ -269,8 +271,8 @@ static void sw_rgb24_to_palette(const uint8_t *rgb, uint32_t num_pixels,
  * @brief Configure the encoder for one frame.
  *
  * NV12 is set on VIDEO_EP_IN. JPEG is set on VIDEO_EP_OUT at the same
- * resolution. Quality, thumbnail, and the input buffer address follow.
- * A NULL thumbnail clears any thumbnail left by an earlier test.
+ * resolution. Quality, thumbnail, crop, and the input buffer address follow.
+ * A NULL thumbnail or crop clears one left by an earlier test.
  */
 static int jpeg_configure(const struct device *dev,
 			  const struct jpeg_encode_cfg *cfg)
@@ -317,6 +319,14 @@ static int jpeg_configure(const struct device *dev,
 		return ret;
 	}
 
+	ret = video_set_ctrl(dev, VIDEO_CID_JPEG_CROP_CONFIG,
+			     (void *)cfg->crop);
+	if (ret < 0) {
+		LOG_ERR("jpeg_configure: crop %s failed: %d",
+			cfg->crop ? "set" : "clear", ret);
+		return ret;
+	}
+
 	ret = video_set_ctrl(dev, VIDEO_CID_JPEG_INPUT_BUFFER, cfg->input_addr);
 	if (ret < 0) {
 		LOG_ERR("jpeg_configure: set input buffer failed: %d", ret);
@@ -327,7 +337,8 @@ static int jpeg_configure(const struct device *dev,
 }
 
 #if (TEST_JPEG_BASIC_ENCODING || TEST_JPEG_THUMB_RGB24 || \
-     TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
+     TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE || \
+     TEST_JPEG_CROPPING)
 /**
  * @brief Single-frame encode: enqueue + stream_start + dequeue + stream_stop.
  *
@@ -441,6 +452,7 @@ static int test_jpeg_encode(const struct device *jpeg_dev)
 		.height     = TEST_HEIGHT,
 		.quality    = JPEG_COMPRESS_QUALITY,
 		.thumbnail  = NULL,
+		.crop       = NULL,
 		.input_addr = input_buffer->buffer,
 	};
 	struct video_buffer *dequeued = NULL;
@@ -514,6 +526,7 @@ static int test_jpeg_encode_with_thumbnail(const struct device *jpeg_dev)
 		.height     = TEST_HEIGHT,
 		.quality    = JPEG_COMPRESS_QUALITY,
 		.thumbnail  = &thumb_info,
+		.crop       = NULL,
 		.input_addr = input_buffer->buffer,
 	};
 
@@ -580,6 +593,7 @@ static int test_jpeg_encode_with_jpeg_thumbnail(const struct device *jpeg_dev)
 		.height     = THUMB_HEIGHT,
 		.quality    = JPEG_COMPRESS_QUALITY,
 		.thumbnail  = NULL,
+		.crop       = NULL,
 		.input_addr = thumb_nv12_dma,
 	};
 
@@ -619,6 +633,7 @@ static int test_jpeg_encode_with_jpeg_thumbnail(const struct device *jpeg_dev)
 		.height     = TEST_HEIGHT,
 		.quality    = JPEG_COMPRESS_QUALITY,
 		.thumbnail  = &thumb_info,
+		.crop       = NULL,
 		.input_addr = input_buffer->buffer,
 	};
 
@@ -691,6 +706,7 @@ static int test_jpeg_encode_with_palette_thumbnail(const struct device *jpeg_dev
 		.height     = TEST_HEIGHT,
 		.quality    = JPEG_COMPRESS_QUALITY,
 		.thumbnail  = &thumb_info,
+		.crop       = NULL,
 		.input_addr = input_buffer->buffer,
 	};
 
@@ -736,6 +752,7 @@ static int test_quality_levels(const struct device *jpeg_dev)
 		.height     = TEST_HEIGHT,
 		.quality    = quality_levels[0],
 		.thumbnail  = NULL,
+		.crop       = NULL,
 		.input_addr = input_buffer->buffer,
 	};
 	int ret;
@@ -787,6 +804,62 @@ static int test_quality_levels(const struct device *jpeg_dev)
 	(void)video_stream_stop(jpeg_dev);
 
 	LOG_INF("Quality level test completed!");
+	return 0;
+}
+#endif
+
+#if TEST_JPEG_CROPPING
+/**
+ * @brief Test JPEG encoding with hardware cropping.
+ *
+ * Encodes a center 640x360 window of the 1280x720 test image. The source
+ * format stays the full frame; the crop window is the control.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_jpeg_encode_with_crop(const struct device *jpeg_dev)
+{
+	struct video_buffer *dequeued = NULL;
+	int ret;
+	struct jpeg_crop_config crop = {
+		.x      = (TEST_WIDTH - 640) / 2,
+		.y      = (TEST_HEIGHT - 360) / 2,
+		.width  = 640,
+		.height = 360,
+	};
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = NULL,
+		.crop       = &crop,
+		.input_addr = input_buffer->buffer,
+	};
+
+	LOG_INF("=== Testing JPEG Encoding with Hardware Crop ===");
+	LOG_INF("Crop: x=%u y=%u w=%u h=%u",
+		crop.x, crop.y, crop.width, crop.height);
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
+
+	ret = jpeg_encode_one_shot(jpeg_dev, output_buffer, &dequeued);
+	if (ret < 0) {
+		return ret;
+	}
+
+	LOG_INF("Crop encode complete: %u bytes", dequeued->bytesused);
+	LOG_INF("Output JPEG should be 640x360 center crop");
+
+	jpeg_verify_and_log_capture("capture_crop.jpg", dequeued, dequeued->bytesused);
+
+	LOG_INF("Crop encoding test completed!");
 	return 0;
 }
 #endif
@@ -889,6 +962,14 @@ int main(void)
 	ret = test_quality_levels(jpeg_dev);
 	if (ret < 0) {
 		LOG_ERR("Quality level test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
+#if TEST_JPEG_CROPPING
+	ret = test_jpeg_encode_with_crop(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Crop encoding test failed: %d", ret);
 		return ret;
 	}
 	k_sleep(K_MSEC(500));
