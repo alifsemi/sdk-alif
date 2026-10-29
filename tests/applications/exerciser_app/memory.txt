@@ -1,0 +1,462 @@
+================================================================================
+  ake8 MEMORY NOTES  —  E8 AppKit HE  +  viewfinder  +  Ethernet DHCPv4
+================================================================================
+  Written from the viewfinder + ETH integration debug.
+  Board in this session :  alif_e8_ak / ae822fa0e5597xx0 / rtss_he
+  Goal of this file     : why / what / how of every memory decision we hit.
+
+
+--------------------------------------------------------------------------------
+0. CHEAT SHEET  (read this first)
+--------------------------------------------------------------------------------
+
+  E8 HE DTCM is TINY (256 KB).  B1C DTCM is HUGE (1.5 MB).
+  Never copy a B1 `ns` remap onto E8.
+
+  WORKING RECIPE ON E8 HE
+  -----------------------
+    ns          keep DEFAULT   0x20018000 / 96 KB     ETH DMA + net_pkt
+    heap        SRAM0          CONFIG_SYSTEM_HEAP_SRAM0=y
+    CDC FB      SRAM0          do NOT set FB_USES_DTCM_REGION
+    video pool  SRAM0          linker puts it there (see sram.ld)
+    net_pkt     stay in ns     CONFIG_ALIF_NET_PKT_SRAM0=n
+    net bufs    512 B          CONFIG_NET_BUF_DATA_SIZE=512
+
+  DO NOT
+  ------
+    remap ns to 0x20060000 on E8 HE          -> silent boot, no UART
+    leave 80 KB heap in DTCM noinit          -> linker overlap with ns
+    enable CDC200 default pinctrl on AppKit  -> steals ETH pins, no DHCP
+    turn on CONFIG_DEBUG / NO_OPTIMIZATIONS  -> early assert, no console
+
+
+--------------------------------------------------------------------------------
+1. AT A GLANCE  —  E8 HE  (the chip we were on)
+--------------------------------------------------------------------------------
+
+  Address space that actually matters for ake8:
+
+    0x00000000  +----------------------------------+
+                | ITCM            256 KB           |  code (tightly coupled)
+    0x00040000  +----------------------------------+
+
+    0x02000000  +----------------------------------+
+                | SRAM0           4 MB             |  THE big bucket
+                |                                  |
+                |   CDC200 framebuffer  ~750 KB    |  480x800 RGB565
+                |   video_buffer_pool   up to 2 MB |  I420 frames
+                |   system heap         80 KB      |  CONFIG_HEAP_MEM_POOL_SIZE
+                |   (optional) net_pkt             |  only if ALIF_NET_PKT_SRAM0=y
+    0x02400000  +----------------------------------+
+
+    0x20000000  +----------------------------------+  DTCM  256 KB total
+                | Zephyr SRAM / stacks / bss       |  zephyr,sram = &dtcm
+                |   main stack          20 KB      |
+                |   video_stack         16 KB      |
+                |   eth_stack            4 KB      |
+                |   other exerciser stacks         |
+    0x20018000  +----------------------------------+
+                | ns  (NON_SECURE0)     96 KB      |  DEFAULT, do not move
+                |   ETH DMA descriptors            |
+                |   net_pkt RX/TX slabs            |  when ALIF_NET_PKT_SRAM0=n
+                |   (USB / video leftovers if any) |
+    0x20030000  +----------------------------------+
+                | rest of DTCM                     |
+    0x20040000  +----------------------------------+  <<< END OF E8 HE DTCM
+                |                                  |
+    0x20060000  |  XXX  NOT VALID ON E8 HE  XXX    |  B1 address. Hard fault.
+                |                                  |
+    0x200E0000  +----------------------------------+
+
+
+  Same picture as numbers:
+
+    region     start        size      valid on E8 HE?
+    ---------  -----------  --------  ----------------
+    ITCM       0x00000000   256 KB    yes
+    SRAM0      0x02000000     4 MB    yes
+    DTCM       0x20000000   256 KB    yes   ends 0x20040000
+    ns default 0x20018000    96 KB    yes   inside DTCM
+    ns B1-copy 0x20060000   512 KB    NO    128 KB past DTCM
+
+
+--------------------------------------------------------------------------------
+2. CHIP COMPARISON  —  why the B1 overlay exploded on E8
+--------------------------------------------------------------------------------
+
+    chip / core          DTCM                         default ns
+    -------------------  ---------------------------  ---------------------------
+    E8 HE  (this board)  256 KB   @ 0x20000000        96 KB  @ 0x20018000
+    E8 HP                1024 KB  @ 0x20000000        same SoC ns node (96 KB)
+    E1C                  1536 KB  @ 0x20000000        512 KB @ 0x20020000
+    B1 / B1C  f4m51820   40 KB reserved
+                         + 1496 KB @ 0x2000a000
+                         = 1.5 MB total TCM           512 KB @ 0x20040000
+    B1 smaller f1m41010  472 KB app DTCM              still 512 KB default ns
+                                                      (tight / do not blindly
+                                                       remap)
+
+  B1 total TCM ends at 0x20180000.
+  So this B1-style remap is LEGAL on B1C and ILLEGAL on E8 HE:
+
+        &ns { reg = <0x20060000 DT_SIZE_K(512)>; status = "okay"; };
+
+    B1C :  0x20060000 .. 0x200E0000   still inside 1.5 MB TCM   OK
+    E8  :  0x20060000                  128 KB past 0x20040000   HARD FAULT
+
+
+  WHAT is `ns`?
+      A Zephyr memory-region named NON_SECURE0.  Alif puts DMA-facing
+      buffers here because the Ethernet / USB / SD masters are allowed
+      to touch it (TGU / TrustZone window, 16 KB aligned on Ensemble).
+
+  HOW it gets used
+      zephyr/soc/alif/ensemble/common/alif_ns.ld  (only if ns status=okay)
+
+          .alif_ns
+          USB DWC3 event / priv
+          video_buffer_pool          (also claimed by sram.ld, see §4)
+          USB net_buf pools
+          net_pkt RX/TX              unless CONFIG_ALIF_NET_PKT_SRAM0=y
+          DNS resolve / DHCP dispatcher noinit
+
+  WHY we must enable it for ETH
+      The alif-dhcpv4-client snippet does  `&ns { status = "okay"; };`
+      without changing `reg`.  That is correct for E8.
+
+
+--------------------------------------------------------------------------------
+3. SRAM0  —  the 4 MB escape hatch
+--------------------------------------------------------------------------------
+
+  WHAT
+      On-chip SRAM at 0x02000000, 4 MB on E8.
+      CDC / ISP / ETH DMA can all reach it.
+
+  HOW things land there
+      zephyr/soc/alif/ensemble/common/sram.ld   (if sram0 status=okay)
+
+          .alif_sram0 / .alif_sram0.*
+          net_pkt noinit                 if CONFIG_ALIF_NET_PKT_SRAM0=y
+          video_buffer_pool
+          disk_buf_0                     (SD)
+          system heap                    if CONFIG_SYSTEM_HEAP_SRAM0=y
+
+  WHY we needed it in ake8
+      DTCM is 256 KB and already holds stacks + `ns` (96 KB).
+      Viewfinder wants:
+          80 KB  system heap          (AIPL / format work)
+          ~750 KB framebuffer         (480x800 RGB565)
+          large video pool            (default 1 MB x 2)
+      None of that fits next to ETH in DTCM.
+
+
+--------------------------------------------------------------------------------
+4. WHERE EACH BUFFER LIVES  (ake8 current working set)
+--------------------------------------------------------------------------------
+
+    thing                    size (approx)   region     switch
+    -----------------------  --------------  ---------  ----------------------
+    ITCM code                whatever fits   ITCM       (default)
+    Zephyr kernel + stacks   see §7          DTCM       zephyr,sram = &dtcm
+    ns / ETH DMA + net_pkt   tens of KB      ns 96 KB   ALIF_NET_PKT_SRAM0=n
+    system heap              80 KB           SRAM0      SYSTEM_HEAP_SRAM0=y
+    CDC200 layer-1 FB        480*800*2=750KB SRAM0      FB_USES_DTCM_REGION
+                                                            not set
+    video_buffer_pool        default 2 MB    SRAM0      sram.ld KEEP
+    SD disk_buf_0            (when SD on)    SRAM0      sram.ld KEEP
+
+
+  CDC200 framebuffer pick (display_cdc200.c)
+
+        CONFIG_FB_USES_DTCM_REGION=y  ->  ns  (or raw ns address)
+        default                       ->  SRAM0  (__alif_sram0_section)
+                                        or hardcoded 0x02000000
+
+  video_buffer_pool is listed in BOTH linker scripts:
+
+        alif_ns.ld   -> ns      (makes sense on B1/E1C where ns is 512 KB)
+        sram.ld      -> SRAM0   (required on E8 HE, ns is only 96 KB)
+
+      Default Kconfig:
+        CONFIG_VIDEO_BUFFER_POOL_SZ_MAX  = 1048576
+        CONFIG_VIDEO_BUFFER_POOL_NUM_MAX = 2
+        => 2 MB.  That cannot live in 96 KB ns.
+      On the working E8 build it ends up in SRAM0.  Do not force it into ns.
+
+
+--------------------------------------------------------------------------------
+5. BUGS WE HIT  —  why / what / how
+--------------------------------------------------------------------------------
+
+  -------------------------------------------------------------------------
+  #1  Silent boot  (no UART, not even "*** Booting Zephyr OS")
+  -------------------------------------------------------------------------
+  WHAT  Combined viewfinder overlay + ETH.  Dead from reset.
+  WHY   Camera overlay still had the B1/SD leftover:
+
+            ns: &ns {
+                reg = <0x20060000 DT_SIZE_K(512)>;
+                status = "okay";
+            };
+
+        ETH driver init (PRE_KERNEL / early POST_KERNEL) writes DMA
+        descriptors in `ns`.  0x20060000 is unmapped on E8 HE.
+        Fault happens BEFORE printk is up  ->  blank console.
+
+  HOW   Symptom split that proved it:
+            viewfinder only  ->  boots  (nothing touches ns that early)
+            ETH only         ->  boots  (ns stays at 0x20018000)
+            both             ->  dead
+
+  FIX   Comment / delete that remap.  Let the DHCP snippet only do
+        `status = "okay"` on the default 96 KB window.
+
+        The official viewfinder overlay never remaps ns.
+        The official DHCP snippet has the 0x20060000 line commented.
+
+
+  -------------------------------------------------------------------------
+  #2  Linker:  .alif_ns VMA overlaps noinit VMA
+  -------------------------------------------------------------------------
+  WHAT  Link failed once ETH + 80 KB heap were both in DTCM.
+  WHY   CONFIG_HEAP_MEM_POOL_SIZE=81920 lives in DTCM `.noinit` by
+        default.  `ns` is also a slice of the same 256 KB DTCM
+        (0x20018000, 96 KB).  Two output sections, same addresses.
+
+  HOW   DTCM 256 KB pie:
+
+            [ stacks / bss / noinit heap 80 KB ]  vs  [ ns 96 KB ]
+                         they walked into each other
+
+  FIX   CONFIG_SYSTEM_HEAP_SRAM0=y
+        Heap moves to SRAM0.  DTCM keeps stacks + ns only.
+
+
+  -------------------------------------------------------------------------
+  #3  net_pkt: Uncontiguous data cannot be linearized
+  -------------------------------------------------------------------------
+  WHAT  DHCP DISCOVER / OFFER path failed to parse the packet.
+  WHY   RX data was split across net_buf fragments, or sat in a
+        region the linearize helper refused.
+        CONFIG_ALIF_NET_PKT_SRAM0=y was one trigger in this app:
+        packets left the small contiguous ns window and could arrive
+        fragmented.  Small CONFIG_NET_BUF_DATA_SIZE (default 128)
+        also fragments a DHCP message.
+
+  HOW   Standalone dhcpv4_client worked with packets in default ns.
+        ake8 broke when we copied SRAM0 packet placement across.
+
+  FIX   CONFIG_ALIF_NET_PKT_SRAM0=n     keep packets in ns
+        CONFIG_NET_BUF_DATA_SIZE=512    one buf can hold DHCP
+        CONFIG_NET_PKT_RX_COUNT=8
+        CONFIG_NET_PKT_TX_COUNT=8
+
+
+  -------------------------------------------------------------------------
+  #4  DHCP stuck in `selecting`, carrier=ON, no lease
+  -------------------------------------------------------------------------
+  WHAT  MAC said link up, no IP.  Not a memory bug — pinmux.
+  WHY   AppKit ETH and CDC200 parallel-RGB share P11_0 / P11_5 /
+        P11_6 / P11_7.  CONFIG_DISPLAY=y probes CDC200.  Default
+        pinctrl re-muxes those pins.  PHY/MAC still report carrier
+        (internal), packets never reach the RJ45.
+
+  HOW   ETH Kconfig alone = lease.
+        + CONFIG_DISPLAY=y without overlay surgery = no lease.
+
+  FIX   In the camera overlay AND the DHCP snippet:
+
+            &cdc200 {
+                /delete-property/ pinctrl-0;
+                /delete-property/ pinctrl-names;
+            };
+
+        MIPI DSI viewfinder does not need the parallel RGB pins.
+
+
+  -------------------------------------------------------------------------
+  #5  No console with CONFIG_DEBUG=y
+  -------------------------------------------------------------------------
+  WHAT  Blank UART after flipping debug flags in isp.conf.
+  WHY   CONFIG_DEBUG + CONFIG_NO_OPTIMIZATIONS turn on extra
+        __ASSERT.  An early assert (clock / SE / DTS) hangs before
+        the console driver is ready.  Looks identical to #1.
+
+  HOW   Difference: #1 is a data abort at a bad address.
+                 #5 is an assert spin with no print.
+
+  FIX   Leave these off in isp.conf:
+
+            # CONFIG_DEBUG=y
+            # CONFIG_NO_OPTIMIZATIONS=y
+            # CONFIG_LOG_MODE_IMMEDIATE=y
+
+
+  -------------------------------------------------------------------------
+  #6  DHCP started before the iface was up
+  -------------------------------------------------------------------------
+  WHAT  DISCOVER sent with no carrier, never bound.
+  WHY   eth_thread() called net_dhcpv4_start() immediately, like a
+        standalone main().  In ake8 the thread is started later and
+        the PHY may not be up yet.
+
+  FIX   Register NET_EVENT_IF_UP, start DHCP in that callback.
+        Keep the thread alive with k_sleep(K_FOREVER) so the
+        NET_EVENT_IPV4_ADDR_ADD handler still runs.
+
+
+--------------------------------------------------------------------------------
+6. CURRENT WORKING KCONFIG  (memory-related only)
+--------------------------------------------------------------------------------
+  File: snippets/ov5675-cam/isp.conf
+
+        CONFIG_HEAP_MEM_POOL_SIZE=81920     80 KB, AIPL + video helpers
+        CONFIG_SYSTEM_HEAP_SRAM0=y          park that 80 KB in SRAM0
+        CONFIG_ALIF_NET_PKT_SRAM0=n         ETH packets stay in ns
+        CONFIG_NET_BUF_DATA_SIZE=512
+        CONFIG_NET_PKT_RX_COUNT=8
+        CONFIG_NET_PKT_TX_COUNT=8
+        CONFIG_INIT_STACKS=n                saves DTCM (no stack painting)
+
+  File: prj.conf
+
+        CONFIG_MAIN_STACK_SIZE=20480        20 KB in DTCM
+                                            can likely drop to 8192 later
+
+
+--------------------------------------------------------------------------------
+7. STACKS IN DTCM  (all live in zephyr,sram = dtcm)
+--------------------------------------------------------------------------------
+
+    stack            define                         bytes
+    ---------------  -----------------------------  ------
+    main             CONFIG_MAIN_STACK_SIZE         20480
+    blinky           512                              512
+    ospi             STACK_SIZE*2                    2048
+    spi              STACK_SIZE*1                    1024
+    usb              STACK_SIZE*4                    4096
+    codec            STACK_SIZE*8                    8192
+    bmi323           STACK_SIZE*2                    2048
+    video            STACK_SIZE*16                  16384
+    eth              STACK_SIZE*4                    4096
+    sd (in video.c)  4 KB, not started               4096   leftover
+    ---------------                                 ------
+    app threads only                                ~40 KB
+    + main                                          ~60 KB
+    + kernel / irq / heap leftovers                 rest of DTCM
+                                                    minus 96 KB ns
+
+  DTCM budget on E8 HE is 256 KB.  After `ns` takes 96 KB you have
+  ~160 KB for everything else.  That is why the 80 KB heap had to
+  leave, and why shaving MAIN_STACK / video_stack is still worth
+  doing later — it is not required for the current working image.
+
+
+--------------------------------------------------------------------------------
+8. OVERLAY RULES  (memory + the one pin rule that looks like memory)
+--------------------------------------------------------------------------------
+
+  snippets/ov5675-cam/ov5675_mipi_isp_viewfinder.overlay
+      KEEP     camera / CSI / ISP / DSI / CDC timing
+      KEEP     /delete-property/ pinctrl-0 and pinctrl-names on cdc200
+      DELETE   the SD `ns` remap   (commented now — delete for real)
+      OPTIONAL leftover &gpio3 / &sdhc disabled   (harmless, delete later)
+
+  snippets/alif-dhcpv4-client/ensemble.overlay  (tree snippet)
+      &ns { status = "okay"; };          // no reg override
+      ethernet / mdio / phy okay
+      same cdc200 pinctrl delete
+
+  app.overlay
+      do not put an `ns` remap here either
+
+
+  Snippet vs OVERLAY_CONFIG
+      -S ov5675-cam          already applies this overlay AND isp.conf
+      -S alif-dhcpv4-client  applies ensemble.overlay + ensemble.conf
+      -DOVERLAY_CONFIG=snippets/ov5675-cam/isp.conf
+                             extra copy of the same Kconfig, not required
+
+
+--------------------------------------------------------------------------------
+9. IF YOU ADD SD LATER
+--------------------------------------------------------------------------------
+
+  SD wants `ns` status=okay (descriptors) and disk_buf_0 in SRAM0.
+  Official E8 SD overlay does NOT remap ns to 0x20060000:
+
+        alif/snippets/alif-sdmmc/alif_ensemble_e8_dk.overlay
+            ns: &ns { status = "okay"; };
+
+  The 0x20060000 / 512 KB line belongs to B1 (and ake8's B1 board
+  overlay), where TCM is 1.5 MB.
+
+  On E8 HE, keep default ns.  Put FatFs window / DMA bounce in SRAM0
+  (already: disk_buf_0, CONFIG_FS_FATFS_WINDOW_ALIGNMENT=512).
+
+
+--------------------------------------------------------------------------------
+10. DECISION TREE
+--------------------------------------------------------------------------------
+
+    Need a new DMA buffer?
+        |
+        +-- ETH / USB / anything the TGU must see
+        |       put it in default ns (96 KB).  If it does not fit,
+        |       do NOT slide ns to 0x2006.... on E8.
+        |       Either shrink it or use SRAM0 via the existing
+        |       ALIF_NET_PKT_SRAM0 / sram.ld KEEP pattern.
+        |
+        +-- Camera frame / display FB / AIPL scratch / FatFs
+        |       SRAM0.  Always.  4 MB is why it exists.
+        |
+        +-- Thread stacks / kernel
+                DTCM.  Keep them small.  Heap is NOT a stack.
+
+    Boot is silent?
+        1. Did anyone remap ns?           -> undo it
+        2. Is CONFIG_DEBUG on?            -> turn it off
+        3. Linker overlap .alif_ns/noinit -> SYSTEM_HEAP_SRAM0=y
+        4. Then look at clocks / SYS_INIT (video.c PRE_KERNEL_1)
+
+    DHCP no lease but UART lives?
+        1. net iface carrier=ON but no IP
+              -> CDC200 pinctrl stealing P11 (not memory)
+        2. "Uncontiguous data cannot be linearized"
+              -> packets in SRAM0 or buf size too small
+        3. dhcp state=selecting, no OFFER
+              -> started DHCP before IF_UP
+
+
+--------------------------------------------------------------------------------
+11. SOURCE POINTERS
+--------------------------------------------------------------------------------
+
+    E8 HE DTCM / ITCM
+        zephyr/dts/arm/alif/ensemble/common/ensemble_rtss_he.dtsi
+    E8 SRAM0 size (4 MB)
+        zephyr/dts/arm/alif/ensemble/e8/ae822fa0e5597xx0.dtsi
+    default ns 96 KB @ 0x20018000
+        zephyr/dts/arm/alif/ensemble/common/e1.dtsi
+        (E8 includes e4_e6_e8 -> e3_e5_e7 -> e1, then HE overrides DTCM)
+    B1 1.5 MB TCM + 512 KB ns
+        zephyr/dts/arm/alif/balletto/common/b1.dtsi
+    B1 ake8 remap we must not copy
+        zephyr/samples/drivers/ake8/boards/alif_b1_sk_ab1c1f4m51820ph0_rtss_he.overlay
+    ns section contents
+        zephyr/soc/alif/ensemble/common/alif_ns.ld
+    SRAM0 section contents
+        zephyr/soc/alif/ensemble/common/sram.ld
+    CDC FB placement
+        zephyr/drivers/display/display_cdc200.c
+        zephyr/drivers/display/Kconfig.cdc200
+    Kconfig knobs
+        zephyr/soc/alif/ensemble/Kconfig            ALIF_NET_PKT_SRAM0
+        zephyr/soc/alif/ensemble/Kconfig.soc        SYSTEM_HEAP_SRAM0
+
+
+================================================================================
+  last working combo: viewfinder + ETH DHCP, default ns, heap in SRAM0,
+  CDC pinctrl deleted, ns remap commented out.
+================================================================================
