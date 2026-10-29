@@ -31,11 +31,12 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define JPEG_COMPRESS_QUALITY 10
 
 /* Macros to JPEG tests */
-#define TEST_JPEG_BASIC_ENCODING   0
+#define TEST_JPEG_BASIC_ENCODING   1
 #define TEST_JPEG_THUMB_RGB24      0
-#define TEST_JPEG_THUMB_JPEG       1
+#define TEST_JPEG_THUMB_JPEG       0
+#define TEST_JPEG_THUMB_PALETTE    0
 
-#if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG)
+#if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
 /* Thumbnail dimensions */
 #define THUMB_WIDTH        64
 #define THUMB_HEIGHT       48
@@ -44,7 +45,7 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define THUMB_JPEG_MAX_SIZE 8192
 #endif
 
-#if TEST_JPEG_THUMB_RGB24
+#if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_PALETTE)
 static uint8_t thumb_rgb24_buf[THUMB_RGB24_SIZE];
 #endif
 
@@ -52,11 +53,16 @@ static uint8_t thumb_rgb24_buf[THUMB_RGB24_SIZE];
 static uint8_t thumb_jpeg_buf[THUMB_JPEG_MAX_SIZE];
 #endif
 
+#if TEST_JPEG_THUMB_PALETTE
+#define THUMB_PALETTE_BUF_SIZE (768 + THUMB_WIDTH * THUMB_HEIGHT)
+static uint8_t thumb_palette_buf[THUMB_PALETTE_BUF_SIZE];
+#endif
+
 /**
  * @brief Header bytes reserved in the output buffer.
  *
- * An RGB24 thumbnail has a fixed size, so this matches the value the
- * driver gets from jpeg_header_get_size() at encode time.
+ * RGB24 and palette thumbnails have a fixed size, so this matches the
+ * value the driver gets from jpeg_header_get_size() at encode time.
  *
  * A JPEG thumbnail is different. jpeg_header_get_size() adds the
  * compressed length, and that length is thumb_jpeg_size from pass 1.
@@ -76,6 +82,16 @@ static uint32_t jpeg_sample_header_size(void)
 		.height      = THUMB_HEIGHT,
 		.data        = NULL,
 		.data_length = THUMB_RGB24_SIZE,
+	};
+
+	thumb = &thumb_info;
+#elif TEST_JPEG_THUMB_PALETTE
+	struct jpeg_thumbnail_info thumb_info = {
+		.format      = JPEGENC_THUMB_PALETTE_RGB8,
+		.width       = THUMB_WIDTH,
+		.height      = THUMB_HEIGHT,
+		.data        = NULL,
+		.data_length = THUMB_PALETTE_BUF_SIZE,
 	};
 
 	thumb = &thumb_info;
@@ -131,7 +147,7 @@ void copy_testimg(jpeg_testimg_t *testimg, uint8_t *dest)
 	}
 }
 
-#if TEST_JPEG_THUMB_RGB24
+#if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_PALETTE)
 /**
  * @brief Downscale NV12 input and convert to RGB24 using nearest-neighbor.
  *
@@ -206,6 +222,43 @@ static void sw_downscale_nv12(const uint8_t *src, uint32_t src_w, uint32_t src_h
 			dst_uv[dy * dst_w + dx * 2]     = src_uv[sy * src_w + sx * 2];
 			dst_uv[dy * dst_w + dx * 2 + 1] = src_uv[sy * src_w + sx * 2 + 1];
 		}
+	}
+}
+#endif
+
+#if TEST_JPEG_THUMB_PALETTE
+/**
+ * @brief Convert RGB24 image to 256-color palette format.
+ *
+ * Uses uniform quantization (R=8, G=8, B=4 levels = 256 colors)
+ * to produce a 768-byte RGB palette and per-pixel index data.
+ *
+ * @param rgb Pointer to the source RGB24 pixel data.
+ * @param num_pixels Number of pixels to convert.
+ * @param palette_out Pointer to the 768-byte palette output buffer.
+ * @param indices_out Pointer to the per-pixel index output buffer.
+ */
+static void sw_rgb24_to_palette(const uint8_t *rgb, uint32_t num_pixels,
+				uint8_t *palette_out, uint8_t *indices_out)
+{
+	for (int r = 0; r < 8; r++) {
+		for (int g = 0; g < 8; g++) {
+			for (int b = 0; b < 4; b++) {
+				int idx = (r * 32) + (g * 4) + b;
+
+				palette_out[idx * 3]     = (uint8_t)(r * 255 / 7);
+				palette_out[idx * 3 + 1] = (uint8_t)(g * 255 / 7);
+				palette_out[idx * 3 + 2] = (uint8_t)(b * 255 / 3);
+			}
+		}
+	}
+
+	for (uint32_t i = 0; i < num_pixels; i++) {
+		uint8_t ri = rgb[i * 3] * 7 / 255;
+		uint8_t gi = rgb[i * 3 + 1] * 7 / 255;
+		uint8_t bi = rgb[i * 3 + 2] * 3 / 255;
+
+		indices_out[i] = (uint8_t)((ri * 32) + (gi * 4) + bi);
 	}
 }
 #endif
@@ -560,6 +613,77 @@ static int test_jpeg_encode_with_jpeg_thumbnail(const struct device *jpeg_dev)
 }
 #endif
 
+#if TEST_JPEG_THUMB_PALETTE
+/**
+ * @brief Test JPEG encoding with a palette (RGB8) thumbnail.
+ *
+ * Downscales the input to thumbnail size, converts to RGB24, then
+ * quantizes to a 256-color palette. Encodes the full image with the
+ * palette thumbnail embedded in a JFXX APP0 extension segment.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_jpeg_encode_with_palette_thumbnail(const struct device *jpeg_dev)
+{
+	struct video_buffer *dequeued = NULL;
+	int ret;
+
+	LOG_INF("=== Testing JPEG Encoding with Palette Thumbnail ===");
+
+	sw_downscale_yuv420_to_rgb24((const uint8_t *)input_buffer->buffer,
+				     TEST_WIDTH, TEST_HEIGHT,
+				     thumb_rgb24_buf,
+				     THUMB_WIDTH, THUMB_HEIGHT);
+
+	uint32_t num_pixels = THUMB_WIDTH * THUMB_HEIGHT;
+	uint8_t *palette = thumb_palette_buf;
+	uint8_t *indices = thumb_palette_buf + 768;
+
+	sw_rgb24_to_palette(thumb_rgb24_buf, num_pixels, palette, indices);
+
+	LOG_INF("Palette thumbnail prepared: %ux%u (%u palette + %u index bytes)",
+		THUMB_WIDTH, THUMB_HEIGHT, 768, num_pixels);
+
+	struct jpeg_thumbnail_info thumb_info = {
+		.format = JPEGENC_THUMB_PALETTE_RGB8,
+		.width  = THUMB_WIDTH,
+		.height = THUMB_HEIGHT,
+		.data   = thumb_palette_buf,
+		.data_length = 768 + num_pixels,
+	};
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = &thumb_info,
+		.input_addr = input_buffer->buffer,
+	};
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
+
+	ret = jpeg_encode_one_shot(jpeg_dev, output_buffer, &dequeued);
+	if (ret < 0) {
+		return ret;
+	}
+
+	LOG_INF("=== Palette Thumbnail Results ===");
+	LOG_INF("Output size: %u bytes (with palette thumbnail)", dequeued->bytesused);
+
+	jpeg_verify_and_log_capture("capture_thumb_palette.jpg", dequeued,
+				    dequeued->bytesused);
+
+	LOG_INF("Palette thumbnail test completed!");
+	return 0;
+}
+#endif
+
 /**
  * @brief Main application entry point.
  *
@@ -594,7 +718,7 @@ int main(void)
 
 	copy_testimg(&testimg[0], (uint8_t *)input_buffer->buffer);
 
-#if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG)
+#if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
 	output_buffer = video_buffer_alloc(OUTPUT_BUFFER_SIZE + jpeg_sample_header_size() +
 					   THUMB_RGB24_SIZE, K_NO_WAIT);
 #else
@@ -642,6 +766,14 @@ int main(void)
 	ret = test_jpeg_encode_with_jpeg_thumbnail(jpeg_dev);
 	if (ret < 0) {
 		LOG_ERR("JPEG thumbnail test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
+#if TEST_JPEG_THUMB_PALETTE
+	ret = test_jpeg_encode_with_palette_thumbnail(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Palette thumbnail test failed: %d", ret);
 		return ret;
 	}
 	k_sleep(K_MSEC(500));
