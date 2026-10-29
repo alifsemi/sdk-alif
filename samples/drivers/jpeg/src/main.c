@@ -14,6 +14,7 @@
 #include <zephyr/drivers/video-controls.h>
 #include <zephyr/logging/log.h>
 #include <jpeg_hantro_vc9000e_sw.h>
+#include <stdio.h>
 #include <string.h>
 #include <zephyr/sys/util.h>
 
@@ -31,10 +32,11 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define JPEG_COMPRESS_QUALITY 10
 
 /* Macros to JPEG tests */
-#define TEST_JPEG_BASIC_ENCODING   1
+#define TEST_JPEG_BASIC_ENCODING   0
 #define TEST_JPEG_THUMB_RGB24      0
 #define TEST_JPEG_THUMB_JPEG       0
 #define TEST_JPEG_THUMB_PALETTE    0
+#define TEST_JPEG_QUALITY_LEVELS   1
 
 #if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
 /* Thumbnail dimensions */
@@ -324,6 +326,8 @@ static int jpeg_configure(const struct device *dev,
 	return 0;
 }
 
+#if (TEST_JPEG_BASIC_ENCODING || TEST_JPEG_THUMB_RGB24 || \
+     TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
 /**
  * @brief Single-frame encode: enqueue + stream_start + dequeue + stream_stop.
  *
@@ -362,6 +366,35 @@ static int jpeg_encode_one_shot(const struct device *dev,
 
 	return 0;
 }
+#endif
+
+#if TEST_JPEG_QUALITY_LEVELS
+/**
+ * @brief In-stream encode: enqueue + dequeue only.
+ *
+ * The caller has already started the stream and stops it after the loop.
+ */
+static int jpeg_encode_in_stream(const struct device *dev,
+				 struct video_buffer *output,
+				 struct video_buffer **dequeued)
+{
+	int ret;
+
+	ret = video_enqueue(dev, VIDEO_EP_OUT, output);
+	if (ret < 0) {
+		LOG_ERR("jpeg_encode_in_stream: enqueue failed: %d", ret);
+		return ret;
+	}
+
+	ret = video_dequeue(dev, VIDEO_EP_OUT, dequeued, K_SECONDS(5));
+	if (ret < 0) {
+		LOG_ERR("jpeg_encode_in_stream: dequeue failed: %d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+#endif
 
 /**
  * @brief Validate JPEG SOI marker and log an OpenOCD dump-memory line.
@@ -684,6 +717,80 @@ static int test_jpeg_encode_with_palette_thumbnail(const struct device *jpeg_dev
 }
 #endif
 
+#if TEST_JPEG_QUALITY_LEVELS
+/**
+ * @brief Test encoding at multiple JPEG quality factors.
+ *
+ * Encodes the test image at each quality in one streaming session and
+ * logs the output size and encode time.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_quality_levels(const struct device *jpeg_dev)
+{
+	uint16_t quality_levels[] = {25, 50, 75, 100};
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = quality_levels[0],
+		.thumbnail  = NULL,
+		.input_addr = input_buffer->buffer,
+	};
+	int ret;
+
+	LOG_INF("=== Testing Multiple Quality Levels ===");
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = video_stream_start(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Failed to start stream: %d", ret);
+		return ret;
+	}
+
+	LOG_INF("Quality, Size(bytes), Ratio");
+	LOG_INF("----------------------------------------");
+
+	for (int i = 0; i < ARRAY_SIZE(quality_levels); i++) {
+		struct video_buffer *dequeued = NULL;
+		uint16_t quality = quality_levels[i];
+		char dump_name[32];
+
+		ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_COMPRESSION_QUALITY,
+				     &quality);
+		if (ret < 0) {
+			LOG_ERR("Failed to set quality=%u: %d", quality, ret);
+			continue;
+		}
+
+		output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
+
+		ret = jpeg_encode_in_stream(jpeg_dev, output_buffer,
+					    &dequeued);
+		if (ret < 0) {
+			continue;
+		}
+
+		LOG_INF("%3u,     %6u,      %.2f:1",
+			quality, dequeued->bytesused,
+			(double)INPUT_BUFFER_SIZE / dequeued->bytesused);
+
+		snprintf(dump_name, sizeof(dump_name), "capture_img_q%u.jpg", quality);
+		jpeg_verify_and_log_capture(dump_name, dequeued, dequeued->bytesused);
+	}
+
+	(void)video_stream_stop(jpeg_dev);
+
+	LOG_INF("Quality level test completed!");
+	return 0;
+}
+#endif
+
 /**
  * @brief Main application entry point.
  *
@@ -774,6 +881,14 @@ int main(void)
 	ret = test_jpeg_encode_with_palette_thumbnail(jpeg_dev);
 	if (ret < 0) {
 		LOG_ERR("Palette thumbnail test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
+#if TEST_JPEG_QUALITY_LEVELS
+	ret = test_quality_levels(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Quality level test failed: %d", ret);
 		return ret;
 	}
 	k_sleep(K_MSEC(500));
