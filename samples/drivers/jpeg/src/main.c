@@ -13,7 +13,7 @@
 #include <zephyr/drivers/video/video_alif.h>
 #include <zephyr/drivers/video-controls.h>
 #include <zephyr/logging/log.h>
-#include <string.h>
+#include <jpeg_hantro_vc9000e_sw.h>
 #include <zephyr/sys/util.h>
 
 LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
@@ -28,7 +28,20 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define INPUT_BUFFER_SIZE     (TEST_WIDTH * TEST_HEIGHT * 3 / 2) /* YUV420 */
 #define OUTPUT_BUFFER_SIZE    (INPUT_BUFFER_SIZE / 2)            /* JPEG compressed */
 #define JPEG_COMPRESS_QUALITY 10
-#define JPEG_HEADER_SIZE      CONFIG_VIDEO_JPEG_HANTRO_VC9000E_HEADER_SIZE
+
+/* Macros to JPEG tests */
+#define TEST_JPEG_BASIC_ENCODING   1
+
+/**
+ * @brief Header bytes reserved in the output buffer.
+ *
+ * jpeg_header_get_size() returns the software header for the
+ * features passed in. This encode passes no thumbnail.
+ */
+static uint32_t jpeg_sample_header_size(void)
+{
+	return jpeg_header_get_size(NULL, NULL);
+}
 
 /* Video buffers - only need 1 of each for single-frame encoding */
 static struct video_buffer *input_buffer;
@@ -46,6 +59,14 @@ typedef struct _jpeg_testimg_t {
 	uint32_t chroma_stride;
 	uint32_t column_length;
 } jpeg_testimg_t;
+
+/** Jpeg encoder configuration for jpeg_configure(). */
+struct jpeg_encode_cfg {
+	uint32_t width;
+	uint32_t height;
+	uint16_t quality;
+	void *input_addr;
+};
 
 jpeg_testimg_t testimg[] = {
 	{testimg_start, testimg_end, 1280, 1280, 1280, 720},
@@ -69,10 +90,129 @@ void copy_testimg(jpeg_testimg_t *testimg, uint8_t *dest)
 }
 
 /**
+ * @brief Configure the encoder for one frame.
+ *
+ * NV12 is set on VIDEO_EP_IN. JPEG is set on VIDEO_EP_OUT at the same
+ * resolution. Quality and the input buffer address are applied after that.
+ */
+static int jpeg_configure(const struct device *dev,
+			  const struct jpeg_encode_cfg *cfg)
+{
+	struct video_format in_fmt = {
+		.pixelformat = VIDEO_PIX_FMT_NV12,
+		.width  = cfg->width,
+		.height = cfg->height,
+		.pitch  = cfg->width,
+	};
+	struct video_format out_fmt = {
+		.pixelformat = VIDEO_PIX_FMT_JPEG,
+		.width  = cfg->width,
+		.height = cfg->height,
+	};
+	uint16_t q = cfg->quality;
+	int ret;
+
+	ret = video_set_format(dev, VIDEO_EP_IN, &in_fmt);
+	if (ret < 0) {
+		LOG_ERR("jpeg_configure: set input format %ux%u failed: %d",
+			cfg->width, cfg->height, ret);
+		return ret;
+	}
+
+	ret = video_set_format(dev, VIDEO_EP_OUT, &out_fmt);
+	if (ret < 0) {
+		LOG_ERR("jpeg_configure: set JPEG format %ux%u failed: %d",
+			cfg->width, cfg->height, ret);
+		return ret;
+	}
+
+	ret = video_set_ctrl(dev, VIDEO_CID_JPEG_COMPRESSION_QUALITY, &q);
+	if (ret < 0) {
+		LOG_ERR("jpeg_configure: set quality=%u failed: %d", q, ret);
+		return ret;
+	}
+
+	ret = video_set_ctrl(dev, VIDEO_CID_JPEG_INPUT_BUFFER, cfg->input_addr);
+	if (ret < 0) {
+		LOG_ERR("jpeg_configure: set input buffer failed: %d", ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+/**
+ * @brief Single-frame encode: enqueue + stream_start + dequeue + stream_stop.
+ *
+ * Caller must have set @p output->bytesused to the buffer capacity before
+ * calling. On success @p *dequeued points at the encoded buffer.
+ */
+static int jpeg_encode_one_shot(const struct device *dev,
+				struct video_buffer *output,
+				struct video_buffer **dequeued)
+{
+	int ret;
+
+	ret = video_enqueue(dev, VIDEO_EP_OUT, output);
+	if (ret < 0) {
+		LOG_ERR("jpeg_encode_one_shot: enqueue failed: %d", ret);
+		return ret;
+	}
+
+	ret = video_stream_start(dev);
+	if (ret < 0) {
+		LOG_ERR("jpeg_encode_one_shot: stream_start failed: %d", ret);
+		return ret;
+	}
+
+	ret = video_dequeue(dev, VIDEO_EP_OUT, dequeued, K_SECONDS(5));
+	if (ret < 0) {
+		LOG_ERR("jpeg_encode_one_shot: dequeue failed: %d", ret);
+		(void)video_stream_stop(dev);
+		return ret;
+	}
+
+	ret = video_stream_stop(dev);
+	if (ret < 0) {
+		LOG_WRN("jpeg_encode_one_shot: stream_stop failed: %d", ret);
+	}
+
+	return 0;
+}
+
+/**
+ * @brief Validate JPEG SOI marker and log an OpenOCD dump-memory line.
+ *
+ * @param filename  File name to embed in the dump command (without path).
+ * @param buf       Buffer containing the encoded JPEG.
+ * @param bytesused Number of bytes actually written by the encoder.
+ */
+static void jpeg_verify_and_log_capture(const char *filename,
+					const struct video_buffer *buf,
+					uint32_t bytesused)
+{
+	const uint8_t *data = (const uint8_t *)buf->buffer;
+
+	if (bytesused >= 2 && data[0] == 0xFF && data[1] == 0xD8) {
+		LOG_INF("JPEG header verified (SOI marker found)");
+	} else if (bytesused >= 2) {
+		LOG_WRN("JPEG header invalid: 0x%02X%02X", data[0], data[1]);
+	} else {
+		LOG_WRN("JPEG output too small: %u bytes", bytesused);
+	}
+
+	LOG_INF("Jpeg: Capture Image: dump memory "
+		"\"/home/$USER/%s\" 0x%08x 0x%08x\n",
+		filename,
+		(uint32_t)buf->buffer,
+		(uint32_t)buf->buffer + bytesused);
+}
+
+#if (TEST_JPEG_BASIC_ENCODING)
+/**
  * @brief Test basic JPEG encoding.
  *
- * Encodes the full test image at the configured quality and saves
- * the output to the filesystem.
+ * Encodes the full test image at the configured quality.
  *
  * @param jpeg_dev Pointer to the JPEG encoder device.
  *
@@ -80,110 +220,50 @@ void copy_testimg(jpeg_testimg_t *testimg, uint8_t *dest)
  */
 static int test_jpeg_encode(const struct device *jpeg_dev)
 {
-	struct video_format fmt = {0};
-	struct video_buffer *dequeued_buf = NULL;
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.input_addr = input_buffer->buffer,
+	};
+	struct video_buffer *dequeued = NULL;
 	int ret;
 
 	LOG_INF("Starting JPEG encoding test...");
+	LOG_INF("Format: %ux%u NV12, quality=%u",
+		cfg.width, cfg.height, cfg.quality);
 
-	/* Set video format */
-	fmt.pixelformat = VIDEO_PIX_FMT_NV12;
-	fmt.width = TEST_WIDTH;
-	fmt.height = TEST_HEIGHT;
-	fmt.pitch = TEST_WIDTH;
-
-	ret = video_set_format(jpeg_dev, VIDEO_EP_OUT, &fmt);
+	ret = jpeg_configure(jpeg_dev, &cfg);
 	if (ret < 0) {
-		LOG_ERR("Failed to set format: %d", ret);
 		return ret;
 	}
 
-	LOG_INF("Format set: %ux%u, format: NV12", fmt.width, fmt.height);
-
-	/* Set JPEG quality */
-	uint16_t quality = JPEG_COMPRESS_QUALITY;
-
-	ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_COMPRESSION_QUALITY, &quality);
-	if (ret < 0) {
-		LOG_ERR("Failed to set quality: %d", ret);
-		return ret;
-	}
-
-	LOG_INF("Quality set to: %u", quality);
-
-	/* Set input buffer address */
-	ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_INPUT_BUFFER, input_buffer->buffer);
-	if (ret < 0) {
-		LOG_ERR("Failed to set input buffer: %d", ret);
-		return ret;
-	}
-
-	/* Get output buffer */
 	output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
 
-	/* Enqueue output buffer */
-	ret = video_enqueue(jpeg_dev, VIDEO_EP_OUT, output_buffer);
+	ret = jpeg_encode_one_shot(jpeg_dev, output_buffer, &dequeued);
 	if (ret < 0) {
-		LOG_ERR("Failed to enqueue buffer: %d", ret);
 		return ret;
 	}
 
-	LOG_INF("Buffer enqueued");
-
-	ret = video_stream_start(jpeg_dev);
-	if (ret < 0) {
-		LOG_ERR("Failed to start stream: %d", ret);
-		return ret;
-	}
-
-	LOG_INF("Stream started, waiting for encoding...");
-
-	/* Dequeue encoded buffer */
-	ret = video_dequeue(jpeg_dev, VIDEO_EP_OUT, &dequeued_buf, K_SECONDS(5));
-	if (ret < 0) {
-		LOG_ERR("Failed to dequeue buffer: %d", ret);
-		video_stream_stop(jpeg_dev);
-		return ret;
-	}
-
-	/* Stop streaming */
-	ret = video_stream_stop(jpeg_dev);
-	if (ret < 0) {
-		LOG_ERR("Failed to stop stream: %d", ret);
-		return ret;
-	}
-
-	/* Print results */
 	LOG_INF("=== JPEG Encoding Results ===");
-	LOG_INF("Input size:  %u bytes (%ux%u YUV420)", INPUT_BUFFER_SIZE, TEST_WIDTH, TEST_HEIGHT);
-	LOG_INF("Output size: %u bytes (JPEG)", dequeued_buf->bytesused);
-	LOG_INF("Compression ratio: %.2f:1", (double)INPUT_BUFFER_SIZE / dequeued_buf->bytesused);
+	LOG_INF("Input size:  %u bytes (%ux%u YUV420)",
+		INPUT_BUFFER_SIZE, TEST_WIDTH, TEST_HEIGHT);
+	LOG_INF("Output size: %u bytes (JPEG)", dequeued->bytesused);
+	LOG_INF("Compression ratio: %.2f:1",
+		(double)INPUT_BUFFER_SIZE / dequeued->bytesused);
 
-	/* Verify JPEG header */
-	if (dequeued_buf->bytesused > 2) {
-		uint8_t *jpeg_data = (uint8_t *)dequeued_buf->buffer;
+	jpeg_verify_and_log_capture("capture_img_q10.jpg", dequeued, dequeued->bytesused);
 
-		if (jpeg_data[0] == 0xFF && jpeg_data[1] == 0xD8) {
-			LOG_INF("JPEG header verified (SOI marker found)");
-		} else {
-			LOG_WRN("JPEG header invalid: 0x%02X%02X", jpeg_data[0], jpeg_data[1]);
-		}
-	}
-
-	LOG_INF("Jpeg: Capture Image: dump memory "
-		"\"/home/$USER/capture_img_q10.jpg\" 0x%08x 0x%08x\n",
-		(uint32_t)output_buffer->buffer,
-		(uint32_t)output_buffer->buffer + dequeued_buf->bytesused);
-
-	LOG_INF(" Jpeg Basic Test completed successfully!");
+	LOG_INF("Test completed successfully!");
 	return 0;
 }
+#endif
 
 /**
  * @brief Main application entry point.
  *
  * Initializes the JPEG encoder device, allocates video buffers, loads
- * the test image, and runs the configured encoding test functions.
+ * the test image, and runs the basic encoding test.
  *
  * @return 0 on success, negative errno on failure.
  */
@@ -195,7 +275,6 @@ int main(void)
 
 	LOG_INF("=== VeriSilicon Hantro VC9000E JPEG Encoder Test ===");
 
-	/* Get JPEG device */
 	jpeg_dev = DEVICE_DT_GET(JPEG_DEVICE_NODE);
 	if (!device_is_ready(jpeg_dev)) {
 		LOG_ERR("JPEG device not ready");
@@ -204,48 +283,51 @@ int main(void)
 
 	LOG_INF("JPEG device ready: %s", jpeg_dev->name);
 
-	/* Allocate input buffer from video buffer pool */
 	input_buffer = video_buffer_alloc(INPUT_BUFFER_SIZE, K_NO_WAIT);
 	if (input_buffer == NULL) {
 		LOG_ERR("Failed to allocate input buffer");
 		return -ENOMEM;
 	}
-	LOG_INF("Allocated input buffer at %p with (%u bytes)\n", (void *)input_buffer->buffer,
-		INPUT_BUFFER_SIZE);
+	LOG_INF("Allocated input buffer at %p with (%u bytes)\n",
+		(void *)input_buffer->buffer, INPUT_BUFFER_SIZE);
 
-	/* Get input buffer and copy test image */
 	copy_testimg(&testimg[0], (uint8_t *)input_buffer->buffer);
 
-	/* Allocate output buffer from video buffer pool */
-	output_buffer = video_buffer_alloc(OUTPUT_BUFFER_SIZE + JPEG_HEADER_SIZE, K_NO_WAIT);
+	output_buffer = video_buffer_alloc(OUTPUT_BUFFER_SIZE + jpeg_sample_header_size(),
+					   K_NO_WAIT);
 	if (output_buffer == NULL) {
 		LOG_ERR("Failed to allocate output buffer");
 		video_buffer_release(input_buffer);
 		return -ENOMEM;
 	}
-	LOG_INF("Allocated output buffer at %p with (%u bytes)\n", (void *)output_buffer->buffer,
-		OUTPUT_BUFFER_SIZE + JPEG_HEADER_SIZE);
+	LOG_INF("Allocated output buffer at %p with (%u bytes)\n",
+		(void *)output_buffer->buffer, output_buffer->size);
 
-	/* Get capabilities */
-	ret = video_get_caps(jpeg_dev, VIDEO_EP_OUT, &caps);
+	ret = video_get_caps(jpeg_dev, VIDEO_EP_IN, &caps);
 	if (ret == 0) {
 		LOG_INF("JPEG Encoder Capabilities:");
 		for (int i = 0; caps.format_caps[i].pixelformat != 0; i++) {
 			LOG_INF("  Format: 0x%08x, Size: %ux%u to %ux%u",
-				caps.format_caps[i].pixelformat, caps.format_caps[i].width_min,
-				caps.format_caps[i].height_min, caps.format_caps[i].width_max,
+				caps.format_caps[i].pixelformat,
+				caps.format_caps[i].width_min,
+				caps.format_caps[i].height_min,
+				caps.format_caps[i].width_max,
 				caps.format_caps[i].height_max);
 		}
 	}
-	/* Run basic encoding test */
+
+#if (TEST_JPEG_BASIC_ENCODING)
 	ret = test_jpeg_encode(jpeg_dev);
 	if (ret < 0) {
 		LOG_ERR("Basic encoding test failed: %d", ret);
 		return ret;
 	}
+	k_sleep(K_MSEC(500));
+#endif
 
-	/* Free allocated input buffer */
+	/* Output buffer stays allocated so the dump address remains valid. */
 	video_buffer_release(input_buffer);
 
+	LOG_INF("=== Jpeg Test Completed Successfully ===");
 	return 0;
 }

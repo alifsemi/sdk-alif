@@ -45,16 +45,13 @@ Sample Output
    [00:00:00.001,000] <inf> jpeg_test: JPEG device ready: jpeg@49044000
    [00:00:00.001,000] <inf> jpeg_test: Allocated input buffer at 0x2000068 with (1382400 bytes)
 
-   [00:00:00.018,000] <inf> jpeg_test: Allocated output buffer at 0x2151870 with (701039 bytes)
+   [00:00:00.018,000] <inf> jpeg_test: Allocated output buffer at 0x2151870 with (691823 bytes)
 
    [00:00:00.018,000] <inf> jpeg_test: JPEG Encoder Capabilities:
    [00:00:00.018,000] <inf> jpeg_test:   Format: 0x3231564e, Size: 32x32 to 16384x16384
    [00:00:00.018,000] <inf> jpeg_test:   Format: 0x3132564e, Size: 32x32 to 16384x16384
    [00:00:00.018,000] <inf> jpeg_test: Starting JPEG encoding test...
-   [00:00:00.018,000] <inf> jpeg_test: Format set: 1280x720, format: NV12
-   [00:00:00.018,000] <inf> jpeg_test: Quality set to: 10
-   [00:00:00.018,000] <inf> jpeg_test: Buffer enqueued
-   [00:00:00.019,000] <inf> jpeg_test: Stream started, waiting for encoding...
+   [00:00:00.018,000] <inf> jpeg_test: Format: 1280x720 NV12, quality=10
    [00:00:00.021,000] <inf> jpeg_test: === JPEG Encoding Results ===
    [00:00:00.021,000] <inf> jpeg_test: Input size:  1382400 bytes (1280x720 YUV420)
    [00:00:00.021,000] <inf> jpeg_test: Output size: 30840 bytes (JPEG)
@@ -62,4 +59,5 @@ Sample Output
    [00:00:00.021,000] <inf> jpeg_test: JPEG header verified (SOI marker found)
    [00:00:00.021,000] <inf> jpeg_test: Jpeg: Capture Image: dump memory "/home/$USER/capture_img_q10.jpg" 0x02151870 0x021590e8
 
-   [00:00:00.021,000] <inf> jpeg_test: Jpeg Basic Test completed successfully!
+   [00:00:00.021,000] <inf> jpeg_test: Test completed successfully!
+   [00:00:00.521,000] <inf> jpeg_test: === Jpeg Test Completed Successfully ===
