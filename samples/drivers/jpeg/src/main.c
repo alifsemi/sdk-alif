@@ -16,6 +16,7 @@
 #include <jpeg_hantro_vc9000e_sw.h>
 #include <stdio.h>
 #include <string.h>
+#include <zephyr/cache.h>
 #include <zephyr/sys/util.h>
 
 LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
@@ -37,7 +38,20 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define TEST_JPEG_THUMB_JPEG       0
 #define TEST_JPEG_THUMB_PALETTE    0
 #define TEST_JPEG_QUALITY_LEVELS   0
-#define TEST_JPEG_CROPPING         1
+#define TEST_JPEG_CROPPING         0
+#define TEST_JPEG_SLICE            1
+
+#define TEST_JPEG_FRAME (TEST_JPEG_BASIC_ENCODING || TEST_JPEG_THUMB_RGB24 || \
+			 TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE || \
+			 TEST_JPEG_QUALITY_LEVELS || TEST_JPEG_CROPPING)
+
+#if TEST_JPEG_SLICE
+#define SLICE_ROWS             4
+#define SLICE_HEIGHT_PX        (SLICE_ROWS * 16)
+#define SLICE_INPUT_SIZE       (TEST_WIDTH * SLICE_HEIGHT_PX * 3 / 2)
+#define SLICE_OUTPUT_SIZE      (128 * 1024)
+#define SLICE_ACCUMULATOR_SIZE (1024 * 1024)
+#endif
 
 #if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
 /* Thumbnail dimensions */
@@ -61,6 +75,8 @@ static uint8_t thumb_jpeg_buf[THUMB_JPEG_MAX_SIZE];
 static uint8_t thumb_palette_buf[THUMB_PALETTE_BUF_SIZE];
 #endif
 
+#if TEST_JPEG_FRAME
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 /**
  * @brief Header bytes reserved in the output buffer.
  *
@@ -73,6 +89,11 @@ static uint8_t thumb_palette_buf[THUMB_PALETTE_BUF_SIZE];
  * encodes with no thumbnail. The driver queries the real header on
  * pass 2. The base header is reserved here; the THUMB_RGB24_SIZE tail
  * leaves room for a thumbnail up to THUMB_JPEG_MAX_SIZE.
+ *
+ * The same call also sizes a slice header. jpeg_header_get_size() adds
+ * the DRI segment only when the slice pointer is non-NULL. To reserve
+ * that header, fill a jpeg_slice_info with
+ * restart_interval = SLICE_ROWS * (TEST_WIDTH / 16) and pass it here.
  */
 static uint32_t jpeg_sample_header_size(void)
 {
@@ -102,10 +123,18 @@ static uint32_t jpeg_sample_header_size(void)
 
 	return jpeg_header_get_size(thumb, NULL);
 }
+#endif
 
 /* Video buffers - only need 1 of each for single-frame encoding */
 static struct video_buffer *input_buffer;
 static struct video_buffer *output_buffer;
+#endif
+
+#if TEST_JPEG_SLICE
+static struct video_buffer *slice_in_buf;
+static struct video_buffer *slice_out_buf;
+static struct video_buffer *slice_accum_buf;
+#endif
 
 /* External symbols from incbin.c */
 extern uint8_t testimg_start[];
@@ -407,6 +436,7 @@ static int jpeg_encode_in_stream(const struct device *dev,
 }
 #endif
 
+#if TEST_JPEG_FRAME
 /**
  * @brief Validate JPEG SOI marker and log an OpenOCD dump-memory line.
  *
@@ -434,6 +464,7 @@ static void jpeg_verify_and_log_capture(const char *filename,
 		(uint32_t)buf->buffer,
 		(uint32_t)buf->buffer + bytesused);
 }
+#endif
 
 #if (TEST_JPEG_BASIC_ENCODING)
 /**
@@ -864,6 +895,170 @@ static int test_jpeg_encode_with_crop(const struct device *jpeg_dev)
 }
 #endif
 
+#if TEST_JPEG_SLICE
+/**
+ * @brief Copy a horizontal slice from the full NV12 test image.
+ *
+ * @param src       Full NV12 source image.
+ * @param dst       Destination slice buffer.
+ * @param width     Image width in pixels.
+ * @param full_h    Full image height in pixels.
+ * @param slice_idx Index of the slice to copy (0-based).
+ * @param slice_h   Slice height in pixels.
+ */
+static void copy_nv12_slice(const uint8_t *src, uint8_t *dst,
+			    uint32_t width, uint32_t full_h,
+			    uint32_t slice_idx, uint32_t slice_h)
+{
+	uint32_t y0 = slice_idx * slice_h;
+	uint32_t this_h = slice_h;
+
+	if (y0 + this_h > full_h) {
+		this_h = full_h - y0;
+	}
+
+	memcpy(dst, src + y0 * width, this_h * width);
+
+	uint32_t uv_offset = width * full_h + (y0 / 2) * width;
+
+	memcpy(dst + slice_h * width, src + uv_offset, (this_h / 2) * width);
+}
+
+/**
+ * @brief Encode the test image one slice at a time and concatenate the JPEG.
+ *
+ * Each enqueue produces one slice. Slice 0 carries the header. The app
+ * copies every slice into one buffer. Play the result with ffplay.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_jpeg_encode_slice(const struct device *jpeg_dev)
+{
+	uint32_t slice_rows = SLICE_ROWS;
+	uint32_t total_slices = DIV_ROUND_UP(TEST_HEIGHT, SLICE_HEIGHT_PX);
+	struct video_buffer *dequeued = NULL;
+	uint32_t accum_offset = 0;
+	uint32_t total_bytes = 0;
+	int ret;
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = NULL,
+		.crop       = NULL,
+		.input_addr = slice_in_buf->buffer,
+	};
+
+	LOG_INF("=== Starting JPEG Slice-Mode Test ===");
+	LOG_INF("Format: %ux%u NV12, slice height=%u px (%u MCU rows), "
+		"total slices=%u",
+		TEST_WIDTH, TEST_HEIGHT, SLICE_HEIGHT_PX, slice_rows,
+		total_slices);
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_SLICE_HEIGHT, &slice_rows);
+	if (ret < 0) {
+		LOG_ERR("Failed to set slice height: %d", ret);
+		return ret;
+	}
+
+	ret = video_stream_start(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Failed to start stream: %d", ret);
+		return ret;
+	}
+
+	for (uint32_t i = 0; i < total_slices; i++) {
+		copy_nv12_slice(testimg_start, slice_in_buf->buffer,
+				TEST_WIDTH, TEST_HEIGHT, i, SLICE_HEIGHT_PX);
+
+		(void)sys_cache_data_flush_and_invd_range(slice_in_buf->buffer,
+							  SLICE_INPUT_SIZE);
+
+		ret = video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_INPUT_BUFFER,
+				     slice_in_buf->buffer);
+		if (ret < 0) {
+			LOG_ERR("Slice %u: failed to set input buffer: %d", i, ret);
+			(void)video_stream_stop(jpeg_dev);
+			return ret;
+		}
+
+		slice_out_buf->bytesused = SLICE_OUTPUT_SIZE;
+
+		ret = video_enqueue(jpeg_dev, VIDEO_EP_OUT, slice_out_buf);
+		if (ret < 0) {
+			LOG_ERR("Slice %u: enqueue failed: %d", i, ret);
+			(void)video_stream_stop(jpeg_dev);
+			return ret;
+		}
+
+		ret = video_dequeue(jpeg_dev, VIDEO_EP_OUT, &dequeued, K_MSEC(200));
+		if (ret < 0) {
+			LOG_ERR("Slice %u: dequeue failed: %d", i, ret);
+			(void)video_stream_stop(jpeg_dev);
+			return ret;
+		}
+
+		if (accum_offset + dequeued->bytesused > SLICE_ACCUMULATOR_SIZE) {
+			LOG_ERR("Slice %u: accumulator overflow (%u + %u > %u)",
+				i, accum_offset, dequeued->bytesused,
+				SLICE_ACCUMULATOR_SIZE);
+			(void)video_stream_stop(jpeg_dev);
+			return -ENOSPC;
+		}
+
+		memcpy((uint8_t *)slice_accum_buf->buffer + accum_offset,
+		       dequeued->buffer, dequeued->bytesused);
+		accum_offset += dequeued->bytesused;
+		total_bytes += dequeued->bytesused;
+	}
+
+	ret = video_stream_stop(jpeg_dev);
+	if (ret < 0) {
+		LOG_WRN("stream_stop failed: %d", ret);
+	}
+
+	(void)sys_cache_data_flush_and_invd_range(slice_accum_buf->buffer,
+						  accum_offset);
+
+	{
+		const uint8_t *jpeg_data = (const uint8_t *)slice_accum_buf->buffer;
+
+		if (accum_offset >= 2 && jpeg_data[0] == 0xFF && jpeg_data[1] == 0xD8) {
+			LOG_INF("JPEG header verified (SOI marker found)");
+		} else {
+			LOG_WRN("JPEG header invalid or missing");
+		}
+	}
+
+	LOG_INF("=== Slice-Mode Results ===");
+	LOG_INF("Total slices:    %u", total_slices);
+	LOG_INF("Total size:      %u bytes (%u KB)",
+		total_bytes, total_bytes / 1024U);
+
+	LOG_INF("Jpeg: Capture Slice JPEG: dump memory "
+		"\"/home/$USER/capture_slice.jpg\" 0x%08x 0x%08x",
+		(uint32_t)slice_accum_buf->buffer,
+		(uint32_t)slice_accum_buf->buffer + accum_offset);
+
+	LOG_INF("Verify RST markers: xxd capture_slice.jpg | grep -E 'ffd[0-7]'");
+	LOG_INF("Play with: ffplay capture_slice.jpg");
+
+	uint32_t zero = 0;
+
+	(void)video_set_ctrl(jpeg_dev, VIDEO_CID_JPEG_SLICE_HEIGHT, &zero);
+
+	LOG_INF("Slice-mode test completed!");
+	return 0;
+}
+#endif
+
 /**
  * @brief Main application entry point.
  *
@@ -888,6 +1083,7 @@ int main(void)
 
 	LOG_INF("JPEG device ready: %s", jpeg_dev->name);
 
+#if TEST_JPEG_FRAME
 	input_buffer = video_buffer_alloc(INPUT_BUFFER_SIZE, K_NO_WAIT);
 	if (input_buffer == NULL) {
 		LOG_ERR("Failed to allocate input buffer");
@@ -912,6 +1108,35 @@ int main(void)
 	}
 	LOG_INF("Allocated output buffer at %p with (%u bytes)\n",
 		(void *)output_buffer->buffer, output_buffer->size);
+#endif
+#if TEST_JPEG_SLICE
+	slice_in_buf = video_buffer_alloc(SLICE_INPUT_SIZE, K_NO_WAIT);
+	if (slice_in_buf == NULL) {
+		LOG_ERR("Failed to allocate slice input buffer");
+		return -ENOMEM;
+	}
+	LOG_INF("Allocated slice input buffer at %p with (%u bytes)\n",
+		(void *)slice_in_buf->buffer, SLICE_INPUT_SIZE);
+
+	slice_out_buf = video_buffer_alloc(SLICE_OUTPUT_SIZE, K_NO_WAIT);
+	if (slice_out_buf == NULL) {
+		LOG_ERR("Failed to allocate slice output buffer");
+		video_buffer_release(slice_in_buf);
+		return -ENOMEM;
+	}
+	LOG_INF("Allocated slice output buffer at %p with (%u bytes)\n",
+		(void *)slice_out_buf->buffer, SLICE_OUTPUT_SIZE);
+
+	slice_accum_buf = video_buffer_alloc(SLICE_ACCUMULATOR_SIZE, K_NO_WAIT);
+	if (slice_accum_buf == NULL) {
+		LOG_ERR("Failed to allocate slice accumulator buffer");
+		video_buffer_release(slice_out_buf);
+		video_buffer_release(slice_in_buf);
+		return -ENOMEM;
+	}
+	LOG_INF("Allocated slice accumulator buffer at %p with (%u bytes)\n",
+		(void *)slice_accum_buf->buffer, SLICE_ACCUMULATOR_SIZE);
+#endif
 
 	ret = video_get_caps(jpeg_dev, VIDEO_EP_IN, &caps);
 	if (ret == 0) {
@@ -974,9 +1199,24 @@ int main(void)
 	}
 	k_sleep(K_MSEC(500));
 #endif
+#if TEST_JPEG_SLICE
+	ret = test_jpeg_encode_slice(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Slice-mode test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
 
+#if TEST_JPEG_FRAME
 	/* Output buffer stays allocated so the dump address remains valid. */
 	video_buffer_release(input_buffer);
+#endif
+#if TEST_JPEG_SLICE
+	/* Accumulator stays allocated so the dump address remains valid. */
+	video_buffer_release(slice_in_buf);
+	video_buffer_release(slice_out_buf);
+#endif
 
 	LOG_INF("=== Jpeg Test Completed Successfully ===");
 	return 0;
