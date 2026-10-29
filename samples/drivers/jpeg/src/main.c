@@ -31,16 +31,40 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 
 /* Macros to JPEG tests */
 #define TEST_JPEG_BASIC_ENCODING   1
+#define TEST_JPEG_THUMB_RGB24      0
+
+#if TEST_JPEG_THUMB_RGB24
+/* Thumbnail dimensions */
+#define THUMB_WIDTH      64
+#define THUMB_HEIGHT     48
+#define THUMB_RGB24_SIZE (THUMB_WIDTH * THUMB_HEIGHT * 3)
+
+static uint8_t thumb_rgb24_buf[THUMB_RGB24_SIZE];
+#endif
 
 /**
  * @brief Header bytes reserved in the output buffer.
  *
- * jpeg_header_get_size() returns the software header for the
- * features passed in. This encode passes no thumbnail.
+ * An RGB24 thumbnail has a fixed size, so this matches the value the
+ * driver gets from jpeg_header_get_size() at encode time.
  */
 static uint32_t jpeg_sample_header_size(void)
 {
-	return jpeg_header_get_size(NULL, NULL);
+	const struct jpeg_thumbnail_info *thumb = NULL;
+
+#if TEST_JPEG_THUMB_RGB24
+	struct jpeg_thumbnail_info thumb_info = {
+		.format      = JPEGENC_THUMB_RGB24,
+		.width       = THUMB_WIDTH,
+		.height      = THUMB_HEIGHT,
+		.data        = NULL,
+		.data_length = THUMB_RGB24_SIZE,
+	};
+
+	thumb = &thumb_info;
+#endif
+
+	return jpeg_header_get_size(thumb, NULL);
 }
 
 /* Video buffers - only need 1 of each for single-frame encoding */
@@ -65,6 +89,7 @@ struct jpeg_encode_cfg {
 	uint32_t width;
 	uint32_t height;
 	uint16_t quality;
+	const struct jpeg_thumbnail_info *thumbnail; /**< NULL = clear */
 	void *input_addr;
 };
 
@@ -89,11 +114,53 @@ void copy_testimg(jpeg_testimg_t *testimg, uint8_t *dest)
 	}
 }
 
+#if TEST_JPEG_THUMB_RGB24
+/**
+ * @brief Downscale NV12 input and convert to RGB24 using nearest-neighbor.
+ *
+ * @param yuv_src Pointer to the source NV12 image buffer.
+ * @param src_w Source image width in pixels.
+ * @param src_h Source image height in pixels.
+ * @param rgb_dst Pointer to the destination RGB24 buffer.
+ * @param dst_w Destination width in pixels.
+ * @param dst_h Destination height in pixels.
+ */
+static void sw_downscale_yuv420_to_rgb24(const uint8_t *yuv_src,
+					 uint32_t src_w, uint32_t src_h,
+					 uint8_t *rgb_dst,
+					 uint32_t dst_w, uint32_t dst_h)
+{
+	const uint8_t *y_plane = yuv_src;
+	const uint8_t *uv_plane = yuv_src + src_w * src_h;
+
+	for (uint32_t dy = 0; dy < dst_h; dy++) {
+		uint32_t sy = dy * src_h / dst_h;
+		for (uint32_t dx = 0; dx < dst_w; dx++) {
+			uint32_t sx = dx * src_w / dst_w;
+
+			int y = y_plane[sy * src_w + sx];
+			uint32_t uv_idx = (sy / 2) * src_w + (sx & ~1u);
+			int u = uv_plane[uv_idx] - 128;
+			int v = uv_plane[uv_idx + 1] - 128;
+
+			int r = y + ((v * 359) >> 8);
+			int g = y - ((u * 88 + v * 183) >> 8);
+			int b = y + ((u * 454) >> 8);
+
+			*rgb_dst++ = (uint8_t)(r < 0 ? 0 : (r > 255 ? 255 : r));
+			*rgb_dst++ = (uint8_t)(g < 0 ? 0 : (g > 255 ? 255 : g));
+			*rgb_dst++ = (uint8_t)(b < 0 ? 0 : (b > 255 ? 255 : b));
+		}
+	}
+}
+#endif
+
 /**
  * @brief Configure the encoder for one frame.
  *
  * NV12 is set on VIDEO_EP_IN. JPEG is set on VIDEO_EP_OUT at the same
- * resolution. Quality and the input buffer address are applied after that.
+ * resolution. Quality, thumbnail, and the input buffer address follow.
+ * A NULL thumbnail clears any thumbnail left by an earlier test.
  */
 static int jpeg_configure(const struct device *dev,
 			  const struct jpeg_encode_cfg *cfg)
@@ -129,6 +196,14 @@ static int jpeg_configure(const struct device *dev,
 	ret = video_set_ctrl(dev, VIDEO_CID_JPEG_COMPRESSION_QUALITY, &q);
 	if (ret < 0) {
 		LOG_ERR("jpeg_configure: set quality=%u failed: %d", q, ret);
+		return ret;
+	}
+
+	ret = video_set_ctrl(dev, VIDEO_CID_JPEG_THUMBNAIL_CONFIG,
+			     (void *)cfg->thumbnail);
+	if (ret < 0) {
+		LOG_ERR("jpeg_configure: thumbnail %s failed: %d",
+			cfg->thumbnail ? "set" : "clear", ret);
 		return ret;
 	}
 
@@ -224,6 +299,7 @@ static int test_jpeg_encode(const struct device *jpeg_dev)
 		.width      = TEST_WIDTH,
 		.height     = TEST_HEIGHT,
 		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = NULL,
 		.input_addr = input_buffer->buffer,
 	};
 	struct video_buffer *dequeued = NULL;
@@ -255,6 +331,71 @@ static int test_jpeg_encode(const struct device *jpeg_dev)
 	jpeg_verify_and_log_capture("capture_img_q10.jpg", dequeued, dequeued->bytesused);
 
 	LOG_INF("Test completed successfully!");
+	return 0;
+}
+#endif
+
+#if TEST_JPEG_THUMB_RGB24
+/**
+ * @brief Test JPEG encoding with an RGB24 thumbnail.
+ *
+ * Downscales the input image to thumbnail size, converts to RGB24,
+ * and encodes the full image with an embedded RGB24 JFIF thumbnail.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_jpeg_encode_with_thumbnail(const struct device *jpeg_dev)
+{
+	struct video_buffer *dequeued = NULL;
+	int ret;
+
+	LOG_INF("=== Testing JPEG Encoding with RGB24 Thumbnail ===");
+
+	sw_downscale_yuv420_to_rgb24((const uint8_t *)input_buffer->buffer,
+				     TEST_WIDTH, TEST_HEIGHT,
+				     thumb_rgb24_buf,
+				     THUMB_WIDTH, THUMB_HEIGHT);
+
+	LOG_INF("Thumbnail prepared: %ux%u RGB24 (%u bytes)",
+		THUMB_WIDTH, THUMB_HEIGHT, THUMB_RGB24_SIZE);
+
+	struct jpeg_thumbnail_info thumb_info = {
+		.format = JPEGENC_THUMB_RGB24,
+		.width  = THUMB_WIDTH,
+		.height = THUMB_HEIGHT,
+		.data   = thumb_rgb24_buf,
+		.data_length = THUMB_RGB24_SIZE,
+	};
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = &thumb_info,
+		.input_addr = input_buffer->buffer,
+	};
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
+
+	ret = jpeg_encode_one_shot(jpeg_dev, output_buffer, &dequeued);
+	if (ret < 0) {
+		return ret;
+	}
+
+	LOG_INF("=== Thumbnail Encoding Results ===");
+	LOG_INF("Output size: %u bytes (JPEG with %ux%u RGB24 thumbnail)",
+		dequeued->bytesused, THUMB_WIDTH, THUMB_HEIGHT);
+
+	jpeg_verify_and_log_capture("capture_thumb_rgb24.jpg", dequeued,
+				    dequeued->bytesused);
+
+	LOG_INF("Thumbnail encoding test completed!");
 	return 0;
 }
 #endif
@@ -293,8 +434,13 @@ int main(void)
 
 	copy_testimg(&testimg[0], (uint8_t *)input_buffer->buffer);
 
+#if TEST_JPEG_THUMB_RGB24
+	output_buffer = video_buffer_alloc(OUTPUT_BUFFER_SIZE + jpeg_sample_header_size() +
+					   THUMB_RGB24_SIZE, K_NO_WAIT);
+#else
 	output_buffer = video_buffer_alloc(OUTPUT_BUFFER_SIZE + jpeg_sample_header_size(),
 					   K_NO_WAIT);
+#endif
 	if (output_buffer == NULL) {
 		LOG_ERR("Failed to allocate output buffer");
 		video_buffer_release(input_buffer);
@@ -320,6 +466,14 @@ int main(void)
 	ret = test_jpeg_encode(jpeg_dev);
 	if (ret < 0) {
 		LOG_ERR("Basic encoding test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
+#if TEST_JPEG_THUMB_RGB24
+	ret = test_jpeg_encode_with_thumbnail(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("RGB24 thumbnail test failed: %d", ret);
 		return ret;
 	}
 	k_sleep(K_MSEC(500));
