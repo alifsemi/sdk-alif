@@ -73,8 +73,21 @@ static int output_height;
 /*
  * Camera fills the raw_image buffer.
  * Bayer->RGB conversion transfers into the rgb_image buffer.
+ *
+ * Without the ISP this holds the full sensor crop before it is resized to the
+ * model input. With the ISP, the hardware scaler already emits the size
+ * requested from image_init() (the 224x224 model input). Keeping the crop-sized
+ * buffer in that case overflows SRAM1 on E8: the OV5675 800x800 frame, the
+ * D/AVE 2D heap, the tensor arena and the LCD image do not fit in 4 MB.
  */
-static uint8_t image_data[CIMAGE_RGB_WIDTH_MAX * CIMAGE_RGB_HEIGHT_MAX * RGB_BYTES]
+#if ISP_ENABLED
+#define IMAGE_DATA_MAX_W 224
+#define IMAGE_DATA_MAX_H 224
+#else
+#define IMAGE_DATA_MAX_W CIMAGE_RGB_WIDTH_MAX
+#define IMAGE_DATA_MAX_H CIMAGE_RGB_HEIGHT_MAX
+#endif
+static uint8_t image_data[IMAGE_DATA_MAX_W * IMAGE_DATA_MAX_H * RGB_BYTES]
 #if defined(CONFIG_SOC_SERIES_E8)
 	__section("SRAM1.camera_frame_bayer_to_rgb_buf");
 #else
@@ -157,6 +170,14 @@ int image_init(int req_output_width, int req_output_height)
 	size_t bsize;
 	int i = 0;
 	int ret;
+
+	if (req_output_width <= 0 || req_output_height <= 0 ||
+	    (size_t)req_output_width * (size_t)req_output_height * RGB_BYTES >
+		    sizeof(image_data)) {
+		LOG_ERR("Output %dx%d exceeds the RGB buffer (%zu bytes)",
+			req_output_width, req_output_height, sizeof(image_data));
+		return -1;
+	}
 
 	output_width = req_output_width;
 	output_height = req_output_height;
