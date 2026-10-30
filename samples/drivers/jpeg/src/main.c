@@ -39,7 +39,8 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define TEST_JPEG_THUMB_PALETTE    0
 #define TEST_JPEG_QUALITY_LEVELS   0
 #define TEST_JPEG_CROPPING         0
-#define TEST_JPEG_SLICE            1
+#define TEST_JPEG_SLICE            0
+#define TEST_JPEG_MJPEG            1
 
 #define TEST_JPEG_FRAME (TEST_JPEG_BASIC_ENCODING || TEST_JPEG_THUMB_RGB24 || \
 			 TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE || \
@@ -51,6 +52,12 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define SLICE_INPUT_SIZE       (TEST_WIDTH * SLICE_HEIGHT_PX * 3 / 2)
 #define SLICE_OUTPUT_SIZE      (128 * 1024)
 #define SLICE_ACCUMULATOR_SIZE (1024 * 1024)
+#endif
+
+#if TEST_JPEG_MJPEG
+#define MJPEG_NUM_FRAMES      30
+#define MJPEG_FPS             30
+#define MJPEG_STREAM_MAX_SIZE (1024 * 1024)
 #endif
 
 #if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
@@ -75,7 +82,7 @@ static uint8_t thumb_jpeg_buf[THUMB_JPEG_MAX_SIZE];
 static uint8_t thumb_palette_buf[THUMB_PALETTE_BUF_SIZE];
 #endif
 
-#if TEST_JPEG_FRAME
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG)
 #if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 /**
  * @brief Header bytes reserved in the output buffer.
@@ -128,6 +135,10 @@ static uint32_t jpeg_sample_header_size(void)
 /* Video buffers - only need 1 of each for single-frame encoding */
 static struct video_buffer *input_buffer;
 static struct video_buffer *output_buffer;
+#endif
+
+#if TEST_JPEG_MJPEG
+static struct video_buffer *mjpeg_stream_buffer;
 #endif
 
 #if TEST_JPEG_SLICE
@@ -408,7 +419,7 @@ static int jpeg_encode_one_shot(const struct device *dev,
 }
 #endif
 
-#if TEST_JPEG_QUALITY_LEVELS
+#if (TEST_JPEG_QUALITY_LEVELS || TEST_JPEG_MJPEG)
 /**
  * @brief In-stream encode: enqueue + dequeue only.
  *
@@ -1059,6 +1070,178 @@ static int test_jpeg_encode_slice(const struct device *jpeg_dev)
 }
 #endif
 
+#if TEST_JPEG_MJPEG
+/**
+ * @brief Paint a horizontal white band into an NV12 image.
+ *
+ * White is Y=235, U=128, V=128. The UV band is widened by one row so
+ * chroma covers the luma band.
+ */
+static void nv12_paint_white_band(uint8_t *buf, uint32_t width, uint32_t height,
+				  uint32_t band_y, uint32_t band_h)
+{
+	uint8_t *y_plane = buf;
+	uint8_t *uv_plane = buf + width * height;
+	uint32_t uv_y0;
+	uint32_t uv_y1;
+
+	if (band_y >= height) {
+		return;
+	}
+	if (band_y + band_h > height) {
+		band_h = height - band_y;
+	}
+	if (band_h == 0U) {
+		return;
+	}
+
+	for (uint32_t y = band_y; y < band_y + band_h; y++) {
+		memset(y_plane + y * width, 235, width);
+	}
+
+	uv_y0 = band_y / 2U;
+	uv_y1 = (band_y + band_h + 1U) / 2U;
+	for (uint32_t y = uv_y0; y < uv_y1; y++) {
+		memset(uv_plane + y * width, 128, width);
+	}
+}
+#endif
+
+#if TEST_JPEG_MJPEG
+/**
+ * @brief Encode the test image repeatedly and concatenate a .mjpg stream.
+ *
+ * Each frame is a complete JPEG with a white band that moves down the
+ * picture. Bytes after EOI are dropped so the concatenated file splits
+ * cleanly at each SOI.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_jpeg_encode_mjpeg(const struct device *jpeg_dev)
+{
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = NULL,
+		.crop       = NULL,
+		.input_addr = input_buffer->buffer,
+	};
+	uint8_t *stream = (uint8_t *)mjpeg_stream_buffer->buffer;
+	uint32_t stream_offset = 0;
+	int ret;
+
+	LOG_INF("=== Testing MJPEG Concat (.mjpg) Encoding ===");
+	LOG_INF("Format: %ux%u NV12, quality=%u, frames=%u, fps=%u",
+		cfg.width, cfg.height, cfg.quality,
+		MJPEG_NUM_FRAMES, MJPEG_FPS);
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = video_stream_start(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Failed to start stream: %d", ret);
+		return ret;
+	}
+
+	for (uint32_t i = 0; i < MJPEG_NUM_FRAMES; i++) {
+		struct video_buffer *dequeued = NULL;
+		const uint8_t *fb;
+		uint32_t fsize;
+		uint32_t trimmed;
+		const uint32_t band_h = 60U;
+		uint32_t denom = (MJPEG_NUM_FRAMES > 1U) ? (MJPEG_NUM_FRAMES - 1U) : 1U;
+		uint32_t band_y = (i * (TEST_HEIGHT - band_h)) / denom;
+
+		copy_testimg(&testimg[0], (uint8_t *)input_buffer->buffer);
+		nv12_paint_white_band((uint8_t *)input_buffer->buffer,
+				      TEST_WIDTH, TEST_HEIGHT, band_y, band_h);
+		(void)sys_cache_data_flush_and_invd_range(input_buffer->buffer,
+							  INPUT_BUFFER_SIZE);
+
+		output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
+
+		ret = jpeg_encode_in_stream(jpeg_dev, output_buffer,
+					    &dequeued);
+		if (ret < 0) {
+			LOG_ERR("Frame %u: encode failed: %d", i, ret);
+			(void)video_stream_stop(jpeg_dev);
+			return ret;
+		}
+
+		k_sleep(K_MSEC(500));
+
+		/*
+		 * Drop bytes past EOI. bytesused can overshoot the real marker,
+		 * and those bytes corrupt the next frame once the JPEGs are
+		 * concatenated.
+		 */
+		fb = (const uint8_t *)dequeued->buffer;
+		fsize = dequeued->bytesused;
+		trimmed = fsize;
+
+		for (int32_t k = (int32_t)fsize - 2; k >= 0; k--) {
+			if (fb[k] == 0xFF && fb[k + 1] == 0xD9) {
+				trimmed = (uint32_t)k + 2;
+				break;
+			}
+		}
+		if (trimmed != fsize) {
+			LOG_DBG("Frame %u: trimmed %u trailing byte(s) past EOI",
+				i + 1, fsize - trimmed);
+		} else if (fsize < 2 || fb[0] != 0xFF || fb[1] != 0xD8) {
+			LOG_WRN("Frame %u: SOI/EOI not found, skipping", i + 1);
+			continue;
+		}
+
+		if (stream_offset + trimmed > MJPEG_STREAM_MAX_SIZE) {
+			LOG_ERR("Frame %u: stream buffer would overflow (%u + %u > %u)",
+				i, stream_offset, trimmed, MJPEG_STREAM_MAX_SIZE);
+			(void)video_stream_stop(jpeg_dev);
+			return -ENOMEM;
+		}
+
+		memcpy(stream + stream_offset, fb, trimmed);
+		stream_offset += trimmed;
+
+		LOG_INF("Frame %2u: %6u bytes", i + 1, trimmed);
+	}
+
+	ret = video_stream_stop(jpeg_dev);
+	if (ret < 0) {
+		LOG_WRN("Failed to stop stream: %d", ret);
+	}
+
+	mjpeg_stream_buffer->bytesused = stream_offset;
+
+	(void)sys_cache_data_flush_and_invd_range(stream, stream_offset);
+
+	LOG_INF("=== MJPEG Concat Results ===");
+	LOG_INF("Total frames:  %u", MJPEG_NUM_FRAMES);
+	LOG_INF("Total size:    %u bytes (%u KB)",
+		stream_offset, stream_offset / 1024U);
+	LOG_INF("Avg per frame: %u bytes", stream_offset / MJPEG_NUM_FRAMES);
+
+	LOG_INF("Jpeg: Capture MJPEG: dump memory "
+		"\"/home/$USER/capture_video.mjpg\" 0x%08x 0x%08x\n",
+		(uint32_t)stream,
+		(uint32_t)stream + stream_offset);
+
+	LOG_INF("Play with:  ffplay -framerate %u capture_video.mjpg", MJPEG_FPS);
+	LOG_INF("Probe with: ffprobe capture_video.mjpg");
+	LOG_INF("Verify   :  xxd capture_video.mjpg | grep -c 'ffd8'   # expect %u",
+		MJPEG_NUM_FRAMES);
+
+	LOG_INF("MJPEG concat test completed!");
+	return 0;
+}
+#endif
+
 /**
  * @brief Main application entry point.
  *
@@ -1083,7 +1266,7 @@ int main(void)
 
 	LOG_INF("JPEG device ready: %s", jpeg_dev->name);
 
-#if TEST_JPEG_FRAME
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG)
 	input_buffer = video_buffer_alloc(INPUT_BUFFER_SIZE, K_NO_WAIT);
 	if (input_buffer == NULL) {
 		LOG_ERR("Failed to allocate input buffer");
@@ -1108,6 +1291,17 @@ int main(void)
 	}
 	LOG_INF("Allocated output buffer at %p with (%u bytes)\n",
 		(void *)output_buffer->buffer, output_buffer->size);
+#endif
+#if TEST_JPEG_MJPEG
+	mjpeg_stream_buffer = video_buffer_alloc(MJPEG_STREAM_MAX_SIZE, K_NO_WAIT);
+	if (mjpeg_stream_buffer == NULL) {
+		LOG_ERR("Failed to allocate MJPEG stream buffer");
+		video_buffer_release(output_buffer);
+		video_buffer_release(input_buffer);
+		return -ENOMEM;
+	}
+	LOG_INF("Allocated MJPEG stream buffer at %p with (%u bytes)\n",
+		(void *)mjpeg_stream_buffer->buffer, MJPEG_STREAM_MAX_SIZE);
 #endif
 #if TEST_JPEG_SLICE
 	slice_in_buf = video_buffer_alloc(SLICE_INPUT_SIZE, K_NO_WAIT);
@@ -1207,9 +1401,17 @@ int main(void)
 	}
 	k_sleep(K_MSEC(500));
 #endif
+#if TEST_JPEG_MJPEG
+	ret = test_jpeg_encode_mjpeg(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("MJPEG concat test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
 
-#if TEST_JPEG_FRAME
-	/* Output buffer stays allocated so the dump address remains valid. */
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG)
+	/* Output and stream buffers stay allocated so the dump address remains valid. */
 	video_buffer_release(input_buffer);
 #endif
 #if TEST_JPEG_SLICE
