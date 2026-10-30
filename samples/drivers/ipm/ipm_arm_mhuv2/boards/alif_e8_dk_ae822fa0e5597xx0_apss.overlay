@@ -1,0 +1,84 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * APSS (A32) board overlay for the MHUv2 sample.
+ *
+ * The A32 is the peer of the RTSS-HE core: it receives the messages the
+ * RTSS-HE initiator sends and replies back. The A32 accesses the MHU
+ * register frames through the GIC (unlike the M55 cores, which use the
+ * NVIC).
+ *
+ * Register bases and GIC SPI interrupts match the Alif devkit-e8 Linux
+ * kernel device tree (ensemble-ex.dtsi, mbox_m55_he_mhu0/1_tx|rx nodes):
+ *   he_mhu0_tx @ 0x1b040000  GIC_SPI 13
+ *   he_mhu0_rx @ 0x1b050000  GIC_SPI 14
+ *   he_mhu1_tx @ 0x1b060000  GIC_SPI 48
+ *   he_mhu1_rx @ 0x1b070000  GIC_SPI 49
+ */
+
+#include <zephyr/dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	chosen {
+		zephyr,console = &uart4;
+		zephyr,shell-uart = &uart4;
+		zephyr,uart-mcumgr = &uart4;
+	};
+
+	aliases {
+		apssmhu0r = &apss_rtsshe_mhu0_r;
+		apssmhu0s = &apss_rtsshe_mhu0_s;
+		apssmhu1r = &apss_rtsshe_mhu1_r;
+		apssmhu1s = &apss_rtsshe_mhu1_s;
+	};
+};
+
+&uart4 {
+	status = "okay";
+};
+
+&{/soc} {
+	/* MHU0 sender: A32 sends to RTSS-HE */
+	apss_rtsshe_mhu0_s: mhu@1b040000 {
+		compatible = "arm,mhuv2";
+		reg = <0x1b040000 0x1000>;
+		interrupts = <GIC_SPI 13 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		interrupt-names = "tx";
+		status = "okay";
+	};
+
+	/* MHU0 receiver: A32 receives from RTSS-HE */
+	apss_rtsshe_mhu0_r: mhu@1b050000 {
+		compatible = "arm,mhuv2";
+		reg = <0x1b050000 0x1000>;
+		interrupts = <GIC_SPI 14 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		interrupt-names = "rx";
+		status = "okay";
+	};
+
+	/* MHU1 sender: A32 sends to RTSS-HE */
+	apss_rtsshe_mhu1_s: mhu@1b060000 {
+		compatible = "arm,mhuv2";
+		reg = <0x1b060000 0x1000>;
+		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		interrupt-names = "tx";
+		status = "okay";
+	};
+
+	/* MHU1 receiver: A32 receives from RTSS-HE */
+	apss_rtsshe_mhu1_r: mhu@1b070000 {
+		compatible = "arm,mhuv2";
+		reg = <0x1b070000 0x1000>;
+		interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL IRQ_DEFAULT_PRIORITY>;
+		interrupt-names = "rx";
+		status = "okay";
+	};
+};
