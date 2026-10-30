@@ -33,7 +33,7 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define JPEG_COMPRESS_QUALITY 10
 
 /* Macros to JPEG tests */
-#define TEST_JPEG_BASIC_ENCODING   0
+#define TEST_JPEG_BASIC_ENCODING   1
 #define TEST_JPEG_THUMB_RGB24      0
 #define TEST_JPEG_THUMB_JPEG       0
 #define TEST_JPEG_THUMB_PALETTE    0
@@ -41,7 +41,7 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define TEST_JPEG_CROPPING         0
 #define TEST_JPEG_SLICE            0
 #define TEST_JPEG_MJPEG            0
-#define TEST_JPEG_AVI              1
+#define TEST_JPEG_AVI              0
 
 #if TEST_JPEG_AVI
 #include "avi_mux.h"
