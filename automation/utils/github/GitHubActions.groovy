@@ -226,6 +226,79 @@ def getPullRequestCommitMessage(Map a) {
     return result[-1]?.commit?.message
 }
 
+def getPullRequestMergeSHA(Map a) {
+    try {
+        def result = request("GET", "/repos/${a.owner}/${a.repo}/git/ref/pull/${a.changeId}/merge",
+            null, a.token)
+
+        // Handle null or unexpected API responses
+        if (!(result instanceof Map)) {
+            echo "PR #${a.changeId}: unexpected API response"
+            return null
+        }
+
+        // Handle GitHub error responses
+        if (result.message) {
+            echo "PR #${a.changeId}: ${result.message}"
+            return null
+        }
+
+        def sha = result.object?.sha?.toString()
+
+        if (!sha?.trim()) {
+            echo "PR #${a.changeId}: merge SHA unavailable"
+            return null
+        }
+
+        return sha
+
+    } catch (Exception e) {
+        echo "PR #${a.changeId}: API request failed: ${e.message}"
+        return null
+    }
+}
+
+def findPRforSpecificMergeSHA(Map a, String revision) {
+    if (!revision?.trim()) {
+        echo "Revision is empty; skipping PR search"
+        return null
+    }
+
+    def prs = listPullRequests(a)
+
+    if (!(prs instanceof List) || prs.isEmpty()) {
+        echo "No open PRs available for searching"
+        return null
+    }
+
+    def targetSHA = revision.trim()
+
+    for (def pr : prs) {
+        def prNumber = pr.prNumber
+
+        if (prNumber == null) {
+            continue
+        }
+
+        a.changeId = prNumber
+        def mergeSHA = getPullRequestMergeSHA(a)
+
+        if (!mergeSHA) {
+            // Continue searching other PRs
+            continue
+        }
+
+        if (mergeSHA.equalsIgnoreCase(targetSHA)) {
+            echo "Matching PR found: #${prNumber}"
+            echo "Merge SHA: ${mergeSHA}"
+            return prNumber
+        }
+    }
+
+    echo "No open PR matches revision: ${targetSHA}"
+    return null
+}
+
 def getPRallFiles(Map a, String prNumber) {
     def allFiles = []
     int page     = 1
@@ -251,7 +324,6 @@ def getPRallFiles(Map a, String prNumber) {
 
 def findPRWithSpecificText(Map a, String searchString) {
     def matchingPRs = []
-    def allFiles    = []
     def prs         = listPullRequests(a)
 
     for (def pr : prs) {
@@ -261,8 +333,7 @@ def findPRWithSpecificText(Map a, String searchString) {
 
         for (def file : files) {
             def patch = file.patch ?: ""
-            if (file.filename == "west.yml" &&
-                patch.contains(searchString)) {
+            if (file.filename == "west.yml" && patch.contains(searchString)) {
                 echo "Found '${searchString}' in #PR-${pr.prNumber}"
                 echo "File: ${file.filename}"
                 matchingPRs << [
