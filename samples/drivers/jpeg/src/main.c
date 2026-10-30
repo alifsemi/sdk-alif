@@ -40,7 +40,12 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define TEST_JPEG_QUALITY_LEVELS   0
 #define TEST_JPEG_CROPPING         0
 #define TEST_JPEG_SLICE            0
-#define TEST_JPEG_MJPEG            1
+#define TEST_JPEG_MJPEG            0
+#define TEST_JPEG_AVI              1
+
+#if TEST_JPEG_AVI
+#include "avi_mux.h"
+#endif
 
 #define TEST_JPEG_FRAME (TEST_JPEG_BASIC_ENCODING || TEST_JPEG_THUMB_RGB24 || \
 			 TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE || \
@@ -58,6 +63,12 @@ LOG_MODULE_REGISTER(jpeg_test, LOG_LEVEL_INF);
 #define MJPEG_NUM_FRAMES      30
 #define MJPEG_FPS             30
 #define MJPEG_STREAM_MAX_SIZE (1024 * 1024)
+#endif
+
+#if TEST_JPEG_AVI
+#define AVI_NUM_FRAMES    30
+#define AVI_FPS           30
+#define AVI_FILE_MAX_SIZE (1024 * 1024)
 #endif
 
 #if (TEST_JPEG_THUMB_RGB24 || TEST_JPEG_THUMB_JPEG || TEST_JPEG_THUMB_PALETTE)
@@ -82,7 +93,6 @@ static uint8_t thumb_jpeg_buf[THUMB_JPEG_MAX_SIZE];
 static uint8_t thumb_palette_buf[THUMB_PALETTE_BUF_SIZE];
 #endif
 
-#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG)
 #if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 /**
  * @brief Header bytes reserved in the output buffer.
@@ -132,6 +142,7 @@ static uint32_t jpeg_sample_header_size(void)
 }
 #endif
 
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 /* Video buffers - only need 1 of each for single-frame encoding */
 static struct video_buffer *input_buffer;
 static struct video_buffer *output_buffer;
@@ -139,6 +150,10 @@ static struct video_buffer *output_buffer;
 
 #if TEST_JPEG_MJPEG
 static struct video_buffer *mjpeg_stream_buffer;
+#endif
+
+#if TEST_JPEG_AVI
+static struct video_buffer *avi_file_buffer;
 #endif
 
 #if TEST_JPEG_SLICE
@@ -419,7 +434,7 @@ static int jpeg_encode_one_shot(const struct device *dev,
 }
 #endif
 
-#if (TEST_JPEG_QUALITY_LEVELS || TEST_JPEG_MJPEG)
+#if (TEST_JPEG_QUALITY_LEVELS || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 /**
  * @brief In-stream encode: enqueue + dequeue only.
  *
@@ -1070,7 +1085,7 @@ static int test_jpeg_encode_slice(const struct device *jpeg_dev)
 }
 #endif
 
-#if TEST_JPEG_MJPEG
+#if (TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 /**
  * @brief Paint a horizontal white band into an NV12 image.
  *
@@ -1242,6 +1257,139 @@ static int test_jpeg_encode_mjpeg(const struct device *jpeg_dev)
 }
 #endif
 
+#if TEST_JPEG_AVI
+/**
+ * @brief Encode 30 frames into an MJPEG AVI, with a moving white band.
+ *
+ * @param jpeg_dev Pointer to the JPEG encoder device.
+ *
+ * @return 0 on success, negative errno on failure.
+ */
+static int test_jpeg_encode_avi(const struct device *jpeg_dev)
+{
+	struct jpeg_encode_cfg cfg = {
+		.width      = TEST_WIDTH,
+		.height     = TEST_HEIGHT,
+		.quality    = JPEG_COMPRESS_QUALITY,
+		.thumbnail  = NULL,
+		.crop       = NULL,
+		.input_addr = input_buffer->buffer,
+	};
+	struct avi_mux mux;
+	uint8_t *avi_buf = (uint8_t *)avi_file_buffer->buffer;
+	int ret;
+
+	LOG_INF("=== Testing MJPEG-in-AVI (.avi) Encoding ===");
+	LOG_INF("Format: %ux%u NV12, quality=%u, frames=%u, fps=%u",
+		cfg.width, cfg.height, cfg.quality,
+		AVI_NUM_FRAMES, AVI_FPS);
+
+	ret = avi_mux_init(&mux, avi_buf, AVI_FILE_MAX_SIZE,
+			   TEST_WIDTH, TEST_HEIGHT, AVI_FPS);
+	if (ret < 0) {
+		LOG_ERR("avi_mux_init failed: %d", ret);
+		return ret;
+	}
+
+	ret = jpeg_configure(jpeg_dev, &cfg);
+	if (ret < 0) {
+		return ret;
+	}
+
+	ret = video_stream_start(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("Failed to start stream: %d", ret);
+		return ret;
+	}
+
+	for (uint32_t i = 0; i < AVI_NUM_FRAMES; i++) {
+		struct video_buffer *dequeued = NULL;
+		const uint8_t *fb;
+		uint32_t fsize;
+		uint32_t trimmed;
+		const uint32_t band_h = 60U;
+		uint32_t denom = (AVI_NUM_FRAMES > 1U) ? (AVI_NUM_FRAMES - 1U) : 1U;
+		uint32_t band_y = (i * (TEST_HEIGHT - band_h)) / denom;
+
+		copy_testimg(&testimg[0], (uint8_t *)input_buffer->buffer);
+		nv12_paint_white_band((uint8_t *)input_buffer->buffer,
+				      TEST_WIDTH, TEST_HEIGHT, band_y, band_h);
+		(void)sys_cache_data_flush_and_invd_range(input_buffer->buffer,
+							  INPUT_BUFFER_SIZE);
+
+		output_buffer->bytesused = OUTPUT_BUFFER_SIZE;
+
+		ret = jpeg_encode_in_stream(jpeg_dev, output_buffer,
+					    &dequeued);
+		if (ret < 0) {
+			LOG_ERR("Frame %u: encode failed: %d", i, ret);
+			(void)video_stream_stop(jpeg_dev);
+			return ret;
+		}
+
+		k_sleep(K_MSEC(500));
+
+		fb = (const uint8_t *)dequeued->buffer;
+		fsize = dequeued->bytesused;
+		trimmed = fsize;
+
+		for (int32_t k = (int32_t)fsize - 2; k >= 0; k--) {
+			if (fb[k] == 0xFF && fb[k + 1] == 0xD9) {
+				trimmed = (uint32_t)k + 2;
+				break;
+			}
+		}
+		if (trimmed != fsize) {
+			LOG_DBG("Frame %u: trimmed %u trailing byte(s) past EOI",
+				i + 1, fsize - trimmed);
+		} else if (fsize < 2 || fb[0] != 0xFF || fb[1] != 0xD8) {
+			LOG_WRN("Frame %u: SOI/EOI not found, skipping", i + 1);
+			continue;
+		}
+
+		ret = avi_mux_write_frame(&mux, fb, trimmed);
+		if (ret < 0) {
+			LOG_ERR("Frame %u: avi_mux_write_frame failed: %d", i + 1, ret);
+			(void)video_stream_stop(jpeg_dev);
+			return ret;
+		}
+
+		LOG_INF("Frame %2u: %6u bytes", i + 1, trimmed);
+	}
+
+	ret = video_stream_stop(jpeg_dev);
+	if (ret < 0) {
+		LOG_WRN("Failed to stop stream: %d", ret);
+	}
+
+	ret = avi_mux_finalize(&mux);
+	if (ret < 0) {
+		LOG_ERR("avi_mux_finalize failed: %d", ret);
+		return ret;
+	}
+
+	avi_file_buffer->bytesused = mux.pos;
+
+	(void)sys_cache_data_flush_and_invd_range(avi_buf, mux.pos);
+
+	LOG_INF("=== AVI Mux Results ===");
+	LOG_INF("Total frames:  %u", AVI_NUM_FRAMES);
+	LOG_INF("File size:     %u bytes (%u KB)", mux.pos, mux.pos / 1024U);
+	LOG_INF("Avg per frame: %u bytes", mux.pos / AVI_NUM_FRAMES);
+
+	LOG_INF("Jpeg: Capture AVI: dump memory "
+		"\"/home/$USER/capture_video.avi\" 0x%08x 0x%08x\n",
+		(uint32_t)avi_buf,
+		(uint32_t)avi_buf + mux.pos);
+
+	LOG_INF("Play with:  ffplay capture_video.avi");
+	LOG_INF("Probe with: ffprobe capture_video.avi");
+
+	LOG_INF("AVI mux test completed!");
+	return 0;
+}
+#endif
+
 /**
  * @brief Main application entry point.
  *
@@ -1266,7 +1414,7 @@ int main(void)
 
 	LOG_INF("JPEG device ready: %s", jpeg_dev->name);
 
-#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG)
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 	input_buffer = video_buffer_alloc(INPUT_BUFFER_SIZE, K_NO_WAIT);
 	if (input_buffer == NULL) {
 		LOG_ERR("Failed to allocate input buffer");
@@ -1302,6 +1450,17 @@ int main(void)
 	}
 	LOG_INF("Allocated MJPEG stream buffer at %p with (%u bytes)\n",
 		(void *)mjpeg_stream_buffer->buffer, MJPEG_STREAM_MAX_SIZE);
+#endif
+#if TEST_JPEG_AVI
+	avi_file_buffer = video_buffer_alloc(AVI_FILE_MAX_SIZE, K_NO_WAIT);
+	if (avi_file_buffer == NULL) {
+		LOG_ERR("Failed to allocate AVI file buffer");
+		video_buffer_release(output_buffer);
+		video_buffer_release(input_buffer);
+		return -ENOMEM;
+	}
+	LOG_INF("Allocated AVI file buffer at %p with (%u bytes)\n",
+		(void *)avi_file_buffer->buffer, AVI_FILE_MAX_SIZE);
 #endif
 #if TEST_JPEG_SLICE
 	slice_in_buf = video_buffer_alloc(SLICE_INPUT_SIZE, K_NO_WAIT);
@@ -1409,8 +1568,16 @@ int main(void)
 	}
 	k_sleep(K_MSEC(500));
 #endif
+#if TEST_JPEG_AVI
+	ret = test_jpeg_encode_avi(jpeg_dev);
+	if (ret < 0) {
+		LOG_ERR("AVI mux test failed: %d", ret);
+		return ret;
+	}
+	k_sleep(K_MSEC(500));
+#endif
 
-#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG)
+#if (TEST_JPEG_FRAME || TEST_JPEG_MJPEG || TEST_JPEG_AVI)
 	/* Output and stream buffers stay allocated so the dump address remains valid. */
 	video_buffer_release(input_buffer);
 #endif
