@@ -12,6 +12,8 @@
  * Supports restart condition testing and comprehensive stress validation
  */
 
+#include "pstate_common.overlay"
+
 / {
 	aliases {
 		i2c-controller = &i2c0;
