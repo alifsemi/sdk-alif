@@ -78,4 +78,6 @@ config TEST_CRC_STRESS
 
 endmenu
 
+rsource "../../common/Kconfig.pstate"
+
 source "Kconfig.zephyr"

@@ -8,6 +8,8 @@
  */
 
 
+#include "pstate_common.overlay"
+
 / {
 	aliases {
 		crc = &crc0;
