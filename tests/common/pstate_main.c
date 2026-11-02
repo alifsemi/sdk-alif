@@ -154,6 +154,7 @@ static void pstate_reset_ztest_stats(void)
 		test->stats->skip_count = 0;
 		test->stats->fail_count = 0;
 		test->stats->pass_count = 0;
+		test->stats->duration_worst_ms = 0;
 	}
 }
 
@@ -191,8 +192,6 @@ void test_main(void)
 			 (unsigned int)ARRAY_SIZE(pstates));
 		run_suites_once();
 	}
-
-}
 
 	int restore_err = apply_pstate(pstates[0]);
 
