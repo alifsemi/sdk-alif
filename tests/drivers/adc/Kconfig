@@ -19,6 +19,31 @@ config TEST_ADC_MULTICH
 config TEST_ADC24
 	bool "To Enable ADC24 testcases"
 
+config TEST_ADC_DAC
+	bool "ADC reads DAC0 loopback test"
+	select DAC
+	help
+	  Enable with -DCONFIG_TEST_ADC_DAC=y. Requires an ADC+DAC overlay
+	  (alif_adc1_dac0.overlay preferred on B1, or alif_adc12_dac0 /
+	  alif_adc24_dac0) so DT alias dac is present. Wire DAC0 P2_3 to
+	  the ADC pin described in test_adc_dac.c / README.
+
+config TEST_ADC_THRESHOLD
+	bool "ADC comparator threshold and window test"
+	help
+	  Enable with -DCONFIG_TEST_ADC_THRESHOLD=y. Append a
+	  thresh_above, thresh_below, or thresh_window overlay to the
+	  matching base ADC overlay.
+
+config TEST_ADC_PGA
+	bool "ADC PGA gain test"
+	help
+	  Enable with -DCONFIG_TEST_ADC_PGA=y. Append a gain overlay
+	  (alif_adc1_gain0.overlay, gain12, gain24, gain36, or gain42).
+	  Do not combine with CONFIG_TEST_ADC_DAC or CONFIG_TEST_ADC_THRESHOLD.
+	  Optionally pass -DCONFIG_TEST_ADC_CHn=y to pick the channel
+	  (default channel 1).
+
 config TEST_ADC_CH0
 	bool "To enable ADC channel 0 testcase"
 	help
