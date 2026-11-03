@@ -1,0 +1,28 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * PM off-profile overlay for Ensemble and Ensemble Gen2
+ * SoCs - HE core TCM boot S2RAM.
+ */
+
+#include "pm_tcm_common.overlay"
+
+&off_profile_standby {
+	memory-blocks = <(ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
+			  ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
+			  ALIF_SERAM_MASK | ALIF_MRAM_MASK)>;
+};
+
+&off_profile_stop {
+	memory-blocks = <(ALIF_SRAM4_1_MASK | ALIF_SRAM4_2_MASK |
+			  ALIF_SRAM5_1_MASK | ALIF_SRAM5_2_MASK |
+			  ALIF_SERAM_MASK | ALIF_MRAM_MASK)>;
+};

@@ -1,0 +1,69 @@
+# One image tests one instance. Add -S s2ram for TCM standby/stop.
+#   -S pdm           → &pdm
+#   -S lppdm         → &lppdm
+#   -S pdm -S s2ram  → &pdm, TCM standby/stop
+#   -S lppdm -S s2ram → &lppdm, TCM standby/stop
+common:
+  tags: pdm pm
+  harness: ztest
+  timeout: 180
+
+tests:
+  drivers.pdm_pm.lppdm.stereo.mode1.ch4_5:
+    required_snippets:
+      - lppdm
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_MODE1=y
+  drivers.pdm_pm.lppdm.s2ram.stereo.mode1.ch4_5:
+    required_snippets:
+      - lppdm
+      - s2ram
+    platform_allow:
+      - alif_b1_dk/ab1c1f4m51820hh0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_MODE1=y
+      - CONFIG_FLASH_BASE_ADDRESS=0x0
+      - CONFIG_FLASH_LOAD_OFFSET=0x0
+      - CONFIG_FLASH_SIZE=256
+  drivers.pdm_pm.pdm.s2ram.stereo.mode1.ch4_5:
+    required_snippets:
+      - pdm
+      - s2ram
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_MODE1=y
+      - CONFIG_FLASH_BASE_ADDRESS=0x0
+      - CONFIG_FLASH_LOAD_OFFSET=0x0
+      - CONFIG_FLASH_SIZE=256
+  drivers.pdm_pm.pdm.stereo.mode1.ch4_5:
+    required_snippets:
+      - pdm
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    extra_configs:
+      - CONFIG_TEST_PDM_STEREO_CH=y
+      - CONFIG_TEST_PDM_CH4=y
+      - CONFIG_TEST_PDM_CH5=y
+      - CONFIG_TEST_PDM_MODE1=y
