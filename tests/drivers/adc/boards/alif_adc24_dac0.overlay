@@ -1,0 +1,18 @@
+/ {
+	aliases {
+		test-adc = &adc24;
+		dac = &dac0;
+	};
+};
+
+&adc0 {
+	status = "disabled";
+};
+
+&adc24 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};
