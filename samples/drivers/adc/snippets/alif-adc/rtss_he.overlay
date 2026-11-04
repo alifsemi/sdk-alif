@@ -1,0 +1,25 @@
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+&dma2 {
+    status = "okay";
+};
+
+&evtrtr2 {
+    status = "okay";
+};
+
+&utimer0 {
+    status = "okay";
+};
+
+&adc0 {
+    status = "okay";
+    adc_conversion_mode = "SINGLE_SHOT_CONVERSION";
+    dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 0, 1) 4>;
+    dma-names = "rxdma";
+    alif,utimer-trigger  = <&utimer0>;
+    alif,utimer-driver   = <0>;
+    alif,utimer-period   = <160000000>;
+    /* Bit 0 = UTIMER0 driver A -> ADC ext-trigger source 0. */
+    alif,ext-trigger-src = <0x1>;
+};
