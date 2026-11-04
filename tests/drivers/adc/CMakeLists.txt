@@ -12,3 +12,15 @@ if(CONFIG_TEST_ADC24)
 else()
   target_sources(app PRIVATE src/test_adc12.c)
 endif()
+
+if(CONFIG_TEST_ADC_DAC)
+  target_sources(app PRIVATE src/test_adc_dac.c)
+endif()
+
+if(CONFIG_TEST_ADC_THRESHOLD)
+  target_sources(app PRIVATE src/test_adc_threshold.c)
+endif()
+
+if(CONFIG_TEST_ADC_PGA)
+  target_sources(app PRIVATE src/test_adc_pga.c)
+endif()
