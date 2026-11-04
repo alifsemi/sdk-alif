@@ -25,7 +25,7 @@
 #include "co_buf.h"
 
 #include "control_profile.h"
-#include "main.h"
+#include "bluetooth.h"
 
 LOG_MODULE_REGISTER(control_profile, CONFIG_CONTROL_PROFILE_LOG_LEVEL);
 
@@ -369,6 +369,13 @@ static int queue_mode_command(enum control_profile_mode mode)
 		cmd.source.frame_rate_hz = env.frame_rate_hz;
 		cmd.source.frame_duration_us = env.frame_duration_us;
 
+#if CONFIG_TENSORFLOW_LITE_MICRO
+		if (cmd.source.frame_rate_hz != 16000) {
+			LOG_ERR("KWS model is requiring 16kHz input");
+			return -EINVAL;
+		}
+#endif
+
 		stream_name = get_stream_name();
 		if (stream_name == NULL) {
 			set_stream_name(CONFIG_AURACAST_STREAM_NAME);
@@ -619,6 +626,13 @@ static uint16_t handle_codec_write(co_buf_t *p_data)
 		return ATT_ERR_VALUE_NOT_ALLOWED;
 	}
 
+#if CONFIG_TENSORFLOW_LITE_MICRO
+	if (rate_hz != 16000) {
+		LOG_ERR("KWS model is requiring 16kHz input");
+		return ATT_ERR_VALUE_NOT_ALLOWED;
+	}
+#endif
+
 	strncpy(env.codec, codec, sizeof(env.codec) - 1);
 	env.codec[sizeof(env.codec) - 1] = '\0';
 	env.octets_per_frame = octets;
@@ -685,6 +699,13 @@ static uint16_t handle_frame_rate_write(co_buf_t *p_data)
 		LOG_ERR("Invalid frame rate '%s', use kHz value (8/16/24/32/48)", rate_str);
 		return ATT_ERR_VALUE_NOT_ALLOWED;
 	}
+
+#if CONFIG_TENSORFLOW_LITE_MICRO
+	if (rate_hz != 16000) {
+		LOG_ERR("KWS model is requiring 16kHz input");
+		return ATT_ERR_VALUE_NOT_ALLOWED;
+	}
+#endif
 
 	env.frame_rate_hz = rate_hz;
 	env.codec[0] = '\0';
