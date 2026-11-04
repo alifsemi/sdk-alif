@@ -248,6 +248,9 @@ static int display_init(void)
 	if (ret == -ENOTSUP)
 		LOG_DBG("Un-supported Display Rotation.");
 
+	/* DISPOFF must go out while the host is still in command mode. */
+	display_blanking_on(panel_dev);
+
 	ret = dsi_dw_set_mode(dsi_dev, DSI_DW_VIDEO_MODE);
 	if (ret) {
 		LOG_ERR("DSI Host controller set to video mode.");
@@ -255,7 +258,6 @@ static int display_init(void)
 	}
 
 	display_get_capabilities(panel_dev, &panel_caps);
-	display_blanking_on(panel_dev);
 #endif /* defined(CONFIG_MIPI_DSI) */
 
 	display_dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_display));
@@ -394,9 +396,14 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 				 */
 
 #if defined(CONFIG_MIPI_DSI)
+				/*
+				 * blanking_off() waits for panel resume, which
+				 * re-attaches the DSI host in command mode.
+				 * Switch to video only after DISPON has been sent.
+				 */
 				display_set_orientation(panel_dev, DISPLAY_ORIENTATION_ROTATED_180);
-				dsi_dw_set_mode(dsi_dev, DSI_DW_VIDEO_MODE);
 				display_blanking_off(panel_dev);
+				dsi_dw_set_mode(dsi_dev, DSI_DW_VIDEO_MODE);
 #endif /* defined(CONFIG_MIPI_DSI) */
 
 				cdc200_set_enable(display_dev, true);
@@ -474,6 +481,8 @@ static void display_streaming_thread(void *p1, void *p2, void *p3)
 		}
 
 #if defined(CONFIG_MIPI_DSI)
+		/* Return to command mode before DISPOFF, with the CDC still running. */
+		dsi_dw_set_mode(dsi_dev, DSI_DW_COMMAND_MODE);
 		display_blanking_on(panel_dev);
 #endif /* defined(CONFIG_MIPI_DSI) */
 		cdc200_set_enable(display_dev, false);
