@@ -6,7 +6,6 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-
-mainmenu "Alif Power Management States Demo"
+mainmenu "Alif SPI DW Power Management Test"
 
 source "Kconfig.zephyr"
