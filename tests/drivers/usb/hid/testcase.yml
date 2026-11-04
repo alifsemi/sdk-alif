@@ -1,0 +1,41 @@
+common:
+  depends_on: usb_device
+  tags:
+    - usb
+    - hid
+  harness: ztest
+  platform_allow:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_he
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+
+tests:
+  driver.usb.hid.mouse:
+    extra_args:
+      - CONFIG_HID_TEST_MOUSE=y
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    tags:
+      - mouse
+  driver.usb.hid.keyboard:
+    extra_args:
+      - CONFIG_HID_TEST_KEYBOARD=y
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    tags:
+      - keyboard
+  driver.usb.hid.joystick:
+    extra_args:
+      - CONFIG_HID_TEST_JOYSTICK=y
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    tags:
+      - joystick
