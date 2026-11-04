@@ -1,0 +1,91 @@
+common:
+  harness: ztest
+  depends_on: wifi
+  tags:
+    - net
+    - wifi
+  platform_allow:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    - alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+
+tests:
+  net.wifi.shell.1yn:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-shell.conf;1yn.conf"
+    timeout: 600
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    tags:
+      - shell
+      - 1yn
+  net.wifi.shell.2fy:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-shell.conf;2fy.conf"
+    timeout: 600
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    tags:
+      - shell
+      - 2fy
+  net.wifi.ap.1yn:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-ap.conf;1yn.conf"
+    timeout: 180
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    tags:
+      - ap
+      - 1yn
+  net.wifi.ap.2fy:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-ap.conf;2fy.conf"
+    timeout: 180
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    tags:
+      - ap
+      - 2fy
+  net.wifi.p2p.1yn:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-p2p.conf;1yn.conf"
+    timeout: 180
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    tags:
+      - p2p
+      - 1yn
+  net.wifi.p2p.2fy:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-p2p.conf;2fy.conf"
+    timeout: 180
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    tags:
+      - p2p
+      - 2fy
+  net.wifi.zperf.1yn:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-zperf.conf;1yn.conf"
+    timeout: 600
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+    tags:
+      - zperf
+      - 1yn
+  net.wifi.zperf.2fy:
+    extra_args:
+      - OVERLAY_CONFIG="overlay-zperf.conf;2fy.conf"
+    timeout: 600
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    tags:
+      - zperf
+      - 2fy
