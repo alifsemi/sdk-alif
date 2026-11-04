@@ -1,0 +1,36 @@
+/* Copyright (C) 2024 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+&aled0 {
+	gpios = <&gpio4 5 GPIO_ACTIVE_HIGH>;
+};
+
+&gpio4 {
+	status = "okay";
+};
+
+&cmp0 {
+	status = "disabled";
+};
+
+&cmp1 {
+	status = "disabled";
+};
+
+/*
+ * Analog inputs only (do not jumper aled0 to P2_4).
+ *   +  CMP_POS_IN0 = P2_4 — external analog
+ *   -  CMP_NEG_IN0 = P2_0 — external analog / DC
+ * aled0 P4_5 is GPIO output: LED glows on LPCMP IRQ.
+ */
+&lpcmp {
+	positive_input = "CMP_POS_IN0";
+	negative_input = "CMP_NEG_IN0";
+	status = "okay";
+};

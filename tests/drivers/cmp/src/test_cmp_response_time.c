@@ -24,9 +24,13 @@ ZTEST(cmp_ResponseTime, test_Comp_response_time_manual_hw_validation)
 	ret = comparator_set_trigger(cmp_dev, COMPARATOR_TRIGGER_BOTH_EDGES);
 	zassert_equal(ret, 0, "set_trigger failed (%d)", ret);
 
-	LOG_INF("CMP response-time feature is configured");
+	LOG_INF("CMP/LPCMP response-time feature is configured");
 	LOG_INF("Manual validation required: measure propagation delay with scope");
-	LOG_INF("Pass criteria: comparator propagation delay < 5 ns");
+	if (CMP_IS_LPCMP) {
+		LOG_INF("Pass criteria (LPCMP HRM): propagation delay < 10 us");
+	} else {
+		LOG_INF("Pass criteria (CMP): comparator propagation delay < 5 ns");
+	}
 
 	ztest_test_skip();
 }
