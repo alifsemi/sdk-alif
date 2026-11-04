@@ -1,0 +1,52 @@
+/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https: //alifsemi.com/license
+ *
+ */
+
+#include <dt-bindings/pinctrl/balletto-pinctrl.h>
+
+/ {
+	aliases {
+		pdm-audio = &lppdm;
+	};
+};
+
+/* SK-B1's PDM mics are on P1_4/P1_5 (LPPDM ch2, alt A; schematic
+ * 220-00316 sheet 6), not P5_x/P7_x (alt C) used by the shared
+ * pinctrl_lppdm state - override it here.
+ */
+&pinctrl {
+	pinctrl_lppdm_sk: pinctrl_lppdm_sk {
+		group0 {
+			pinmux = <PIN_P1_4__LPPDM_C2_A>;
+			read-enable = <0x0>;
+		};
+		group1 {
+			pinmux = <PIN_P1_5__LPPDM_D2_A>;
+			read-enable = <0x1>;
+		};
+	};
+};
+
+&lppdm {
+	pinctrl-0 = <&pinctrl_lppdm_sk>;
+	status = "okay";
+};
+
+
+/ {
+	/* Compile-time assertion: ethosu0 must exist */
+	ethosu_u55_check {
+		compatible = "vnd,ethosu-u55-check";
+		ethosu-node = <&ethosu0>;
+	};
+};
+
+&ethosu0 {
+	status = "okay";
+};
