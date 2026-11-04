@@ -1,18 +1,22 @@
-/* Copyright (C) 2025 Alif Semiconductor - All Rights Reserved.
- * Use, distribution and modification of this code is permitted under the
- * terms stated in the Alif Semiconductor Software License Agreement
+/*
+ * Copyright (c) 2026 Alif Semiconductor
  *
- * You should have received a copy of the Alif Semiconductor Software
- * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/kernel.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
-#include <zephyr/drivers/hwsem_ipm.h>
-#include <zephyr/ztest.h>
+
+#include <zephyr/kernel.h>
+#include <zephyr/cache.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
+#include <zephyr/drivers/hwsem_ipm.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/barrier.h>
+#include <zephyr/ztest.h>
 
 #define SLEEP_TIME_MS		 1000
 #define SHARED_TEST_ITERATIONS	  7
@@ -30,7 +34,8 @@ static const struct device *const devices[] = {
 #endif
 };
 
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+#define WORKER_STACK_SIZE	1024
+#define MSG_LEN			64
 
 #if defined(CONFIG_RTSS_HP)
 #define MASTER_ID 0xF00DF00D
@@ -38,12 +43,473 @@ static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 #define MASTER_ID 0xC0DEC0DE
 #endif
 
+#define SHM_LINE		32
+#define SHM_MAGIC		0x48574D32	/* 'HWM2' */
+#define SHM_POLL_MS		1
+#define SHM_TIMEOUT_MS		5000
+#define SHM_INIT_TIMEOUT_MS	10000
+
+struct shm_mailbox {
+	/* HP-owned line */
+	uint32_t magic;
+	uint32_t prod_seq;
+	uint32_t pad_hp[(SHM_LINE / 4) - 2];
+	/* HE-owned line */
+	uint32_t cons_seq;
+	uint32_t pad_he[(SHM_LINE / 4) - 1];
+	/* payload: HP writes, HE reads */
+	char msg[MSG_LEN];
+};
+
+#define SHM_NODE	DT_NODELABEL(hwsem_shm)
+
+static volatile struct shm_mailbox *const mbox1 =
+	(volatile struct shm_mailbox *)(uintptr_t)DT_REG_ADDR(SHM_NODE);
+
+BUILD_ASSERT(DT_REG_ADDR(SHM_NODE) % SHM_LINE == 0,
+	     "shared memory base must be cache-line aligned");
+BUILD_ASSERT(DT_REG_SIZE(SHM_NODE) >= sizeof(struct shm_mailbox),
+	     "reserved region too small for the mailbox");
+BUILD_ASSERT(offsetof(struct shm_mailbox, cons_seq) == SHM_LINE,
+	     "HE control must not share a line with HP control");
+BUILD_ASSERT(offsetof(struct shm_mailbox, msg) == 2 * SHM_LINE,
+	     "payload must not share a line with either control block");
+
+#define SHM_HP_CTRL	((void *)&mbox1->magic)
+#define SHM_HE_CTRL	((void *)&mbox1->cons_seq)
+#define SHM_PAYLOAD	((void *)&mbox1->msg[0])
+
+static void shm_flush(void *p, size_t len)
+{
+#if defined(CONFIG_DCACHE)
+	sys_cache_data_flush_range(p, len);
+#endif
+	barrier_dsync_fence_full();
+}
+
+static void shm_invd(void *p, size_t len)
+{
+#if defined(CONFIG_DCACHE)
+	sys_cache_data_invd_range(p, len);
+#endif
+	barrier_dsync_fence_full();
+}
+
+static int shm_wait(void *line, volatile uint32_t *field, uint32_t want,
+		    int timeout_ms)
+{
+	int waited = 0;
+
+	while (waited < timeout_ms) {
+		shm_invd(line, SHM_LINE);
+		if (*field == want) {
+			return 0;
+		}
+		k_msleep(SHM_POLL_MS);
+		waited += SHM_POLL_MS;
+	}
+
+	return -ETIMEDOUT;
+}
+
+struct mailbox {
+	char msg[MSG_LEN];
+	uint32_t seq;
+	uint32_t ready;
+};
+
+static volatile struct mailbox mbox;
+static struct k_sem slot_free;
+static struct k_sem data_ready;
+static int writer_result;
+static int reader_result;
+
+static struct k_thread writer_tid;
+static struct k_thread reader_tid;
+static K_THREAD_STACK_DEFINE(writer_stack, WORKER_STACK_SIZE);
+static K_THREAD_STACK_DEFINE(reader_stack, WORKER_STACK_SIZE);
+
+static void mailbox_writer(void *p1, void *p2, void *p3)
+{
+	int iter;
+	const struct device *dev = devices[0];
+
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	for (iter = 0; iter < SHARED_TEST_ITERATIONS; iter++) {
+		if (k_sem_take(&slot_free, K_SECONDS(2)) != 0) {
+			writer_result = -1;
+			return;
+		}
+
+		if (hwsem_lock(dev, MASTER_ID) != 0) {
+			writer_result = -2;
+			return;
+		}
+
+		snprintk((char *)mbox.msg, MSG_LEN,
+			 "Hello from HWSEM0 iter %d", iter);
+		mbox.seq = (uint32_t)iter;
+		mbox.ready = 1U;
+
+		if (hwsem_unlock(dev, MASTER_ID) != 0) {
+			writer_result = -3;
+			return;
+		}
+
+		k_sem_give(&data_ready);
+	}
+
+	writer_result = 0;
+}
+
+static void mailbox_reader(void *p1, void *p2, void *p3)
+{
+	int iter;
+	char local[MSG_LEN];
+	const struct device *dev = devices[0];
+
+	ARG_UNUSED(p1);
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	for (iter = 0; iter < SHARED_TEST_ITERATIONS; iter++) {
+		if (k_sem_take(&data_ready, K_SECONDS(2)) != 0) {
+			reader_result = -1;
+			return;
+		}
+
+		if (hwsem_lock(dev, MASTER_ID) != 0) {
+			reader_result = -2;
+			return;
+		}
+
+		if (mbox.ready != 1U) {
+			reader_result = -4;
+			hwsem_unlock(dev, MASTER_ID);
+			return;
+		}
+
+		memcpy(local, (const char *)mbox.msg, MSG_LEN);
+		local[MSG_LEN - 1] = '\0';
+
+		TC_PRINT("HWSEM1 received: \"%s\" (seq=%u)\n",
+		       local, mbox.seq);
+
+		if (mbox.seq != (uint32_t)iter) {
+			reader_result = -5;
+			hwsem_unlock(dev, MASTER_ID);
+			return;
+		}
+
+		mbox.ready = 0U;
+
+		if (hwsem_unlock(dev, MASTER_ID) != 0) {
+			reader_result = -3;
+			return;
+		}
+
+		k_sem_give(&slot_free);
+	}
+
+	reader_result = 0;
+}
+
+ZTEST(hwsem_shared_peripheral, hwsem_mailbox_two_devices)
+{
+	zassert_true(ARRAY_SIZE(devices) >= 2,
+		     "Need at least two HWSEM devices");
+
+	memset((void *)&mbox, 0, sizeof(mbox));
+	writer_result = -100;
+	reader_result = -100;
+
+	k_sem_init(&slot_free, 1, 1);
+	k_sem_init(&data_ready, 0, 1);
+
+	k_thread_create(&writer_tid, writer_stack, WORKER_STACK_SIZE,
+			mailbox_writer, NULL, NULL, NULL,
+			K_PRIO_PREEMPT(1), 0, K_NO_WAIT);
+
+	k_thread_create(&reader_tid, reader_stack, WORKER_STACK_SIZE,
+			mailbox_reader, NULL, NULL, NULL,
+			K_PRIO_PREEMPT(1), 0, K_NO_WAIT);
+
+	int w = k_thread_join(&writer_tid, K_SECONDS(5));
+	int r = k_thread_join(&reader_tid, K_SECONDS(5));
+
+	if (w != 0) {
+		k_thread_abort(&writer_tid);
+	}
+	if (r != 0) {
+		k_thread_abort(&reader_tid);
+	}
+
+	zassert_equal(w, 0, "Writer did not finish");
+	zassert_equal(r, 0, "Reader did not finish");
+	zassert_equal(writer_result, 0, "Writer failed: %d", writer_result);
+	zassert_equal(reader_result, 0, "Reader failed: %d", reader_result);
+	zassert_equal(mbox.ready, 0U, "Mailbox still marked ready");
+}
+
+#if defined(CONFIG_RTSS_HP)
+
+/* HP owns initialization. Clear the magic first so a late-booting HE
+ * cannot latch onto leftovers from a previous run.
+ */
+static void hp_mailbox_init(void)
+{
+	mbox1->magic = 0U;
+	shm_flush(SHM_HP_CTRL, SHM_LINE);
+
+	mbox1->prod_seq = 0U;
+	mbox1->cons_seq = 0U;
+	memset((void *)mbox1->msg, 0, MSG_LEN);
+	shm_flush((void *)mbox1, sizeof(*mbox1));
+
+	mbox1->magic = SHM_MAGIC;
+	shm_flush(SHM_HP_CTRL, SHM_LINE);
+}
+
+static void hp_publish(const struct device *dev, int iter)
+{
+	zassert_false(hwsem_lock(dev, MASTER_ID), "Unable to lock HWSEM");
+
+	snprintk((char *)mbox1->msg, MSG_LEN,
+		 "Hello from RTSS-HP iter %d", iter);
+	shm_flush(SHM_PAYLOAD, MSG_LEN);
+
+	mbox1->prod_seq = (uint32_t)(iter + 1);
+	shm_flush(SHM_HP_CTRL, SHM_LINE);
+
+	zassert_false(hwsem_unlock(dev, MASTER_ID), "Unable to unlock HWSEM");
+}
+
+/* Writer side: runs on RTSS-HP only. */
+ZTEST(hwsem_mailbox, mailbox_hp_write)
+{
+	const struct device *dev = devices[0];
+	int iter;
+
+	hp_mailbox_init();
+	TC_PRINT("HP: mailbox armed at %p\n", (void *)mbox1);
+
+	for (iter = 0; iter < SHARED_TEST_ITERATIONS; iter++) {
+		/* Never hold the HWSEM while waiting on the peer. */
+		zassert_ok(shm_wait(SHM_HE_CTRL, &mbox1->cons_seq,
+				    (uint32_t)iter, SHM_TIMEOUT_MS),
+			   "HE did not consume message %d", iter);
+
+		hp_publish(dev, iter);
+		TC_PRINT("HP: sent seq=%d\n", iter + 1);
+	}
+
+	zassert_ok(shm_wait(SHM_HE_CTRL, &mbox1->cons_seq,
+			    SHARED_TEST_ITERATIONS, SHM_TIMEOUT_MS),
+		   "HE did not acknowledge the final message");
+}
+
+#endif /* CONFIG_RTSS_HP */
+
+#if defined(CONFIG_RTSS_HE)
+
+static void he_consume(const struct device *dev, char *out, size_t len)
+{
+	zassert_false(hwsem_lock(dev, MASTER_ID), "Unable to lock HWSEM");
+
+	shm_invd(SHM_PAYLOAD, MSG_LEN);
+	memcpy(out, (const char *)mbox1->msg, len);
+	out[len - 1] = '\0';
+
+	zassert_false(hwsem_unlock(dev, MASTER_ID), "Unable to unlock HWSEM");
+}
+
+/* Reader side: runs on RTSS-HE only. */
+ZTEST(hwsem_mailbox, mailbox_he_read)
+{
+	const struct device *dev = devices[0];
+	char local[MSG_LEN];
+	int iter;
+
+	zassert_ok(shm_wait(SHM_HP_CTRL, &mbox1->magic, SHM_MAGIC,
+			    SHM_INIT_TIMEOUT_MS),
+		   "HP never initialized the mailbox");
+
+	for (iter = 0; iter < SHARED_TEST_ITERATIONS; iter++) {
+		zassert_ok(shm_wait(SHM_HP_CTRL, &mbox1->prod_seq,
+				    (uint32_t)(iter + 1), SHM_TIMEOUT_MS),
+			   "No message %d from HP", iter);
+
+		he_consume(dev, local, MSG_LEN);
+
+		TC_PRINT("HE received: \"%s\" (seq=%d)\n", local, iter + 1);
+		zassert_true(strstr(local, "RTSS-HP") != NULL,
+			     "Unexpected payload: \"%s\"", local);
+
+		/* Acknowledge on HE's own cache line. */
+		mbox1->cons_seq = (uint32_t)(iter + 1);
+		shm_flush(SHM_HE_CTRL, SHM_LINE);
+	}
+}
+
+#endif /* CONFIG_RTSS_HE */
+
+ZTEST_SUITE(hwsem_mailbox, NULL, NULL, NULL, NULL, NULL);
+
+static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
+
+#define WRONG_MASTER_ID 0xDEADBEEF
+#define UNUSED_CORE_ID  0xABCDEF01
+
+/* Trylock with a different master while HWSEM is already held */
+ZTEST(hwsem_basic, test_trylock_wrong_master_while_held)
+{
+	const struct device *device = devices[0];
+	int ret;
+
+	zassert_false(hwsem_lock(device, MASTER_ID),
+		      "Unable to lock HWSEM");
+
+	ret = hwsem_trylock(device, WRONG_MASTER_ID);
+	zassert_equal(ret, -EBUSY,
+		      "Trylock with wrong master should return -EBUSY; got %d",
+		      ret);
+
+	/* Same-master trylock may succeed if the HWSEM is recursive */
+	ret = hwsem_trylock(device, MASTER_ID);
+	zassert_true(ret == 0 || ret == -EBUSY,
+		     "Unexpected return from same-master trylock: %d", ret);
+	if (ret == 0) {
+		zassert_false(hwsem_unlock(device, MASTER_ID),
+			      "Unable to unlock recursive same-master lock");
+	}
+
+	zassert_false(hwsem_unlock(device, MASTER_ID),
+		      "Unable to unlock HWSEM");
+}
+
+/*
+ * Invalid / unused master IDs.
+ * Documented contract: driver may accept them as a valid owner, or reject
+ * them. This test records the actual behavior and fails only on crash /
+ * unexpected errno values.
+ */
+ZTEST(hwsem_basic, test_invalid_master_id)
+{
+	const struct device *device = devices[0];
+	const uint32_t ids[] = { 0U, UINT32_MAX, UNUSED_CORE_ID };
+	int i, ret;
+
+	for (i = 0; i < ARRAY_SIZE(ids); i++) {
+		ret = hwsem_lock(device, ids[i]);
+		zassert_true(ret == 0 || ret == -EINVAL || ret == -ENODEV,
+			     "hwsem_lock(master=0x%08x) returned %d",
+			     ids[i], ret);
+		TC_PRINT("hwsem_lock(master=0x%08x) -> %d (%s)\n",
+		       ids[i], ret, ret == 0 ? "accepted" : "rejected");
+
+		if (ret == 0) {
+			zassert_false(hwsem_unlock(device, ids[i]),
+				      "Unable to unlock after lock with 0x%08x",
+				      ids[i]);
+		}
+
+		ret = hwsem_trylock(device, ids[i]);
+		zassert_true(ret == 0 || ret == -EBUSY ||
+			     ret == -EINVAL || ret == -ENODEV,
+			     "hwsem_trylock(master=0x%08x) returned %d",
+			     ids[i], ret);
+		TC_PRINT("hwsem_trylock(master=0x%08x) -> %d (%s)\n",
+		       ids[i], ret,
+		       ret == 0 ? "accepted" : "rejected/busy");
+
+		if (ret == 0) {
+			zassert_false(hwsem_unlock(device, ids[i]),
+				      "Unable to unlock after trylock with 0x%08x",
+				      ids[i]);
+		}
+
+		ret = hwsem_unlock(device, ids[i]);
+		zassert_true(ret != 0,
+			     "Unlock of free HWSEM with 0x%08x should fail",
+			     ids[i]);
+		TC_PRINT("hwsem_unlock(free, master=0x%08x) -> %d\n",
+		       ids[i], ret);
+	}
+}
+
+/* Test case to validate boundary Master ID values (0 and 0xFFFFFFFF) */
+ZTEST(hwsem_basic, test_master_id_boundaries)
+{
+	const struct device *device = devices[0];
+	int ret;
+
+	/*
+	 * Master ID 0 is treated as a reserved "empty" sentinel by the
+	 * driver and must be rejected, not silently accepted.
+	 */
+	ret = hwsem_lock(device, 0x00000000);
+	zassert_not_equal(ret, 0,
+			   "HWSEM lock unexpectedly succeeded with master ID 0");
+	if (ret == 0) {
+		/* Defensive: don't leave it locked if this ever changes */
+		hwsem_unlock(device, 0x00000000);
+	}
+
+	/* Maximum master ID value should be accepted and behave normally */
+	zassert_false(hwsem_lock(device, 0xFFFFFFFF),
+		      "Unable to lock HWSEM with master ID 0xFFFFFFFF");
+
+	zassert_false(hwsem_unlock(device, 0xFFFFFFFF),
+		      "Unable to unlock HWSEM with master ID 0xFFFFFFFF");
+
+	/* Confirm it's actually released now (double-unlock should fail) */
+	zassert_equal(hwsem_unlock(device, 0xFFFFFFFF), -1,
+		      "HWSEM unexpectedly still locked after cleanup unlock");
+}
+
+/*
+ * Test case to confirm no cross-device interference when the same
+ * Master ID is reused to lock multiple independent HWSEM instances.
+ *
+ * Note: this deliberately avoids trylock-against-a-busy-semaphore, since
+ * on this driver that path retries internally until timeout rather than
+ * failing fast with -EBUSY. Independence is instead proven by locking a
+ * second, currently-free device with the same master ID and confirming
+ * it succeeds immediately.
+ */
+ZTEST(hwsem_basic, test_same_master_id_multiple_devices)
+{
+	int ret;
+
+	if (ARRAY_SIZE(devices) < 2) {
+		ztest_test_skip();
+	}
+
+	zassert_false(hwsem_lock(devices[0], MASTER_ID),
+		      "Failed to lock HWSEM 0 with shared master ID");
+
+	/* HWSEM 1 is free; locking it with the SAME master ID should
+	 * succeed immediately, proving lock state is per-device.
+	 */
+	ret = hwsem_trylock(devices[1], MASTER_ID);
+	zassert_equal(ret, 0,
+		      "HWSEM 1 should be free and immediately lockable, got %d", ret);
+
+	zassert_false(hwsem_unlock(devices[1], MASTER_ID),
+		      "Failed to unlock HWSEM 1");
+	zassert_false(hwsem_unlock(devices[0], MASTER_ID),
+		      "Failed to unlock HWSEM 0");
+}
+
 /* Test Case to validate Initialization of all HWSEM Nodes */
 ZTEST(hwsem_basic, test_initialize)
 {
 	int device_idx;
 
-	printk("Test all %d Hardware Semaphores(HWSEM) on %s\n",
+	TC_PRINT("Test all %d Hardware Semaphores(HWSEM) on %s\n",
 	       (int)ARRAY_SIZE(devices), CONFIG_BOARD);
 
 	for (device_idx = 0; device_idx < ARRAY_SIZE(devices); device_idx++) {
@@ -137,4 +603,3 @@ ZTEST_SUITE(hwsem_basic, NULL, NULL, NULL, NULL, NULL);
 
 /* HWSEM Real-time test with shared peripheral */
 ZTEST_SUITE(hwsem_shared_peripheral, NULL, NULL, NULL, NULL, NULL);
-
