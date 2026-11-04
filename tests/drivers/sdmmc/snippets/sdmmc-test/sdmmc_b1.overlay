@@ -11,6 +11,17 @@ ns: &ns {
 	status = "okay";
 };
 
+/* GPIO0 is needed for SDHC sd-vsel regulator */
+&gpio0 {
+	status = "okay";
+};
+
+/* GPIO6 is needed for SDHC card-detect */
+&gpio6 {
+	status = "okay";
+};
+
+/* GPIO7 is needed for SDHC sd-pwr regulator */
 &gpio7 {
 	status = "okay";
 };
