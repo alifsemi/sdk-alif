@@ -6,21 +6,21 @@
  * License Agreement with this file. If not, please write to:
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
- * E8 DK (RTSS-HP) UVC pipeline - common board plumbing shared by all sensors.
+ * E8 DK/AK (RTSS-HP) UVC pipeline - common board plumbing shared by all sensors.
  *
- * This overlay is applied automatically for every E8 DK build (by board name),
- * so it holds everything that is identical for the ARX3A0 / MT9M114 / OV5675
+ * Included by every E8 DK and AK sensor overlay (it is not applied by board
+ * name). It holds everything that is identical for the ARX3A0 / MT9M114 / OV5675
  * pipelines: the USB device controller, the non-secure DTCM region, the AIPM
  * run profile (PHY / clock gating), the ISP and camera (CPI) forwarding graph,
  * the CSI receiver (minus the sensor-facing input endpoint), the i2c-mux that
  * carries the camera I2C, the Hantro JPEG encoder and the UVC device.
  *
- * It deliberately wires NO sensor: the E8 DK has no default camera. Pick one by
+ * It deliberately wires NO sensor: the E8 DK/AK has no default camera. Pick one by
  * adding its sensor overlay with EXTRA_DTC_OVERLAY_FILE (arx3a0 / mt9m114 /
- * ov5675 - see the README). That sensor overlay drops the sensor node into the
- * i2c-mux channel (&cam_i2c_channel) and supplies the CSI input endpoint
- * (&csi port@0) with the sensor's lane count, which is the only part of the CSI
- * receiver that differs between the three sensors.
+ * ov5675 - see the README). That overlay includes this file, then the matching
+ * sensor fragment, which drops the sensor node into the i2c-mux channel
+ * (&cam_i2c_channel) and supplies the CSI input endpoint (&csi port@0) with the
+ * sensor's lane count.
  */
 
 #include <dt-bindings/pinctrl/ensemble-pinctrl.h>

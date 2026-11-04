@@ -19,7 +19,7 @@ devicetree of the target board:
 * **E1C SK / B1 SK** — an **OV5640** parallel camera on the LP-CAM bus,
   streamed as **uncompressed RGB565 480x272**. Uses the upstream Alif CPI
   (LP-CAM) driver and the OV5640 default DVP configuration.
-* **E8 DK (RTSS-HP)** — an **ARX3A0**, **MT9M114** or **OV5675** MIPI
+* **E8 DK/AK (RTSS-HP)** — an **ARX3A0**, **MT9M114** or **OV5675** MIPI
   CSI-2 camera through the **ISP** and the **Hantro VC9000E hardware JPEG
   encoder**, streamed as **MJPEG** (ARX3A0 at 560x560, MT9M114 at 1280x720,
   OV5675 at 1024x768). There is no default sensor; it is chosen at build time
@@ -87,7 +87,7 @@ Requirements
 * One of:
 
   * Alif E1C SK or B1 SK board with a populated OV5640 module, or
-  * Alif E8 DK board with an ARX3A0, MT9M114 or OV5675 camera module.
+  * Alif E8 DK/AK board with an ARX3A0, MT9M114 or OV5675 camera module.
 
 * USB cable from the board to a host PC.
 
@@ -96,8 +96,8 @@ Supported Targets
 
 * ``alif_e1c_sk/ae1c1f4051920hh/rtss_he`` (OV5640, RGB565)
 * ``alif_b1_sk/ab1c1f4m51820ph0/rtss_he`` (OV5640, RGB565)
-* ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp`` (ARX3A0, MT9M114 or OV5675 -> ISP ->
-  JPEG, MJPEG)
+* ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp`` (ARX3A0, MT9M114 or OV5675 -> ISP -> JPEG, MJPEG)
+* ``alif_e8_ak/ae822fa0e5597xx0/rtss_hp`` (ARX3A0, MT9M114 or OV5675 -> ISP -> JPEG, MJPEG)
 
 Building and Running
 ********************
@@ -126,12 +126,12 @@ B1 SK (OV5640, RGB565):
 E8 DK
 =====
 
-Every E8 DK build automatically applies the common board overlay
-``alif_e8_dk_ae822fa0e5597xx0_rtss_hp.overlay`` (USB, ISP/CPI graph, CSI
-receiver, i2c-mux, JPEG encoder, UVC). It wires **no default sensor**: the
-ARX3A0, MT9M114 and OV5675 are peers, so every E8 build adds one sensor overlay
-with ``EXTRA_DTC_OVERLAY_FILE`` (which merges on top of the auto-applied board
-overlay) plus that sensor's extra Kconfig fragment with ``EXTRA_CONF_FILE``.
+There is **no default sensor**. Every E8 build passes one sensor overlay with
+``EXTRA_DTC_OVERLAY_FILE`` plus that sensor's Kconfig fragment with
+``EXTRA_CONF_FILE``. The sensor overlay includes ``alif_e8_common.overlay``
+(USB, ISP/CPI graph, CSI receiver, i2c-mux, JPEG encoder, UVC) and then the
+sensor fragment. The board ``.conf`` (camera, ISP, JPEG) is still applied
+automatically by board name.
 
 ARX3A0 (ISP -> JPEG, MJPEG):
 
@@ -155,7 +155,7 @@ MT9M114 (ISP -> JPEG, MJPEG):
 
    The MT9M114 shares I2C address ``0x5D`` with the GT911 touch controller on
    the MW405 display board, which sits on the same ``i2c1`` bus. The MT9M114
-   overlay holds the GT911 in reset (a GPIO hog on the E8 DK RESETn, gpio6.5)
+   overlay holds the GT911 in reset (a GPIO hog on the E8 DK/AK RESETn, gpio6.5)
    so the two do not collide; this is why ``mt9m114.conf`` also enables
    :kconfig:option:`CONFIG_GPIO_HOGS`. If a display board is attached, the
    touch controller will be held in reset while this build runs.
@@ -175,6 +175,39 @@ sensor's native 4:3 aspect ratio and is 16-pixel aligned, so the encoder needs
 no edge padding. Unlike the MT9M114 the OV5675 sits at I2C address ``0x10`` and
 is powered from plain ``power-gpios``, so it needs no GT911 reset-hold hog and
 no fixed-regulator Kconfig.
+
+E8 AK
+=====
+
+The E8 AK (Application Kit) supports the same cameras. Use the AK board name
+and the AK sensor overlay:
+
+ARX3A0 (ISP -> JPEG, MJPEG):
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/video_uvc
+   :board: alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+   :goals: build flash
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_ak_ae822fa0e5597xx0_rtss_hp_arx3a0.overlay -DEXTRA_CONF_FILE=boards/arx3a0.conf
+   :compact:
+
+MT9M114 (ISP -> JPEG, MJPEG):
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/video_uvc
+   :board: alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+   :goals: build flash
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_ak_ae822fa0e5597xx0_rtss_hp_mt9m114.overlay -DEXTRA_CONF_FILE=boards/mt9m114.conf
+   :compact:
+
+OV5675 (ISP -> JPEG, MJPEG):
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/video_uvc
+   :board: alif_e8_ak/ae822fa0e5597xx0/rtss_hp
+   :goals: build flash
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_ak_ae822fa0e5597xx0_rtss_hp_ov5675.overlay -DEXTRA_CONF_FILE=boards/ov5675.conf
+   :compact:
 
 Viewing the stream
 ==================
