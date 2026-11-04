@@ -122,4 +122,71 @@ void i2s_golden_stop(const struct device *dev);
 int  i2s_golden_run(const struct device *dev, uint32_t rate, uint8_t word_size,
 		    const uint32_t *vec_L, const uint32_t *vec_R);
 
+/* -------------------------------------------------------------------------
+ * Helpers for negative, stress, and performance.
+ * Implementations live in i2s_test_common.c.
+ * I2S_CHANNELS and I2S_FRAMES are defined above.
+ * -------------------------------------------------------------------------
+ */
+#define I2S_MAX_FRAMES       64U
+#define I2S_RATE_HZ          48000U
+#define I2S_XFER_TIMEOUT_MS  200
+
+#ifdef CONFIG_I2S_DW_TX_BLOCK_COUNT
+#define I2S_TX_QUEUE CONFIG_I2S_DW_TX_BLOCK_COUNT
+#else
+#define I2S_TX_QUEUE 10
+#endif
+
+#ifdef CONFIG_I2S_DW_RX_BLOCK_COUNT
+#define I2S_RX_QUEUE CONFIG_I2S_DW_RX_BLOCK_COUNT
+#else
+#define I2S_RX_QUEUE 10
+#endif
+
+#define I2S_SLAB_COUNT (MAX(I2S_TX_QUEUE, I2S_RX_QUEUE) + 4)
+#define I2S_MAX_BLOCK  (I2S_MAX_FRAMES * I2S_CHANNELS * 4U)
+
+extern struct k_mem_slab i2s_tx_slab;
+extern struct k_mem_slab i2s_rx_slab;
+
+struct i2s_tx_feed {
+	const struct device *dev;
+	size_t size;
+	volatile bool run;
+	volatile int fail;
+	volatile uint32_t writes;
+};
+
+static inline const struct device *i2s_dev(void)
+{
+	return DEVICE_DT_GET(I2S_GOLDEN_NODE);
+}
+
+static inline size_t i2s_sample_bytes(uint8_t word_size)
+{
+	return word_size <= 16U ? 2U : 4U;
+}
+
+static inline size_t i2s_block_bytes(uint32_t frames, uint8_t word_size)
+{
+	return (size_t)frames * I2S_CHANNELS * i2s_sample_bytes(word_size);
+}
+
+uint32_t i2s_tx_used(void);
+uint32_t i2s_rx_used(void);
+bool i2s_slabs_full(void);
+
+void i2s_setup_cfg(struct i2s_config *cfg, struct k_mem_slab *slab,
+		  uint32_t rate, uint8_t word_size, uint8_t channels,
+		  size_t block_size, int32_t timeout,
+		  i2s_fmt_t format, i2s_opt_t options);
+void i2s_setup_default(struct i2s_config *cfg, struct k_mem_slab *slab);
+void i2s_stream_reset(const struct device *dev);
+int i2s_block_write(const struct device *dev, size_t size, uint8_t pattern);
+int i2s_wait_ready(const struct device *dev, enum i2s_dir dir,
+		  const struct i2s_config *cfg, int32_t timeout_ms);
+int i2s_force_tx_error(const struct device *dev);
+void i2s_tx_feed_fn(void *p1, void *p2, void *p3);
+
 #endif /* I2S_TEST_H */
