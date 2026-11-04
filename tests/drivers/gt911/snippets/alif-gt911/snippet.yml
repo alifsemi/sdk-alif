@@ -1,0 +1,20 @@
+#
+# Copyright (C) 2026 Alif Semiconductor
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+name: alif-gt911
+
+boards:
+  /alif_(b1|e1c)_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_b1_e1c_dk.overlay
+
+  /alif_(e3|e7)_dk/.*/rtss_(hp|he)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e3_e7_dk.overlay
+
+  /alif_(e4|e8)_(ak|dk)/.*/rtss_(hp|he)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_e4_e8_ak_dk.overlay
