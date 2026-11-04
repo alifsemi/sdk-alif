@@ -1,0 +1,15 @@
+common:
+  tags:
+    - drivers
+    - dave2d
+    - gpu2d
+  harness: ztest
+  platform_allow:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  integration_platforms:
+    - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+
+tests:
+  drivers.dave2d.primitives:
+    filter: dt_compat_enabled("tes,dave2d")
