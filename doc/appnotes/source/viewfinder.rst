@@ -86,7 +86,7 @@ Follow these steps to build the viewfinder application using the Alif Zephyr SDK
 
 .. note::
    The build commands shown here are specifically for the Alif E7 and E8 DevKits.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`Viewfinder build commands <build-commands-viewfinder>`.
 
 E7 with ARX3A0 (no ISP)
 -----------------------

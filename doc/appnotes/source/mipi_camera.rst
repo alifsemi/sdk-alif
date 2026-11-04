@@ -166,7 +166,7 @@ Follow these steps to build the ARX3A0 Camera Sensor application using the Alif 
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`MIPI Camera build commands <build-commands-mipi-camera>`.
 
 2. Build command for application on the M55 HP core:
 
@@ -364,7 +364,7 @@ Follow these steps to build the MT9M114 Camera Sensor Application using the Alif
 
 .. note::
    The build commands shown here are for the Alif E7 and E8 DevKits.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`MIPI Camera build commands <build-commands-mipi-camera>`.
 
 2. Build command for E7 DevKit (Standard CPI to AXI, HP core):
 
@@ -585,7 +585,7 @@ Follow these steps to build the OV5675 Camera Sensor Application using the Alif 
 .. note::
 
    The build command shown here is for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`MIPI Camera build commands <build-commands-mipi-camera>`.
 
 2. Build command for E8 DevKit (HP core):
 
@@ -888,7 +888,7 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
 
 .. note::
    The build commands shown here are specifically for the Alif E8 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`MIPI Camera build commands <build-commands-mipi-camera>`.
 
 HE Core — ARX3A0 Sensor TCM boot S2RAM (E8)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -38,7 +38,7 @@ SDK:
 
 .. note::
    The build commands shown here are specifically for the Alif Boards.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`USB Device build commands <build-commands-usb-device>`.
 
 2. Build command for the CDC-ACM sample application on Alif E7 DevKit (M55 HP):
 
@@ -188,7 +188,7 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
 
 .. note::
    The build commands shown here are specifically for the Alif Boards.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section Setting Up and Building Zephyr Applications.
+   For the build commands for every supported target, refer to :ref:`USB Device build commands <build-commands-usb-device>`.
 
 MSC with SD Support
 -------------------
