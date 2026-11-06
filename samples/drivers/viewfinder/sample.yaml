@@ -14,6 +14,8 @@ tests:
     platform_allow:
       - alif_e8_dk/rtss_hp
       - alif_e8_dk/rtss_he
+      - alif_e8_ak/rtss_hp
+      - alif_e8_ak/rtss_he
     extra_args:
       - DTC_OVERLAY_FILE=boards/arx3a0_mipi_isp_viewfinder.overlay
       - OVERLAY_CONFIG=boards/isp.conf
@@ -30,6 +32,8 @@ tests:
     platform_allow:
       - alif_e8_dk/rtss_hp
       - alif_e8_dk/rtss_he
+      - alif_e8_ak/rtss_hp
+      - alif_e8_ak/rtss_he
     extra_args:
       - DTC_OVERLAY_FILE=boards/mt9m114_mipi_isp_viewfinder.overlay
       - OVERLAY_CONFIG="boards/isp.conf;boards/serial_camera_mt9m114.conf"
@@ -38,6 +42,8 @@ tests:
     platform_allow:
       - alif_e8_dk/rtss_hp
       - alif_e8_dk/rtss_he
+      - alif_e8_ak/rtss_hp
+      - alif_e8_ak/rtss_he
     extra_args:
       - DTC_OVERLAY_FILE=boards/ov5675_mipi_isp_viewfinder.overlay
       - OVERLAY_CONFIG=boards/isp.conf
