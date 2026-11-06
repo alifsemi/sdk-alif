@@ -5,4 +5,3 @@ project(pdm)
 
 target_sources(app PRIVATE src/alif_test_pdm.c)
 
-
