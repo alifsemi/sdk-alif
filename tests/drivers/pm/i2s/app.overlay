@@ -1,0 +1,55 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Default image is MRAM boot. VTOR stays at the board default (MRAM).
+ * Runtime idle, suspend-to-idle, and soft-off run here.
+ * Standby and stop are enabled only by the s2ram snippet.
+ */
+
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+&lpgpio {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&suspend_idle {
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <9000000>;
+	status = "okay";
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+		zephyr,console = &uart2;
+	};
+};

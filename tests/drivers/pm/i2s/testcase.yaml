@@ -1,13 +1,8 @@
-# Copyright (C) Alif Semiconductor - All Rights Reserved.
-# Use, distribution and modification of this code is permitted under the
-# terms stated in the Alif Semiconductor Software License Agreement
-#
-# You should have received a copy of the Alif Semiconductor Software
-# License Agreement with this file. If not, please write to:
-# contact@alifsemi.com, or visit: https://alifsemi.com/license
-#
-# Twister definitions for the Alif I2S power-management ztest.
-
+# One image tests one instance. MRAM is the default. Add -S s2ram for TCM.
+#   -S i2s            → HE: i2s3 TX + i2s4 RX (B1/E1C: i2s0 TX + i2s4 RX). HP: i2s1 TX + i2s3 RX
+#   -S lpi2s          → &i2s4, MRAM
+#   -S i2s -S s2ram   → same instance, TCM standby/stop
+#   -S lpi2s -S s2ram → &i2s4, TCM standby/stop
 common:
   tags:
     - drivers
@@ -22,16 +17,33 @@ common:
     - i2s
 
 tests:
-  drivers.pm.i2s.he:
-    extra_args:
-      - SNIPPET=i2s-pm-he
+  drivers.pm.i2s:
+    required_snippets:
+      - i2s
     platform_allow:
-      - alif_e7_dk_rtss_he
-      - alif_e8_dk_rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
     integration_platforms:
-      - alif_e8_dk_rtss_he
-  drivers.pm.i2s.hp:
-    extra_args:
-      - SNIPPET=i2s-pm-hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  drivers.pm.lpi2s:
+    required_snippets:
+      - lpi2s
     platform_allow:
-      - alif_e7_dk_rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  drivers.pm.i2s.s2ram:
+    required_snippets:
+      - i2s
+      - s2ram
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+  drivers.pm.lpi2s.s2ram:
+    required_snippets:
+      - lpi2s
+      - s2ram
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
