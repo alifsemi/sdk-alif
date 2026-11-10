@@ -35,13 +35,25 @@ JPEG Features
 The JPEG module has the following features:
 - Supports JPEG ISO/IEC 10918-1, ITU-T T.81
 - Baseline process (Huffman coding interleaved YUV420)
-- MJPEG format (T.81 Annex H) in AVI container
-- Encoding color space: YUV4:2:0
-- Slices mode encoding: N macroblock rows per slice
+- Encoding color space: YUV 4:2:0
 - Encoding bit depth: 8 bits
 - Output image step size: 16 pixels
-- Input color formats: YUV420
-- Cropping, padding
+- Input color formats: YUV420 semi-planar (NV12, NV21)
+- Configurable quality factor, 1 to 100
+- Optional thumbnail in the JPEG header:
+
+  - JFIF RGB24
+  - JFXX JPEG
+  - JFXX palette
+
+- Hardware crop of a window inside the NV12 or NV21 source.
+  ``VIDEO_CID_JPEG_CROP_CONFIG`` selects the window. The source frame
+  size stays unchanged.
+- Slice encoding, N MCU rows per slice.
+  ``VIDEO_CID_JPEG_SLICE_HEIGHT`` selects the band. Crop and slice cannot
+  be enabled together.
+- MJPEG as concatenated JPEG frames, and the same frames muxed in an AVI
+  container, from the standalone sample
 
 Prerequisites
 =============
@@ -118,6 +130,34 @@ Standalone Static Image Test
 ----------------------------
 
 This application encodes an embedded 1280×720 NV12 test image using the JPEG encoder.
+One test is selected by a ``TEST_JPEG_*`` macro at the top of ``src/main.c``.
+Set the test under exercise to ``1`` and the others to ``0``, then rebuild.
+The default is ``TEST_JPEG_BASIC_ENCODING``.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 32 68
+
+   * - **Macro**
+     - **What it encodes**
+   * - ``TEST_JPEG_BASIC_ENCODING``
+     - Full 1280×720 frame at quality 10. Dump ``capture_img_q10.jpg``.
+   * - ``TEST_JPEG_THUMB_RGB24``
+     - Same frame with a 64×48 JFIF RGB24 thumbnail. Dump ``capture_thumb_rgb24.jpg``.
+   * - ``TEST_JPEG_THUMB_JPEG``
+     - Two-pass encode. A 64×48 JPEG thumbnail is embedded in the full-frame header. Dump ``capture_thumb_jpeg.jpg``.
+   * - ``TEST_JPEG_THUMB_PALETTE``
+     - Same frame with a 64×48 JFXX palette thumbnail. Dump ``capture_thumb_palette.jpg``.
+   * - ``TEST_JPEG_QUALITY_LEVELS``
+     - One stream at qualities 25, 50, 75, and 100. Dumps ``capture_img_q25.jpg``, ``capture_img_q50.jpg``, ``capture_img_q75.jpg``, and ``capture_img_q100.jpg``.
+   * - ``TEST_JPEG_CROPPING``
+     - Center 640×360 window (origin x=320, y=180). The programmed source size stays 1280×720. Dump ``capture_crop.jpg``.
+   * - ``TEST_JPEG_SLICE``
+     - Bands of 4 MCU rows (64 pixels). A 720-line frame is 12 slices, and the last slice is 16 pixels. Restart markers ``FFD0``–``FFD7`` separate the slices. Dump ``capture_slice.jpg``. Play with ``ffplay capture_slice.jpg``.
+   * - ``TEST_JPEG_MJPEG``
+     - 30 frames at quality 10, concatenated and trimmed at each EOI marker. A white band steps down the picture. Dump ``capture_video.mjpg``. Play with ``ffplay -framerate 30 capture_video.mjpg``.
+   * - ``TEST_JPEG_AVI``
+     - The same 30 frames muxed into one AVI. Dump ``capture_video.avi``. Play with ``ffplay capture_video.avi``.
 
 Build for SoC variant ``ae822fa0e5597xx0``, M55 HE core:
 
@@ -242,6 +282,8 @@ Console Output
 Standalone Static Image Test
 ----------------------------
 
+The log below is the default basic-encode build (``TEST_JPEG_BASIC_ENCODING``).
+
 .. code-block:: console
 
    [00:00:00.001,000] <inf> jpeg_hantro_vc9000e: VeriSilicon Hantro VC9000E JPEG encoder initialized
@@ -249,16 +291,13 @@ Standalone Static Image Test
    [00:00:00.001,000] <inf> jpeg_test: JPEG device ready: jpeg@49044000
    [00:00:00.001,000] <inf> jpeg_test: Allocated input buffer at 0x2000068 with (1382400 bytes)
 
-   [00:00:00.018,000] <inf> jpeg_test: Allocated output buffer at 0x2151870 with (701039 bytes)
+   [00:00:00.018,000] <inf> jpeg_test: Allocated output buffer at 0x2151870 with (691823 bytes)
 
    [00:00:00.018,000] <inf> jpeg_test: JPEG Encoder Capabilities:
    [00:00:00.018,000] <inf> jpeg_test:   Format: 0x3231564e, Size: 32x32 to 16384x16384
    [00:00:00.018,000] <inf> jpeg_test:   Format: 0x3132564e, Size: 32x32 to 16384x16384
    [00:00:00.018,000] <inf> jpeg_test: Starting JPEG encoding test...
-   [00:00:00.018,000] <inf> jpeg_test: Format set: 1280x720, format: NV12
-   [00:00:00.018,000] <inf> jpeg_test: Quality set to: 10
-   [00:00:00.018,000] <inf> jpeg_test: Buffer enqueued
-   [00:00:00.019,000] <inf> jpeg_test: Stream started, waiting for encoding...
+   [00:00:00.018,000] <inf> jpeg_test: Format: 1280x720 NV12, quality=10
    [00:00:00.021,000] <inf> jpeg_test: === JPEG Encoding Results ===
    [00:00:00.021,000] <inf> jpeg_test: Input size:  1382400 bytes (1280x720 YUV420)
    [00:00:00.021,000] <inf> jpeg_test: Output size: 30840 bytes (JPEG)
@@ -266,7 +305,8 @@ Standalone Static Image Test
    [00:00:00.021,000] <inf> jpeg_test: JPEG header verified (SOI marker found)
    [00:00:00.021,000] <inf> jpeg_test: Jpeg: Capture Image: dump memory "/home/$USER/capture_img_q10.jpg" 0x02151870 0x021590e8
 
-   [00:00:00.021,000] <inf> jpeg_test: Jpeg Basic Test completed successfully!
+   [00:00:00.021,000] <inf> jpeg_test: Test completed successfully!
+   [00:00:00.521,000] <inf> jpeg_test: === Jpeg Test Completed Successfully ===
 
 Video Pipeline with JPEG Encoding
 ---------------------------------

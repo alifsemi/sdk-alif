@@ -148,6 +148,14 @@ Display
 - LVGL XML widgets sample (``samples/modules/lvgl/gui``) on the E8 DevKit MIPI-DSI MW405 panel, rendered with the D/AVE 2D GPU.
 - LVGL D/AVE 2D benchmark sample (``samples/modules/lvgl/benchmark``) on the same panel.
 
+JPEG Encoder
+~~~~~~~~~~~~
+
+- Thumbnail embedding on the Hantro VC9000E driver: JFIF RGB24, JFXX JPEG, and JFXX palette.
+- Hardware crop of an NV12 or NV21 window. The source frame size stays unchanged.
+- Frame-slice encoding, in bands of MCU rows. Crop and slice cannot be used together.
+- Standalone sample ``samples/drivers/jpeg`` selects one of these tests with a macro. The default build is basic encode of the embedded 1280x720 NV12 image. Optional tests cover the thumbnails, qualities 25/50/75/100, a 640x360 center crop, 64-pixel slices, a 30-frame MJPEG concat, and an MJPEG AVI.
+
 Compatibility Notes
 -------------------
 
@@ -435,7 +443,7 @@ Camera Interfaces
    * - ISP
      - Image Signal Processor (ISP) for real-time enhancement and processing of raw image frames from camera sensors such as the ARX3A0. Supports features like auto-exposure, white balance, noise reduction, color correction, and spatial binning. Integrated with the video driver to enable capture and processing pipelines in Zephyr-based applications.
    * - JPEG Encoder
-     - VeriSilicon Hantro VC9000E hardware JPEG encoder for real-time compression of YUV420 (NV12/NV21) image frames. Supports configurable quality factor, hardware-accelerated quantization table programming, and JPEG header generation. Integrated with the video driver to enable camera capture-to-JPEG encoding pipelines in Zephyr-based applications.
+     - VeriSilicon Hantro VC9000E hardware JPEG encoder for real-time compression of YUV420 (NV12/NV21) image frames. Supports a configurable quality factor, hardware quantization tables, JPEG header generation, JFIF/JFXX thumbnail embedding, hardware crop, and frame-slice encoding. Integrated with the video driver to enable camera capture-to-JPEG encoding pipelines in Zephyr-based applications.
 
 Camera Sensors Support
 ~~~~~~~~~~~~~~~~~~~~~~
