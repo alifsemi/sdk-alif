@@ -248,11 +248,14 @@ static struct k_sem master_start_sem;
 static struct k_sem slave_done_sem;
 static struct k_sem master_done_sem;
 
+#define SPI_BUF_BYTES ROUND_UP(BUFF_SIZE * sizeof(uint32_t), CONFIG_DCACHE_LINE_SIZE)
+#define SPI_BUF_WORDS (SPI_BUF_BYTES / sizeof(uint32_t))
+
 /* Master and Slave buffers */
-static uint32_t master_txdata[BUFF_SIZE];
-static uint32_t master_rxdata[BUFF_SIZE];
-static uint32_t slave_txdata[BUFF_SIZE];
-static uint32_t slave_rxdata[BUFF_SIZE];
+static __aligned(CONFIG_DCACHE_LINE_SIZE) uint32_t master_txdata[SPI_BUF_WORDS];
+static __aligned(CONFIG_DCACHE_LINE_SIZE) uint32_t master_rxdata[SPI_BUF_WORDS];
+static __aligned(CONFIG_DCACHE_LINE_SIZE) uint32_t slave_txdata[SPI_BUF_WORDS];
+static __aligned(CONFIG_DCACHE_LINE_SIZE) uint32_t slave_rxdata[SPI_BUF_WORDS];
 
 K_THREAD_STACK_DEFINE(MasterT_stack, STACKSIZE);
 static struct k_thread MasterT_data;
