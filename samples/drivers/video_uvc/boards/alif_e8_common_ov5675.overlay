@@ -9,7 +9,7 @@
  * E8 DK/AK (RTSS-HP) - OV5675 sensor overlay:
  *   OV5675 (MIPI CSI-2, RAW10) -> ISP (NV12 1024x768) -> Hantro JPEG -> UVC.
  *
- * The board overlay carries all the common E8 plumbing; this file
+ * alif_e8_common.overlay carries all the common E8 plumbing; this file
  * adds the OV5675 sensor node, the CSI input endpoint (two data lanes) and the
  * Fast-mode I2C tuning.
  *
@@ -27,7 +27,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/video/video-interfaces.h>
 
-/* The OV5675 needs Fast-mode I2C (the board overlay only enables i2c1). */
+/* OV5675 needs Fast-mode I2C; alif_e8_common.overlay only enables i2c1. */
 &i2c1 {
 	clock-frequency = <I2C_BITRATE_FAST>;
 

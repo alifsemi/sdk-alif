@@ -11,7 +11,7 @@ This sample captures camera frames on an Alif board and streams them to a host
 PC as a standard **USB Video Class (UVC)** webcam. When the board is connected
 it enumerates as a camera; opening it in any UVC application (``ffplay``,
 ``cheese``, OBS, the Windows Camera app, ...) pulls a continuous sequence of
-frames.
+frames. The E8 DK dual OV5675 build enumerates as two webcams, one per sensor.
 
 The pipeline and the advertised UVC format are selected at build time from the
 devicetree of the target board:
@@ -23,12 +23,14 @@ devicetree of the target board:
   CSI-2 camera through the **ISP** and the **Hantro VC9000E hardware JPEG
   encoder**, streamed as **MJPEG** (ARX3A0 at 560x560, MT9M114 at 1280x720,
   OV5675 at 1024x768). There is no default sensor; it is chosen at build time
-  by the devicetree overlay (see below).
+  by the devicetree overlay (see below). The E8 DK dual OV5675 build streams
+  both ports (selfie and standard) as two MJPEG 1024x768 webcams that share
+  the ISP and JPEG encoder.
 
 The flow is:
 
 #. On boot the camera pipeline is initialized and USB is enabled. The board
-   appears as a webcam.
+   appears as a webcam, or as two webcams on the dual OV5675 build.
 #. When the host opens the stream (UVC Probe/Commit), the sample begins
    capturing frames.
 #. Each frame is captured (and, on the E8, JPEG-encoded) and pushed out the UVC
@@ -37,10 +39,15 @@ The flow is:
 
 Pipeline behaviour:
 
-* Capture uses at least two buffers kept in flight: the camera/ISP driver
-  re-arms the next buffer at end-of-frame while the previous one is streamed
-  over USB, so the sensor streams continuously rather than power-cycling every
-  frame.
+* Single-camera builds keep at least two capture buffers in flight: the
+  camera/ISP driver re-arms the next buffer at end-of-frame while the previous
+  one is streamed over USB, so the sensor streams continuously rather than
+  power-cycling every frame.
+* The dual OV5675 build shares one capture pipeline between the two sensors.
+  It uses one NV12 buffer and stops the pipeline after every frame so the CSI
+  receiver can switch sensor. Each camera has its own JPEG buffer, so one
+  frame can be sent while the other camera captures. With both webcams open,
+  each runs at about half the single-camera rate.
 * On the E8, each captured NV12 frame is compressed by the hardware JPEG
   encoder before being sent; the frame size is variable (the encoder decides).
 * On the E1C / B1, an uncompressed RGB565 frame is a fixed size
@@ -53,10 +60,12 @@ Implementation notes:
   :kconfig:option:`CONFIG_USB_DEVICE_STACK_NEXT` USB device stack. It is
   instantiated from the devicetree ``uvc`` node
   (``compatible = "zephyr,uvc-device"``) in each board overlay, and itself
-  registers as a Zephyr video device. The application binds it to a source
-  device with ``uvc_set_video_dev()`` before enabling USB; the class then
-  generates its USB descriptors from that device's capabilities and negotiates
-  format / frame rate with the host over Probe/Commit.
+  registers as a Zephyr video device. The dual OV5675 build adds a second
+  ``uvc_standard`` node for the standard-port camera. The application binds
+  each node to a source device with ``uvc_set_video_dev()`` before enabling
+  USB; the class then generates its USB descriptors from that device's
+  capabilities and negotiates format / frame rate with the host over
+  Probe/Commit.
 * The advertised format follows the connected source's capabilities:
   **MJPEG** when the source is the JPEG encoder (``jpeg0``) on the E8, otherwise
   uncompressed **RGB565** (GUID ``RGBP`` = Linux ``V4L2_PIX_FMT_RGB565``) from
@@ -88,6 +97,8 @@ Requirements
 
   * Alif E1C SK or B1 SK board with a populated OV5640 module, or
   * Alif E8 DK/AK board with an ARX3A0, MT9M114 or OV5675 camera module.
+    The dual OV5675 build is E8 DK only and needs both the selfie and the
+    standard OV5675 modules fitted.
 
 * USB cable from the board to a host PC.
 
@@ -96,7 +107,7 @@ Supported Targets
 
 * ``alif_e1c_sk/ae1c1f4051920hh/rtss_he`` (OV5640, RGB565)
 * ``alif_b1_sk/ab1c1f4m51820ph0/rtss_he`` (OV5640, RGB565)
-* ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp`` (ARX3A0, MT9M114 or OV5675 -> ISP -> JPEG, MJPEG)
+* ``alif_e8_dk/ae822fa0e5597xx0/rtss_hp`` (ARX3A0, MT9M114, OV5675, or dual OV5675 -> ISP -> JPEG, MJPEG)
 * ``alif_e8_ak/ae822fa0e5597xx0/rtss_hp`` (ARX3A0, MT9M114 or OV5675 -> ISP -> JPEG, MJPEG)
 
 Building and Running
@@ -126,12 +137,12 @@ B1 SK (OV5640, RGB565):
 E8 DK
 =====
 
-There is **no default sensor**. Every E8 build passes one sensor overlay with
-``EXTRA_DTC_OVERLAY_FILE`` plus that sensor's Kconfig fragment with
-``EXTRA_CONF_FILE``. The sensor overlay includes ``alif_e8_common.overlay``
-(USB, ISP/CPI graph, CSI receiver, i2c-mux, JPEG encoder, UVC) and then the
-sensor fragment. The board ``.conf`` (camera, ISP, JPEG) is still applied
-automatically by board name.
+There is **no default sensor**. Every E8 build passes two overlays with
+``EXTRA_DTC_OVERLAY_FILE``, in this order: ``alif_e8_common.overlay`` (USB,
+ISP/CPI graph, CSI receiver, i2c-mux, JPEG encoder, UVC), then the sensor
+overlay, plus that sensor's Kconfig fragment with ``EXTRA_CONF_FILE``. The
+board ``.conf`` (camera, ISP, JPEG) is still applied automatically by board
+name.
 
 ARX3A0 (ISP -> JPEG, MJPEG):
 
@@ -139,7 +150,7 @@ ARX3A0 (ISP -> JPEG, MJPEG):
    :zephyr-app: samples/drivers/video_uvc
    :board: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
    :goals: build flash
-   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_dk_ae822fa0e5597xx0_rtss_hp_arx3a0.overlay -DEXTRA_CONF_FILE=boards/arx3a0.conf
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_arx3a0.overlay" -DEXTRA_CONF_FILE=boards/arx3a0.conf
    :compact:
 
 MT9M114 (ISP -> JPEG, MJPEG):
@@ -148,7 +159,7 @@ MT9M114 (ISP -> JPEG, MJPEG):
    :zephyr-app: samples/drivers/video_uvc
    :board: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
    :goals: build flash
-   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_dk_ae822fa0e5597xx0_rtss_hp_mt9m114.overlay -DEXTRA_CONF_FILE=boards/mt9m114.conf
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_mt9m114.overlay" -DEXTRA_CONF_FILE=boards/mt9m114.conf
    :compact:
 
 .. note::
@@ -166,7 +177,7 @@ OV5675 (ISP -> JPEG, MJPEG):
    :zephyr-app: samples/drivers/video_uvc
    :board: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
    :goals: build flash
-   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_dk_ae822fa0e5597xx0_rtss_hp_ov5675.overlay -DEXTRA_CONF_FILE=boards/ov5675.conf
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_ov5675.overlay" -DEXTRA_CONF_FILE=boards/ov5675.conf
    :compact:
 
 The OV5675 streams its full-FOV 1296x972 RAW10 mode; the ISP debayers and
@@ -176,11 +187,32 @@ no edge padding. Unlike the MT9M114 the OV5675 sits at I2C address ``0x10`` and
 is powered from plain ``power-gpios``, so it needs no GT911 reset-hold hog and
 no fixed-regulator Kconfig.
 
+Dual OV5675 (selfie + standard camera, two UVC webcams):
+
+.. zephyr-app-commands::
+   :zephyr-app: samples/drivers/video_uvc
+   :board: alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+   :goals: build flash
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_dk_ae822fa0e5597xx0_rtss_hp_ov5675_dual.overlay -DEXTRA_CONF_FILE=boards/ov5675_dual.conf
+   :compact:
+
+The board enumerates as two webcams: the first streams the selfie camera
+(CSI D-PHY, I2C ``0x10``), the second the standard camera (DSI D-PHY in
+receive mode, I2C ``0x36``). Both share the CSI receiver, ISP and JPEG
+encoder and are captured a frame at a time in turn, so each webcam runs at
+roughly half the single-camera frame rate while both are open. The DSI lanes
+are routed to the standard camera port, so no display can be used in this
+build.
+
 E8 AK
 =====
 
-The E8 AK (Application Kit) supports the same cameras. Use the AK board name
-and the AK sensor overlay:
+There is no dual OV5675 build for the E8 AK (Application Kit): its selfie
+(J9) and standard (J16) camera connectors share the same CSI lanes, camera
+I2C bus and reset line (P14_4), so fit only one camera module at a time.
+
+The E8 AK supports the same cameras and uses the same overlays; only the board
+name changes:
 
 ARX3A0 (ISP -> JPEG, MJPEG):
 
@@ -188,7 +220,7 @@ ARX3A0 (ISP -> JPEG, MJPEG):
    :zephyr-app: samples/drivers/video_uvc
    :board: alif_e8_ak/ae822fa0e5597xx0/rtss_hp
    :goals: build flash
-   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_ak_ae822fa0e5597xx0_rtss_hp_arx3a0.overlay -DEXTRA_CONF_FILE=boards/arx3a0.conf
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_arx3a0.overlay" -DEXTRA_CONF_FILE=boards/arx3a0.conf
    :compact:
 
 MT9M114 (ISP -> JPEG, MJPEG):
@@ -197,7 +229,7 @@ MT9M114 (ISP -> JPEG, MJPEG):
    :zephyr-app: samples/drivers/video_uvc
    :board: alif_e8_ak/ae822fa0e5597xx0/rtss_hp
    :goals: build flash
-   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_ak_ae822fa0e5597xx0_rtss_hp_mt9m114.overlay -DEXTRA_CONF_FILE=boards/mt9m114.conf
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_mt9m114.overlay" -DEXTRA_CONF_FILE=boards/mt9m114.conf
    :compact:
 
 OV5675 (ISP -> JPEG, MJPEG):
@@ -206,7 +238,7 @@ OV5675 (ISP -> JPEG, MJPEG):
    :zephyr-app: samples/drivers/video_uvc
    :board: alif_e8_ak/ae822fa0e5597xx0/rtss_hp
    :goals: build flash
-   :gen-args: -DEXTRA_DTC_OVERLAY_FILE=boards/alif_e8_ak_ae822fa0e5597xx0_rtss_hp_ov5675.overlay -DEXTRA_CONF_FILE=boards/ov5675.conf
+   :gen-args: -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_ov5675.overlay" -DEXTRA_CONF_FILE=boards/ov5675.conf
    :compact:
 
 Viewing the stream
@@ -231,6 +263,10 @@ a UVC webcam. To view the stream on Linux:
 
    # E8 (OV5675): MJPEG 1024x768
    ffplay -f v4l2 -input_format mjpeg -video_size 1024x768 /dev/videoN
+
+   # E8 (dual OV5675): one viewer per webcam, both open at the same time
+   ffplay -f v4l2 -input_format mjpeg -video_size 1024x768 /dev/videoN &
+   ffplay -f v4l2 -input_format mjpeg -video_size 1024x768 /dev/videoM
 
    # grab a single still (E8 ARX3A0 MJPEG)
    ffmpeg -y -f v4l2 -input_format mjpeg -video_size 560x560 \

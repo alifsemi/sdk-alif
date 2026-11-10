@@ -1,0 +1,105 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code are permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement.
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ * E8 DK (RTSS-HP) - dual OV5675 sensor overlay:
+ *   selfie   OV5675 -> CSI D-PHY ---+
+ *                                   +-> CSI -> ISP (NV12) -> JPEG -> UVC "uvc"
+ *   standard OV5675 -> DSI D-PHY ---+                             -> UVC "uvc_standard"
+ *
+ * Pass this file with EXTRA_DTC_OVERLAY_FILE (see the README). It includes
+ * alif_e8_common.overlay and alif_e8_common_ov5675.overlay (the selfie
+ * sensor), then adds the standard-port sensor, the second CSI input endpoint
+ * and a second UVC device.
+ *
+ * Both sensors share one CSI receiver, ISP and JPEG encoder, so they are
+ * captured in turn: the DSI D-PHY is used in RX mode for the standard port and
+ * the CSI driver switches between the two D-PHYs (VIDEO_CID_ALIF_CSI_CURR_CAM).
+ * The camera I2C lines of both ports are multiplexed through the board's
+ * I2C_C1_C2 mux (P14_3): channel 0 is the selfie port, channel 1 the standard.
+ */
+
+#include "alif_e8_common.overlay"
+#include "alif_e8_common_ov5675.overlay"
+
+/* Standard camera port reset (P13_0). */
+&gpio13 {
+	status = "okay";
+};
+
+&i2c_mux {
+	cam_i2c_channel_standard: mux_i2c@1 {
+		compatible = "gpio-i2c-mux-channel";
+		reg = <1>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/* 0x36: the standard-port module uses the legacy OV5675 address. */
+		ov5675_standard: ov5675_standard@36 {
+			compatible = "ovti,ov5675";
+			reg = <0x36>;
+
+			reset-gpios = <&gpio13 0 GPIO_ACTIVE_HIGH>;
+			/* Shared with the selfie sensor. */
+			power-gpios = <&gpio7 5 GPIO_ACTIVE_HIGH>;
+
+			status = "okay";
+
+			port {
+				ov5675_csi2_ep_out1: endpoint {
+					bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+					link-frequencies = < 400000000 >;
+					data-lanes = <1 2>;
+					clock-lane = <0>;
+
+					remote-endpoint-label = "csi2_ep_in1";
+				};
+			};
+		};
+	};
+};
+
+/*
+ * Sensor 0 (port@0, selfie) is received by the CSI D-PHY (dphy 0), sensor 1
+ * (port@1, standard) by the DSI D-PHY in RX mode (dphy 1).
+ */
+&csi {
+	phy-if = <&dphy 0>, <&dphy 1>;
+	ports {
+		port@1 {
+			reg = <1>;
+			csi2_ep_in1: endpoint {
+				bus-type = <VIDEO_BUS_TYPE_CSI2_DPHY>;
+				data-lanes = <1 2>;
+				clock-lane = <0>;
+
+				remote-endpoint-label = "ov5675_csi2_ep_out1";
+			};
+		};
+	};
+};
+
+/*
+ * The DSI controller clock must run for the D-PHY driver to configure the DSI
+ * D-PHY as a receiver. No display is driven: the panel stays disabled and the
+ * board MIPI switch (camera_select) routes the DSI lanes to the camera port.
+ */
+&mipi_dsi {
+	status = "okay";
+};
+
+&mw405 {
+	status = "disabled";
+};
+
+/* Second webcam: streams the standard-port camera. "uvc" streams the selfie. */
+/ {
+	uvc_standard: uvc_standard {
+		compatible = "zephyr,uvc-device";
+	};
+};

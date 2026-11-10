@@ -9,7 +9,7 @@
  * E8 DK/AK (RTSS-HP) - ARX3A0 sensor overlay:
  *   ARX3A0 (MIPI CSI-2) -> ISP (NV12 560x560) -> Hantro JPEG encoder -> UVC.
  *
- * The board overlay carries all the common E8 plumbing (USB,
+ * alif_e8_common.overlay carries all the common E8 plumbing (USB,
  * NON_SECURE0, AIPM, ISP/CPI graph, CSI receiver, i2c-mux, JPEG, UVC); this
  * file only adds the ARX3A0 sensor node and the CSI input endpoint.
  */

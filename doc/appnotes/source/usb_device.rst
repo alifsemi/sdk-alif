@@ -1068,7 +1068,7 @@ Build for SoC variant ``ab1c1f4m51820ph0``, M55 HE core:
 Alif E8 DevKit
 --------------
 
-Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core. The ARX3A0 command is shown. For MT9M114 or OV5675, replace ``arx3a0`` in both file names.
+Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core. The ARX3A0 command is shown. For MT9M114 or OV5675, replace ``arx3a0`` in the sensor overlay and ``.conf`` file names. ``alif_e8_common.overlay`` must come first in the overlay list.
 
 .. code-block:: console
 
@@ -1076,7 +1076,7 @@ Build for SoC variant ``ae822fa0e5597xx0``, M55 HP core. The ARX3A0 command is s
      -b alif_e8_dk/ae822fa0e5597xx0/rtss_hp \
      ../alif/samples/drivers/video_uvc \
      -- \
-     -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_dk_ae822fa0e5597xx0_rtss_hp_arx3a0.overlay" \
+     -DEXTRA_DTC_OVERLAY_FILE="boards/alif_e8_common.overlay;boards/alif_e8_common_arx3a0.overlay" \
      -DOVERLAY_CONFIG="boards/arx3a0.conf"
 
 Host Verification
