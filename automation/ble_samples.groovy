@@ -174,6 +174,54 @@ def test(String pytest_test){
         pytest $pytest_test --root-logdir=pytest-logs
         """
 }
+def flash_bletestapp(){
+    sh """#!/bin/bash -xe
+        pwd
+        rsync -a --delete $ALIF_SETOOLS_ORIG $ALIF_SETOOLS_LOCATION
+        cp zephyr.bin $ALIF_SETOOLS_LOCATION/build/images/zephyr.bin
+        cp automation/B1-test-app.json  $ALIF_SETOOLS_LOCATION/build/config/
+        pushd $ALIF_SETOOLS_LOCATION
+        sed -e 's/ttyUSB0/$SEDUT1/g' isp_config_data_temp.cfg > isp_config_data.cfg
+        ./tools-config -p "B1 (AB1C1F4M51820PH0) - 1.8 MRAM / 2.0 SRAM" -r "A8"
+        ./app-gen-toc --filename build/config/B1-test-app.json
+        sleep 2
+        ./app-write-mram -p -nr
+        sleep 2
+        pwd
+        popd
+        """
+}
+def bletestapp_test(String pytest_test){
+    withCredentials([
+        sshUserPrivateKey(
+            credentialsId: '533fc6b7-f0f5-4514-9629-1c55a011e1d3',
+            keyFileVariable: 'SSH_PRIVATE_KEY'
+        )
+    ]) {
+        sh """#!/bin/bash -xe
+            mkdir -p ~/.ssh
+            ssh-keygen -F github.com > /dev/null || ssh-keyscan github.com >> ~/.ssh/known_hosts
+            eval \$(ssh-agent)
+            trap 'ssh-agent -k' EXIT
+            ssh-add "\$SSH_PRIVATE_KEY"
+            rm -rf testapp
+            git clone org-115832732@github.com:AlifSemiDev/testapp.git
+            cd testapp/pytest
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            sed -e 's/ttyACM0/$SEDUT1/g' -e 's/ttyACM1/$HEDUT1/g' -e 's/ttyUSB0/$NORDICACM/g' configs/pytest.ini_Power_test_automation.template > pytest.ini
+            pytest_rc=0
+            pytest ${pytest_test} --se_magic_baudrate=57600 --part_number=AB1C1F4M51820PH0 --root-logdir=pytest-logs -s || pytest_rc=\$?
+
+            set -o pipefail
+            mkdir -p pytest-logs
+            cp ble_power_results.txt ble_power_results.csv pytest-logs/
+            python3 \$WORKSPACE/automation/pytest/tests/check_ble_power_results.py ble_power_results.csv | tee pytest-logs/ble_power_check.txt
+            exit \$pytest_rc
+            """
+    }
+}
 
 def get_all_alif_boards (){
     def output = sh(
