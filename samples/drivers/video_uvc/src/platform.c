@@ -79,6 +79,22 @@ static int app_set_parameters(void)
 #if UVC_OUTPUT_MJPEG
 	/* CPI/CSI pixel clock (XVCLK) used by the CSI-2 sensor. */
 	sys_write32(0x140001, CLKCTRL_PER_MST_CAMERA_PIXCLK_CTRL);
+
+#if UVC_DUAL_CAMERA
+	/* Route the DSI D-PHY lanes to the standard camera port, not the display. */
+	const struct gpio_dt_spec cam_sel =
+		GPIO_DT_SPEC_GET(DT_NODELABEL(camera_select), select_gpios);
+
+	if (!gpio_is_ready_dt(&cam_sel)) {
+		LOG_ERR("camera_select GPIO not ready");
+		return -ENODEV;
+	}
+	ret = gpio_pin_configure_dt(&cam_sel, GPIO_OUTPUT_ACTIVE);
+	if (ret) {
+		LOG_ERR("Failed to drive camera_select: %d", ret);
+		return ret;
+	}
+#endif
 #else
 	/* LP-CAM pixel clock and OV5640 enable-buffer GPIO. */
 	sys_write32(0x080001, M55HE_CFG_HE_CAMERA_PIXCLK);
