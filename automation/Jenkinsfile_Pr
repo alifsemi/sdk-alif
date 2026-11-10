@@ -240,7 +240,6 @@ pipeline {
                                     fingerprint: true, allowEmptyArchive: true)
                             }
                         }
-
                         // Flash/Throughput
                         allJobs["Flash&Test_throughput"] = {
                             node("AB1") {
@@ -251,6 +250,19 @@ pipeline {
 
                                 archiveArtifacts(artifacts: 'automation/pytest/pytest-logs/**',
                                     fingerprint: true, allowEmptyArchive: true)
+                            }
+                        }
+                        allJobs["Flash&Test_Ble_testapp"] = {
+                            node("AB1_Joulescope") {
+                                unstash "automation"
+                                unstash "build-b1-bletestapp.bin"
+                                common_funcs.flash_bletestapp()
+                                try {
+                                    common_funcs.bletestapp_test("se_QA_tests/test_power.py tests_ble")
+                                } finally {
+                                    archiveArtifacts(artifacts: 'testapp/pytest/pytest-logs/**',
+                                        fingerprint: true, allowEmptyArchive: true)
+                                }
                             }
                         }
                         // Run EVERYTHING in parallel
