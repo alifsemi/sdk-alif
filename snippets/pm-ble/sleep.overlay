@@ -22,6 +22,12 @@
 	};
 };
 
+&pinctrl_uart2 {
+	group0 {
+		driver-state-control = <1>; /* pull-up: initialize RX active-high */
+	};
+};
+
 &stop_s2ram {
 	min-residency-us = <100000>; /* 100ms */
 	exit-latency-us = <3000>;
