@@ -26,6 +26,16 @@
 /* MJPEG when the JPEG hardware encoder (jpeg0) is present, else RGB565. */
 #define UVC_OUTPUT_MJPEG DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(jpeg0))
 
+/*
+ * Dual camera (E8 DK): a second UVC device (uvc_standard) streams the
+ * standard-port sensor, while "uvc" streams the selfie sensor. Both sensors
+ * share the CSI -> ISP -> JPEG pipeline and are captured in turn.
+ */
+#define UVC_DUAL_CAMERA DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(uvc_standard))
+#define UVC_NUM_CAMERAS (UVC_DUAL_CAMERA ? 2 : 1)
+BUILD_ASSERT(!UVC_DUAL_CAMERA || UVC_OUTPUT_MJPEG,
+	     "the dual camera pipeline needs the ISP + JPEG encoder");
+
 /* DMA frame-address alignment required by the camera/ISP masters. */
 #define CAPTURE_BUF_ALIGN 32U
 

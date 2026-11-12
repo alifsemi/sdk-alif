@@ -9,7 +9,7 @@
  * E8 DK/AK (RTSS-HP) - MT9M114 sensor overlay:
  *   MT9M114 (MIPI CSI-2) -> ISP (NV12 1280x720) -> Hantro JPEG encoder -> UVC.
  *
- * The board overlay carries all the common E8 plumbing; this file
+ * alif_e8_common.overlay carries all the common E8 plumbing; this file
  * adds the MT9M114 sensor node, the CSI input endpoint (single data lane), the
  * Fast-mode I2C tuning, the fixed MIPI supply regulator and the GT911 touch
  * reset-hold hog that the MT9M114 needs.
@@ -19,7 +19,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/video/video-interfaces.h>
 
-/* The MT9M114 needs Fast-mode I2C (the board overlay only enables i2c1). */
+/* MT9M114 needs Fast-mode I2C; alif_e8_common.overlay only enables i2c1. */
 &i2c1 {
 	clock-frequency = <I2C_BITRATE_FAST>;
 
