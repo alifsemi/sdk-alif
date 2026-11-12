@@ -491,28 +491,13 @@ Bug Fixes
 
    * - **Component**
      - **Fix**
-   * - CAN
-     - Fixes in the CAN driver
-   * - MIPI DSI
-     - Fixes in the MIPI DSI driver
-   * - ADC
-     - Fixes in the ADC driver
-   * - DAC
-     - Fixes in the DAC driver
-   * - CSI
-     - Fixes in the CSI driver
-   * - I3C
-     - Fixes in the I3C driver
-   * - IPM
-     - Fixes in the IPM driver
-   * - ETHOS
-     - Fixes in the ETHOS driver
-   * - SPI
-     - Fixes in the SPI driver
-   * - JPEG
-     - Fixes in the JPEG driver
-   * - CMP
-     - Fixes in the CMP driver
+   * - Bluetooth LE
+     - A cold boot no longer repeats the same static random address.
+
+       The host stack seeded its random number generator from the time
+       since boot. That time is the same after every cold start, so
+       every device drew the same static address. The generator is now
+       seeded from the Secure Enclave.
 
 Planned Deprecations
 --------------------
