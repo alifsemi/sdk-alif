@@ -8,77 +8,91 @@
  *
  */
 
-/*
- * Power Management (PM) state transition tests for Alif RTSS cores.
- *
- * This file uses Zephyr's ztest framework to exercise RUNTIME_IDLE,
- * SUSPEND_TO_IDLE, SUSPEND_TO_RAM (STANDBY/STOP), and SOFT_OFF states.
- * When SPI_PM_TEST is defined, SPI transactions run in a background thread
- * and are suspended/resumed around each power state entry/exit.
- */
 
-#include "aipm.h"
-#include <stdio.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
+#include <zephyr/devicetree.h>
 #include <zephyr/init.h>
 #include <zephyr/pm/pm.h>
 #include <zephyr/pm/policy.h>
-#if defined(CONFIG_POWEROFF)
-#include <zephyr/sys/poweroff.h>
-#endif
+#include <zephyr/pm/state.h>
 #include <zephyr/drivers/counter.h>
-#include <se_service.h>
 #include <zephyr/sys/util.h>
-#include <zephyr/logging/log.h>
-
+#include <zephyr/sys/sys_io.h>
 #include <zephyr/ztest.h>
+#include <zephyr/sys/atomic.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/dt-bindings/power-domain/alif_power_domain.h>
+#include <se_service.h>
+#include <soc_common.h>
 
-LOG_MODULE_REGISTER(spi_pm, LOG_LEVEL_DBG);
-
-#define SPI_PM_TEST
-
-#ifdef SPI_PM_TEST
 #include "spi_test.h"
-#endif
 
-/**
- * As per the application requirements, it can remove the memory blocks which are not in use.
- */
-#if defined(CONFIG_SOC_SERIES_E1C) || defined(CONFIG_SOC_SERIES_B1)
-#define APP_RET_MEM_BLOCKS                                                                         \
-	(SRAM4_1_MASK | SRAM4_2_MASK | SRAM4_3_MASK | SRAM4_4_MASK | SRAM5_1_MASK | SRAM5_2_MASK | \
-	 SRAM5_3_MASK | SRAM5_4_MASK | SRAM5_5_MASK)
-#define SERAM_MEMORY_BLOCKS_IN_USE (SERAM_1_MASK | SERAM_2_MASK | SERAM_3_MASK | SERAM_4_MASK)
-#else
-#define APP_RET_MEM_BLOCKS         (SRAM4_1_MASK | SRAM4_2_MASK | SRAM5_1_MASK | SRAM5_2_MASK)
-#define SERAM_MEMORY_BLOCKS_IN_USE SERAM_MASK
-#endif
+LOG_MODULE_REGISTER(spi_pm, LOG_LEVEL_INF);
+
+/* Set to 1 to dump full NVIC ISPR state on wakeup */
+#define APP_PM_WAKEUP_DEBUG 0
 
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(rtc0), snps_dw_apb_rtc, okay)
-#define WAKEUP_SOURCE         DT_NODELABEL(rtc0)
-#define SE_OFFP_EWIC_CFG      EWIC_RTC_A
-#define SE_OFFP_WAKEUP_EVENTS WE_LPRTC
+	#define WAKEUP_SOURCE DT_NODELABEL(rtc0)
 #elif DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(timer0), snps_dw_timers, okay)
-#define WAKEUP_SOURCE         DT_NODELABEL(timer0)
-#define SE_OFFP_EWIC_CFG      EWIC_VBAT_TIMER
-#define SE_OFFP_WAKEUP_EVENTS WE_LPTIMER0
+	#define WAKEUP_SOURCE DT_NODELABEL(timer0)
 #else
 #error "Wakeup Device not enabled in the dts"
 #endif
 
-/* Sleep duration for PM_STATE_RUNTIME_IDLE */
-#define RUNTIME_IDLE_SLEEP_USEC  (10 * 1000 * 1000)
-/* Sleep duration for PM_STATE_SUSPEND_TO_IDLE */
-#define SUSPEND_IDLE_SLEEP_USEC  (4 * 1000)
-/* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 0 (STANDBY) */
-#define S2RAM_STANDBY_SLEEP_USEC (20 * 1000 * 1000)
-/* Sleep duration for PM_STATE_SUSPEND_TO_RAM substate 1 (STOP) */
-#define S2RAM_STOP_SLEEP_USEC    (22 * 1000 * 1000)
-/* Sleep duration for PM_STATE_SOFT_OFF */
-#define SOFT_OFF_SLEEP_USEC      (26 * 1000 * 1000)
-/* Wakeup duration for sys_poweroff (permanent power off) */
-#define POWEROFF_WAKEUP_USEC     (30 * 1000 * 1000)
+#define SUSPEND_IDLE_IN_DTS DT_NODE_HAS_STATUS(DT_NODELABEL(suspend_idle), okay)
+#define SOFT_OFF_IN_DTS     DT_NODE_HAS_STATUS(DT_NODELABEL(subsys_off), okay)
+
+#define S2RAM_STANDBY_SUBSTATE \
+	DT_PROP_OR(DT_NODELABEL(standby_s2ram), substate_id, 0)
+#define S2RAM_STOP_SUBSTATE \
+	DT_PROP_OR(DT_NODELABEL(stop_s2ram), substate_id, 1)
+
+/*
+ * Sleep durations.
+ *
+ * Upper bound: at 400 MHz, ticks-to-cycles calculation in the PM driver
+ * overflows uint32 for values > 10.7 s (2^32 / 400). Every sleep that may
+ * enter SUSPEND_TO_IDLE / S2RAM / SOFT_OFF must stay below this ceiling.
+ * RUNTIME_IDLE may exceed it because deeper states are locked out.
+ *
+ * Lower bounds come from the snippet overlays (min-residency-us):
+ *   suspend_idle 2.5 ms, standby_s2ram 5 s, stop_s2ram 8 s, subsys_off 9 s.
+ */
+#define RUNTIME_IDLE_SLEEP_USEC     (10 * 1000 * 1000)
+#define RUNTIME_IDLE_MIN_SLEEP_USEC (1 * 1000 * 1000)
+#define RUNTIME_IDLE_MAX_SLEEP_USEC (18 * 1000 * 1000)
+
+#define SUSPEND_IDLE_SLEEP_USEC     (10 * 1000)
+#define SUSPEND_IDLE_MIN_SLEEP_USEC (5 * 1000)
+#define SUSPEND_IDLE_MAX_SLEEP_USEC (10 * 1000 * 1000)
+
+#define S2RAM_STANDBY_SLEEP_USEC     (6 * 1000 * 1000)
+#define S2RAM_STANDBY_MIN_SLEEP_USEC (5500 * 1000)
+/* STOP is locked in STANDBY cases, so this may exceed stop residency. */
+#define S2RAM_STANDBY_MAX_SLEEP_USEC (10 * 1000 * 1000)
+
+#define S2RAM_STOP_SLEEP_USEC     (9 * 1000 * 1000)
+#define S2RAM_STOP_MIN_SLEEP_USEC (8500 * 1000)
+#define S2RAM_STOP_MAX_SLEEP_USEC (10500 * 1000)
+/* Below stop_s2ram min-residency (8 s) but above standby (5 s). */
+#define S2RAM_STOP_BELOW_RESIDENCY_USEC (7 * 1000 * 1000)
+#define SOFT_OFF_SLEEP_USEC       (10 * 1000 * 1000)
+
+#define NUM_CYCLES 3
+
+#define PM_DEEP_SLEEP_MAX_USEC 10700000U
+
+BUILD_ASSERT(S2RAM_STOP_SLEEP_USEC > S2RAM_STANDBY_SLEEP_USEC,
+	"STOP sleep duration must be greater than STANDBY sleep duration");
+BUILD_ASSERT(SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC,
+	"SOFT_OFF sleep duration must be greater than STOP sleep duration");
+BUILD_ASSERT(SUSPEND_IDLE_MAX_SLEEP_USEC < PM_DEEP_SLEEP_MAX_USEC &&
+	     S2RAM_STANDBY_MAX_SLEEP_USEC < PM_DEEP_SLEEP_MAX_USEC &&
+	     S2RAM_STOP_MAX_SLEEP_USEC < PM_DEEP_SLEEP_MAX_USEC &&
+	     SOFT_OFF_SLEEP_USEC < PM_DEEP_SLEEP_MAX_USEC,
+	"Deep sleep durations must stay below 10.7 s");
 
 /*
  * MRAM base address - used to determine boot location
@@ -87,289 +101,122 @@ LOG_MODULE_REGISTER(spi_pm, LOG_LEVEL_DBG);
  */
 #define MRAM_BASE_ADDRESS 0x80000000
 
-/*
- * Helper macro to check if booting from MRAM
- */
 #define IS_BOOTING_FROM_MRAM() (SCB->VTOR >= MRAM_BASE_ADDRESS)
 
 /*
- * PM_STATE_SUSPEND_TO_RAM (S2RAM) support:
- * - HP core: NOT supported (no retention capability)
- * - HE core + TCM boot: SUPPORTED (TCM retention keeps code and context)
- */
-#if defined(CONFIG_RTSS_HE)
-#define S2RAM_SUPPORTED (!IS_BOOTING_FROM_MRAM())
-#else
-#define S2RAM_SUPPORTED 0
-#endif
-
-/*
- * PM_STATE_SOFT_OFF support:
- * - HP core: Always supported (no retention, must use SOFT_OFF)
- * - HE core + MRAM boot: Supported (MRAM preserved, wakeup possible)
- * - HE core + TCM boot: Skip (use S2RAM with retention instead)
- */
-#if defined(CONFIG_RTSS_HP)
-#define SOFT_OFF_SUPPORTED 1
-#elif defined(CONFIG_RTSS_HE)
-#define SOFT_OFF_SUPPORTED IS_BOOTING_FROM_MRAM()
-#else
-#define SOFT_OFF_SUPPORTED 0
-#endif
-
-#if defined(CONFIG_RTSS_HE)
-/* Additional validation for power state sleep durations */
-BUILD_ASSERT((S2RAM_STOP_SLEEP_USEC > S2RAM_STANDBY_SLEEP_USEC),
-	     "STOP sleep duration should be greater than STANDBY sleep duration");
-BUILD_ASSERT((SOFT_OFF_SLEEP_USEC > S2RAM_STOP_SLEEP_USEC),
-	     "SOFT_OFF sleep duration should be greater than STOP sleep duration");
-#endif
-
-/**
- * Set the RUN profile parameters for this application.
- */
-static int app_set_run_params(void)
-{
-	run_profile_t runp;
-	int ret;
-
-	runp.power_domains = PD_SYST_MASK | PD_SSE700_AON_MASK;
-	runp.dcdc_voltage = 825;
-	runp.dcdc_mode = DCDC_MODE_PWM;
-	runp.aon_clk_src = CLK_SRC_LFXO;
-	runp.run_clk_src = CLK_SRC_PLL;
-	runp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-	runp.ip_clock_gating = 0;
-	runp.phy_pwr_gating = 0;
-#if defined(CONFIG_RTSS_HP)
-	runp.cpu_clk_freq = CLOCK_FREQUENCY_400MHZ;
-#else
-	runp.cpu_clk_freq = CLOCK_FREQUENCY_160MHZ;
-#endif
-
-	runp.memory_blocks = MRAM_MASK;
-
-	ret = se_service_set_run_cfg(&runp);
-	__ASSERT(ret == 0, "SE: set_run_cfg failed = %d", ret);
-
-	return ret;
-}
-/*
- * CRITICAL: Must run at PRE_KERNEL_1 to restore SYSTOP before peripherals initialize.
+ * S2RAM_SUPPORTED — retention-capable sleep is possible on HE TCM boot
+ * (TCM has hardware retention).
  *
- * Priority 46 ensures this runs:
- *   - AFTER SE Services (priority 45) - SE must be ready for set_run_cfg()
- *   - BEFORE Power Domain (priority 47) - Power domain needs SYSTOP enabled
- *   - BEFORE UART and peripherals (priority 50+) - Peripherals need SYSTOP ON
+ * SOFT_OFF_SUPPORTED — mutually exclusive with S2RAM: used when no
+ * retained RAM is available (HP, or HE MRAM boot).
+ */
+#define S2RAM_SUPPORTED \
+	(IS_ENABLED(CONFIG_RTSS_HE) && !IS_BOOTING_FROM_MRAM())
+
+#define SOFT_OFF_SUPPORTED (!S2RAM_SUPPORTED)
+
+/* ---------------------------------------------------------------------------
+ * PM policy locks
  *
- * On cold boot: SYSTOP is already ON by default, safe to call.
- * On SOFT_OFF wakeup: SYSTOP is OFF, must restore BEFORE peripherals access registers.
+ * Baseline (outside a test case): S2RAM and SOFT_OFF locked, SUSPEND_TO_IDLE
+ * allowed. Each helper is idempotent so after() can always restore baseline,
+ * even when a test aborts on a failed assertion.
+ * ---------------------------------------------------------------------------
  */
-SYS_INIT(app_set_run_params, PRE_KERNEL_1, 46);
+static bool deep_unlocked;
+static bool s2i_locked;
+static bool s2ram_stop_locked;
 
-static int app_set_off_params(enum pm_state state, uint8_t substate_id)
-{
-	int ret;
-	off_profile_t offp;
-
-	offp.dcdc_voltage = 825;
-	offp.dcdc_mode = DCDC_MODE_OFF;
-	offp.stby_clk_freq = SCALED_FREQ_RC_STDBY_76_8_MHZ;
-	offp.aon_clk_src = CLK_SRC_LFXO;
-	offp.stby_clk_src = CLK_SRC_HFRC;
-	offp.vtor_address = SCB->VTOR;
-	offp.ip_clock_gating = 0;
-	offp.phy_pwr_gating = 0;
-	offp.vdd_ioflex_3V3 = IOFLEX_LEVEL_1V8;
-	offp.ewic_cfg = SE_OFFP_EWIC_CFG;
-	offp.wakeup_events = SE_OFFP_WAKEUP_EVENTS;
-	offp.memory_blocks = MRAM_MASK;
-
-#if defined(CONFIG_RTSS_HE)
-	/*
-	 * HE core retention configuration:
-	 * - TCM boot (VTOR = 0): Enable TCM retention (SERAM + APP_RET_MEM_BLOCKS)
-	 * - MRAM boot (VTOR >= 0x80000000): Only SERAM retention needed
-	 */
-	if (!IS_BOOTING_FROM_MRAM()) {
-		/* TCM boot: enable full retention including TCM memory blocks */
-		offp.memory_blocks |= APP_RET_MEM_BLOCKS | SERAM_MEMORY_BLOCKS_IN_USE;
-	} else {
-		/* MRAM boot */
-		offp.memory_blocks |= SERAM_MEMORY_BLOCKS_IN_USE;
-	}
-#else
-	/*
-	 * HP core: Retention is not possible with HP-TCM
-	 */
-	__ASSERT(IS_BOOTING_FROM_MRAM(), "HP TCM Retention is not possible - VTOR is set to TCM");
-#endif
-
-	switch (state) {
-	case PM_STATE_SUSPEND_TO_RAM:
-		if (substate_id == 0) {
-			offp.power_domains = PD_SSE700_AON_MASK;
-		} else if (substate_id == 1) {
-			offp.power_domains = PD_VBAT_AON_MASK;
-		}
-		break;
-	case PM_STATE_SOFT_OFF:
-		offp.memory_blocks = MRAM_MASK | SERAM_MEMORY_BLOCKS_IN_USE;
-		offp.power_domains = PD_VBAT_AON_MASK;
-		break;
-	default:
-		break;
-	}
-
-	ret = se_service_set_off_cfg(&offp);
-	__ASSERT(ret == 0, "SE: set_off_cfg failed = %d", ret);
-
-	return ret;
-}
-
-/**
- * PM Notifier callback for power state entry
- */
-static void pm_notify_state_entry(enum pm_state state)
-{
-	const struct pm_state_info *next_state = pm_state_next_get(0);
-	uint8_t substate_id = next_state ? next_state->substate_id : 0;
-	int ret;
-
-	switch (state) {
-	case PM_STATE_SUSPEND_TO_IDLE:
-		/* No action needed */
-		break;
-	case PM_STATE_SUSPEND_TO_RAM:
-	case PM_STATE_SOFT_OFF:
-		ret = app_set_off_params(state, substate_id);
-		__ASSERT(ret == 0, "app_set_off_params failed = %d", ret);
-		break;
-	default:
-		__ASSERT(false, "Entering unknown power state %d", state);
-		break;
-	}
-}
-
-/**
- * PM Notifier callback called BEFORE devices are resumed
- *
- * This restores SE run configuration when resuming from S2RAM states.
- * Note: For SOFT_OFF, the system resets completely and app_set_run_params()
- * runs during normal PRE_KERNEL_1 initialization, so this callback is not needed.
- */
-static void pm_notify_pre_device_resume(enum pm_state state)
-{
-	int ret;
-
-	switch (state) {
-	case PM_STATE_SUSPEND_TO_RAM:
-		ret = app_set_run_params();
-		__ASSERT(ret == 0, "app_set_run_params failed = %d", ret);
-		break;
-	case PM_STATE_SUSPEND_TO_IDLE:
-		/* No action needed - IWIC keeps power, no restoration required */
-		break;
-	case PM_STATE_SOFT_OFF:
-		/* No action needed - SOFT_OFF causes reset, not resume */
-		break;
-	default:
-		__ASSERT(false, "Pre-resume for unknown power state %d", state);
-		break;
-	}
-}
-
-/**
- * PM Notifier structure
- */
-static struct pm_notifier app_pm_notifier = {
-	.state_entry = pm_notify_state_entry,
-	.pre_device_resume = pm_notify_pre_device_resume,
-};
-
-/**
- * Helper function to lock/unlock deeper power states
- * @param lock true to lock deeper states (allow only RUNTIME_IDLE), false to unlock all
- */
-static void app_pm_lock_deeper_states(bool lock)
-{
-	const char *state_desc;
-
-#if defined(CONFIG_RTSS_HP)
-	/* HP core: only SOFT_OFF (no S2RAM support) */
-	enum pm_state deep_states[] = {PM_STATE_SOFT_OFF};
-
-	state_desc = "SOFT_OFF";
-
-	for (int i = 0; i < ARRAY_SIZE(deep_states); i++) {
-		if (lock) {
-			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
-		} else {
-			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
-		}
-	}
-
-#elif defined(CONFIG_RTSS_HE)
-	/*
-	 * HE core: States depend on boot location
-	 * - TCM boot: S2RAM only (SOFT_OFF not needed with retention)
-	 * - MRAM boot: SOFT_OFF only (Keep S2RAM locked)
-	 */
-	enum pm_state deep_states[2];
-	int num_states = 0;
-
-	if (S2RAM_SUPPORTED) {
-		/* TCM boot: S2RAM works with retention */
-		deep_states[num_states++] = PM_STATE_SUSPEND_TO_RAM;
-		state_desc = "S2RAM";
-	} else {
-		/* MRAM boot: Keep S2RAM locked so SOFT_OFF is selected */
-		if (!lock) {
-			/* Ensure S2RAM stays locked when unlocking SOFT_OFF */
-			pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
-		}
-	}
-
-	if (SOFT_OFF_SUPPORTED) {
-		/* MRAM boot: SOFT_OFF is the only deep sleep option for now */
-		deep_states[num_states++] = PM_STATE_SOFT_OFF;
-		state_desc = "SOFT_OFF";
-	}
-
-	for (int i = 0; i < num_states; i++) {
-		if (lock) {
-			pm_policy_state_lock_get(deep_states[i], PM_ALL_SUBSTATES);
-		} else {
-			pm_policy_state_lock_put(deep_states[i], PM_ALL_SUBSTATES);
-		}
-	}
-
-#else
-#error "Unknown core type"
-#endif
-
-	LOG_DBG("%s deeper power state(s) (%s)", lock ? "Locked" : "Unlocked", state_desc);
-}
-
-/*
- * This function will be invoked in the PRE_KERNEL_2 phase of the init routine.
- */
 static int app_pre_kernel_init(void)
 {
-	/* Lock deeper power states to allow only RUNTIME_IDLE */
-	app_pm_lock_deeper_states(true);
-
-	/* Register PM notifier callbacks */
-	pm_notifier_register(&app_pm_notifier);
+	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES);
+	pm_policy_state_lock_get(PM_STATE_SOFT_OFF,       PM_ALL_SUBSTATES);
 
 	return 0;
 }
 SYS_INIT(app_pre_kernel_init, PRE_KERNEL_2, 0);
 
+/*
+ * lock = false unlocks only the deep state that this boot mode supports;
+ * the other one stays locked for the whole test run.
+ */
+static void app_pm_lock_deeper_states(bool lock)
+{
+	if (lock != deep_unlocked) {
+		return;
+	}
+
+	if (S2RAM_SUPPORTED) {
+		if (lock) {
+			pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM,
+						 PM_ALL_SUBSTATES);
+		} else {
+			pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM,
+						 PM_ALL_SUBSTATES);
+		}
+	} else {
+		if (lock) {
+			pm_policy_state_lock_get(PM_STATE_SOFT_OFF,
+						 PM_ALL_SUBSTATES);
+		} else {
+			pm_policy_state_lock_put(PM_STATE_SOFT_OFF,
+						 PM_ALL_SUBSTATES);
+		}
+	}
+
+	deep_unlocked = !lock;
+}
+
+static void app_pm_lock_suspend_idle(bool lock)
+{
+	if (lock == s2i_locked) {
+		return;
+	}
+
+	if (lock) {
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE,
+					 PM_ALL_SUBSTATES);
+	} else {
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE,
+					 PM_ALL_SUBSTATES);
+	}
+
+	s2i_locked = lock;
+}
+
+static void app_pm_lock_s2ram_stop(bool lock)
+{
+	if (lock == s2ram_stop_locked) {
+		return;
+	}
+
+	if (lock) {
+		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_RAM,
+					 S2RAM_STOP_SUBSTATE);
+	} else {
+		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_RAM,
+					 S2RAM_STOP_SUBSTATE);
+	}
+
+	s2ram_stop_locked = lock;
+}
+
+static void app_pm_restore_baseline(void)
+{
+	app_pm_lock_deeper_states(true);
+	app_pm_lock_s2ram_stop(false);
+	app_pm_lock_suspend_idle(false);
+}
+
+/* ---------------------------------------------------------------------------
+ * Sleep helpers (from samples/drivers/pm/spi_dw)
+ * ---------------------------------------------------------------------------
+ */
 #if !defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 static volatile uint32_t alarm_cb_status;
-static void alarm_callback_fn(const struct device *wakeup_dev, uint8_t chan_id, uint32_t ticks,
-			      void *user_data)
+static void alarm_callback_fn(const struct device *wakeup_dev,
+				uint8_t chan_id, uint32_t ticks,
+				void *user_data)
 {
 	LOG_DBG("%s: Alarm triggered", wakeup_dev->name);
 	alarm_cb_status = 1;
@@ -378,11 +225,6 @@ static void alarm_callback_fn(const struct device *wakeup_dev, uint8_t chan_id, 
 
 static int app_enter_normal_sleep(uint32_t sleep_usec)
 {
-#ifdef SPI_PM_TEST
-	spi_pm_thread_suspend();
-	LOG_INF("====== SPI Transactions are Suspended");
-#endif
-
 #if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
 	k_sleep(K_USEC(sleep_usec));
 #else
@@ -390,6 +232,7 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 	struct counter_alarm_cfg alarm_cfg = {0};
 	int ret;
 
+	alarm_cb_status = 0;
 	alarm_cfg.flags = 0;
 	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
 	alarm_cfg.callback = alarm_callback_fn;
@@ -408,38 +251,79 @@ static int app_enter_normal_sleep(uint32_t sleep_usec)
 		return -1;
 	}
 	alarm_cb_status = 0;
-
 #endif
 	return 0;
 }
 
-#if !defined(CONFIG_POWEROFF)
+/*
+ * The SE service drops its run-profile cache on every S2RAM entry and
+ * re-applies it from the idle thread in pre_device_resume. After STOP the SE
+ * itself is powered off (no SSE700 AON in the off-profile); if that restore
+ * fails, the cache stays empty, the Alif power-domain driver can no longer
+ * suspend (se_service_get_last_set_run_cfg() -> -ENODATA), and
+ * pm_suspend_devices() silently aborts every later S2RAM attempt.
+ * Re-seed the cache from thread context, where blocking SE calls are allowed.
+ */
+static int app_enter_deep_sleep_raw(uint32_t sleep_usec);
+
+static int app_se_run_profile_ensure(const char *where)
+{
+	run_profile_t runp;
+	int ret;
+
+	ret = se_service_get_last_set_run_cfg(&runp);
+	if (ret == 0) {
+		return 0;
+	}
+
+	LOG_WRN("SE run-profile cache empty %s (%d) - restoring", where, ret);
+
+	ret = se_service_get_run_cfg(&runp);
+	if (ret) {
+		LOG_ERR("se_service_get_run_cfg failed (%d)", ret);
+		return ret;
+	}
+
+	ret = se_service_set_run_cfg(&runp);
+	if (ret) {
+		LOG_ERR("se_service_set_run_cfg failed (%d)", ret);
+		return ret;
+	}
+
+	LOG_INF("SE run profile restored (power_domains 0x%08x)",
+		runp.power_domains);
+	return 0;
+}
+
 static int app_enter_deep_sleep(uint32_t sleep_usec)
 {
-#ifdef SPI_PM_TEST
-	spi_pm_thread_suspend();
-	LOG_INF("==SPI Transactions are Suspended: for Deep Sleep");
-#endif
+	int ret = app_se_run_profile_ensure("before deep sleep");
 
+	if (ret) {
+		return ret;
+	}
+
+	ret = app_enter_deep_sleep_raw(sleep_usec);
+
+	(void)app_se_run_profile_ensure("after deep sleep");
+	return ret;
+}
+
+static int app_enter_deep_sleep_raw(uint32_t sleep_usec)
+{
 #if defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
-	/**
+	/*
 	 * Set a delay more than the min-residency-us configured so that
 	 * the sub-system will go to OFF state.
 	 */
-
-	/* Wait for UART to finish transmitting logs */
-	k_msleep(100);
-
 	k_sleep(K_USEC(sleep_usec));
 #else
-
 	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 	struct counter_alarm_cfg alarm_cfg = {0};
 	int ret;
-	/*
-	 * Set the alarm and delay so that idle thread can run
-	 */
+
 	alarm_cfg.ticks = counter_us_to_ticks(wakeup_dev, sleep_usec);
+	alarm_cfg.callback = alarm_callback_fn;
 	ret = counter_set_channel_alarm(wakeup_dev, 0, &alarm_cfg);
 	if (ret) {
 		LOG_ERR("Failed to set the alarm (err %d)", ret);
@@ -447,841 +331,663 @@ static int app_enter_deep_sleep(uint32_t sleep_usec)
 	}
 
 	LOG_DBG("Set alarm for %u microseconds", sleep_usec);
-	/*
-	 * Wait for the alarm to trigger. The idle thread will
-	 * take care of entering the deep sleep state via PM framework.
-	 */
+	/* The idle thread enters the deep sleep state via the PM framework. */
 	k_sleep(K_USEC(sleep_usec));
-#endif
-
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	LOG_INF("==SPI Transactions are Resumed: for Deep Sleep");
 #endif
 
 	return 0;
 }
-#endif /* !CONFIG_POWEROFF */
 
-/*===============================================================================================*/
+/* ---------------------------------------------------------------------------
+ * PM notifier: logs transitions and counts entries so each test can verify
+ * which state was really entered.
+ * ---------------------------------------------------------------------------
+ */
+static const char * const pm_state_names[] = {
+	[PM_STATE_ACTIVE]          = "ACTIVE",
+	[PM_STATE_RUNTIME_IDLE]    = "RUNTIME_IDLE",
+	[PM_STATE_SUSPEND_TO_IDLE] = "SUSPEND_TO_IDLE",
+	[PM_STATE_STANDBY]         = "STANDBY",
+	[PM_STATE_SUSPEND_TO_RAM]  = "SUSPEND_TO_RAM",
+	[PM_STATE_SUSPEND_TO_DISK] = "SUSPEND_TO_DISK",
+	[PM_STATE_SOFT_OFF]        = "SOFT_OFF",
+};
+
+#define PM_STATE_STR(s) \
+	((s) < ARRAY_SIZE(pm_state_names) ? pm_state_names[(s)] : "UNKNOWN")
 
 /*
- * Suite-level setup: called once before all test suites run.
- * Logs the active core/boot mode and starts the SPI background thread
- * when SPI_PM_TEST is enabled.
+ * SUSPEND_TO_IDLE is entered on every idle period of the baseline policy.
+ * Logging it would keep the deferred log thread busy and wake the core again
+ * (endless enter/exit loop), so it is only counted.
  */
-void *setup(void)
-{
-#if defined(CONFIG_RTSS_HE)
-	/* Boot location determines which PM states are available */
-	bool is_mram_boot = IS_BOOTING_FROM_MRAM();
+#define PM_STATE_IS_LOGGED(s) ((s) != PM_STATE_SUSPEND_TO_IDLE)
 
-	if (is_mram_boot) {
-		LOG_INF("\n%s RTSS_HE (MRAM boot): PM states demo "
-			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)",
-			CONFIG_BOARD);
-	} else {
-		LOG_INF("\n%s RTSS_HE (TCM boot): PM states demo "
-			"(RUNTIME_IDLE, SUSPEND_TO_IDLE, S2RAM)",
-			CONFIG_BOARD);
+static atomic_t pm_enter_cnt[PM_STATE_COUNT];
+static atomic_t s2ram_standby_cnt;
+static atomic_t s2ram_stop_cnt;
+
+static int32_t pm_cnt(enum pm_state state)
+{
+	return atomic_get(&pm_enter_cnt[state]);
+}
+
+static void pm_counters_reset(void)
+{
+	for (size_t i = 0; i < ARRAY_SIZE(pm_enter_cnt); i++) {
+		atomic_set(&pm_enter_cnt[i], 0);
+	}
+	atomic_set(&s2ram_standby_cnt, 0);
+	atomic_set(&s2ram_stop_cnt, 0);
+}
+
+static void pm_notify_entry(enum pm_state state)
+{
+	const struct pm_state_info *info = pm_state_next_get(0);
+	uint8_t substate_id = info ? info->substate_id : 0U;
+
+	if (state < PM_STATE_COUNT) {
+		atomic_inc(&pm_enter_cnt[state]);
+	}
+	if (state == PM_STATE_SUSPEND_TO_RAM) {
+		if (substate_id == S2RAM_STANDBY_SUBSTATE) {
+			atomic_inc(&s2ram_standby_cnt);
+		} else if (substate_id == S2RAM_STOP_SUBSTATE) {
+			atomic_inc(&s2ram_stop_cnt);
+		}
 	}
 
-#ifdef SPI_PM_TEST
-	LOG_INF("RTSS_HE: PM states demo WITH SPI Transaction");
-	spi_pm_thread_init();
-	spi_pm_thread_start();
-#endif
+	if (PM_STATE_IS_LOGGED(state)) {
+		LOG_INF("PM enter: %s (substate %u)",
+			PM_STATE_STR(state), substate_id);
+	}
+}
 
+/*
+ * With CONFIG_LOG_MODE_DEFERRED, LOG_INF here only writes to the ring buffer
+ * — no UART access — so this is safe even before devices are resumed.
+ */
+static void pm_notify_pre_resume(enum pm_state state)
+{
+	const struct pm_state_info *info = pm_state_next_get(0);
+	uint8_t substate_id = info ? info->substate_id : 0U;
+	uint32_t active_exc = SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk;
+
+	if (!PM_STATE_IS_LOGGED(state)) {
+		return;
+	}
+
+	if (active_exc >= 16U) {
+		LOG_INF("PM wakeup: %s (substate %u) IRQ %u",
+			PM_STATE_STR(state), substate_id, active_exc - 16U);
+	} else if (active_exc != 0U) {
+		LOG_INF("PM wakeup: %s (substate %u) exception %u",
+			PM_STATE_STR(state), substate_id, active_exc);
+	} else {
+		LOG_INF("PM wakeup: %s (substate %u)",
+			PM_STATE_STR(state), substate_id);
+	}
+#if APP_PM_WAKEUP_DEBUG
+	for (int i = 0; i < 16; i++) {
+		if (NVIC->ISPR[i]) {
+			LOG_INF("PM wakeup: NVIC ISPR[%d] = 0x%08x",
+				i, NVIC->ISPR[i]);
+		}
+	}
+#endif
+}
+
+static void pm_notify_exit(enum pm_state state)
+{
+	const struct pm_state_info *info = pm_state_next_get(0);
+	uint8_t substate_id = info ? info->substate_id : 0U;
+
+	if (PM_STATE_IS_LOGGED(state)) {
+		LOG_INF("PM exit:  %s (substate %u)",
+			PM_STATE_STR(state), substate_id);
+	}
+}
+
+static struct pm_notifier app_pm_notifier = {
+	.state_entry       = pm_notify_entry,
+	.pre_device_resume = pm_notify_pre_resume,
+	.state_exit        = pm_notify_exit,
+};
+
+/* ---------------------------------------------------------------------------
+ * Test building blocks
+ * ---------------------------------------------------------------------------
+ */
+static void spi_round(const char *label)
+{
+	int ret = spi_loopback_run(label);
+
+	zassert_equal(ret, 0, "SPI loopback '%s' failed (%d)", label, ret);
+}
+
+static void skip_if_no_suspend_idle(void)
+{
+#if !defined(CONFIG_CORTEX_M_SYSTICK_LPM_TIMER_COUNTER)
+	LOG_INF("Skipping SUSPEND_TO_IDLE (LPM idle timer off)");
+	ztest_test_skip();
+#elif !SUSPEND_IDLE_IN_DTS
+	LOG_INF("Skipping SUSPEND_TO_IDLE (disabled in DTS)");
+	ztest_test_skip();
+#endif
+}
+
+static void skip_if_no_s2ram(void)
+{
+	if (!S2RAM_SUPPORTED) {
+		LOG_INF("Skipping SUSPEND_TO_RAM (no retained RAM: %s)",
+			IS_BOOTING_FROM_MRAM() ? "MRAM" : "TCM");
+		ztest_test_skip();
+	}
+}
+
+static void do_runtime_idle(uint32_t sleep_usec)
+{
+	int ret;
+
+	spi_round("before RUNTIME_IDLE");
+
+	app_pm_lock_suspend_idle(true);
+	pm_counters_reset();
+
+	LOG_INF("Enter RUNTIME_IDLE sleep for (%u microseconds)", sleep_usec);
+	ret = app_enter_normal_sleep(sleep_usec);
+	app_pm_lock_suspend_idle(false);
+
+	zassert_equal(ret, 0,
+		      "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
+	zassert_equal(pm_cnt(PM_STATE_SUSPEND_TO_IDLE) +
+		      pm_cnt(PM_STATE_SUSPEND_TO_RAM) +
+		      pm_cnt(PM_STATE_SOFT_OFF), 0,
+		      "A state deeper than RUNTIME_IDLE was entered");
+	LOG_INF("Exited from RUNTIME_IDLE sleep");
+
+	spi_round("after RUNTIME_IDLE");
+}
+
+static void do_suspend_to_idle(uint32_t sleep_usec)
+{
+	spi_round("before SUSPEND_TO_IDLE");
+
+	pm_counters_reset();
+
+	LOG_INF("Enter SUSPEND_TO_IDLE for (%u microseconds)", sleep_usec);
+	k_sleep(K_USEC(sleep_usec));
+
+	LOG_INF("SUSPEND_TO_IDLE entered %d time(s)",
+		pm_cnt(PM_STATE_SUSPEND_TO_IDLE));
+	zassert_true(pm_cnt(PM_STATE_SUSPEND_TO_IDLE) > 0,
+		     "SUSPEND_TO_IDLE was not entered");
+	zassert_equal(pm_cnt(PM_STATE_SUSPEND_TO_RAM) +
+		      pm_cnt(PM_STATE_SOFT_OFF), 0,
+		      "A state deeper than SUSPEND_TO_IDLE was entered");
+	LOG_INF("Woke up from SUSPEND_TO_IDLE");
+
+	spi_round("after SUSPEND_TO_IDLE");
+}
+
+static void verify_soft_off_blocked(void)
+{
+#if SOFT_OFF_IN_DTS
+	zassert_true(pm_policy_state_lock_is_active(PM_STATE_SOFT_OFF,
+						    PM_ALL_SUBSTATES),
+		     "SOFT_OFF must stay locked during S2RAM");
 #else
-
-	LOG_INF("%s RTSS_HP: PM states demo "
-		"(RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF)",
-		CONFIG_BOARD);
-
-#ifdef SPI_PM_TEST
-	LOG_INF("RTSS_HP: PM states demo WITH SPI Transaction");
-	spi_pm_thread_init();
-	spi_pm_thread_start();
+	LOG_INF("SOFT_OFF state disabled in DTS - cannot be entered");
 #endif
+}
 
-#endif
+static void do_s2ram_standby(uint32_t sleep_usec, bool check_soft_off)
+{
+	int ret;
+
+	spi_round("before S2RAM STANDBY");
+
+	app_pm_lock_s2ram_stop(true);
+	app_pm_lock_deeper_states(false);
+
+	zassert_false(pm_policy_state_lock_is_active(PM_STATE_SUSPEND_TO_RAM,
+						     S2RAM_STANDBY_SUBSTATE),
+		      "S2RAM STANDBY is still locked");
+	if (check_soft_off) {
+		verify_soft_off_blocked();
+	}
+
+	pm_counters_reset();
+
+	LOG_INF("Enter SUSPEND_TO_RAM STANDBY for (%u microseconds)",
+		sleep_usec);
+	ret = app_enter_deep_sleep(sleep_usec);
+
+	app_pm_lock_deeper_states(true);
+	app_pm_lock_s2ram_stop(false);
+
+	zassert_equal(ret, 0, "Could not enter SUSPEND_TO_RAM (err %d)", ret);
+	LOG_INF("=== Resumed from SUSPEND_TO_RAM STANDBY ===");
+
+	zassert_true(atomic_get(&s2ram_standby_cnt) > 0,
+		     "S2RAM STANDBY was not entered");
+	zassert_equal(atomic_get(&s2ram_stop_cnt), 0,
+		      "STOP entered instead of STANDBY");
+	zassert_equal(pm_cnt(PM_STATE_SOFT_OFF), 0, "SOFT_OFF entered");
+
+	if (check_soft_off) {
+		verify_soft_off_blocked();
+		LOG_INF("PASS: SOFT_OFF blocked during S2RAM STANDBY");
+	}
+
+	spi_round("after S2RAM STANDBY");
+}
+
+static void do_s2ram_stop(uint32_t sleep_usec, bool check_soft_off)
+{
+	int ret;
+
+	spi_round("before S2RAM STOP");
+
+	app_pm_lock_deeper_states(false);
+
+	zassert_false(pm_policy_state_lock_is_active(PM_STATE_SUSPEND_TO_RAM,
+						     S2RAM_STOP_SUBSTATE),
+		      "S2RAM STOP is still locked");
+	if (check_soft_off) {
+		verify_soft_off_blocked();
+	}
+
+	pm_counters_reset();
+
+	LOG_INF("Enter SUSPEND_TO_RAM STOP for (%u microseconds)",
+		sleep_usec);
+	ret = app_enter_deep_sleep(sleep_usec);
+
+	app_pm_lock_deeper_states(true);
+
+	zassert_equal(ret, 0, "Could not enter SUSPEND_TO_RAM (err %d)", ret);
+	LOG_INF("=== Resumed from SUSPEND_TO_RAM STOP ===");
+
+	zassert_true(atomic_get(&s2ram_stop_cnt) > 0,
+		     "S2RAM STOP was not entered");
+	zassert_equal(atomic_get(&s2ram_standby_cnt), 0,
+		      "STANDBY entered instead of STOP");
+	zassert_equal(pm_cnt(PM_STATE_SOFT_OFF), 0, "SOFT_OFF entered");
+
+	if (check_soft_off) {
+		verify_soft_off_blocked();
+		LOG_INF("PASS: SOFT_OFF blocked during S2RAM STOP");
+	}
+
+	spi_round("after S2RAM STOP");
+}
+
+/* ---------------------------------------------------------------------------
+ * ztest fixtures
+ * ---------------------------------------------------------------------------
+ */
+static int spi_init_status = -ENODEV;
+
+static void *suite_setup(void)
+{
+	static bool banner_done;
+
+	if (!banner_done) {
+		banner_done = true;
+		pm_notifier_register(&app_pm_notifier);
+
+		if (S2RAM_SUPPORTED) {
+			LOG_INF("%s (S2RAM): SPI DW PM test", CONFIG_BOARD);
+			LOG_INF("RUNTIME_IDLE, S2I, S2RAM STANDBY, S2RAM STOP");
+		} else {
+			LOG_INF("%s (SOFT_OFF): SPI DW PM test", CONFIG_BOARD);
+			LOG_INF("RUNTIME_IDLE, SUSPEND_TO_IDLE, SOFT_OFF");
+		}
+		LOG_INF("Boot: %s, VTOR 0x%08x",
+			IS_BOOTING_FROM_MRAM() ? "MRAM" : "TCM",
+			(uint32_t)SCB->VTOR);
+	}
+
+	spi_init_status = spi_test_init();
 
 	return NULL;
 }
 
-/*
- * Per-test setup: called before each ztest case.
- * Verifies console and wakeup counter devices are ready, starts the
- * counter, and resumes the SPI thread if it was suspended.
- */
-void before(void *fixture)
+static void before(void *fixture)
 {
+	const struct device *const cons =
+		DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
+	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
+	int ret;
 
 	ARG_UNUSED(fixture);
-	const struct device *const cons = DEVICE_DT_GET(DT_CHOSEN(zephyr_console));
-	const struct device *const wakeup_dev = DEVICE_DT_GET(WAKEUP_SOURCE);
 
-	__ASSERT(device_is_ready(cons), "%s: device not ready", cons->name);
-	__ASSERT(device_is_ready(wakeup_dev), "%s: device not ready", wakeup_dev->name);
+	zassert_true(device_is_ready(cons), "%s: device not ready",
+		     cons->name);
+	zassert_true(device_is_ready(wakeup_dev), "%s: device not ready",
+		     wakeup_dev->name);
+	zassert_equal(spi_init_status, 0, "SPI loopback init failed (%d)",
+		      spi_init_status);
 
-	int ret = counter_start(wakeup_dev);
+	ret = counter_start(wakeup_dev);
+	zassert_true(ret == 0 || ret == -EALREADY,
+		     "Failed to start counter (err %d)", ret);
 
-	__ASSERT(!ret || ret == -EALREADY, "Failed to start counter (err %d)", ret);
+	(void)app_se_run_profile_ensure("pre-test");
 
-	if (spi_pm_thread_is_started() && spi_pm_thread_is_suspended()) {
-		spi_pm_thread_resume();
-		k_sleep(K_MSEC(50));
-	}
+	app_pm_restore_baseline();
 }
 
-/*
- * Per-test teardown: called after each ztest case.
- * Suspends the SPI background thread while SPI_PM_TEST is enabled.
- */
 static void after(void *fixture)
 {
 	ARG_UNUSED(fixture);
 
-#ifdef SPI_PM_TEST
-	if (spi_pm_thread_is_started() && !spi_pm_thread_is_suspended()) {
-		spi_pm_thread_suspend();
-		LOG_INF("====== SPI Threads Suspended in %s()", __func__);
-	}
-#endif
+	app_pm_restore_baseline();
 }
 
-/*
- * Suite-level teardown: called once after all test suites finish.
- * Ensures the SPI background thread is left suspended.
+/* ===========================================================================
+ * Suite 1: RUNTIME_IDLE
+ * ===========================================================================
  */
-static void teardown(void *fixture)
+ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI,
+	test_SPI_POS_01_runtime_idle_basic_test)
 {
-	ARG_UNUSED(fixture);
-
-#ifdef SPI_PM_TEST
-	if (spi_pm_thread_is_started() && !spi_pm_thread_is_suspended()) {
-		spi_pm_thread_suspend();
-	}
-	LOG_INF("SPI thread suspending after test suite");
-#endif
-}
-
-/* FIXME: Make this local to each test function instead of a shared global. */
-int ret;
-
-ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI, test_SPI_POS_01_runtime_idle_basic_test)
-{
-
 	LOG_INF("=== TEST 1: Basic RUNTIME_IDLE ===");
-
-	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-#ifdef SPI_PM_TEST
-	/* let SPI do some transactions. */
-	k_sleep(K_SECONDS(5));
-#endif
-
-	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
-	ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
-	__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
-
-	LOG_INF("Exited from RUNTIME_IDLE sleep");
-
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	LOG_INF(" ====== SPI Transactions are starting...");
-	k_sleep(K_SECONDS(2));
-#endif
-
-	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	do_runtime_idle(RUNTIME_IDLE_SLEEP_USEC);
 }
 
-ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI, test_SPI_POS_02_runtime_idle_multiple_cycles_test)
+ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI,
+	test_SPI_POS_02_runtime_idle_multiple_cycles_test)
 {
-
-#define NUM_CYCLES 3
-
-	LOG_INF("=== TEST 2: Multiple RUNTIME_IDLE Cycles (%d) ===", NUM_CYCLES);
-
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	LOG_INF("=== TEST 2: Multiple RUNTIME_IDLE Cycles (%d) ===",
+		NUM_CYCLES);
 
 	for (int cycle = 0; cycle < NUM_CYCLES; cycle++) {
-
 		LOG_INF("--- Cycle %d of %d ---", cycle + 1, NUM_CYCLES);
-
-#ifdef SPI_PM_TEST
-		/* let SPI do some transactions. */
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
-		ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
-
-		LOG_INF("Exited from RUNTIME_IDLE sleep");
-
-#ifdef SPI_PM_TEST
-		spi_pm_thread_resume();
-		LOG_INF(" ====== SPI Transactions are starting...");
-		k_sleep(K_SECONDS(2));
-#endif
+		do_runtime_idle(RUNTIME_IDLE_SLEEP_USEC);
 	}
-
-	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
 }
 
-ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI, test_SPI_POS_03_runtime_idle_min_sleep)
+ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI,
+	test_SPI_POS_03_runtime_idle_min_sleep)
 {
-
-#define MIN_SLEEP_USEC (1 * 1000 * 1000)
-
-	LOG_INF("=== TEST 3: RUNTIME_IDLE Minimum Sleep (%d microseconds) ===", MIN_SLEEP_USEC);
-
-	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-#ifdef SPI_PM_TEST
-	/* let SPI do some transactions. */
-	k_sleep(K_SECONDS(5));
-#endif
-
-	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", MIN_SLEEP_USEC);
-	ret = app_enter_normal_sleep(MIN_SLEEP_USEC);
-	__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
-
-	LOG_INF("Exited from RUNTIME_IDLE sleep");
-
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	LOG_INF(" ====== SPI Transactions are starting...");
-	k_sleep(K_SECONDS(2));
-#endif
-
-	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
+	LOG_INF("=== TEST 3: RUNTIME_IDLE Minimum Sleep (%d microseconds) ===",
+		RUNTIME_IDLE_MIN_SLEEP_USEC);
+	do_runtime_idle(RUNTIME_IDLE_MIN_SLEEP_USEC);
 }
 
-/* ============================================================
- * TEST 4: RUNTIME_IDLE maximum sleep duration
- * Sleep = 18 seconds (just below S2RAM min-residency 19s)
- * From DTS: standby min-residency-us = <19000000>
- * ============================================================
+ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI,
+	test_SPI_POS_04_runtime_idle_max_sleep)
+{
+	LOG_INF("=== TEST 4: RUNTIME_IDLE Maximum Sleep (%d microseconds) ===",
+		RUNTIME_IDLE_MAX_SLEEP_USEC);
+	do_runtime_idle(RUNTIME_IDLE_MAX_SLEEP_USEC);
+}
+
+/* ===========================================================================
+ * Suite 2: SUSPEND_TO_IDLE
+ * ===========================================================================
  */
-
-ZTEST(pm_POS_01_Runtime_idle_testing_for_SPI, test_SPI_POS_04_runtime_idle_max_sleep)
-{
-
-#define MAX_SLEEP_USEC (18 * 1000 * 1000)
-
-	LOG_INF("=== TEST 4: RUNTIME_IDLE Maximum Sleep ((%d microseconds)) ===", MAX_SLEEP_USEC);
-
-	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-#ifdef SPI_PM_TEST
-	/* let SPI do some transactions. */
-	k_sleep(K_SECONDS(5));
-#endif
-
-	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", MAX_SLEEP_USEC);
-	ret = app_enter_normal_sleep(MAX_SLEEP_USEC);
-	__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
-
-	LOG_INF("Exited from RUNTIME_IDLE sleep");
-
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	LOG_INF(" ====== SPI Transactions are starting...");
-	k_sleep(K_SECONDS(2));
-#endif
-
-	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-}
-
-ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI, test_SPI_POS_01_suspend_to_idle_basic)
+ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI,
+	test_SPI_POS_01_suspend_to_idle_basic)
 {
 	LOG_INF("=== TEST 1: SUSPEND_TO_IDLE Basic ===");
-
-#ifdef SPI_PM_TEST
-	k_sleep(K_SECONDS(2));
-#endif
-
-	/* 3. Enter SUSPEND_TO_IDLE sleep */
-	LOG_INF("Enter SUSPEND_TO_IDLE for (%d microseconds)", SUSPEND_IDLE_SLEEP_USEC);
-
-	int ret = app_enter_normal_sleep(SUSPEND_IDLE_SLEEP_USEC);
-
-	zassert_equal(ret, 0, "app_enter_normal_sleep failed (%d)", ret);
-
-	LOG_INF("Woke up from SUSPEND_TO_IDLE");
-
-	/* 4. Verify SPI can resume */
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	k_sleep(K_SECONDS(2));
-	LOG_INF("SPI resumed successfully after SUSPEND_TO_IDLE");
-#endif
-}
-
-ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI, test_SPI_POS_02_suspend_to_idle_multiple_cycles)
-{
-#define NUM_CYCLES 3
-	LOG_INF("=== TEST 2: SUSPEND_TO_IDLE for (%d cycles) ===", NUM_CYCLES);
-
-	for (int cycle = 0; cycle < NUM_CYCLES; cycle++) {
-
-		LOG_INF("--- Cycle %d of %d ---", cycle + 1, NUM_CYCLES);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(2));
-#endif
-
-		/* 3. Enter SUSPEND_TO_IDLE sleep */
-		LOG_INF("Enter SUSPEND_TO_IDLE for (%d microseconds)", SUSPEND_IDLE_SLEEP_USEC);
-
-		int ret = app_enter_normal_sleep(SUSPEND_IDLE_SLEEP_USEC);
-
-		zassert_equal(ret, 0, "app_enter_normal_sleep failed (%d)", ret);
-
-		LOG_INF("Woke up from SUSPEND_TO_IDLE");
-
-		/* 4. Verify SPI can resume */
-#ifdef SPI_PM_TEST
-		spi_pm_thread_resume();
-		k_sleep(K_SECONDS(2));
-		LOG_INF("SPI resumed successfully after SUSPEND_TO_IDLE");
-#endif
-	}
-}
-
-ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI, test_SPI_POS_03_suspend_to_idle_min_duration)
-{
-#define MIN_SLEEP_USEC (1 * 1000 * 1000)
-
-	LOG_INF("=== TEST 3: SUSPEND TO IDLE Minimum Sleep ((%d microseconds)) ===",
-		MIN_SLEEP_USEC);
-
-#ifdef SPI_PM_TEST
-	k_sleep(K_SECONDS(2));
-#endif
-
-	/* 3. Enter SUSPEND_TO_IDLE sleep */
-	LOG_INF("Enter SUSPEND_TO_IDLE for (%d microseconds)", MIN_SLEEP_USEC);
-
-	int ret = app_enter_normal_sleep(MIN_SLEEP_USEC);
-
-	zassert_equal(ret, 0, "app_enter_normal_sleep failed (%d)", ret);
-
-	LOG_INF("Woke up from SUSPEND_TO_IDLE");
-
-	/* 4. Verify SPI can resume */
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	k_sleep(K_SECONDS(2));
-	LOG_INF("SPI resumed successfully after SUSPEND_TO_IDLE");
-#endif
-}
-
-ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI, test_SPI_POS_04_suspend_to_idle_max_duration)
-{
-#define MAX_SLEEP_USEC (18 * 1000 * 1000)
-
-	LOG_INF("=== TEST 4: SUSPEND TO IDLE Maximum Sleep ((%d microseconds)) ===",
-		MAX_SLEEP_USEC);
-
-#ifdef SPI_PM_TEST
-	k_sleep(K_SECONDS(2));
-#endif
-
-	/* 3. Enter SUSPEND_TO_IDLE sleep */
-	LOG_INF("Enter SUSPEND_TO_IDLE for (%d microseconds)", MAX_SLEEP_USEC);
-
-	int ret = app_enter_normal_sleep(MAX_SLEEP_USEC);
-
-	zassert_equal(ret, 0, "app_enter_normal_sleep failed (%d)", ret);
-
-	LOG_INF("Woke up from SUSPEND_TO_IDLE");
-
-	/* 4. Verify SPI can resume */
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	k_sleep(K_SECONDS(2));
-	LOG_INF("SPI resumed successfully after SUSPEND_TO_IDLE");
-#endif
+	skip_if_no_suspend_idle();
+	do_suspend_to_idle(SUSPEND_IDLE_SLEEP_USEC);
 }
 
 ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI,
-test_SPI_POS_05_Runtime_Then_suspend_to_idle_sequence_test)
+	test_SPI_POS_02_suspend_to_idle_multiple_cycles)
 {
-	LOG_INF("=== TEST 1: Basic RUNTIME_IDLE ===");
-
-	/* Lock SUSPEND_IDLE to force PM policy to select RUNTIME_IDLE only */
-	pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-#ifdef SPI_PM_TEST
-	/* let SPI do some transactions. */
-	k_sleep(K_SECONDS(5));
-#endif
-
-	LOG_INF("Enter RUNTIME_IDLE sleep for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
-	ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
-	__ASSERT(ret == 0, "Could not enter RUNTIME_IDLE sleep (err %d)", ret);
-
-	LOG_INF("Exited from RUNTIME_IDLE sleep");
-
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	LOG_INF(" ====== SPI Transactions are starting...");
-	k_sleep(K_SECONDS(2));
-#endif
-
-	pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-	k_sleep(K_MSEC(50));
-
-	LOG_INF("=== TEST 2: SUSPEND_TO_IDLE Basic ===");
-
-#ifdef SPI_PM_TEST
-	k_sleep(K_SECONDS(2));
-#endif
-
-	/* 3. Enter SUSPEND_TO_IDLE sleep */
-	LOG_INF("Enter SUSPEND_TO_IDLE for (%d microseconds)", SUSPEND_IDLE_SLEEP_USEC);
-
-	int ret = app_enter_normal_sleep(SUSPEND_IDLE_SLEEP_USEC);
-
-	zassert_equal(ret, 0, "app_enter_normal_sleep failed (%d)", ret);
-
-	LOG_INF("Woke up from SUSPEND_TO_IDLE");
-
-	/* 4. Verify SPI can resume */
-#ifdef SPI_PM_TEST
-	spi_pm_thread_resume();
-	k_sleep(K_SECONDS(2));
-	LOG_INF("SPI resumed successfully after SUSPEND_TO_IDLE");
-#endif
-}
-
-ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_01_s2ram_standby_basic)
-{
-
-	LOG_INF("=== TEST 1: Basic S2RAM STANDBY ===");
-
-#if defined(CONFIG_RTSS_HE)
-
-	if (S2RAM_SUPPORTED) {
-
-		app_pm_lock_deeper_states(false);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
-			S2RAM_STANDBY_SLEEP_USEC);
-		ret = app_enter_deep_sleep(S2RAM_STANDBY_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
-
-		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
-
-		/* Verify main thread is running properly */
-		for (int i = 0; i < 3; i++) {
-			LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-				k_uptime_ticks());
-			k_sleep(K_SECONDS(2));
-		}
-
-		app_pm_lock_deeper_states(true);
-
-	} else {
-
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
-		ztest_test_skip();
-	}
-
-#elif defined(CONFIG_RTSS_HP)
-
-	LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-	ztest_test_skip();
-
-#endif
-}
-
-ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_02_s2ram_standby_multiple_cycles)
-{
-
-#define NUM_CYCLES 3
-
-	LOG_INF("=== TEST 2: Multiple S2RAM STANDBY Cycles (%d) ===", NUM_CYCLES);
+	LOG_INF("=== TEST 2: SUSPEND_TO_IDLE for (%d cycles) ===", NUM_CYCLES);
+	skip_if_no_suspend_idle();
 
 	for (int cycle = 0; cycle < NUM_CYCLES; cycle++) {
-
-#if defined(CONFIG_RTSS_HE)
-
-		if (S2RAM_SUPPORTED) {
-
-			app_pm_lock_deeper_states(false);
-
-#ifdef SPI_PM_TEST
-			k_sleep(K_SECONDS(5));
-#endif
-
-			LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d "
-				"microseconds)",
-				S2RAM_STANDBY_SLEEP_USEC);
-			ret = app_enter_deep_sleep(S2RAM_STANDBY_SLEEP_USEC);
-			__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
-
-			LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) "
-				"===");
-
-			/* Verify main thread is running properly */
-			for (int i = 0; i < 3; i++) {
-				LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-					k_uptime_ticks());
-				k_sleep(K_SECONDS(2));
-			}
-
-			app_pm_lock_deeper_states(true);
-
-		} else {
-
-			LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
-			ztest_test_skip();
-		}
-
-#elif defined(CONFIG_RTSS_HP)
-
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-		ztest_test_skip();
-
-#endif
+		LOG_INF("--- Cycle %d of %d ---", cycle + 1, NUM_CYCLES);
+		do_suspend_to_idle(SUSPEND_IDLE_SLEEP_USEC);
 	}
 }
 
-ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_03_runtime_idle_then_s2ram_standby)
+ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI,
+	test_SPI_POS_03_suspend_to_idle_min_duration)
 {
-
-#if defined(CONFIG_RTSS_HE)
-
-	if (S2RAM_SUPPORTED) {
-
-		app_pm_lock_deeper_states(false);
-
-		LOG_INF("=== TEST 3: RUNTIME_IDLE then S2RAM STANDBY ===");
-
-		pm_policy_state_lock_get(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter RUNTIME_IDLE for (%d microseconds)", RUNTIME_IDLE_SLEEP_USEC);
-
-		ret = app_enter_normal_sleep(RUNTIME_IDLE_SLEEP_USEC);
-
-		__ASSERT(ret == 0, "Colud not enter RUNTIME IDLE (%d err)", ret);
-
-		LOG_INF("Exited from RUNTIME_IDLE");
-
-#ifdef SPI_PM_TEST
-
-		spi_pm_thread_resume();
-		LOG_INF("====== SPI Transactions starting after RUNTIME_IDLE...");
-		k_sleep(K_SECONDS(2));
-
-#endif
-
-		pm_policy_state_lock_put(PM_STATE_SUSPEND_TO_IDLE, PM_ALL_SUBSTATES);
-
-		k_sleep(K_MSEC(50));
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d "
-			"microseconds)",
-			S2RAM_STANDBY_SLEEP_USEC);
-		ret = app_enter_deep_sleep(S2RAM_STANDBY_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
-
-		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) "
-			"===");
-
-		/* Verify main thread is running properly */
-		for (int i = 0; i < 3; i++) {
-			LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-				k_uptime_ticks());
-			k_sleep(K_SECONDS(2));
-		}
-
-		app_pm_lock_deeper_states(true);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-	} else {
-
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
-		ztest_test_skip();
-	}
-
-#elif defined(CONFIG_RTSS_HP)
-
-	LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-	ztest_test_skip();
-
-#endif
+	LOG_INF("=== TEST 3: SUSPEND_TO_IDLE min sleep (%d us) ===",
+		SUSPEND_IDLE_MIN_SLEEP_USEC);
+	skip_if_no_suspend_idle();
+	do_suspend_to_idle(SUSPEND_IDLE_MIN_SLEEP_USEC);
 }
 
-ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_04_s2ram_standby_min_sleep)
+ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI,
+	test_SPI_POS_04_suspend_to_idle_max_duration)
 {
-
-#define STANDBY_MIN_SLEEP_USEC (20 * 1000 * 1000)
-
-	LOG_INF("=== TEST 4: S2RAM STANDBY Min Sleep (%d us) ===", STANDBY_MIN_SLEEP_USEC);
-
-#if defined(CONFIG_RTSS_HE)
-
-	if (S2RAM_SUPPORTED) {
-
-		app_pm_lock_deeper_states(false);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
-			STANDBY_MIN_SLEEP_USEC);
-		ret = app_enter_deep_sleep(STANDBY_MIN_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
-
-		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
-
-		/* Verify main thread is running properly */
-		for (int i = 0; i < 3; i++) {
-			LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-				k_uptime_ticks());
-			k_sleep(K_SECONDS(2));
-		}
-
-		app_pm_lock_deeper_states(true);
-
-	} else {
-
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
-		ztest_test_skip();
-	}
-
-#elif defined(CONFIG_RTSS_HP)
-
-	LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-	ztest_test_skip();
-
-#endif
+	LOG_INF("=== TEST 4: SUSPEND_TO_IDLE max sleep (%d us) ===",
+		SUSPEND_IDLE_MAX_SLEEP_USEC);
+	skip_if_no_suspend_idle();
+	do_suspend_to_idle(SUSPEND_IDLE_MAX_SLEEP_USEC);
 }
 
-ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_05_s2ram_standby_max_sleep)
+ZTEST(pm_POS_02_Suspend_to_idle_testing_for_SPI,
+	test_SPI_POS_05_Runtime_Then_suspend_to_idle_sequence_test)
 {
+	LOG_INF("=== TEST 5: RUNTIME_IDLE then SUSPEND_TO_IDLE ===");
+	skip_if_no_suspend_idle();
 
-#define STANDBY_MAX_SLEEP_USEC (21 * 1000 * 1000)
-
-	LOG_INF("=== TEST 4: S2RAM STANDBY Max Sleep (%d us) ===", STANDBY_MAX_SLEEP_USEC);
-
-#if defined(CONFIG_RTSS_HE)
-
-	if (S2RAM_SUPPORTED) {
-
-		app_pm_lock_deeper_states(false);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
-			STANDBY_MAX_SLEEP_USEC);
-		ret = app_enter_deep_sleep(STANDBY_MAX_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
-
-		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
-
-		/* Verify main thread is running properly */
-		for (int i = 0; i < 3; i++) {
-			LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-				k_uptime_ticks());
-			k_sleep(K_SECONDS(2));
-		}
-
-		app_pm_lock_deeper_states(true);
-
-	} else {
-
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM boot)");
-		ztest_test_skip();
-	}
-
-#elif defined(CONFIG_RTSS_HP)
-
-	LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-	ztest_test_skip();
-
-#endif
+	do_runtime_idle(RUNTIME_IDLE_SLEEP_USEC);
+	k_sleep(K_MSEC(50));
+	do_suspend_to_idle(SUSPEND_IDLE_SLEEP_USEC);
 }
 
-ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_06_s2ram_standby_no_soft_off)
+/* ===========================================================================
+ * Suite 4: S2RAM STANDBY (retained RAM builds: HE TCM)
+ * ===========================================================================
+ */
+ZTEST(pm_POS_04_STANDBY_testing_for_SPI, test_SPI_POS_01_s2ram_standby_basic)
 {
-
-	LOG_INF("=== TEST 6: Verify SOFT_OFF Blocked During S2RAM STANDBY ===");
-
-#if defined(CONFIG_RTSS_HE)
-
-	if (S2RAM_SUPPORTED) {
-
-		zassert_equal(SOFT_OFF_SUPPORTED, 0,
-			      "SOFT_OFF should not be supported on TCM boot");
-
-		app_pm_lock_deeper_states(false);
-
-		/* Verify SOFT_OFF is locked - TCM boot should never use SOFT_OFF */
-		zassert_false(
-			pm_policy_state_lock_is_active(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES),
-			"SOFT_OFF should be locked during S2RAM STANDBY test");
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) for (%d microseconds)",
-			S2RAM_STANDBY_SLEEP_USEC);
-		ret = app_enter_deep_sleep(S2RAM_STANDBY_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter PM_STATE_SUSPEND_TO_RAM (err %d)", ret);
-
-		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 0: STANDBY) ===");
-
-		/* Verify SOFT_OFF still locked after wakeup */
-		zassert_false(
-			pm_policy_state_lock_is_active(PM_STATE_SUSPEND_TO_RAM, PM_ALL_SUBSTATES),
-			"SOFT_OFF should be locked during S2RAM STANDBY test");
-
-		/* Verify main thread is running properly */
-		for (int i = 0; i < 3; i++) {
-			LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-				k_uptime_ticks());
-			k_sleep(K_SECONDS(2));
-		}
-
-		LOG_INF("PASS: SOFT_OFF correctly blocked during S2RAM STANDBY");
-
-		app_pm_lock_deeper_states(true);
-	} else {
-
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM BOOT)");
-		ztest_test_skip();
-	}
-
-#elif defined(CONFIG_RTSS_HP)
-
-	LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-	ztest_test_skip();
-
-#endif
+	LOG_INF("=== TEST 1: Basic S2RAM STANDBY ===");
+	skip_if_no_s2ram();
+	do_s2ram_standby(S2RAM_STANDBY_SLEEP_USEC, false);
 }
 
+ZTEST(pm_POS_04_STANDBY_testing_for_SPI,
+	test_SPI_POS_02_s2ram_standby_multiple_cycles)
+{
+	LOG_INF("=== TEST 2: Multiple S2RAM STANDBY Cycles (%d) ===",
+		NUM_CYCLES);
+	skip_if_no_s2ram();
+
+	for (int cycle = 0; cycle < NUM_CYCLES; cycle++) {
+		LOG_INF("--- Cycle %d of %d ---", cycle + 1, NUM_CYCLES);
+		do_s2ram_standby(S2RAM_STANDBY_SLEEP_USEC, false);
+	}
+}
+
+ZTEST(pm_POS_04_STANDBY_testing_for_SPI,
+	test_SPI_POS_03_runtime_idle_then_s2ram_standby)
+{
+	LOG_INF("=== TEST 3: RUNTIME_IDLE then S2RAM STANDBY ===");
+	skip_if_no_s2ram();
+
+	do_runtime_idle(RUNTIME_IDLE_SLEEP_USEC);
+	k_sleep(K_MSEC(50));
+	do_s2ram_standby(S2RAM_STANDBY_SLEEP_USEC, false);
+}
+
+ZTEST(pm_POS_04_STANDBY_testing_for_SPI,
+	test_SPI_POS_04_s2ram_standby_min_sleep)
+{
+	LOG_INF("=== TEST 4: S2RAM STANDBY min sleep (%d us) ===",
+		S2RAM_STANDBY_MIN_SLEEP_USEC);
+	skip_if_no_s2ram();
+	do_s2ram_standby(S2RAM_STANDBY_MIN_SLEEP_USEC, false);
+}
+
+ZTEST(pm_POS_04_STANDBY_testing_for_SPI,
+	test_SPI_POS_05_s2ram_standby_max_sleep)
+{
+	LOG_INF("=== TEST 5: S2RAM STANDBY max sleep (%d us) ===",
+		S2RAM_STANDBY_MAX_SLEEP_USEC);
+	skip_if_no_s2ram();
+	do_s2ram_standby(S2RAM_STANDBY_MAX_SLEEP_USEC, false);
+}
+
+ZTEST(pm_POS_04_STANDBY_testing_for_SPI,
+	test_SPI_POS_06_s2ram_standby_no_soft_off)
+{
+	LOG_INF("=== TEST 6: SOFT_OFF blocked during S2RAM STANDBY ===");
+	skip_if_no_s2ram();
+
+	zassert_false(SOFT_OFF_SUPPORTED,
+		      "SOFT_OFF must not be used with retained RAM");
+	do_s2ram_standby(S2RAM_STANDBY_SLEEP_USEC, true);
+}
+
+/* ===========================================================================
+ * Suite 5: S2RAM STOP
+ * ===========================================================================
+ */
 ZTEST(pm_POS_05_STOP_testing_for_SPI, test_SPI_POS_01_s2ram_stop_basic)
 {
-
 	LOG_INF("=== TEST 1: Basic S2RAM STOP ===");
+	skip_if_no_s2ram();
+	do_s2ram_stop(S2RAM_STOP_SLEEP_USEC, false);
+}
 
-#if defined(CONFIG_RTSS_HE)
+ZTEST(pm_POS_05_STOP_testing_for_SPI,
+	test_SPI_POS_02_s2ram_stop_multiple_cycles)
+{
+	LOG_INF("=== TEST 2: Multiple S2RAM STOP Cycles (%d) ===", NUM_CYCLES);
+	skip_if_no_s2ram();
 
-	if (S2RAM_SUPPORTED) {
-
-		app_pm_lock_deeper_states(false);
-
-#ifdef SPI_PM_TEST
-		k_sleep(K_SECONDS(5));
-#endif
-
-		LOG_INF("Enter PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) for (%d "
-			"microseconds)",
-			S2RAM_STOP_SLEEP_USEC);
-
-		ret = app_enter_deep_sleep(S2RAM_STOP_SLEEP_USEC);
-
-		__ASSERT(ret == 0, "Could not enter in STOP mode");
-
-		LOG_INF("=== Resumed from PM_STATE_SUSPEND_TO_RAM (substate 1: STOP) "
-			"===");
-
-		/* Verify main thread is running properly */
-		for (int i = 0; i < 3; i++) {
-			LOG_INF("Main thread running - iteration %d - tick: %llu", i,
-				k_uptime_ticks());
-			k_sleep(K_SECONDS(2));
-		}
-
-		app_pm_lock_deeper_states(true);
-
-	} else {
-		LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM (MRAM BOOT)");
-		ztest_test_skip();
+	for (int cycle = 0; cycle < NUM_CYCLES; cycle++) {
+		LOG_INF("--- Cycle %d of %d ---", cycle + 1, NUM_CYCLES);
+		do_s2ram_stop(S2RAM_STOP_SLEEP_USEC, false);
 	}
+}
 
-#elif defined(CONFIG_RTSS_HP)
+ZTEST(pm_POS_05_STOP_testing_for_SPI,
+	test_SPI_POS_03_runtime_idle_then_s2ram_stop)
+{
+	LOG_INF("=== TEST 3: RUNTIME_IDLE then S2RAM STOP ===");
+	skip_if_no_s2ram();
 
-	LOG_INF("Skipping PM_STATE_SUSPEND_TO_RAM Not supported for HP");
-	ztest_test_skip();
+	do_runtime_idle(RUNTIME_IDLE_SLEEP_USEC);
+	k_sleep(K_MSEC(50));
+	do_s2ram_stop(S2RAM_STOP_SLEEP_USEC, false);
+}
 
-#endif
+ZTEST(pm_POS_05_STOP_testing_for_SPI, test_SPI_POS_04_s2ram_stop_min_sleep)
+{
+	LOG_INF("=== TEST 4: S2RAM STOP min sleep (%d us) ===",
+		S2RAM_STOP_MIN_SLEEP_USEC);
+	skip_if_no_s2ram();
+	do_s2ram_stop(S2RAM_STOP_MIN_SLEEP_USEC, false);
+}
+
+ZTEST(pm_POS_05_STOP_testing_for_SPI, test_SPI_POS_05_s2ram_stop_max_sleep)
+{
+	LOG_INF("=== TEST 5: S2RAM STOP max sleep (%d us) ===",
+		S2RAM_STOP_MAX_SLEEP_USEC);
+	skip_if_no_s2ram();
+	do_s2ram_stop(S2RAM_STOP_MAX_SLEEP_USEC, false);
+}
+
+ZTEST(pm_POS_05_STOP_testing_for_SPI, test_SPI_POS_06_s2ram_stop_no_soft_off)
+{
+	LOG_INF("=== TEST 6: Verify SOFT_OFF Blocked During S2RAM STOP ===");
+	skip_if_no_s2ram();
+
+	zassert_false(SOFT_OFF_SUPPORTED,
+		      "SOFT_OFF must not be used with retained RAM");
+	do_s2ram_stop(S2RAM_STOP_SLEEP_USEC, true);
+}
+
+ZTEST(pm_POS_05_STOP_testing_for_SPI, test_SPI_POS_07_s2ram_standby_then_stop)
+{
+	LOG_INF("=== TEST 7: S2RAM STANDBY then S2RAM STOP ===");
+	skip_if_no_s2ram();
+
+	do_s2ram_standby(S2RAM_STANDBY_SLEEP_USEC, false);
+	k_sleep(K_MSEC(50));
+	do_s2ram_stop(S2RAM_STOP_SLEEP_USEC, false);
+}
+
+/*
+ * Both substates unlocked, sleep shorter than stop_s2ram min-residency:
+ * the policy must pick STANDBY, not STOP.
+ */
+ZTEST(pm_POS_05_STOP_testing_for_SPI,
+	test_SPI_POS_08_s2ram_stop_below_min_residency)
+{
+	int ret;
+
+	LOG_INF("=== TEST 8: below STOP residency (%d us) => STANDBY ===",
+		S2RAM_STOP_BELOW_RESIDENCY_USEC);
+	skip_if_no_s2ram();
+
+	spi_round("before S2RAM (below STOP residency)");
+
+	app_pm_lock_deeper_states(false);
+	zassert_false(pm_policy_state_lock_is_active(PM_STATE_SUSPEND_TO_RAM,
+						     S2RAM_STOP_SUBSTATE),
+		      "S2RAM STOP is still locked");
+	pm_counters_reset();
+
+	LOG_INF("Request PM_STATE_SUSPEND_TO_RAM for (%d microseconds)",
+		S2RAM_STOP_BELOW_RESIDENCY_USEC);
+	ret = app_enter_deep_sleep(S2RAM_STOP_BELOW_RESIDENCY_USEC);
+	app_pm_lock_deeper_states(true);
+
+	zassert_equal(ret, 0, "Could not enter SUSPEND_TO_RAM (err %d)", ret);
+	zassert_equal(atomic_get(&s2ram_stop_cnt), 0,
+		      "STOP entered below min-residency");
+	zassert_true(atomic_get(&s2ram_standby_cnt) > 0,
+		     "STANDBY was not entered");
+	LOG_INF("PASS: policy selected STANDBY below STOP min-residency");
+
+	spi_round("after S2RAM (below STOP residency)");
 
 	LOG_INF("=== POWER STATE SEQUENCE COMPLETED ===");
 }
 
+/* ===========================================================================
+ * Suite 3: SOFT_OFF (no retained RAM: HE MRAM, HP MRAM)
+ *
+ * Wakeup from SOFT_OFF is a full reset, so the whole test run restarts.
+ * ===========================================================================
+ */
 ZTEST(pm_POS_03_SOFT_OFF__testing_for_SPI, test_SPI_POS_01_soft_off_basic)
 {
+	int ret;
 
-	app_pm_lock_deeper_states(false);
+	LOG_INF("=== TEST 1: Basic SOFT_OFF ===");
 
-	/* PM_STATE_SOFT_OFF (deepest sleep with wake capability) */
-#if defined(CONFIG_RTSS_HP)
-
-	if (!IS_BOOTING_FROM_MRAM()) {
-		LOG_ERR("HP core does not support PM_STATE_SOFT_OFF when booting from TCM");
+	if (!SOFT_OFF_SUPPORTED) {
+		LOG_INF("Skipping SOFT_OFF (retained RAM, using S2RAM)");
 		ztest_test_skip();
 	}
 
-	/* HP core: always SOFT_OFF */
-	LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
-	LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
+	spi_round("before SOFT_OFF");
+
+	app_pm_lock_deeper_states(false);
+
+	LOG_INF("Enter PM_STATE_SOFT_OFF for (%d us)", SOFT_OFF_SLEEP_USEC);
+	LOG_INF("Note: SOFT_OFF has no retention; reset on wakeup");
 	ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
-	__ASSERT(ret == 0, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
-
-	/* Should never reach here - SOFT_OFF causes full reset on wakeup */
-	LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
-	__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
-
-#elif defined(CONFIG_RTSS_HE)
-	/* HE core: only SOFT_OFF when booting from MRAM */
-	if (SOFT_OFF_SUPPORTED) {
-		LOG_INF("Enter PM_STATE_SOFT_OFF for (%d microseconds)", SOFT_OFF_SLEEP_USEC);
-		LOG_INF("Note: SOFT_OFF has no retention - system will reset on wakeup");
-		ret = app_enter_deep_sleep(SOFT_OFF_SLEEP_USEC);
-		__ASSERT(ret == 0, "Could not enter PM_STATE_SOFT_OFF (err %d)", ret);
-
-		/* Should never reach here - SOFT_OFF causes full reset on wakeup */
-		LOG_ERR("ERROR: Resumed after PM_STATE_SOFT_OFF - this should not happen!");
-		__ASSERT(false, "PM_STATE_SOFT_OFF should have caused a reset");
-	} else {
-		LOG_INF("Skipping PM_STATE_SOFT_OFF (TCM boot, using retention instead)");
-	}
-#endif
-
 	app_pm_lock_deeper_states(true);
+
+	zassert_equal(ret, 0, "Could not enter SOFT_OFF (err %d)", ret);
+	LOG_ERR("ERROR: Resumed after SOFT_OFF - should not happen");
+	zassert_unreachable("PM_STATE_SOFT_OFF should have caused a reset");
 }
 
-ZTEST_SUITE(pm_POS_01_Runtime_idle_testing_for_SPI, NULL, setup, before, after, teardown);
-ZTEST_SUITE(pm_POS_02_Suspend_to_idle_testing_for_SPI, NULL, NULL, before, after, teardown);
-ZTEST_SUITE(pm_POS_04_STANDBY_testing_for_SPI, NULL, NULL, before, after, teardown);
-ZTEST_SUITE(pm_POS_05_STOP_testing_for_SPI, NULL, NULL, before, after, teardown);
-ZTEST_SUITE(pm_POS_03_SOFT_OFF__testing_for_SPI, NULL, NULL, before, after, teardown);
+ZTEST_SUITE(pm_POS_01_Runtime_idle_testing_for_SPI, NULL,
+	    suite_setup, before, after, NULL);
+ZTEST_SUITE(pm_POS_02_Suspend_to_idle_testing_for_SPI, NULL,
+	    suite_setup, before, after, NULL);
+ZTEST_SUITE(pm_POS_04_STANDBY_testing_for_SPI, NULL,
+	    suite_setup, before, after, NULL);
+ZTEST_SUITE(pm_POS_05_STOP_testing_for_SPI, NULL,
+	    suite_setup, before, after, NULL);
+ZTEST_SUITE(pm_POS_03_SOFT_OFF__testing_for_SPI, NULL,
+	    suite_setup, before, after, NULL);
