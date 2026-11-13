@@ -21,8 +21,7 @@ Follow these steps to build the HWSEM application using the Alif Zephyr SDK:
 1. For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, please refer to the `ZAS User Guide`_.
 
 .. note::
-   The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   HWSEM is supported only on the Alif E7 DevKit. It is not supported on other boards.
 
 2. Build command for application on the hwsem0_test M55 HE core:
 

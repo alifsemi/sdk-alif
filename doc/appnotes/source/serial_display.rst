@@ -480,6 +480,10 @@ Follow these steps to build the CDC200 application using the Alif Zephyr SDK:
 
 2. Build command for the E7 HE application (2-lane):
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`Serial Display build commands <build-commands-serial-display>`.
+
 .. code-block:: console
 
    west build -p always \

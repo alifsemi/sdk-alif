@@ -108,11 +108,7 @@ Follow these steps to build the JPEG application using the Alif Zephyr SDK:
 For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr repository, refer to the `ZAS User Guide`_.
 
 .. note::
-   The build commands shown here are specifically for the Alif E8 boards.
-   To build the application for other boards, modify the board name in the
-   build command accordingly. For more information, refer to the
-   `ZAS User Guide`_, under the section
-   ``Setting Up and Building Zephyr Applications``.
+   JPEG Encoder is supported only on the Alif E8 DevKit. It is not supported on other boards.
 
 Standalone Static Image Test
 ----------------------------

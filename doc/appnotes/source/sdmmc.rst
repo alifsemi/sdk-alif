@@ -92,6 +92,10 @@ using the appropriate SoC variant below.
 
 Build for SoC variant ``ab1c1f1m41820hh0``, M55 HE core:
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`SDMMC build commands <build-commands-sdmmc>`.
+
 .. code-block:: console
 
    west build -p always \
