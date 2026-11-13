@@ -1,0 +1,6 @@
+name: lpi2s
+
+boards:
+  /(alif_b1|alif_e1c|alif_e3|alif_e4|alif_e5|alif_e6|alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_lpi2s.overlay

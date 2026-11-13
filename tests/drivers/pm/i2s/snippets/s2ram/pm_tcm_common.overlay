@@ -1,0 +1,82 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Residencies sit just under the HE test sleeps:
+ * standby 5 s, stop 8 s, soft-off 9 s.
+ * rtc0 is the wakeup source for every deep state.
+ */
+
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};
+
+&lpgpio {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "okay";
+};
+
+&suspend_idle {
+	status = "okay";
+};
+
+&standby_s2ram {
+	min-residency-us = <5000000>;
+	status = "okay";
+};
+
+&stop_s2ram {
+	min-residency-us = <8000000>;
+	status = "okay";
+};
+
+&subsys_off {
+	min-residency-us = <9000000>;
+	status = "okay";
+};
+
+&aipm_off {
+	vtor-address = <0x00000000>;
+	status = "okay";
+};
+
+&off_profile_standby {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+&off_profile_stop {
+	status = "okay";
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+&off_profile_soft_off {
+	status = "okay";
+	memory-blocks = <(ALIF_MRAM_MASK | ALIF_SERAM_MASK)>;
+	wakeup-events = <ALIF_WE_LPRTC>;
+	ewic-cfg = <ALIF_EWIC_RTC_A>;
+};
+
+/ {
+	chosen {
+		zephyr,cortex-m-idle-timer = &rtc0;
+		zephyr,console = &uart2;
+	};
+};

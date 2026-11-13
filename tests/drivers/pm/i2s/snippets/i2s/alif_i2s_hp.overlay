@@ -1,0 +1,38 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * E7/E8 HP, same routing as the I2S PM sample:
+ * i2s1 speaker (TX), i2s3 microphone (RX).
+ * Soft-off wakes from timer0. Suspend-to-idle keeps rtc0:
+ * the kernel programs that alarm with no callback, and the
+ * timer0 counter driver rejects that request.
+ */
+
+i2s_tx: &i2s1 {
+	status = "okay";
+};
+
+i2s_rx: &i2s3 {
+	status = "okay";
+};
+
+&timer0 {
+	status = "okay";
+};
+
+&utimer5 {
+	status = "disabled";
+};
+
+&off_profile_soft_off {
+	wakeup-events = <ALIF_WE_LPTIMER0>;
+	ewic-cfg = <ALIF_EWIC_VBAT_TIMER>;
+};
