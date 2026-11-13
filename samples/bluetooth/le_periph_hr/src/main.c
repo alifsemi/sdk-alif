@@ -10,11 +10,14 @@
 /*
  * This example will start an instance of a peripheral Heart Rate and send
  * periodic notification updates to the first device that connects to it.
- * A battery service is included in the sample.
+ * Battery and Device Information services are included in the sample.
  */
 
+#include <string.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/sys/printk.h>
+#include <se_service.h>
 #include "alif_ble.h"
 #include "gapm.h"
 #include "gap_le.h"
@@ -28,6 +31,8 @@
 #include "prf.h"
 #include "hrp_common.h"
 #include "hrps.h"
+#include "diss.h"
+#include "gatt.h"
 #include "batt_svc.h"
 #include "shared_control.h"
 #include <alif/bluetooth/bt_adv_data.h>
@@ -153,7 +158,7 @@ static const hrps_cb_t hrps_cb = {
 static uint16_t set_advertising_data(uint8_t actv_idx)
 {
 	int ret;
-	uint16_t svc[2];
+	uint16_t svc[3];
 	uint16_t comp_id = CONFIG_BLE_COMPANY_ID;
 
 	/* This sample write AD Name, Profile list and Company ID */
@@ -161,6 +166,7 @@ static uint16_t set_advertising_data(uint8_t actv_idx)
 	/* Define GATT profiles */
 	svc[0] = GATT_SVC_HEART_RATE;
 	svc[1] = get_batt_id();
+	svc[2] = GATT_SVC_DEVICE_INFO;
 
 	ret = bt_adv_data_set_tlv(GAP_AD_TYPE_COMPLETE_LIST_16_BIT_UUID, svc, sizeof(svc));
 	if (ret) {
@@ -215,6 +221,120 @@ static uint16_t hr_server_configure(void)
 	hrps_cfg.body_sensor_loc = BODY_SENSOR_LOCATION_CHEST;
 
 	return prf_add_profile(TASK_ID_HRPS, 0, 0, &hrps_cfg, &hrps_cb, &start_hdl);
+}
+
+static const char dis_manufacturer[] = "Alif Semiconductor";
+static char dis_model[sizeof(((get_device_revision_data_t *)0)->ALIF_PN) + 1];
+static char dis_serial_num[sizeof(((get_device_revision_data_t *)0)->SerialN) * 2 + 1];
+static char dis_fw_rev[VERSION_RESPONSE_LENGTH + 1];
+
+static void copy_se_string(char *dst, size_t dst_len, const volatile uint8_t *src,
+			   size_t src_len)
+{
+	size_t n = MIN(dst_len - 1, src_len);
+	size_t i;
+
+	for (i = 0; i < n; i++) {
+		uint8_t c = src[i];
+
+		if (c == '\0' || c < 0x20 || c > 0x7e) {
+			break;
+		}
+		dst[i] = (char)c;
+	}
+	dst[i] = '\0';
+}
+
+static void rtrim(char *s)
+{
+	size_t n = strlen(s);
+
+	while (n > 0 && (s[n - 1] == '\n' || s[n - 1] == '\r' || s[n - 1] == ' ')) {
+		s[--n] = '\0';
+	}
+}
+
+/* Read the part number, serial number and SE firmware banner once. */
+static void dis_load_device_info(void)
+{
+	get_device_revision_data_t data;
+	int ret;
+	size_t i;
+
+	ret = se_service_system_get_device_data(&data);
+	if (ret) {
+		LOG_ERR("DIS: device data read failed %d", ret);
+	} else {
+		copy_se_string(dis_model, sizeof(dis_model), data.ALIF_PN, sizeof(data.ALIF_PN));
+		for (i = 0; i < sizeof(data.SerialN); i++) {
+			snprintk(&dis_serial_num[i * 2], 3, "%02X", data.SerialN[i]);
+		}
+	}
+
+	memset(dis_fw_rev, 0, sizeof(dis_fw_rev));
+	ret = se_service_get_se_revision((uint8_t *)dis_fw_rev);
+	if (ret) {
+		LOG_ERR("DIS: SE revision read failed %d", ret);
+		dis_fw_rev[0] = '\0';
+	} else {
+		dis_fw_rev[VERSION_RESPONSE_LENGTH] = '\0';
+		rtrim(dis_fw_rev);
+	}
+
+	LOG_INF("DIS model '%s' serial '%s' fw '%s'", dis_model, dis_serial_num, dis_fw_rev);
+}
+
+static void on_diss_value_req(uint8_t conidx, uint8_t char_type, uint16_t token)
+{
+	const char *str = NULL;
+
+	switch (char_type) {
+	case DISS_CHAR_TYPE_MANUFACTURER_NAME:
+		str = dis_manufacturer;
+		break;
+	case DISS_CHAR_TYPE_MODEL_NUMBER:
+		str = dis_model;
+		break;
+	case DISS_CHAR_TYPE_SERIAL_NUMBER:
+		str = dis_serial_num;
+		break;
+	case DISS_CHAR_TYPE_FW_REVISION:
+		str = dis_fw_rev;
+		break;
+	default:
+		break;
+	}
+
+	uint16_t len = str ? strlen(str) : 0;
+	co_buf_t *p_buf = NULL;
+
+	if (co_buf_alloc(&p_buf, GATT_BUFFER_HEADER_LEN, len, GATT_BUFFER_TAIL_LEN) !=
+	    CO_BUF_ERR_NO_ERROR) {
+		return;
+	}
+	if (len) {
+		memcpy(co_buf_data(p_buf), str, len);
+	}
+	diss_value_cfm(conidx, token, p_buf);
+	co_buf_release(p_buf);
+}
+
+static const diss_cbs_t diss_cbs = {
+	.cb_value_req = on_diss_value_req,
+};
+
+static uint16_t configure_dis(void)
+{
+	uint16_t start_hdl = 0;
+
+	dis_load_device_info();
+	uint16_t char_type_bf = CO_BIT(DISS_CHAR_TYPE_MANUFACTURER_NAME) |
+				CO_BIT(DISS_CHAR_TYPE_MODEL_NUMBER) |
+				CO_BIT(DISS_CHAR_TYPE_SERIAL_NUMBER) |
+				CO_BIT(DISS_CHAR_TYPE_FW_REVISION);
+
+	return prf_add_profile(TASK_ID_DISS, GAP_SEC_NOT_ENC, 0, &char_type_bf, &diss_cbs,
+			       &start_hdl);
 }
 
 static void send_measurement(int16_t current_value)
@@ -370,6 +490,12 @@ int main(void)
 
 	/* Adding battery service */
 	config_battery_service();
+
+	err = configure_dis();
+	if (err) {
+		LOG_ERR("DIS configuration failed %u", err);
+		return -1;
+	}
 
 	hr_server_configure();
 
