@@ -3,8 +3,10 @@
 #
 # Twister test definitions for the Alif I2S driver test application.
 #
-# All entries apply the `i2s` snippet via SNIPPET=i2s so that the correct
-# devicetree overlay is selected per board (see snippets/i2s/snippet.yml).
+# Entries apply the `i2s` snippet (FIFO interrupt) via SNIPPET=i2s.
+# drivers.i2s.alif.loopback_dma and drivers.i2s.alif.golden_dma pass
+# SNIPPET=i2s-dma instead (see snippets/i2s-dma/snippet.yml).
+# Negative, stress, and performance stay on the FIFO path.
 #
 # Validation uses Zephyr's built-in ZTest harness only -- twister parses
 # the on-target ZTest output (PASS/FAIL/PROJECT EXECUTION ...) directly.
@@ -38,6 +40,70 @@ tests:
 
   drivers.i2s.alif.smoke: {}
 
+  # Negative cases, including underrun, overrun, and queue limits.
+  # The TX STOP/DRAIN half runs only when CONFIG_I2S_GPIO_LOOPBACK=y.
+  # Without that flag the test still passes; it does not skip.
+  drivers.i2s.alif.negative:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
+      - CONFIG_I2S_NEGATIVE_TESTS=y
+    timeout: 120
+
+  drivers.i2s.alif.negative_loopback:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
+      - CONFIG_I2S_NEGATIVE_TESTS=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+    timeout: 120
+    harness_config:
+      fixture: gpio_loopback
+
+  drivers.i2s.alif.stress:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
+      - CONFIG_I2S_NEGATIVE_TESTS=n
+      - CONFIG_I2S_STRESS_TESTS=y
+    timeout: 180
+
+  drivers.i2s.alif.stress_loopback:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
+      - CONFIG_I2S_NEGATIVE_TESTS=n
+      - CONFIG_I2S_STRESS_TESTS=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+    timeout: 180
+    harness_config:
+      fixture: gpio_loopback
+
+  drivers.i2s.alif.perf:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
+      - CONFIG_I2S_NEGATIVE_TESTS=n
+      - CONFIG_I2S_PERF_TESTS=y
+    timeout: 180
+
+  drivers.i2s.alif.perf_loopback:
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
+      - CONFIG_I2S_NEGATIVE_TESTS=n
+      - CONFIG_I2S_PERF_TESTS=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+    timeout: 180
+    harness_config:
+      fixture: gpio_loopback
+
   drivers.i2s.alif.features:
     extra_configs:
       - CONFIG_I2S_FUNCTIONAL_TESTS=y
@@ -57,6 +123,18 @@ tests:
     harness_config:
       fixture: gpio_loopback
 
+  # Loopback matrix on the DMA path. CONFIG_I2S_LOOPBACK excludes the
+  # golden sources, so golden DMA is a separate scenario.
+  drivers.i2s.alif.loopback_dma:
+    extra_args:
+      - SNIPPET=i2s-dma
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=y
+      - CONFIG_I2S_LOOPBACK=y
+      - CONFIG_I2S_GPIO_LOOPBACK=y
+    harness_config:
+      fixture: gpio_loopback
+
   drivers.i2s.alif.golden_verify:
     extra_configs:
       - CONFIG_I2S_GOLDEN_TESTS=y
@@ -64,6 +142,18 @@ tests:
       - CONFIG_I2S_LOOPBACK_VERIFY=y
     harness_config:
       fixture: gpio_loopback
+
+  # Golden-vector TX on the DMA path. No wire required.
+  # Add CONFIG_I2S_GPIO_LOOPBACK and CONFIG_I2S_LOOPBACK_VERIFY, and
+  # the gpio_loopback fixture, to check RX on hardware.
+  drivers.i2s.alif.golden_dma:
+    extra_args:
+      - SNIPPET=i2s-dma
+    extra_configs:
+      - CONFIG_I2S_FUNCTIONAL_TESTS=n
+      - CONFIG_I2S_GOLDEN_TESTS=y
+      - CONFIG_I2S_NEGATIVE_TESTS=n
+      - CONFIG_I2S_CONFIG_TESTS=n
 
   drivers.i2s.alif.play_hello:
     extra_configs:

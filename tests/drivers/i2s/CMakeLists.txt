@@ -17,7 +17,7 @@ target_sources(app PRIVATE
 )
 
 # Golden vectors: needed for loopback and golden-vector test builds
-if(CONFIG_I2S_LOOPBACK OR CONFIG_I2S_GOLDEN_TESTS)
+if(CONFIG_I2S_LOOPBACK OR CONFIG_I2S_GOLDEN_TESTS OR CONFIG_I2S_NEGATIVE_TESTS)
     target_sources(app PRIVATE
         src/common/i2s_golden_vectors.c
     )
@@ -87,11 +87,21 @@ endif()
 
 # Negative tests — excluded when any functional-only config is active
 if(CONFIG_I2S_NEGATIVE_TESTS AND NOT I2S_FUNCTIONAL)
-    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/negative/test_i2s_negative.c)
         target_sources(app PRIVATE
             src/negative/test_i2s_negative.c
         )
-    endif()
+endif()
+
+if(CONFIG_I2S_STRESS_TESTS AND NOT I2S_FUNCTIONAL)
+    target_sources(app PRIVATE
+        src/stress/test_i2s_stress.c
+    )
+endif()
+
+if(CONFIG_I2S_PERF_TESTS AND NOT I2S_FUNCTIONAL)
+    target_sources(app PRIVATE
+        src/performance/test_i2s_performance.c
+    )
 endif()
 
 # Configuration tests — excluded when any functional-only config is active

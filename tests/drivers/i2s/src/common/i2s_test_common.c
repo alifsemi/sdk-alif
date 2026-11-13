@@ -1,13 +1,17 @@
-/*
- * Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  * i2s_test_common.c - Helper implementations for the I2S test suite.
  */
 
 #include <string.h>
 #include <zephyr/kernel.h>
+#include <zephyr/sys/util.h>
 #include <zephyr/drivers/i2s.h>
 #include <zephyr/device.h>
 #include <zephyr/logging/log.h>
@@ -20,10 +24,19 @@ LOG_MODULE_REGISTER(i2s_test_common, LOG_LEVEL_INF);
  * Memory slabs (shared by golden-vector suite)
  * -------------------------------------------------------------------------
  */
-K_MEM_SLAB_DEFINE(g_tx_slab, I2S_GOLDEN_BLOCK_SIZE,
-		  I2S_GOLDEN_NUM_TX_BLOCKS, 4);
-K_MEM_SLAB_DEFINE(g_rx_slab, I2S_GOLDEN_BLOCK_SIZE,
-		  I2S_GOLDEN_NUM_RX_BLOCKS, 4);
+static uint8_t __nocache __aligned(WB_UP(4))
+	g_tx_buf[I2S_GOLDEN_NUM_TX_BLOCKS * WB_UP(I2S_GOLDEN_BLOCK_SIZE)];
+static uint8_t __nocache __aligned(WB_UP(4))
+	g_rx_buf[I2S_GOLDEN_NUM_RX_BLOCKS * WB_UP(I2S_GOLDEN_BLOCK_SIZE)];
+
+STRUCT_SECTION_ITERABLE(k_mem_slab, g_tx_slab) =
+	Z_MEM_SLAB_INITIALIZER(g_tx_slab, g_tx_buf,
+				WB_UP(I2S_GOLDEN_BLOCK_SIZE),
+				I2S_GOLDEN_NUM_TX_BLOCKS);
+STRUCT_SECTION_ITERABLE(k_mem_slab, g_rx_slab) =
+	Z_MEM_SLAB_INITIALIZER(g_rx_slab, g_rx_buf,
+				WB_UP(I2S_GOLDEN_BLOCK_SIZE),
+				I2S_GOLDEN_NUM_RX_BLOCKS);
 
 /* -------------------------------------------------------------------------
  * Device accessors
@@ -258,16 +271,17 @@ int i2s_golden_run(const struct device *dev, uint32_t rate, uint8_t word_size,
 		goto out_stop;
 	}
 
-	k_sleep(K_MSEC(drain_ms));
-
 	ret = i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_DRAIN);
 	if (ret == -ENOSYS || ret == -ENOTSUP) {
 		k_sleep(K_MSEC(drain_ms));
 		(void)i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_DROP);
-	} else if (ret < 0 && ret != -EIO) {
-		LOG_INF("[i2s-golden] TX DRAIN failed: %d\n", ret);
+	} else if (ret < 0) {
+		LOG_INF("TX DRAIN failed rate=%u bits=%u rc=%d",
+			(unsigned int)rate, (unsigned int)word_size, ret);
 		rc = ret;
 		goto out_stop;
+	} else {
+		k_sleep(K_MSEC(drain_ms));
 	}
 
 	LOG_INF("[i2s-golden] TX PASS rate=%u bits=%u\n",
@@ -330,4 +344,160 @@ out_reset:
 	k_sleep(K_MSEC(10));
 
 	return rc;
+}
+
+/* -------------------------------------------------------------------------
+ * Non-functional helpers (negative, stress, performance)
+ * -------------------------------------------------------------------------
+ */
+#define I2S_SLAB_DEFINE(name, block_size, num_blocks)			\
+	static uint8_t __nocache __aligned(WB_UP(4))			\
+		_##name##_buf[(num_blocks) * WB_UP(block_size)];	\
+	STRUCT_SECTION_ITERABLE(k_mem_slab, name) =			\
+		Z_MEM_SLAB_INITIALIZER(name, _##name##_buf,		\
+				       WB_UP(block_size), num_blocks)
+
+I2S_SLAB_DEFINE(i2s_tx_slab, I2S_MAX_BLOCK, I2S_SLAB_COUNT);
+I2S_SLAB_DEFINE(i2s_rx_slab, I2S_MAX_BLOCK, I2S_SLAB_COUNT);
+
+uint32_t i2s_tx_used(void)
+{
+	return k_mem_slab_num_used_get(&i2s_tx_slab);
+}
+
+uint32_t i2s_rx_used(void)
+{
+	return k_mem_slab_num_used_get(&i2s_rx_slab);
+}
+
+bool i2s_slabs_full(void)
+{
+	return i2s_tx_used() == 0U && i2s_rx_used() == 0U;
+}
+
+void i2s_setup_cfg(struct i2s_config *cfg, struct k_mem_slab *slab,
+		  uint32_t rate, uint8_t word_size, uint8_t channels,
+		  size_t block_size, int32_t timeout,
+		  i2s_fmt_t format, i2s_opt_t options)
+{
+	cfg->word_size = word_size;
+	cfg->channels = channels;
+	cfg->format = format;
+	cfg->options = options;
+	cfg->frame_clk_freq = rate;
+	cfg->mem_slab = slab;
+	cfg->block_size = block_size;
+	cfg->timeout = timeout;
+}
+
+void i2s_setup_default(struct i2s_config *cfg, struct k_mem_slab *slab)
+{
+	i2s_setup_cfg(cfg, slab, I2S_RATE_HZ, 16U, I2S_CHANNELS,
+		     i2s_block_bytes(I2S_FRAMES, 16U), I2S_XFER_TIMEOUT_MS,
+		     I2S_FMT_DATA_FORMAT_I2S,
+		     I2S_OPT_BIT_CLK_MASTER | I2S_OPT_FRAME_CLK_MASTER);
+}
+
+void i2s_stream_reset(const struct device *dev)
+{
+	struct i2s_config zero = { 0 };
+
+	(void)i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_DROP);
+	(void)i2s_trigger(dev, I2S_DIR_RX, I2S_TRIGGER_DROP);
+	(void)i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_PREPARE);
+	(void)i2s_trigger(dev, I2S_DIR_RX, I2S_TRIGGER_PREPARE);
+	(void)i2s_configure(dev, I2S_DIR_TX, &zero);
+	(void)i2s_configure(dev, I2S_DIR_RX, &zero);
+	k_sleep(K_MSEC(2));
+}
+
+int i2s_block_write(const struct device *dev, size_t size, uint8_t pattern)
+{
+	void *block = NULL;
+	int ret;
+
+	ret = k_mem_slab_alloc(&i2s_tx_slab, &block, K_NO_WAIT);
+	if (ret < 0) {
+		return ret;
+	}
+
+	memset(block, pattern, size);
+	ret = i2s_write(dev, block, size);
+	if (ret < 0) {
+		k_mem_slab_free(&i2s_tx_slab, block);
+	}
+	return ret;
+}
+
+int i2s_wait_ready(const struct device *dev, enum i2s_dir dir,
+		  const struct i2s_config *cfg, int32_t timeout_ms)
+{
+	int64_t end = k_uptime_get() + timeout_ms;
+
+	do {
+		int ret;
+
+		if (i2s_config_get(dev, dir) == NULL) {
+			return -EINVAL;
+		}
+
+		ret = i2s_configure(dev, dir, cfg);
+		if (ret == 0) {
+			return 0;
+		}
+		k_msleep(1);
+	} while (k_uptime_get() < end);
+
+	return -ETIMEDOUT;
+}
+
+int i2s_force_tx_error(const struct device *dev)
+{
+	struct i2s_config cfg;
+	int ret;
+
+	i2s_setup_default(&cfg, &i2s_tx_slab);
+	ret = i2s_configure(dev, I2S_DIR_TX, &cfg);
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = i2s_block_write(dev, cfg.block_size, 0x11);
+	if (ret != 0) {
+		return ret;
+	}
+
+	ret = i2s_trigger(dev, I2S_DIR_TX, I2S_TRIGGER_START);
+	if (ret != 0) {
+		return ret;
+	}
+
+	/* One block at 48 kHz is under a millisecond. Wait long enough for
+	 * the queue to empty and the driver to enter ERROR.
+	 */
+	k_msleep(50);
+
+	return i2s_block_write(dev, cfg.block_size, 0x22);
+}
+
+void i2s_tx_feed_fn(void *p1, void *p2, void *p3)
+{
+	struct i2s_tx_feed *feed = p1;
+
+	ARG_UNUSED(p2);
+	ARG_UNUSED(p3);
+
+	while (feed->run) {
+		int ret = i2s_block_write(feed->dev, feed->size, 0x5A);
+
+		if (ret == 0) {
+			feed->writes++;
+			continue;
+		}
+		if (ret == -EAGAIN || ret == -EBUSY || ret == -ENOMEM) {
+			continue;
+		}
+		feed->fail = ret;
+		break;
+	}
 }
