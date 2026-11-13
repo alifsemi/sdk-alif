@@ -17,7 +17,8 @@ find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(le_audio_auracast)
 
 target_sources(app PRIVATE
-    src/main.c
+    src/main.cpp
+    src/bluetooth.c
     src/audio_datapath.c
     src/auracast_shell.c
 )
@@ -27,3 +28,5 @@ target_sources_ifdef(CONFIG_AUDIO_DMIC app PRIVATE src/mic_source.c)
 add_subdirectory(auracast_source/)
 add_subdirectory(auracast_sink/)
 add_subdirectory(auracast_scan_delegator/)
+
+add_subdirectory_ifdef(CONFIG_TENSORFLOW_LITE_MICRO kws)

@@ -130,6 +130,33 @@ Configuration options:
     * - :file:`prj.conf`
       - This is the standard default config. Sampling frequency 48kHz, 10ms frame duration, 100 octets per codec frame. The default retransmissions are set to 4.
 
+NPU keyword spotting
+********************
+
+The ``npu`` snippet enables keyword spotting on the Ethos-U NPU. Build it
+with ``-S npu``:
+
+.. code-block:: console
+
+   west build -b <board> alif/samples/bluetooth/le_audio/auracast -S npu
+
+The snippet selects a 16 kHz sampling rate
+(:kconfig:option:`CONFIG_ALIF_BLE_AUDIO_FS_16KHZ`). Only 16 kHz is supported
+with the NPU build. Start the source with a 16 kHz codec configuration, for
+example ``16_2``:
+
+.. code-block:: console
+
+   auracast source MyStream --codec 16_2
+
+The microphone is classified continuously. A keyword is accepted when its
+confidence is at least 70%:
+
+* ``go`` starts mixing the microphone into the broadcast
+* ``stop`` stops the microphone mix
+* ``up`` increases the microphone gain
+* ``down`` decreases the microphone gain
+
 BAP defined Codec Configuration Settings
 ******************************************
 
