@@ -111,6 +111,12 @@ static int cmd_command_handler(const struct shell *sh, size_t argc, char **argv,
 	case 15:
 		shell_print(sh, "OS: ZEPHYR");
 		break;
+	case 16:
+		shell_print(sh, "Build time: " __DATE__ " " __TIME__ "\n");
+		break;
+	case 17:
+		shell_print(sh, "GIT: " APP_VERSION);
+		break;
 	default:
 		return -1;
 	}
@@ -123,6 +129,7 @@ SHELL_SUBCMD_DICT_SET_CREATE(sub_commands, cmd_command_handler, (cpuid, 1, NULL)
 			     (mem_dtcm4, 5, NULL), (mem_dtcm5, 6, NULL), (mem_itcm1, 7, NULL),
 			     (mem_itcm2, 8, NULL), (mem_itcm3, 9, NULL), (mem_itcm4, 10, NULL),
 			     (cpu_clk, 11, NULL), (run_mode, 12, NULL), (compiler, 13, NULL),
-			     (board, 14, NULL), (os, 15, NULL));
+			     (board, 14, NULL), (os, 15, NULL), (buildtime, 16, NULL),
+			     (git, 17, NULL));
 
 SHELL_CMD_REGISTER(command, &sub_commands, NULL, NULL);
