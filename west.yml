@@ -91,7 +91,7 @@ manifest:
 
     - name: aipl
       repo-path: alif_image-processing-lib
-      revision: b4444c0504be3a1eed4a0655c9a95fe343706dcb
+      revision: pull/11/head
       path: modules/lib/aipl
 
   self:

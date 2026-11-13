@@ -83,8 +83,6 @@ void crop_bayer8_inplace_topleft(
     int crop_width,
     int crop_height);
 void raw10_gray16le_bytes_to_raw8_inplace_mve(uint8_t *buf, size_t n_pixels);
-void rgb888_planar_to_packed(const uint8_t *src, uint8_t *dst,
-			     uint32_t width, uint32_t height);
 const float *camera_get_color_correction_matrix(void);
 uint8_t *camera_get_gamma_lut(void);
 
