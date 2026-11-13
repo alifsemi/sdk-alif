@@ -13,47 +13,70 @@ LOG_MODULE_DECLARE(ALIF_CMP);
 
 ZTEST(cmp_Filter, test_Comp_filter_taps_4)
 {
+#if !CMP_HAS_FILTER_TAPS
+	ztest_test_skip();
+#else
 	if (CMP_FILTER_TAPS != 4) {
 		ztest_test_skip();
 	}
 	Comp_func(3);
+#endif
 }
 
 ZTEST(cmp_Filter, test_Comp_filter_taps_3)
 {
+#if !CMP_HAS_FILTER_TAPS
+	ztest_test_skip();
+#else
 	if (CMP_FILTER_TAPS != 3) {
 		ztest_test_skip();
 	}
 	Comp_func(5);
+#endif
 }
 
 ZTEST(cmp_Filter, test_Comp_filter_taps_2)
 {
+#if !CMP_HAS_FILTER_TAPS
+	ztest_test_skip();
+#else
 	if (CMP_FILTER_TAPS != 2) {
 		ztest_test_skip();
 	}
 	Comp_func(5);
+#endif
 }
 
 ZTEST(cmp_Filter, test_Comp_filter_taps_1)
 {
+#if !CMP_HAS_FILTER_TAPS
+	ztest_test_skip();
+#else
 	if (CMP_FILTER_TAPS != 1) {
 		ztest_test_skip();
 	}
 	Comp_func(4);
+#endif
 }
 
 ZTEST(cmp_Filter, test_Comp_filter_taps_invalid)
 {
+#if !CMP_HAS_FILTER_TAPS
+	ztest_test_skip();
+#else
 	if (CMP_FILTER_TAPS >= 1 && CMP_FILTER_TAPS <= 4) {
 		ztest_test_skip();
 	}
 	zassert_true((CMP_FILTER_TAPS < 1) || (CMP_FILTER_TAPS > 4),
 		"Expected invalid filter taps configuration");
+#endif
 }
 
 ZTEST(cmp_Filter, test_Comp_Int_gen_after_filtering)
 {
+#if !CMP_HAS_FILTER_TAPS
+	ztest_test_skip();
+#else
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret;
 
@@ -64,6 +87,7 @@ ZTEST(cmp_Filter, test_Comp_Int_gen_after_filtering)
 	zassert_equal(ret, 0, "set_trigger failed (%d)", ret);
 
 	Comp_func(3);
+#endif
 }
 
 ZTEST_SUITE(cmp_Filter, NULL, NULL, NULL, NULL, NULL);
