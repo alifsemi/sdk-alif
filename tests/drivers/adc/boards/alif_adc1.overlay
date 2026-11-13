@@ -11,3 +11,28 @@
 &adc1 {
 	status = "okay";
 };
+
+/*
+ * ADC1 channels 2 and 3 are P1_0 and P1_1, which are also UART2 RX/TX
+ * (the RTSS-HE console). Leave those pins as UART so the boot banner
+ * and ztest log stay visible. Channels 0, 1, 4, and 5 are unchanged.
+ */
+&pinctrl_adc1 {
+	group0 {
+		pinmux = <PIN_P0_6__ANA_S6>,
+			 <PIN_P0_7__ANA_S7>,
+			 <PIN_P1_2__ANA_S10>,
+			 <PIN_P1_3__ANA_S11>;
+		read-enable = <1>;
+	};
+};
+
+&pinctrl_adc1_sleep {
+	group0 {
+		pinmux = <PIN_P0_6__GPIO>,
+			 <PIN_P0_7__GPIO>,
+			 <PIN_P1_2__GPIO>,
+			 <PIN_P1_3__GPIO>;
+		read-enable = <1>;
+	};
+};
