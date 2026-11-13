@@ -1,0 +1,26 @@
+/*
+ * Copyright (c) 2026 Alif Semiconductor
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
+&ns {
+	status = "okay";
+};
+
+/ {
+	cdc_ncm_eth0: cdc_ncm_eth0 {
+		compatible = "zephyr,cdc-ncm-ethernet";
+		local-mac-address = [02 00 00 00 00 01];
+		remote-mac-address = "00005E005301";
+	};
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
