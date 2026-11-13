@@ -1,0 +1,41 @@
+/*
+ * Copyright (C) 2025 Alif Semiconductor
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+&i2c1 {
+	status = "okay";
+	gt911: gt911@5d{
+		compatible = "goodix,gt911";
+		reg = <0x5d>;
+		reset-gpios = <&gpio4 0 GPIO_ACTIVE_LOW>;
+		irq-gpios = <&gpio9 4 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+&pinctrl_gpio4 {
+	group0 {
+		/* Enable only Port-4 Pin-0 */
+		pinmux = <PIN_P4_0__GPIO>;
+	};
+};
+
+&gpio4 {
+	pinctrl-0	= <&pinctrl_gpio4>;
+	pinctrl-names   = "default";
+	status          = "okay";
+};
+
+&pinctrl_gpio9 {
+	group0 {
+		/* Enable only Port-9 Pin-4 */
+		pinmux = <PIN_P9_4__GPIO>;
+	};
+};
+
+&gpio9 {
+	pinctrl-0	= <&pinctrl_gpio9>;
+	pinctrl-names   = "default";
+	status          = "okay";
+};
