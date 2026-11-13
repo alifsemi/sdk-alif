@@ -1,0 +1,31 @@
+/*
+ * Copyright (c) 2026 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+ns: &ns {
+	status = "okay";
+};
+
+&gpio13 {
+	status = "okay";
+};
+
+&sd_pwr {
+	enable-gpios = <&gpio13 2 GPIO_ACTIVE_HIGH>;
+};
+
+&sd_vsel {
+	gpios = <&gpio6 6 GPIO_ACTIVE_HIGH>;
+};
+
+sdhc: &sdhc {
+	status = "okay";
+	/delete-property/ cd-gpios;
+
+	mmc {
+		compatible = "zephyr,mmc-disk";
+		disk-name = "SD2";
+		status = "okay";
+	};
+};
