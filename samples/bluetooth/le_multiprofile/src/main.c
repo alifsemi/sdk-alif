@@ -86,11 +86,8 @@
 /* LED0: controlled by BLE (blinky service)
  * LED2: connection status indicator (blinks while advertising)
  */
-#define LED0_NODE DT_ALIAS(led0)
-#define LED2_NODE DT_ALIAS(led2)
-
-static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
+static const struct gpio_dt_spec led0 = BLE_GPIO_LED_SPEC(led0);
+static const struct gpio_dt_spec led2 = BLE_GPIO_LED_SPEC(led2);
 
 
 void LedWorkerHandler(struct k_work *work);

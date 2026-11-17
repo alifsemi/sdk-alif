@@ -160,11 +160,12 @@ static gapm_user_cb_t gapm_user_cb = {
 };
 
 #if defined(CONFIG_IUT_TESTER_ENABLED)
+static uint32_t sw0_idx;
 K_SEM_DEFINE(store_update_sem, 0, 1);
 void ButtonUpdateHandler(uint32_t button_state, uint32_t has_changed)
 {
-	if (has_changed & 1) {
-		if (!(button_state & 1)) {
+	if (has_changed & sw0_idx) {
+		if (!(button_state & sw0_idx)) {
 			k_sem_give(&store_update_sem);
 		}
 	}
@@ -183,6 +184,7 @@ int main(void)
 		LOG_ERR("Button Init fail %d", ret);
 		return ret;
 	}
+	sw0_idx = BLE_GPIO_BUTTON_MASK(sw0);
 #endif
 
 	ble_storage_init();

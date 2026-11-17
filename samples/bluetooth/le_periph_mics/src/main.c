@@ -70,6 +70,7 @@ struct service_env {
 };
 
 static uint8_t conn_status = BT_CONN_STATE_DISCONNECTED;
+static uint32_t sw_mask;
 
 static const gapc_le_con_param_nego_with_ce_len_t app_preferred_connection_param = {
 	.ce_len_min = 5,
@@ -88,8 +89,8 @@ void led_work_handler(struct k_work *work);
 
 static K_WORK_DELAYABLE_DEFINE(led_work, led_work_handler);
 
-static const struct gpio_dt_spec mute_led = GPIO_DT_SPEC_GET(DT_ALIAS(ledred), gpios);
-static const struct gpio_dt_spec ble_led = GPIO_DT_SPEC_GET(DT_ALIAS(ledblue), gpios);
+static const struct gpio_dt_spec mute_led = BLE_GPIO_LED_SPEC(ledred);
+static const struct gpio_dt_spec ble_led = BLE_GPIO_LED_SPEC(ledblue);
 
 static struct connection_status app_con_info = {
 	.conidx = GAP_INVALID_CONIDX,
@@ -182,9 +183,9 @@ void button_update_handler(uint32_t button_state, uint32_t has_changed)
 		return;
 	}
 
-	if (has_changed & 1) {
+	if (has_changed & sw_mask) {
 		/* Press Button Update toggle led when state goes to 0 */
-		if (!(button_state & 1)) {
+		if (!(button_state & sw_mask)) {
 			/* Toggle Light onOff server state */
 			uint8_t new_state;
 
@@ -297,6 +298,7 @@ int main(void)
 		LOG_ERR("Button Init fail %u", err);
 		return -1;
 	}
+	sw_mask = BLE_GPIO_BUTTON_MASK(sw0);
 
 	err = ble_gpio_led_init();
 

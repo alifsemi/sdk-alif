@@ -38,6 +38,10 @@
 #define BUTTON_LEFT    4  /* SW3 */
 #define BUTTON_DOWN    2  /* SW4 */
 
+static uint32_t pressed_idx;
+static uint32_t up_idx;
+static uint32_t down_idx;
+
 /* Bluetooth stack configuration*/
 static gapm_config_t gapm_cfg = {
 	.role = GAP_ROLE_LE_PERIPHERAL,
@@ -98,9 +102,9 @@ static void led_worker_handler(struct k_work *work);
 
 static K_WORK_DELAYABLE_DEFINE(ledWork, led_worker_handler);
 
-static const struct gpio_dt_spec activeLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledgreen), gpios);
-static const struct gpio_dt_spec muteLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledred), gpios);
-static const struct gpio_dt_spec bleLed = GPIO_DT_SPEC_GET(DT_ALIAS(ledblue), gpios);
+static const struct gpio_dt_spec activeLed = BLE_GPIO_LED_SPEC(ledgreen);
+static const struct gpio_dt_spec muteLed = BLE_GPIO_LED_SPEC(ledred);
+static const struct gpio_dt_spec bleLed = BLE_GPIO_LED_SPEC(ledblue);
 
 /* Macros */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -352,23 +356,24 @@ static uint16_t service_init(void)
 
 static void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
+
 #if defined(CONFIG_IUT_TESTER_ENABLED)
-	if (has_changed & BUTTON_PRESSED) {
+	if (has_changed & pressed_idx) {
 		/* Press Button Update toggle led when state goes to 0 */
-		if (!(button_state & BUTTON_PRESSED)) {
+		if (!(button_state & pressed_idx)) {
 			test_setup_activate();
 		}
 	}
 
-	if (has_changed & BUTTON_UP) {
-		if (!(button_state & BUTTON_UP)) {
+	if (has_changed & up_idx) {
+		if (!(button_state & up_idx)) {
 			test_case_toggle();
 		}
 	}
 #else
-	if (has_changed & BUTTON_PRESSED) {
+	if (has_changed & pressed_idx) {
 		/* Press Button Update toggle led when state goes to 0 */
-		if (!(button_state & BUTTON_PRESSED)) {
+		if (!(button_state & pressed_idx)) {
 			if (env.mute == 0) {
 				LOG_INF("Mute vcs");
 				arc_vcs_mute();
@@ -381,15 +386,15 @@ static void button_update_handler(uint32_t button_state, uint32_t has_changed)
 		}
 	}
 
-	if (has_changed & BUTTON_UP) {
-		if (!(button_state & BUTTON_UP)) {
+	if (has_changed & up_idx) {
+		if (!(button_state & up_idx)) {
 			LOG_INF("Volume UP");
 			arc_vcs_volume_increase();
 		}
 	}
 
-	if (has_changed & BUTTON_DOWN) {
-		if (!(button_state & BUTTON_DOWN)) {
+	if (has_changed & down_idx) {
+		if (!(button_state & down_idx)) {
 			LOG_INF("Volume Down");
 			arc_vcs_volume_decrease();
 		}
@@ -460,6 +465,10 @@ int main(void)
 		LOG_ERR("Button Init fail %u", err);
 		return -1;
 	}
+	/* Get button indexes. SW5/SW1/SW4 are the sw0/sw1/sw4 aliases. */
+	pressed_idx = BLE_GPIO_BUTTON_MASK(sw0);
+	up_idx = BLE_GPIO_BUTTON_MASK(sw1);
+	down_idx = BLE_GPIO_BUTTON_MASK(sw4);
 
 	err = ble_gpio_led_init();
 
