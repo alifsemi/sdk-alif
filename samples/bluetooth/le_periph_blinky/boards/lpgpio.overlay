@@ -27,6 +27,7 @@
 		compatible = "gpio-keys";
 		button0: button_0 {
 			gpios = <&lpgpio 1 GPIO_ACTIVE_LOW>;
+			label = "SW0";
 		};
 	};
 };

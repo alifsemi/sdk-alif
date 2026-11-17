@@ -273,12 +273,13 @@ static void server_configure(void)
 }
 
 #if defined(CONFIG_IUT_TESTER_ENABLED)
+static uint32_t sw0_mask;
 static void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
 	uint16_t err;
 
-	if (has_changed & 1) {
-		if (!(button_state & 1)) {
+	if (has_changed & sw0_mask) {
+		if (!(button_state & sw0_mask)) {
 			/* Button pressed (active low) */
 			LOG_INF("Button 0 pressed - attempting to send PLX Features indication");
 
@@ -420,6 +421,8 @@ int main(void)
 		LOG_ERR("Button Init fail 0x%" PRIx16, err);
 		return -1;
 	}
+
+	sw0_mask = BLE_GPIO_BUTTON_MASK(sw0);
 #endif
 
 	/* Start up bluetooth host stack */
