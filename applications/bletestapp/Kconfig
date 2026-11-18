@@ -6,6 +6,22 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
+if BT
+
+config BT_ZEPHYR
+	bool "Use Zephyr BLE host stack"
+	help
+	  Build with the Zephyr BLE host stack over HCI instead of the
+	  default Ceva (Alif ROM) BLE host stack.
+
+# Must precede Kconfig.zephyr: the first matching choice default wins.
+choice BT_STACK_SELECTION
+	default BT_HCI if BT_ZEPHYR
+	default BT_CUSTOM
+endchoice
+
+endif # BT
+
 source "Kconfig.zephyr"
 
 config DATA_STRING_LENGTH
