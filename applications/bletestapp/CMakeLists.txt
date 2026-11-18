@@ -14,6 +14,11 @@ target_sources(app PRIVATE
     src/main.c
     src/appl_shell.c
     src/power_mgr.c
-    src/ble_handler.c
     src/power_shell.c
 )
+
+if(CONFIG_BT_CUSTOM)
+    target_sources(app PRIVATE src/ble_handler.c)
+else()
+    target_sources(app PRIVATE src/ble_handler_zephyr.c)
+endif()

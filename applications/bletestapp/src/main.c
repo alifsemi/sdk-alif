@@ -23,8 +23,6 @@
 #include <se_service.h>
 #include <es0_power_manager.h>
 
-#include "ke_mem.h"
-
 #include "appl_shell.h"
 #include "power_mgr.h"
 #include "ble_handler.h"
