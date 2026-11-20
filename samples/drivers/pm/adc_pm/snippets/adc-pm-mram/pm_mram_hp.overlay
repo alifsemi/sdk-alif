@@ -1,0 +1,29 @@
+/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * PM SOFT_OFF overlay for HP core booting from MRAM.
+ * Uses LPTIMER0 as wakeup source.
+ */
+
+#include "pm_mram_common.overlay"
+
+&timer0 {
+	status = "okay";
+};
+
+&utimer5 {
+	status = "disabled";
+};
+
+&off_profile_soft_off {
+	wakeup-events = <ALIF_WE_LPTIMER0>;
+	ewic-cfg      = <ALIF_EWIC_VBAT_TIMER>;
+};
