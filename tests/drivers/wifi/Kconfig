@@ -1,0 +1,220 @@
+source "Kconfig.zephyr"
+
+menu "Alif Wi-Fi QA"
+
+choice WIFI_TEST_SUITE
+	prompt "Wi-Fi QA suite to compile"
+	default WIFI_TEST_SHELL
+	help
+	  Pick one suite. No overlay .conf is required:
+
+	    west build ... -- -DCONFIG_WIFI_TEST_AP=y
+
+	  Or: west build -t menuconfig, then this menu.
+	  Overlay-*.conf files still work if you prefer them.
+
+config WIFI_TEST_SHELL
+	bool "STA functional (scan/connect/ping)"
+	select NET_STATISTICS
+	select NET_STATISTICS_WIFI
+	select NET_STATISTICS_USER_API
+
+config WIFI_TEST_AP
+	bool "SoftAP (wifi ap enable)"
+	select NET_DHCPV4_SERVER
+	select NET_STATISTICS
+	select NET_STATISTICS_WIFI
+	select NET_STATISTICS_USER_API
+
+config WIFI_TEST_P2P
+	bool "Wi-Fi Direct autonomous GO"
+	select AIROC_WIFI_P2P
+	select NET_DHCPV4_SERVER
+	select NET_STATISTICS
+	select NET_STATISTICS_WIFI
+	select NET_STATISTICS_USER_API
+	select MBEDTLS
+	select MBEDTLS_ENABLE_HEAP
+	select MBEDTLS_CIPHER_AES_ENABLED
+	select MBEDTLS_CIPHER_MODE_CBC_ENABLED
+	select MBEDTLS_MD
+	select MBEDTLS_SHA256
+	select MBEDTLS_DHM_C
+	select ENTROPY_GENERATOR
+	select TEST_RANDOM_GENERATOR
+
+config WIFI_TEST_ZPERF
+	bool "STA zperf throughput"
+	select NET_ZPERF
+	select DNS_RESOLVER
+
+endchoice
+
+config WIFI_SHELL_TEST_SSID
+	string "STA SSID for shell QA"
+	default ""
+
+config WIFI_SHELL_TEST_PSK
+	string "STA PSK for shell QA"
+	default ""
+
+config WIFI_SHELL_CONNECT_ATTEMPTS
+	int "WiFi connect attempts"
+	default 5
+
+config WIFI_SHELL_SCAN_TIMEOUT_SEC
+	int "WiFi scan timeout (seconds)"
+	default 30
+
+config WIFI_SHELL_CONNECT_TIMEOUT_SEC
+	int "WiFi connect timeout (seconds)"
+	default 60
+
+config WIFI_SHELL_DISCONNECT_TIMEOUT_SEC
+	int "WiFi disconnect timeout (seconds)"
+	default 10
+
+config WIFI_SHELL_PING_ATTEMPTS
+	int "Gateway ping attempts"
+	default 5
+
+config WIFI_SHELL_PING_TIMEOUT_SEC
+	int "Gateway ping timeout (seconds)"
+	default 5
+
+config WIFI_SHELL_STRESS_SCAN_ITERATIONS
+	int "Repeated scan iterations"
+	default 5
+
+config WIFI_SHELL_STRESS_CONN_ITERATIONS
+	int "Connect/disconnect cycles"
+	default 3
+
+config WIFI_SHELL_STRESS_STATUS_POLLS
+	int "IFACE_STATUS polls while associated"
+	default 20
+
+config WIFI_SHELL_STRESS_PING_BURST
+	int "ICMP burst count while associated"
+	default 15
+
+config WIFI_SHELL_NEG_CONNECT_TIMEOUT_SEC
+	int "Negative connect timeout (seconds)"
+	default 15
+
+config WIFI_SHELL_DHCP_TIMEOUT_SEC
+	int "DHCP timeout after associate (seconds)"
+	default 15
+
+config WIFI_AP_TEST_SSID
+	string "SoftAP SSID"
+	default "Alif-AP"
+
+config WIFI_AP_TEST_PSK
+	string "SoftAP WPA2-PSK"
+	default "12345678"
+
+config WIFI_AP_TEST_CHANNEL
+	int "SoftAP channel"
+	range 1 11
+	default 6
+
+config WIFI_AP_TEST_IP_ADDR
+	string "SoftAP IPv4"
+	default "192.168.4.1"
+
+config WIFI_AP_TEST_NETMASK
+	string "SoftAP netmask"
+	default "255.255.255.0"
+
+config WIFI_AP_TEST_DHCP_POOL_BASE
+	string "SoftAP DHCP pool base"
+	default "192.168.4.10"
+
+config WIFI_AP_CLIENT_WAIT_MS
+	int "Wait for SoftAP DHCP client (ms)"
+	default 45000
+
+config WIFI_ZPERF_TEST_SSID
+	string "STA SSID for zperf"
+	default ""
+
+config WIFI_ZPERF_TEST_PSK
+	string "STA PSK for zperf"
+	default ""
+
+config WIFI_ZPERF_SERVER_IP
+	string "iperf server IPv4"
+	default "10.0.0.78"
+
+config WIFI_ZPERF_SERVER_PORT
+	int "iperf server port"
+	default 5001
+
+config WIFI_ZPERF_TEST_DURATION_SEC
+	int "zperf upload duration (seconds)"
+	default 10
+
+config WIFI_ZPERF_TCP_PACKET_SIZE
+	int "TCP upload packet size"
+	default 256
+
+config WIFI_ZPERF_UDP_PACKET_SIZE
+	int "UDP upload packet size"
+	default 256
+
+config WIFI_ZPERF_UDP_RATE_KBPS
+	int "UDP target rate (kbps)"
+	default 3000
+
+config WIFI_ZPERF_MIN_TCP_THROUGHPUT_KBPS
+	int "Minimum TCP throughput (kbps)"
+	default 5000
+
+config WIFI_ZPERF_MIN_UDP_THROUGHPUT_KBPS
+	int "Minimum UDP throughput (kbps)"
+	default 3000
+
+config WIFI_ZPERF_CONNECT_TIMEOUT_SEC
+	int "zperf Wi-Fi connect timeout (seconds)"
+	default 30
+
+config WIFI_ZPERF_DHCP_TIMEOUT_SEC
+	int "zperf DHCP timeout (seconds)"
+	default 15
+
+config WIFI_ZPERF_STABILITY_ITERATIONS
+	int "TCP/UDP stability runs"
+	default 3
+
+config WIFI_ZPERF_DOWNLOAD_PORT
+	int "Device zperf download listen port"
+	default 5002
+
+config WIFI_ZPERF_DOWNLOAD_WAIT_SEC
+	int "Wait for host iperf download client (seconds)"
+	default 20
+
+endmenu
+
+# Suite extras. Additional defaults are appended; assignments that must
+# win over Zephyr defaults are applied from extras-*.conf via CMake when
+# -DCONFIG_WIFI_TEST_P2P=y or -DCONFIG_WIFI_TEST_ZPERF=y.
+
+config MBEDTLS_HEAP_SIZE
+	default 8192 if WIFI_TEST_P2P
+
+config MBEDTLS_CTR_DRBG_ENABLED
+	default n if WIFI_TEST_P2P
+
+config MBEDTLS_KEY_EXCHANGE_RSA_ENABLED
+	default n if WIFI_TEST_P2P
+
+config NET_ZPERF_MAX_PACKET_SIZE
+	default 1024 if WIFI_TEST_ZPERF
+
+config ZPERF_WORK_Q_STACK_SIZE
+	default 4096 if WIFI_TEST_ZPERF
+
+config DNS_RESOLVER_MAX_SERVERS
+	default 2 if WIFI_TEST_ZPERF
