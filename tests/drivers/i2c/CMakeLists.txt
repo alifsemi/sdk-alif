@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20.0)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../common/pstate_dt.cmake)
+
 # ==================== ZEPHYR PROJECT SETUP ==================
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(alif_i2c)
@@ -41,6 +43,9 @@ set(I2C_SENSOR_SOURCES
 if(NOT CONFIG_I2C_SENSOR_TESTS)
   target_sources(app PRIVATE ${I2C_CORE_SOURCES})
 endif()
+
+target_sources_ifdef(CONFIG_ALIF_CPU_FREQ_PSTATE app PRIVATE
+		     ../../common/pstate_main.c)
 # ==================== CONDITIONAL TEST SUITES ===============
 # Include test suites based on Kconfig settings
 if(CONFIG_I2C_PERFORMANCE_TESTS)

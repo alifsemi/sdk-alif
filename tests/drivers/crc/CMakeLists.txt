@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20.0)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../common/pstate_dt.cmake)
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(alif_crc)
 
@@ -7,6 +9,9 @@ target_sources(app PRIVATE
 	src/main.c
 	src/software_crc.c
 )
+
+target_sources_ifdef(CONFIG_ALIF_CPU_FREQ_PSTATE app PRIVATE
+		     ../../common/pstate_main.c)
 
 target_sources_ifdef(CONFIG_TEST_CRC_8 app PRIVATE src/test_crc_8.c)
 target_sources_ifdef(CONFIG_TEST_CRC_16 app PRIVATE src/test_crc_16.c)
