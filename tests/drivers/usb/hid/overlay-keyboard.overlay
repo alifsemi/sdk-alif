@@ -1,0 +1,27 @@
+#include <dt-bindings/misc/alif_aipm_common.h>
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
+&ns {
+	status = "okay";
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+&button0 {
+	status = "disabled";
+};
+
+/ {
+	hid_dev_0: hid_dev_0 {
+		compatible = "zephyr,hid-device";
+		interface-name = "HID0";
+		protocol-code = "keyboard";
+		in-polling-period-us = <1000>;
+		in-report-size = <64>;
+	};
+};

@@ -1,0 +1,80 @@
+/*
+ * Copyright (c) 2026 Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include <dt-bindings/misc/alif_aipm_common.h>
+#include <dt-bindings/input/input-event-codes.h>
+
+&aipm_run_default {
+	phy-pwr-gating = <ALIF_PHY_GATE_USB_MASK>;
+};
+
+ns: &ns{
+	status = "okay";
+};
+
+zephyr_udc0: &usb {
+	status = "okay";
+};
+
+&pinctrl_lpgpio {
+	group0 {
+		driver-state-control = <1>;
+	};
+};
+
+&lpgpio {
+	status = "okay";
+};
+
+/* Board SW0 is the same pad as joy_center (lpgpio 4). Disable the
+ * gpio-keys duplicate so center maps to INPUT_KEY_ENTER, not code 0.
+ */
+&button0 {
+	status = "disabled";
+};
+
+/ {
+	hid_dev_0: hid_dev_0 {
+		compatible = "zephyr,hid-device";
+		interface-name = "HID0";
+		protocol-code = "none";
+		in-polling-period-us = <10000>;
+		in-report-size = <64>;
+	};
+
+	joystick {
+		compatible = "gpio-keys";
+
+		joy_up: up {
+			gpios = <&lpgpio 0 GPIO_ACTIVE_LOW>;
+			label = "Joystick Up";
+			zephyr,code = <INPUT_KEY_UP>;
+		};
+
+		joy_down: down {
+			gpios = <&lpgpio 1 GPIO_ACTIVE_LOW>;
+			label = "Joystick Down";
+			zephyr,code = <INPUT_KEY_DOWN>;
+		};
+
+		joy_left: left {
+			gpios = <&lpgpio 2 GPIO_ACTIVE_LOW>;
+			label = "Joystick Left";
+			zephyr,code = <INPUT_KEY_LEFT>;
+		};
+
+		joy_right: right {
+			gpios = <&lpgpio 3 GPIO_ACTIVE_LOW>;
+			label = "Joystick Right";
+			zephyr,code = <INPUT_KEY_RIGHT>;
+		};
+
+		joy_center: center {
+			gpios = <&lpgpio 4 GPIO_ACTIVE_LOW>;
+			label = "Joystick Center";
+			zephyr,code = <INPUT_KEY_ENTER>;
+		};
+	};
+};
