@@ -1,0 +1,27 @@
+/*
+ * Copyright Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/ {
+	chosen {
+		zephyr,i3c = &i3c0;
+	};
+};
+
+&i3c0 {
+	status = "okay";
+	od-thigh-min-ns = <41>;
+	od-tlow-min-ns = <200>;
+	target-mode;
+};
+
+/* Board SCL/SDA recovery pins are on gpio7. */
+&gpio7 {
+	status = "okay";
+};
