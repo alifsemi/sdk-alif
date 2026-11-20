@@ -1,0 +1,36 @@
+sample:
+  name: Counter DMA trigger (LPTIMER)
+tests:
+  sample.drivers.counter.counter_dma_trig.lptimer:
+    tags:
+      - counter
+      - dma
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+    depends_on:
+      - counter
+      - dma
+    timeout: 40
+    harness: console
+    harness_config:
+      type: one_line
+      regex:
+        - "LPTIMER DMA trig: PASS"
+  sample.drivers.counter.counter_dma_trig.lptimer.dma2:
+    tags:
+      - counter
+      - dma
+    platform_allow:
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    extra_args:
+      - EXTRA_DTC_OVERLAY_FILE=boards/lptimer_dma2_e7_e8_he.overlay
+    depends_on:
+      - counter
+      - dma
+    build_only: true

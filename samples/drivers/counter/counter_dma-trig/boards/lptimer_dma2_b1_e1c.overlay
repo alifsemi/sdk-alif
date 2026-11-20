@@ -1,0 +1,32 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ */
+
+/* Note:
+ * B1 / E1C HE — DMA2.
+ * LPTIMER0_DMA_REQ → DMA2_REQ[0], EVTRTR2 group 1.
+ * Handshake 1 (EVTRTR ACK). Second dmas cell is req 5 (negative test).
+ */
+
+#include <zephyr/dt-bindings/dma/alif_dma_event_router.h>
+
+&timer0 {
+	status = "okay";
+	dma-trig;
+	dmas = <&evtrtr2 ALIF_DMA_ENCODE(0, 1, 1) 0>,
+	       <&evtrtr2 ALIF_DMA_ENCODE(0, 1, 1) 5>;
+	dma-names = "rx", "neg";
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&evtrtr2 {
+	status = "okay";
+};
