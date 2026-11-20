@@ -29,12 +29,10 @@ LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
 #define SAMPLE_ADDR_TYPE	ALIF_STATIC_RAND_ADDR
 
 #ifdef CONFIG_PM
-#define LED0_NODE DT_ALIAS(gpio_led)
+static const struct gpio_dt_spec led2 = BLE_GPIO_LED_SPEC(gpio_led);
 #else
-#define LED0_NODE DT_ALIAS(led0)
+static const struct gpio_dt_spec led2 = BLE_GPIO_LED_SPEC(led0);
 #endif
-
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
 
 /* Store and share advertising address type */
 static uint8_t adv_type;
