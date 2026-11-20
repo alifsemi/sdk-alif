@@ -13,7 +13,6 @@
 #include <zephyr/audio/dmic.h>
 #include <zephyr/drivers/pdm/pdm_alif.h>
 
-#include "gapi_isooshm.h"
 #include "bluetooth/le_audio/audio_queue.h"
 #include "bluetooth/le_audio/audio_encoder.h"
 #include "bluetooth/le_audio/audio_source_i2s.h"
@@ -28,6 +27,9 @@ struct mic_source_env {
 	const struct device *dev;
 	struct audio_queue *audio_queue;
 	bool capture;
+	mic_data_callback_t callback;
+	void *user_data;
+	int gain;
 };
 
 static struct mic_source_env mic_source;
@@ -38,7 +40,7 @@ static struct mic_source_env mic_source;
 #define INT_RAMFUNC
 #endif
 
-#define INPUT_LEVEL_CALC(_s)   (((int)(_s) * CONFIG_INPUT_VOLUME_LEVEL) / 100)
+#define INPUT_LEVEL_CALC(_s)   (((int)(_s) * mic_source.gain) / 100)
 #define NUMBER_OF_MIC_CHANNELS 2
 
 LOG_MODULE_DECLARE(audio_datapath, CONFIG_BLE_AUDIO_LOG_LEVEL);
@@ -65,6 +67,8 @@ INT_RAMFUNC static void audio_encoder_mixer_thread_func(void *p1, void *p2, void
 	size_t size;
 	void *buffer = NULL;
 
+	mic_source.gain = CONFIG_INPUT_VOLUME_LEVEL;
+
 	LOG_DBG("Mixer thread started");
 
 	while (1) {
@@ -76,6 +80,10 @@ INT_RAMFUNC static void audio_encoder_mixer_thread_func(void *p1, void *p2, void
 		}
 
 		ret = dmic_read(mic_source.dev, 0, &buffer, &size, 0);
+
+		if (!ret && buffer && mic_source.callback) {
+			mic_source.callback(buffer, size, mic_source.user_data);
+		}
 
 		/* Do mixing... */
 		if (!ret && mic_source.capture) {
@@ -287,36 +295,61 @@ int mic_configure(const struct device *mic_dev, const struct device *i2s_dev,
 	return 0;
 }
 
+int mic_register_callback(mic_data_callback_t callback, void *user_data)
+{
+	mic_source.callback = callback;
+	mic_source.user_data = user_data;
+
+	LOG_DBG("MIC callback %s", callback ? "registered" : "unregistered");
+
+	return 0;
+}
+
+int mic_adjust_gain(bool const increase)
+{
+	if (increase) {
+		mic_source.gain += CONFIG_INPUT_VOLUME_STEP;
+		if (mic_source.gain > CONFIG_INPUT_VOLUME_MAX) {
+			mic_source.gain = CONFIG_INPUT_VOLUME_MAX;
+		}
+		LOG_INF("MIC gain increased to %d", mic_source.gain);
+		return 0;
+	}
+
+	mic_source.gain -= CONFIG_INPUT_VOLUME_STEP;
+	if (mic_source.gain < CONFIG_INPUT_VOLUME_MIN) {
+		mic_source.gain = CONFIG_INPUT_VOLUME_MIN;
+	}
+	LOG_INF("MIC gain decreased to %d", mic_source.gain);
+	return 0;
+}
+
 void mic_start(void)
 {
-	if (!mic_source.dev) {
+	if (!mic_source.dev || mic_source.capture) {
 		return;
 	}
 
+	LOG_INF("MIC start...");
 	mic_source.capture = true;
 }
 
 void mic_stop(void)
 {
-	if (!mic_source.dev) {
+	if (!mic_source.dev || !mic_source.capture) {
 		return;
 	}
 
+	LOG_INF("MIC stop...");
 	mic_source.capture = false;
 }
 
 void mic_control(bool const start)
 {
-	if (!mic_source.dev) {
-		return;
-	}
-
 	if (start) {
-		LOG_INF("MIC start...");
 		mic_start();
 		return;
 	}
 
-	LOG_INF("MIC stop...");
 	mic_stop();
 }

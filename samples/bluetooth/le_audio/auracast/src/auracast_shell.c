@@ -10,7 +10,7 @@
 #include <zephyr/shell/shell.h>
 #include <stdio.h>
 #include "gapm.h"
-#include "main.h"
+#include "bluetooth.h"
 #include "auracast_source.h"
 #include "auracast_sink.h"
 #include "auracast_sd.h"
@@ -146,6 +146,13 @@ static int cmd_start_source(const struct shell *shell, size_t const argc, char *
 			return -EINVAL;
 		}
 	}
+
+#if CONFIG_TENSORFLOW_LITE_MICRO
+	if (command.source.frame_rate_hz != 16000) {
+		LOG_ERR("KWS model is requiring 16kHz input");
+		return -EINVAL;
+	}
+#endif
 
 	set_device_name(stream_name);
 	set_stream_name(stream_name);

@@ -25,7 +25,7 @@
 #include "gapm_le.h"
 #include "audio_datapath.h"
 #include "auracast_sd.h"
-#include "main.h"
+#include "bluetooth.h"
 #include "power_mgr.h"
 
 LOG_MODULE_REGISTER(auracast_scan_delegator, CONFIG_AURACAST_SCAN_DELEGATOR_LOG_LEVEL);
