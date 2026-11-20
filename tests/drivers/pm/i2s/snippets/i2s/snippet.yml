@@ -1,0 +1,14 @@
+name: i2s
+
+boards:
+  /(alif_b1|alif_e1c).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2s_b1.overlay
+
+  /(alif_e7|alif_e8).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2s_he.overlay
+
+  /(alif_e7|alif_e8).*/.*/rtss_hp/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: alif_i2s_hp.overlay

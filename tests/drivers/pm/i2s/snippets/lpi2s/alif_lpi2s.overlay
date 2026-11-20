@@ -1,0 +1,17 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * LPI2S. One controller, TX and RX. i2s4 is the low-power instance.
+ */
+
+i2s_rxtx: &i2s4 {
+	status = "okay";
+};

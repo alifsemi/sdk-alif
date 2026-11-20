@@ -1,0 +1,22 @@
+/* Copyright (C) Alif Semiconductor - All Rights Reserved.
+ * Use, distribution and modification of this code is permitted under the
+ * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
+ *
+ */
+
+/*
+ * Ensemble HE, same routing as the I2S PM sample:
+ * i2s3 speaker (TX), i2s4 microphone (RX).
+ */
+
+i2s_tx: &i2s3 {
+	status = "okay";
+};
+
+i2s_rx: &i2s4 {
+	status = "okay";
+};
