@@ -1,18 +1,20 @@
 # CODEOWNERS for autoreview assigning in github
 #
+# The last matching pattern is the one GitHub uses. A broad line comes
+# first. The directory lines below it replace that line for their tree.
 
+*                                    @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
 /.git*                               @RupeshKumar-AlifSemi
-/applications/                       @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
 /applications/testapp/               @mikter @jheiskan81
 /automation/                         @rajranjan-alifsemi @layl1984
 /.checkpatch.conf                    @RupeshKumar-AlifSemi
 /doc/                                @Anilkumar-Alifsemi @RupeshKumar-AlifSemi
-/drivers/                            @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
+/drivers/                            @sudhir-alifsemi @Prabhakar-Alifsemi @ChandraBhushan-AlifSemi
 Jenkinsfile                          @rajranjan-alifsemi @layl1984
-/samples/                            @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi @Prabhakar-Alifsemi @Shreehari-AlifSemi @YogenderKumar-AlifSemi @sudhir-alifsemi @GaneshRamani-AlifSemi @ChandraBhushan-AlifSemi @jheiskan81 @rajranjan-alifsemi @SrinivasRagolu-AlifSemi
-/subsys/                             @RupeshKumar-AlifSemi @JuhoEskeli-AlifSemi @AnttiKauppila-AlifSemi
-/subsys/bluetooth/                   @AnttiKauppila-AlifSemi @VeijoPesonen @petrih-alifsemi @JuanVazquez-AlifSemi @tero-alifsemi @jheiskan81
+/samples/bluetooth/                  @AnttiKauppila-AlifSemi @JuanVazquez-AlifSemi @VeijoPesonen
+/samples/drivers/                    @sudhir-alifsemi @Prabhakar-Alifsemi @ChandraBhushan-AlifSemi
+/samples/matter/                     @jheiskan81
+/subsys/bluetooth/                   @AnttiKauppila-AlifSemi @JuanVazquez-AlifSemi @VeijoPesonen
 /subsys/ieee802154/                  @mikter @jheiskan81
 /subsys/matter/                      @jheiskan81
-/tests/                              @RupeshKumar-AlifSemi @VeeraAlif
-*.rst                                @Anilkumar-Alifsemi
+/tests/                              @MaheshYerra-AlifSemi @Saba-AlifSemi @Shamshoor-AlifSemi @sudiiyengar-en
