@@ -324,7 +324,7 @@ int audio_datapath_channel_start_source(uint8_t stream_lid)
 
 	if (retval != 0) {
 		LOG_ERR("Failed to start channel %d, err %d", stream_lid, retval);
-		__ASSERT(false, "Failed to start channel");
+		return retval;
 	}
 
 	LOG_INF("Source audio datapath started for stream %d", stream_lid);

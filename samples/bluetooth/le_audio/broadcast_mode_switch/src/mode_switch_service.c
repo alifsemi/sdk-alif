@@ -194,12 +194,6 @@ static int switch_to_source_mode(void)
 {
 	LOG_INF("Switching to broadcast source mode");
 
-	/* Check if already in source mode */
-	if (is_mode_active(MODE_SWITCH_SOURCE)) {
-		LOG_INF("Already in source mode, no action needed");
-		return 0;
-	}
-
 	/* Stop sink if active */
 	if (is_mode_active(MODE_SWITCH_SINK)) {
 		LOG_INF("Stopping broadcast sink before switching to source");

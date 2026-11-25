@@ -90,6 +90,7 @@ static void on_le_connection_req(uint8_t conidx, uint32_t metainfo, uint8_t actv
 	LOG_HEXDUMP_DBG(p_peer_addr->addr, GAP_BD_ADDR_LEN, "Peer BD address");
 
 	conn_status = 1;
+	broadcast_source_set_connected(true);
 	LOG_INF("Device connected - mode switch service available");
 }
 
@@ -103,6 +104,8 @@ static void on_disconnection(uint8_t conidx, uint32_t metainfo, uint16_t reason)
 	LOG_INF("Connection index %u disconnected for reason %u", conidx, reason);
 
 	conn_status = 0;
+	broadcast_source_set_connected(false);
+	broadcast_source_on_disconnected();
 	uint16_t err = start_le_adv(adv_actv_idx);
 
 	if (err) {
