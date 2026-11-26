@@ -13,6 +13,7 @@
 #include "image_ensemble.h"
 #include "image_processing.h"
 
+#include <aipl_color_conversion.h>
 #include <aipl_demosaic.h>
 #include <aipl_resize.h>
 #include <aipl_color_correction.h>
@@ -38,7 +39,7 @@ LOG_MODULE_REGISTER(image_ensemble, LOG_LEVEL_INF);
 
 #define ISP_ENABLED DT_NODE_HAS_STATUS_OKAY(DT_NODELABEL(isp))
 #if ISP_ENABLED
-#define OUTPUT_FORMAT	VIDEO_PIX_FMT_RGB888_PLANAR_PRIVATE
+#define OUTPUT_FORMAT	VIDEO_PIX_FMT_YUV420
 
 #define LOGGING_LEVEL_NONE 0
 
@@ -367,12 +368,16 @@ int get_image_data(uint8_t **output_image_data)
 		return -1;
 	}
 	#else
-	/* Planar RGB888 to packed RGB888 conversion.
-	 * ISP outputs R, G, B as separate planes: [R plane][G plane][B plane]
-	 * ML model expects packed: RGBRGBRGB...
+	/* ISP debayers and writes I420. AIPL packs that as RGB888, using
+	 * Helium when CONFIG_AIPL_HELIUM_ACCELERATION is set.
 	 */
-	rgb888_planar_to_packed(raw_image, image_data,
-				output_width, output_height);
+	aipl_ret = aipl_color_convert_i420_to_rgb888(raw_image, image_data,
+						     output_width, output_width,
+						     output_height);
+	if (aipl_ret != AIPL_ERR_OK) {
+		LOG_ERR("I420->RGB888 conversion failed with error code %d", aipl_ret);
+		return -1;
+	}
 	#endif
 
 	ret = video_enqueue(video_dev, VIDEO_EP_OUT, vbuf);
