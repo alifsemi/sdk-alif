@@ -381,6 +381,182 @@ ZTEST(uart_internal_loopback, test_interrupt_configure_parity_bits)
 	zassert_equal(count, 0, "Parity bits test failed for some configurations");
 }
 
+static int data_bits_xfer(const struct device *tx, const uint8_t *payload,
+			  int size)
+{
+	struct uart_cb_ctx ctx = { .buf = payload, .size = size };
+	int64_t deadline;
+	int ret;
+
+	char_sent1 = 0;
+	tx_data_idx1 = 0;
+	data_transmitted_auto = false;
+	data_received_auto = false;
+	rec_count_auto = 0;
+	memset(rx_verify_buf_auto, 0, DATASIZE);
+
+	ret = uart_irq_callback_user_data_set(tx, uart_tx_rx_cb, &ctx);
+	if (uart_irq_cb(ret) != 0) {
+		return -1;
+	}
+
+	uart_irq_rx_enable(tx);
+	uart_irq_tx_enable(tx);
+
+	deadline = k_uptime_get() + 1000;
+	while (!data_transmitted_auto || !data_received_auto) {
+		if (k_uptime_get() > deadline) {
+			break;
+		}
+		k_sleep(K_MSEC(5));
+	}
+
+	uart_irq_tx_disable(tx);
+	uart_irq_rx_disable(tx);
+	return (data_transmitted_auto && data_received_auto &&
+		char_sent1 == size && rec_count_auto == size) ? 0 : -1;
+}
+
+/**
+ * @brief Configure character lengths 5, 6, 7, 8 and 9 bits.
+ *
+ * Tester only calls uart_configure() / uart_config_get(). The driver
+ * owns line packing. 5–8 bit then send a payload that already fits in
+ * 5 bits and compare RX to TX with no software mask. 9-bit is
+ * configure/get only. TX and RX stay on zephyr,devnode1.
+ */
+ZTEST(uart_internal_loopback, test_interrupt_configure_data_bits)
+{
+	static const enum uart_config_data_bits bits[] = {
+		UART_CFG_DATA_BITS_5,
+		UART_CFG_DATA_BITS_6,
+		UART_CFG_DATA_BITS_7,
+		UART_CFG_DATA_BITS_8,
+		UART_CFG_DATA_BITS_9,
+	};
+	/* Values already fit in 5 bits; no tester-side masking. */
+	uint8_t tx_bits[] = { 0x01, 0x0A, 0x15, 0x1F };
+	int size = sizeof(tx_bits);
+	const struct device *tx = DEVICE_DT_GET(DT_CHOSEN(zephyr_devnode1));
+	int tested = 0;
+	int failed = 0;
+
+	zassert_true(device_is_ready(tx), "%s UART device not ready", tx->name);
+
+	uart_cfg.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+	uart_cfg.parity = UART_CFG_PARITY_NONE;
+	uart_cfg.stop_bits = UART_CFG_STOP_BITS_1;
+	uart_cfg.baudrate = get_uart_baudrate_from_dt();
+
+	for (int i = 0; i < ARRAY_SIZE(bits); i++) {
+		struct uart_config got;
+		int ret;
+
+		uart_cfg.data_bits = bits[i];
+		TC_PRINT("Trying data_bits %d\n", bits[i]);
+
+		ret = uart_configure(tx, &uart_cfg);
+		if (check_configure_result_loopback(ret) == -1) {
+			TC_PRINT("For data_bits %d -> SKIPPED (unsupported)\n",
+				 bits[i]);
+			continue;
+		}
+
+		zassert_equal(uart_config_get(tx, &got), 0, "config_get");
+		if (got.data_bits != bits[i]) {
+			failed++;
+			TC_PRINT("For data_bits %d -> FAILED (get %d)\n",
+				 bits[i], got.data_bits);
+			continue;
+		}
+
+		tested++;
+		if (bits[i] == UART_CFG_DATA_BITS_9) {
+			TC_PRINT("For data_bits 9 -> configured\n");
+			continue;
+		}
+
+		if (data_bits_xfer(tx, tx_bits, size) != 0) {
+			failed++;
+			TC_PRINT("For data_bits %d -> FAILED (xfer tx=%d rx=%d)\n",
+				 bits[i], char_sent1, rec_count_auto);
+			continue;
+		}
+
+		if (memcmp(rx_verify_buf_auto, tx_bits, size) != 0) {
+			failed++;
+			TC_PRINT("For data_bits %d -> FAILED (RX != TX)\n",
+				 bits[i]);
+		} else {
+			TC_PRINT("For data_bits %d -> PASSED\n", bits[i]);
+		}
+	}
+
+	zassert_true(tested > 0, "No data-bit widths were accepted");
+	zassert_equal(failed, 0, "%d data-bit width(s) failed", failed);
+}
+
+/**
+ * @brief Configure 5 Mbps and read it back.
+ */
+ZTEST(uart_internal_loopback, test_interrupt_configure_baud_5mbps)
+{
+	const struct device *dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_devnode1));
+	struct uart_config got;
+	int ret;
+
+	zassert_true(device_is_ready(dev), "%s UART device not ready",
+		     dev->name);
+
+	uart_cfg.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+	uart_cfg.parity = UART_CFG_PARITY_NONE;
+	uart_cfg.stop_bits = UART_CFG_STOP_BITS_1;
+	uart_cfg.data_bits = UART_CFG_DATA_BITS_8;
+	uart_cfg.baudrate = 5000000;
+
+	ret = uart_configure(dev, &uart_cfg);
+	if (check_configure_result_loopback(ret) == -1) {
+		TC_PRINT("5 Mbps configure unsupported — skip\n");
+		ztest_test_skip();
+	}
+
+	zassert_equal(uart_config_get(dev, &got), 0, "config_get");
+	TC_PRINT("Configured baud %u (requested 5000000)\n", got.baudrate);
+	zassert_true(got.baudrate >= 4000000U,
+		     "5 Mbps request stored as %u", got.baudrate);
+}
+
+/**
+ * @brief Configure a non-integer baud (230400) and check it is stored.
+ */
+ZTEST(uart_internal_loopback, test_interrupt_configure_fractional_baud)
+{
+	const struct device *dev = DEVICE_DT_GET(DT_CHOSEN(zephyr_devnode1));
+	struct uart_config got;
+	const uint32_t baud = 230400;
+	int ret;
+
+	zassert_true(device_is_ready(dev), "%s UART device not ready",
+		     dev->name);
+
+	uart_cfg.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
+	uart_cfg.parity = UART_CFG_PARITY_NONE;
+	uart_cfg.stop_bits = UART_CFG_STOP_BITS_1;
+	uart_cfg.data_bits = UART_CFG_DATA_BITS_8;
+	uart_cfg.baudrate = baud;
+
+	ret = uart_configure(dev, &uart_cfg);
+	if (check_configure_result_loopback(ret) == -1) {
+		TC_PRINT("Baud %u unsupported — skip\n", baud);
+		ztest_test_skip();
+	}
+
+	zassert_equal(uart_config_get(dev, &got), 0, "config_get");
+	TC_PRINT("Fractional baud requested %u, get %u\n", baud, got.baudrate);
+	zassert_true(got.baudrate > (baud * 90U / 100U) &&
+		     got.baudrate < (baud * 110U / 100U),
+		     "Stored baud %u not within 10%% of %u", got.baudrate, baud);
+}
 
 /**
  * @brief Test string transmission in internal loopback mode.
@@ -461,3 +637,4 @@ ZTEST(uart_internal_loopback, test_interrupt_internal_loopback_ascii_data)
 	zassert_equal(ret, 0, "Internal loopback ASCII test failed");
 }
 #endif
+
