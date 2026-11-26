@@ -1,0 +1,29 @@
+# Source common USB sample options used to initialize USB device stack.
+source "samples/subsys/usb/common/Kconfig.sample_usbd"
+
+source "Kconfig.zephyr"
+
+menu "Alif USB HID QA"
+
+choice HID_TEST_SUITE
+	prompt "HID QA suite to compile"
+	default HID_TEST_MOUSE
+	help
+	  Pick one device. One image, one HID interface:
+
+	    west build ... -- -DCONFIG_HID_TEST_MOUSE=y
+	    west build ... -- -DCONFIG_HID_TEST_KEYBOARD=y
+	    west build ... -- -DCONFIG_HID_TEST_JOYSTICK=y
+
+config HID_TEST_MOUSE
+	bool "Mouse (4-byte relative report)"
+
+config HID_TEST_KEYBOARD
+	bool "Keyboard (8-byte boot report)"
+
+config HID_TEST_JOYSTICK
+	bool "Joystick (3-byte report)"
+
+endchoice
+
+endmenu
