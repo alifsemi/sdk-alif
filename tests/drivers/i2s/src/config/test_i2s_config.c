@@ -1,7 +1,10 @@
-/*
- * Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  * test_i2s_config.c - I2S register/config matrix test suite.
  *
@@ -33,8 +36,15 @@ LOG_MODULE_REGISTER(i2s_config_test, LOG_LEVEL_INF);
 #define CFG_BLOCK_COUNT   8U
 #define CFG_TIMEOUT_MS    500U
 
-K_MEM_SLAB_DEFINE_STATIC(cfg_rx_slab, CFG_BLOCK_SIZE, CFG_BLOCK_COUNT, 4);
-K_MEM_SLAB_DEFINE_STATIC(cfg_tx_slab, CFG_BLOCK_SIZE, CFG_BLOCK_COUNT, 4);
+#define I2S_DMA_SLAB_DEFINE(name, block_size, num_blocks)		\
+	static uint8_t __nocache __aligned(WB_UP(4))			\
+		_##name##_buf[(num_blocks) * WB_UP(block_size)];	\
+	static STRUCT_SECTION_ITERABLE(k_mem_slab, name) =		\
+		Z_MEM_SLAB_INITIALIZER(name, _##name##_buf,		\
+				       WB_UP(block_size), num_blocks)
+
+I2S_DMA_SLAB_DEFINE(cfg_rx_slab, CFG_BLOCK_SIZE, CFG_BLOCK_COUNT);
+I2S_DMA_SLAB_DEFINE(cfg_tx_slab, CFG_BLOCK_SIZE, CFG_BLOCK_COUNT);
 
 /* -------------------------------------------------------------------------
  * Helpers

@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+# Copyright (C)  Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
@@ -40,8 +40,34 @@ config I2S_NEGATIVE_TESTS
 	bool "Enable negative tests"
 	default y
 	help
-	  Enable negative test cases to validate error handling and robustness
-	  of the I2S driver under invalid conditions.
+	  Build the i2s_negative suite: state machine, underrun, overrun,
+	  queue limits, and full-duplex mismatch. On LPI2S (i2s4) the
+	  cases are named test_lpi2s_*. On I2S2 and I2S3 they are named
+	  test_i2s_*. The TX half of neg_stop_and_drain runs only when
+	  I2S_GPIO_LOOPBACK is y. Dropped when a functional selector is
+	  set.
+
+config I2S_STRESS_TESTS
+	bool "Enable I2S stress tests"
+	default n
+	help
+	  Build the i2s_stress suite: repeated start/drop, start/stop,
+	  and start/drain, underrun and overrun recovery, a 30 s
+	  192 kHz transmit, queue fill/drain, and a 10 s full-duplex
+	  run. Full duplex skips unless I2S_GPIO_LOOPBACK is y. Off by
+	  default because the suite takes about a minute. Dropped when
+	  a functional selector is set.
+
+config I2S_PERF_TESTS
+	bool "Enable I2S performance tests"
+	default n
+	help
+	  Build the i2s_performance suite: block period, throughput,
+	  datasheet rates at 16-bit and 32-bit, startup latency, and
+	  underrun margin. Startup latency skips unless
+	  I2S_GPIO_LOOPBACK is y. Off by default because each rate is
+	  held for one second. Dropped when a functional selector is
+	  set.
 
 config I2S_CONFIG_TESTS
 	bool "Enable configuration tests"

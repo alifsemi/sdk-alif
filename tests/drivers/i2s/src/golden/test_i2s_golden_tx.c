@@ -1,7 +1,10 @@
-/*
- * Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
+/* Copyright Alif Semiconductor - All Rights Reserved.
  * Use, distribution and modification of this code is permitted under the
  * terms stated in the Alif Semiconductor Software License Agreement
+ *
+ * You should have received a copy of the Alif Semiconductor Software
+ * License Agreement with this file. If not, please write to:
+ * contact@alifsemi.com, or visit: https://alifsemi.com/license
  *
  * test_i2s_tx_golden.c - Golden-vector TX master loopback test cases.
  *
@@ -86,6 +89,21 @@ static void i2s_golden_teardown(void *fixture)
 ZTEST_SUITE(i2s_golden_tx, NULL, i2s_golden_setup, NULL, NULL,
 	    i2s_golden_teardown);
 
+#define ZTEST_NAMED(suite, fn) ZTEST(suite, fn)
+
+#if DT_REG_ADDR(DT_ALIAS(i2s_node0)) == 0x43001000
+#if IS_ENABLED(CONFIG_I2S_DW_USE_DMA)
+#define GV_TC(b) test_dma_lpi2s_tx_##b##bit
+#else
+#define GV_TC(b) test_lpi2s_tx_##b##bit
+#endif
+#else
+#if IS_ENABLED(CONFIG_I2S_DW_USE_DMA)
+#define GV_TC(b) test_dma_i2s_tx_##b##bit
+#else
+#define GV_TC(b) test_i2s_tx_##b##bit
+#endif
+#endif
 /* =========================================================================
  * 5 ZTESTs — one per bit-depth, iterating over gv_rates[].
  *
@@ -96,7 +114,7 @@ ZTEST_SUITE(i2s_golden_tx, NULL, i2s_golden_setup, NULL, NULL,
  * =========================================================================
  */
 
-ZTEST(i2s_golden_tx, test_tx_12bit)
+ZTEST_NAMED(i2s_golden_tx, GV_TC(12))
 {
 	const struct device *dev = DEVICE_DT_GET(I2S_GOLDEN_NODE);
 	uint32_t n_fail = 0U;
@@ -121,7 +139,7 @@ ZTEST(i2s_golden_tx, test_tx_12bit)
 	zassert_equal(n_fail, 0U, "[gv-12] %u rate(s) failed", n_fail);
 }
 
-ZTEST(i2s_golden_tx, test_tx_16bit)
+ZTEST_NAMED(i2s_golden_tx, GV_TC(16))
 {
 	const struct device *dev = DEVICE_DT_GET(I2S_GOLDEN_NODE);
 	uint32_t n_fail = 0U;
@@ -146,7 +164,7 @@ ZTEST(i2s_golden_tx, test_tx_16bit)
 	zassert_equal(n_fail, 0U, "[gv-16] %u rate(s) failed", n_fail);
 }
 
-ZTEST(i2s_golden_tx, test_tx_20bit)
+ZTEST_NAMED(i2s_golden_tx, GV_TC(20))
 {
 	const struct device *dev = DEVICE_DT_GET(I2S_GOLDEN_NODE);
 	uint32_t n_fail = 0U;
@@ -171,7 +189,7 @@ ZTEST(i2s_golden_tx, test_tx_20bit)
 	zassert_equal(n_fail, 0U, "[gv-20] %u rate(s) failed", n_fail);
 }
 
-ZTEST(i2s_golden_tx, test_tx_24bit)
+ZTEST_NAMED(i2s_golden_tx, GV_TC(24))
 {
 	const struct device *dev = DEVICE_DT_GET(I2S_GOLDEN_NODE);
 	uint32_t n_fail = 0U;
@@ -196,7 +214,7 @@ ZTEST(i2s_golden_tx, test_tx_24bit)
 	zassert_equal(n_fail, 0U, "[gv-24] %u rate(s) failed", n_fail);
 }
 
-ZTEST(i2s_golden_tx, test_tx_32bit)
+ZTEST_NAMED(i2s_golden_tx, GV_TC(32))
 {
 	const struct device *dev = DEVICE_DT_GET(I2S_GOLDEN_NODE);
 	uint32_t n_fail = 0U;
