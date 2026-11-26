@@ -12,6 +12,8 @@
  * Used for sensor integration testing and validation
  */
 
+#include "pstate_common.overlay"
+
 &i2c0 {
 	status = "okay";
 	bme680@76 {
