@@ -21,7 +21,7 @@
 
 #include "auracast_source.h"
 #include "audio_datapath.h"
-#include "main.h"
+#include "bluetooth.h"
 #include "mic_source.h"
 
 LOG_MODULE_REGISTER(auracast_source, CONFIG_AURACAST_SOURCE_LOG_LEVEL);

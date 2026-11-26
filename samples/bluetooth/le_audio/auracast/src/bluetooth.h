@@ -7,8 +7,12 @@
  * contact@alifsemi.com, or visit: https://alifsemi.com/license
  */
 
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef BLUETOOTH_H
+#define BLUETOOTH_H
+
+#if __cplusplus
+extern "C" {
+#endif
 
 #include <zephyr/types.h>
 #include <gaf/gaf.h>
@@ -155,4 +159,16 @@ int auracast_codec_config_from_name(const char *codec, uint32_t *octets_per_fram
  */
 int execute_shell_command(struct startup_params cmd);
 
-#endif /* MAIN_H */
+/**
+ * @brief Configure Bluetooth
+ *
+ * @retval 0 on success
+ * @retval Negative error code on failure
+ */
+int configure_bluetooth(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* BLUETOOTH_H */

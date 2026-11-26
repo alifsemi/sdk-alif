@@ -20,7 +20,7 @@
 #include "bap_bc_scan.h"
 #include "audio_datapath.h"
 #include "auracast_sink.h"
-#include "main.h"
+#include "bluetooth.h"
 #include "power_mgr.h"
 
 LOG_MODULE_REGISTER(auracast_sink, CONFIG_AURACAST_SINK_LOG_LEVEL);
