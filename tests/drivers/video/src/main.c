@@ -1,10 +1,6 @@
-/* Copyright (C) 2026 Alif Semiconductor - All Rights Reserved.
- * Use, distribution and modification of this code is permitted under the
- * terms stated in the Alif Semiconductor Software License Agreement
- *
- * You should have received a copy of the Alif Semiconductor Software
- * License Agreement with this file. If not, please write to:
- * contact@alifsemi.com, or visit: https://alifsemi.com/license
+/*
+ * Copyright (C) Alif Semiconductor.
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 #include <soc_common.h>
@@ -16,6 +12,7 @@
 #include "video_common.h"
 
 #ifdef CONFIG_DT_HAS_HIMAX_HM0360_ENABLED
+#include <zephyr/drivers/regulator.h>
 #include <zephyr/drivers/video/hm0360-video-controls.h>
 #endif /* CONFIG_DT_HAS_HIMAX_HM0360_ENABLED */
 
@@ -102,8 +99,13 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 
 		if (fcap->pixelformat == PIPELINE_FORMAT) {
 			fmt.pixelformat = PIPELINE_FORMAT;
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+			fmt.width = SENSOR_WIDTH;
+			fmt.height = SENSOR_HEIGHT;
+#else
 			fmt.width = fcap->width_min;
 			fmt.height = fcap->height_min;
+#endif
 			fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
 		}
 		i++;
@@ -159,10 +161,12 @@ ZTEST(cpi_manual_testcase, video_test_image_capture)
 			}
 		}
 #endif /* CONFIG_VIDEO_ALIF_CAM_EXTENDED */
+
 	/* Alloc video buffers and enqueue for capture */
 
 	for (i = 0; i < ARRAY_SIZE(buffers); i++) {
-		buffers[i] = video_buffer_alloc(bsize, K_NO_WAIT);
+		buffers[i] = video_buffer_aligned_alloc(bsize,
+			CONFIG_VIDEO_BUFFER_POOL_ALIGN, K_NO_WAIT);
 		zassert_not_null(buffers[i],
 				"Unable to alloc video buffer %d", i);
 
@@ -318,8 +322,13 @@ ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
 
 		if (fcap->pixelformat == PIPELINE_FORMAT) {
 			fmt.pixelformat = PIPELINE_FORMAT;
+#ifdef CONFIG_DT_HAS_OVTI_OV5640_ENABLED
+			fmt.width = SENSOR_WIDTH;
+			fmt.height = SENSOR_HEIGHT;
+#else
 			fmt.width = fcap->width_min;
 			fmt.height = fcap->height_min;
+#endif
 			fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
 		}
 		i++;
@@ -378,7 +387,8 @@ ZTEST(cpi_manual_testcase, video_z_capture_n_frames)
 	/* Alloc video buffers and enqueue for capture */
 
 	for (i = 0; i < ARRAY_SIZE(buffers_z); i++) {
-		buffers_z[i] = video_buffer_alloc(bsize, K_NO_WAIT);
+		buffers_z[i] = video_buffer_aligned_alloc(bsize,
+				CONFIG_VIDEO_BUFFER_POOL_ALIGN, K_NO_WAIT);
 		zassert_not_null(buffers_z[i], "Unable to alloc video buffer %d", i);
 
 		/* Allocated Buffer Information */
@@ -509,7 +519,20 @@ static int app_set_parameters(void)
 }
 
 
-ZTEST_SUITE(cpi_manual_testcase, NULL, NULL, manual_suite_before, NULL, NULL);
+static void *cpi_manual_setup(void)
+{
+	cam_supply_on();
+	return NULL;
+}
+
+static void cpi_manual_teardown(void *data)
+{
+	ARG_UNUSED(data);
+	cam_supply_off();
+}
+
+ZTEST_SUITE(cpi_manual_testcase, NULL, cpi_manual_setup, manual_suite_before, NULL,
+	    cpi_manual_teardown);
 ZTEST_SUITE(cpi_api_testcase, NULL, api_suite_setup, manual_suite_before, NULL,
 	    api_suite_teardown);
 
