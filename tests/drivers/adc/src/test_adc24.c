@@ -89,7 +89,8 @@ static int test_channels(int channel, int mask)
 	return TC_PASS;
 }
 
-#if (!CONFIG_TEST_ADC_CONTINUOUS && !CONFIG_TEST_ADC_MULTICH)
+#if (!CONFIG_TEST_ADC_CONTINUOUS && !CONFIG_TEST_ADC_MULTICH && \
+	!CONFIG_TEST_ADC_PGA && !CONFIG_TEST_ADC_THRESHOLD)
 
 #if CONFIG_TEST_ADC_CH0
 ZTEST(adc24_differential, test_adc24_channel_0_diff_input)

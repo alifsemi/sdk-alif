@@ -1,0 +1,23 @@
+/*
+ * ADC12 instance 1 + DAC0 loopback (Balletto / B1 preferred).
+ * Wire DAC0 P2_3 to ADC1 channel 0 P0_6.
+ * Avoids ADC0 channel 0 P0_0, which shares UART0 RX and often sits near 1.8 V.
+ */
+/ {
+	aliases {
+		test-adc = &adc1;
+		dac = &dac0;
+	};
+};
+
+&adc0 {
+	status = "disabled";
+};
+
+&adc1 {
+	status = "okay";
+};
+
+&dac0 {
+	status = "okay";
+};

@@ -113,6 +113,23 @@ static void adc_before(void *fixture)
 #endif
 #endif
 
+#if CONFIG_TEST_ADC_THRESHOLD
+#include <zephyr/dt-bindings/adc/adc_alif.h>
+#if !DT_NODE_HAS_PROP(DT_ALIAS(test_adc), interrupt_en)
+#error "THRESHOLD needs interrupt_en (append a thresh_above/below/window overlay)"
+#elif ((DT_PROP(DT_ALIAS(test_adc), interrupt_en) & \
+	(ADC_COMPA_INTERRUPT | ADC_COMPB_INTERRUPT)) != \
+	(ADC_COMPA_INTERRUPT | ADC_COMPB_INTERRUPT))
+#error "THRESHOLD needs COMPA+COMPB; append a thresh_* overlay"
+#endif
+#endif
+
+#if CONFIG_TEST_ADC_PGA
+#if !DT_PROP_OR(DT_ALIAS(test_adc), pga_enable, 0)
+#error "PGA needs pga_enable; append a gain overlay (e.g. alif_adc1_gain0.overlay)"
+#endif
+#endif
+
 #if (CONFIG_TEST_ADC24)
 #if (CONFIG_TEST_ADC_MULTICH)
 ZTEST_SUITE(adc24_multi_channel, NULL, NULL, adc_before, NULL, NULL);

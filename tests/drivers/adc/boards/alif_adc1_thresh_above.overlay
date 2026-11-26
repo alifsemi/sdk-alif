@@ -1,0 +1,6 @@
+&adc1 {
+	comparator_threshold_a = <0x100>;
+	comparator_threshold_b = <0x180>;
+	comparator_threshold_comparison = "ABOVE_THRESHOLD_A_AND_B";
+	interrupt_en = <0x0f>;
+};
