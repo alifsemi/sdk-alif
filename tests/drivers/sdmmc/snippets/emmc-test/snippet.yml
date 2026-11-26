@@ -1,0 +1,24 @@
+name: emmc-test
+append:
+  EXTRA_CONF_FILE: emmc-test.conf
+
+boards:
+  /(alif_b1|alif_e1c).*/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: emmc_e1c_b1.overlay
+      EXTRA_CONF_FILE: emmc-board.conf
+
+  /alif_(e3|e7)_(dk|ak)/.*/rtss_(he|hp)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: emmc_e3_e7.overlay
+      EXTRA_CONF_FILE: emmc-board.conf
+
+  /alif_e8_dk/.*/rtss_(he|hp)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: emmc_e8_dk.overlay
+      EXTRA_CONF_FILE: emmc-board.conf
+
+  /alif_(e4|e8)_ak/.*/rtss_(he|hp)/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: emmc_e8_ak.overlay
+      EXTRA_CONF_FILE: emmc-board.conf
