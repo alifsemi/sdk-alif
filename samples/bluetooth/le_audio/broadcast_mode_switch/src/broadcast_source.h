@@ -10,6 +10,8 @@
 #ifndef _BROADCAST_SOURCE_H
 #define _BROADCAST_SOURCE_H
 
+#include <stdbool.h>
+
 /**
  * @brief Configure the BAP BC source module
  *
@@ -35,20 +37,33 @@ int broadcast_source_start(void);
 /**
  * @brief Start broadcasting (enable PA and start streaming)
  *
- * This function only starts broadcasting. The BAP BC source modules must
- * be configured first using broadcast_source_configure().
+ * The user asked for a source. Create BIG waits while the mode-switch
+ * link is up. The BAP BC source modules must already be configured.
+ * A failed Create BIG stays inside the source.
  *
- * @retval 0 on success
- * @retval Negative error code on failure
+ * @retval 0 if the request was recorded
+ * @retval Negative error code if the modules are not configured
  */
 int broadcast_source_start_broadcasting(void);
 
 /**
- * @brief Stop the LE audio broadcast source
+ * @brief The user asked for the source to stop
  *
  * @retval 0 on success
  * @retval Negative error code on failure
  */
 int broadcast_source_stop(void);
+
+/**
+ * @brief Report whether the mode-switch link is up
+ *
+ * Create BIG waits while that link is up.
+ */
+void broadcast_source_set_connected(bool connected);
+
+/**
+ * @brief The mode-switch link dropped
+ */
+void broadcast_source_on_disconnected(void);
 
 #endif /* _BROADCAST_SOURCE_H */

@@ -32,17 +32,21 @@ LOG_MODULE_REGISTER(broadcast_source, CONFIG_BROADCAST_SOURCE_LOG_LEVEL);
 #define STREAM_LOCATIONS (GAF_LOC_FRONT_LEFT_BIT)
 #endif
 
-/* ---------------- FSM (non-blocking) ---------------- */
+/* Where the controller is. This is not the user's request. A completion
+ * moves this, then reconcile() takes the next step.
+ */
 typedef enum {
 	SRC_STATE_IDLE = 0,
 	SRC_STATE_CONFIGURED,
 	SRC_STATE_PA_ENABLING,
 	SRC_STATE_PA_ENABLED,
+	SRC_STATE_GROUP_ENABLING,
 	SRC_STATE_GROUP_ENABLED,
 	SRC_STATE_STREAMING,
 	SRC_STATE_STOPPING_STREAMING,
 	SRC_STATE_DISABLING_GROUP,
 	SRC_STATE_DISABLING_PA,
+	SRC_STATE_REMOVING,
 } src_state_t;
 
 
@@ -63,6 +67,28 @@ struct broadcast_source_env {
 	/* Advertising configuration */
 	uint8_t adv_sid;
 };
+
+/* LL_ERR_CONN_REJ_LIMITED_RESOURCES. Create BIG returns this when the
+ * controller cannot allocate the BIS while an ACL is up.
+ */
+#define BIG_ERR_LIMITED_RESOURCES 0x9D
+
+/* What the user asked for. Controller completions never write this. */
+enum src_desire {
+	SRC_DESIRE_IDLE = 0,
+	SRC_DESIRE_SOURCE,
+};
+
+/* The mode-switch link. Create BIG waits while it is up. */
+static bool link_up;
+static enum src_desire desire;
+/* Create BIG was refused. Do not start again until the user asks, or the
+ * link that caused the refusal goes down.
+ */
+static bool create_refused;
+
+static void broadcast_source_reconcile(void);
+static void broadcast_source_stop_audio(void);
 
 static struct broadcast_source_env source_env = {
 	.state = SRC_STATE_IDLE,
@@ -102,28 +128,97 @@ static void *alloc_stream_config(uint32_t const location_bf)
 	return p_stream_cfg;
 }
 
+/* Drop our copy of the group. The controller object is already gone,
+ * or the remove that failed told us it was. Reconcile can start a new
+ * one only from idle.
+ */
+static void broadcast_source_reset_local(void)
+{
+	memset(source_env.stream_ids, 0, sizeof(source_env.stream_ids));
+	source_env.bcast_grp_lid = INVALID_LID;
+	source_env.state = SRC_STATE_IDLE;
+}
+
+/* Ask the controller to delete the group. A success return only means
+ * the command was accepted. Restarting here would let the later
+ * completion wipe the next group, so the phase stays "removing" until
+ * that completion. An error means the GAPI group is already gone and
+ * there will be no completion, so the local id is forgotten now.
+ */
+static void broadcast_source_drop_group(void)
+{
+	uint16_t err;
+
+	if (source_env.state == SRC_STATE_REMOVING) {
+		return;
+	}
+
+	if (source_env.bcast_grp_lid == INVALID_LID) {
+		broadcast_source_reset_local();
+		return;
+	}
+
+	err = bap_bc_src_remove_group(source_env.bcast_grp_lid);
+
+	if (err) {
+		LOG_WRN("remove_group(%u) -> %u", source_env.bcast_grp_lid, err);
+		/* Create BIG failure already removed the GAPI group, so
+		 * this lid cannot be enabled again. There is no completion.
+		 */
+		broadcast_source_reset_local();
+		return;
+	}
+
+	source_env.state = SRC_STATE_REMOVING;
+	LOG_INF("remove_group(%u) accepted", source_env.bcast_grp_lid);
+}
+
+/* Periodic advertising has to be off before the group can be deleted.
+ * If the controller refuses, advertising is already down and the group
+ * can be removed.
+ */
 static void broadcast_source_disable_pa(void)
 {
+	if (source_env.bcast_grp_lid == INVALID_LID) {
+		broadcast_source_reset_local();
+		return;
+	}
+
 	source_env.state = SRC_STATE_DISABLING_PA;
 	uint16_t err = bap_bc_src_disable_pa(source_env.bcast_grp_lid);
 
 	if (err) {
-		if (source_env.bcast_grp_lid != INVALID_LID) {
-			err = bap_bc_src_remove_group(source_env.bcast_grp_lid);
-			if (err) {
-				LOG_WRN("remove_group(%u) -> %u", source_env.bcast_grp_lid, err);
-			} else {
-				LOG_INF("Removed broadcast group %u", source_env.bcast_grp_lid);
-			}
-		}
-
-		/* Reset local state */
-		memset(source_env.stream_ids, 0, sizeof(source_env.stream_ids));
-		source_env.bcast_grp_lid = INVALID_LID;
-		source_env.state = SRC_STATE_IDLE;
+		LOG_WRN("Disable PA returned %u", err);
+		broadcast_source_drop_group();
 	}
 }
 
+/* The BIG is up, so the legal way down is to stop streaming. Disable
+ * and advertising-off are only the fallbacks when that is refused.
+ * This does not change the request, so a failed channel start can
+ * still be tried again once the group is gone.
+ */
+static void broadcast_source_stop_audio(void)
+{
+	uint16_t err;
+
+	source_env.state = SRC_STATE_STOPPING_STREAMING;
+	err = bap_bc_src_stop_streaming(source_env.bcast_grp_lid, 0xFFFFFFFF);
+
+	if (err) {
+		LOG_WRN("Failed to stop streaming immediately, err %u.", err);
+		source_env.state = SRC_STATE_DISABLING_GROUP;
+		err = bap_bc_src_disable(source_env.bcast_grp_lid, true);
+		if (err) {
+			LOG_WRN("Disable returned %u; falling back to PA disable", err);
+			broadcast_source_disable_pa();
+		}
+	}
+}
+
+/* A completion only moves the phase. A result for a step we have
+ * already left is ignored, so it cannot cancel a newer request.
+ */
 static void on_bap_bc_src_cmp_evt(uint8_t cmd_type, uint16_t status,
 					uint8_t grp_lid, uint8_t sgrp_lid)
 {
@@ -133,51 +228,125 @@ static void on_bap_bc_src_cmp_evt(uint8_t cmd_type, uint16_t status,
 	case BAP_BC_SRC_CMD_TYPE_ENABLE_PA:
 		LOG_INF("Periodic advertising %s (status %u)",
 				status ? "enable done (err)" : "enabled", status);
-		if (status == 0) {
-			bap_bc_src_enable(source_env.bcast_grp_lid);
-			source_env.state = SRC_STATE_PA_ENABLED;
+		if (source_env.state != SRC_STATE_PA_ENABLING) {
+			LOG_WRN("Ignore PA complete in state %d", source_env.state);
+			break;
 		}
+		/* PA is up, or it failed and the group is still configured.
+		 * The next step depends on what the user asked for.
+		 */
+		if (status == 0) {
+			source_env.state = SRC_STATE_PA_ENABLED;
+		} else {
+			/* Do not immediately build another group. The user, or
+			 * the link going down, clears this and tries again.
+			 */
+			create_refused = true;
+			source_env.state = SRC_STATE_CONFIGURED;
+		}
+		broadcast_source_reconcile();
 		break;
 
 	case BAP_BC_SRC_CMD_TYPE_ENABLE:
-		LOG_INF("Broadcast group %u %s", source_env.bcast_grp_lid,
-				status ? "enable done (err)" : "enabled");
+		LOG_INF("Broadcast group %u %s, status %u", grp_lid,
+				status ? "enable done (err)" : "enabled", status);
+		if (source_env.state != SRC_STATE_GROUP_ENABLING ||
+		    grp_lid != source_env.bcast_grp_lid) {
+			LOG_WRN("Ignore enable complete for group %u, state %d",
+				grp_lid, source_env.state);
+			break;
+		}
 		if (status == 0) {
-			source_env.state = SRC_STATE_GROUP_ENABLED;
-			uint16_t err = bap_bc_src_start_streaming(source_env.bcast_grp_lid,
-								0xFFFFFFFF);
+			uint16_t err;
 
+			if (desire != SRC_DESIRE_SOURCE) {
+				broadcast_source_stop_audio();
+				break;
+			}
+			source_env.state = SRC_STATE_GROUP_ENABLED;
+			err = bap_bc_src_start_streaming(grp_lid, 0xFFFFFFFF);
 			if (err) {
 				LOG_ERR("Failed to start streaming, err %u", err);
+				broadcast_source_stop_audio();
 			} else {
 				LOG_INF("Start streaming command sent");
 			}
+		} else {
+			/* Any refusal is latched. Otherwise reconcile builds
+			 * another group as soon as this one is gone.
+			 */
+			if (status == BIG_ERR_LIMITED_RESOURCES) {
+				LOG_INF("Create BIG rejected for resources");
+			}
+			create_refused = true;
+			/* The BIG was not created. Drop periodic advertising
+			 * or the next Create BIG is refused too.
+			 */
+			broadcast_source_disable_pa();
+			broadcast_source_reconcile();
 		}
 		break;
 
 	case BAP_BC_SRC_CMD_TYPE_START_STREAMING:
 		LOG_INF("Started streaming (status %u)", status);
-		if (status == 0) {
-			source_env.state = SRC_STATE_STREAMING;
+		if (source_env.state != SRC_STATE_GROUP_ENABLED) {
+			LOG_WRN("Ignore streaming complete in state %d",
+				source_env.state);
+			break;
+		}
+		if (status == 0 && desire == SRC_DESIRE_SOURCE) {
+			int ret = 0;
+			size_t i;
+
 			LOG_INF("Number of streams to start: %zu",
 					ARRAY_SIZE(source_env.stream_ids));
-			for (size_t i = 0; i < ARRAY_SIZE(source_env.stream_ids); i++) {
+			for (i = 0; i < ARRAY_SIZE(source_env.stream_ids); i++) {
 				LOG_INF("Starting stream %zu with ID %u", i,
 						source_env.stream_ids[i]);
-				audio_datapath_channel_start_source(source_env.stream_ids[i]);
+				ret = audio_datapath_channel_start_source(
+					source_env.stream_ids[i]);
+				if (ret) {
+					LOG_ERR("Failed to start stream %u, err %d",
+						source_env.stream_ids[i], ret);
+					break;
+				}
+			}
+			if (ret) {
+				audio_datapath_cleanup_source();
+				broadcast_source_stop_audio();
+			} else {
+				source_env.state = SRC_STATE_STREAMING;
+			}
+		} else if (status == 0) {
+			broadcast_source_stop_audio();
+		} else {
+			uint16_t err;
+
+			source_env.state = SRC_STATE_DISABLING_GROUP;
+			err = bap_bc_src_disable(source_env.bcast_grp_lid, true);
+			if (err) {
+				LOG_WRN("bap_bc_src_disable -> %u; will try PA disable",
+					err);
+				broadcast_source_disable_pa();
 			}
 		}
+		broadcast_source_reconcile();
 		break;
 
 	case BAP_BC_SRC_CMD_TYPE_STOP_STREAMING:
 		LOG_INF("Stopped streaming (status %u)", status);
 		k_sem_give(&src_stop_sem);
-		if (source_env.state == SRC_STATE_STOPPING_STREAMING) {
-			source_env.state = SRC_STATE_DISABLING_GROUP;
-			uint16_t err = bap_bc_src_disable(source_env.bcast_grp_lid, true);
+		if (source_env.state != SRC_STATE_STOPPING_STREAMING) {
+			break;
+		}
+		source_env.state = SRC_STATE_DISABLING_GROUP;
+		{
+			uint16_t err;
 
+			err = bap_bc_src_disable(source_env.bcast_grp_lid, true);
 			if (err) {
-				LOG_WRN("bap_bc_src_disable -> %u; will try PA disable path", err);
+				LOG_WRN("bap_bc_src_disable -> %u; will try PA disable",
+					err);
 				broadcast_source_disable_pa();
 			}
 		}
@@ -191,12 +360,31 @@ static void on_bap_bc_src_cmp_evt(uint8_t cmd_type, uint16_t status,
 		}
 		break;
 
+	case BAP_BC_SRC_CMD_TYPE_DISABLE_PA:
+		LOG_INF("PA disabled (status %u)", status);
+		k_sem_give(&src_dis_pa_sem);
+		if (source_env.state != SRC_STATE_DISABLING_PA) {
+			break;
+		}
+		broadcast_source_drop_group();
+		broadcast_source_reconcile();
+		break;
+
 	case BAP_BC_SRC_CMD_TYPE_REMOVE_GROUP:
 		LOG_INF("Broadcast group %u removed (status %u)", grp_lid, status);
+		if (source_env.state != SRC_STATE_REMOVING ||
+		    grp_lid != source_env.bcast_grp_lid) {
+			LOG_WRN("Ignore remove complete for group %u, state %d",
+				grp_lid, source_env.state);
+			break;
+		}
+		broadcast_source_reset_local();
+		broadcast_source_reconcile();
 		break;
 
 	default:
-		LOG_WRN("Unexpected bap_bc_src cmd complete: %u (status %u)", cmd_type, status);
+		LOG_WRN("Unexpected bap_bc_src cmd complete: %u (status %u)",
+			cmd_type, status);
 		break;
 	}
 }
@@ -375,6 +563,10 @@ static int broadcast_source_configure_group(void)
 	return 0;
 }
 
+/* Periodic advertising has to be up before Create BIG. The phase stays
+ * "enabling" until the completion, because it cannot be turned off
+ * before that.
+ */
 static int broadcast_source_enable(void)
 {
 	LOG_INF("Enabling broadcast source PA and streaming");
@@ -427,41 +619,147 @@ int broadcast_source_configure(void)
 	return 0;
 }
 
+/* The only place a group is created. The encoder is deleted first:
+ * a failed attempt leaves it allocated, and the next create then
+ * returns -EALREADY. A failure is latched so reconcile does not
+ * immediately build another group.
+ */
+static void broadcast_source_begin(void)
+{
+	int ret;
+
+	LOG_INF("Starting broadcast source broadcasting");
+	/* A previous attempt may have left the encoder allocated. */
+	audio_datapath_cleanup_source();
+
+	LOG_INF("Creating audio datapath for source");
+	ret = audio_datapath_create_source(&source_env.datapath_cfg);
+	if (ret) {
+		LOG_ERR("Failed to create audio datapath, err %d", ret);
+		create_refused = true;
+		return;
+	}
+
+	LOG_INF("Configuring broadcast source group");
+	ret = broadcast_source_configure_group();
+	if (ret) {
+		LOG_ERR("Failed to configure broadcast source group, err %d", ret);
+		create_refused = true;
+		if (source_env.bcast_grp_lid != INVALID_LID) {
+			broadcast_source_drop_group();
+		}
+		return;
+	}
+
+	LOG_INF("Broadcast group configured, enabling PA and streaming");
+	if (broadcast_source_enable() != 0) {
+		create_refused = true;
+		broadcast_source_drop_group();
+	}
+}
+
+/* Periodic advertising is on, so Create BIG is the next step. Moving
+ * the phase here stops reconcile from sending the command twice.
+ */
+static void broadcast_source_issue_big(void)
+{
+	uint16_t err;
+
+	err = bap_bc_src_enable(source_env.bcast_grp_lid);
+	if (err) {
+		LOG_ERR("bap_bc_src_enable(%u) -> %u", source_env.bcast_grp_lid, err);
+		create_refused = true;
+		broadcast_source_disable_pa();
+		return;
+	}
+
+	source_env.state = SRC_STATE_GROUP_ENABLING;
+	LOG_INF("Create BIG issued");
+}
+
+/* The next command, from the request and the phase. Called after a
+ * mode write, a link change, or a completion. It does not store a
+ * "start later" of its own.
+ */
+static void broadcast_source_reconcile(void)
+{
+	static bool reconciling;
+	int steps;
+
+	if (reconciling) {
+		return;
+	}
+	reconciling = true;
+
+	for (steps = 0; steps < 6; steps++) {
+		src_state_t before = source_env.state;
+
+		if (desire == SRC_DESIRE_IDLE) {
+			switch (source_env.state) {
+			case SRC_STATE_CONFIGURED:
+				broadcast_source_drop_group();
+				break;
+			case SRC_STATE_PA_ENABLED:
+				broadcast_source_disable_pa();
+				break;
+			case SRC_STATE_GROUP_ENABLED:
+			case SRC_STATE_STREAMING:
+				LOG_INF("Cleaning up audio datapath for source");
+				audio_datapath_cleanup_source();
+				broadcast_source_stop_audio();
+				break;
+			case SRC_STATE_IDLE:
+			case SRC_STATE_PA_ENABLING:
+			case SRC_STATE_GROUP_ENABLING:
+			case SRC_STATE_STOPPING_STREAMING:
+			case SRC_STATE_DISABLING_GROUP:
+			case SRC_STATE_DISABLING_PA:
+			case SRC_STATE_REMOVING:
+				break;
+			}
+		} else if (source_env.state == SRC_STATE_IDLE) {
+			if (link_up) {
+				LOG_INF("Waiting for the mode link to drop before Create BIG");
+			} else if (!create_refused) {
+				broadcast_source_begin();
+			}
+		} else if (source_env.state == SRC_STATE_PA_ENABLED) {
+			/* The link can come back while advertising is turning
+			 * on. Create BIG waits until it drops.
+			 */
+			if (link_up) {
+				LOG_INF("Waiting for the mode link to drop before Create BIG");
+			} else {
+				broadcast_source_issue_big();
+			}
+		} else if (source_env.state == SRC_STATE_CONFIGURED && create_refused) {
+			broadcast_source_drop_group();
+		} else if (source_env.state == SRC_STATE_CONFIGURED) {
+			if (broadcast_source_enable() != 0) {
+				create_refused = true;
+				broadcast_source_drop_group();
+			}
+		}
+
+		if (source_env.state == before) {
+			break;
+		}
+	}
+
+	reconciling = false;
+}
+
 int broadcast_source_start_broadcasting(void)
 {
-	LOG_INF("Starting broadcast source broadcasting");
-
 	if (!source_env.bap_source_modules_configured) {
 		LOG_ERR("BAP BC source modules not configured");
 		return -ENODEV;
 	}
 
-	if (source_env.state == SRC_STATE_STREAMING ||
-		source_env.state == SRC_STATE_GROUP_ENABLED ||
-		source_env.state == SRC_STATE_PA_ENABLING ||
-		source_env.state == SRC_STATE_PA_ENABLED) {
-		LOG_INF("Broadcast source already active/in progress (state=%d)", source_env.state);
-		return 0;
-	}
-
-	LOG_INF("Creating audio datapath for source");
-	int ret = audio_datapath_create_source(&source_env.datapath_cfg);
-
-	if (ret) {
-		LOG_ERR("Failed to create audio datapath, err %d", ret);
-		return ret;
-	}
-
-	LOG_INF("Configuring broadcast source group");
-	ret = broadcast_source_configure_group();
-
-	if (ret) {
-		LOG_ERR("Failed to configure broadcast source group, err %d", ret);
-		return ret;
-	}
-
-	LOG_INF("Broadcast group configured, enabling PA and streaming");
-	return broadcast_source_enable();
+	desire = SRC_DESIRE_SOURCE;
+	create_refused = false;
+	broadcast_source_reconcile();
+	return 0;
 }
 
 int broadcast_source_start(void)
@@ -476,28 +774,26 @@ int broadcast_source_start(void)
 
 int broadcast_source_stop(void)
 {
+	desire = SRC_DESIRE_IDLE;
 	LOG_INF("Cleaning up audio datapath for source");
 	audio_datapath_cleanup_source();
-
-	if (source_env.state == SRC_STATE_STREAMING ||
-			source_env.state == SRC_STATE_GROUP_ENABLED ||
-			source_env.state == SRC_STATE_PA_ENABLING ||
-			source_env.state == SRC_STATE_PA_ENABLED) {
-		source_env.state = SRC_STATE_STOPPING_STREAMING;
-		uint16_t err = bap_bc_src_stop_streaming(source_env.bcast_grp_lid,
-							0xFFFFFFFF);
-
-		if (err) {
-			LOG_WRN("Failed to stop streaming immediately, err %u.", err);
-			source_env.state = SRC_STATE_DISABLING_GROUP;
-			err = bap_bc_src_disable(source_env.bcast_grp_lid, true);
-			if (err) {
-				LOG_WRN("Disable returned %u; falling back to PA disable", err);
-				broadcast_source_disable_pa();
-			}
-		}
-		return 0;
-	}
-
+	broadcast_source_reconcile();
 	return 0;
+}
+
+void broadcast_source_set_connected(bool connected)
+{
+	bool was_up = link_up;
+
+	link_up = connected;
+	/* The refusal belonged to the link that just dropped. */
+	if (was_up && !connected) {
+		create_refused = false;
+	}
+	broadcast_source_reconcile();
+}
+
+void broadcast_source_on_disconnected(void)
+{
+	broadcast_source_reconcile();
 }
