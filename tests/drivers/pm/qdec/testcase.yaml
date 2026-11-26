@@ -1,0 +1,47 @@
+common:
+  tags:
+    - power
+    - pm
+    - qdec
+    - sensor
+    - gpio
+    - drivers
+  filter: SOC_FAMILY_ENSEMBLE or SOC_FAMILY_BALLETTO
+  depends_on:
+    - gpio
+    - sensor
+  timeout: 180
+
+tests:
+  drivers.pm.qdec.s2ram:
+    extra_args:
+      - SNIPPET=qdec-pm-s2ram-tcm
+      - CONFIG_FLASH_BASE_ADDRESS=0x0
+      - CONFIG_FLASH_LOAD_OFFSET=0x0
+      - CONFIG_FLASH_SIZE=256
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    harness: ztest
+
+  drivers.pm.qdec.mram:
+    extra_args:
+      - SNIPPET=qdec-pm-mram
+    platform_allow:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_hp
+      - alif_e7_dk/ae722f80f55d5xx/rtss_he
+      - alif_e7_dk/ae722f80f55d5xx/rtss_hp
+      - alif_e1c_dk/ae1c1f4051920hh/rtss_he
+      - alif_b1_dk/ab1c1f4m51820ph0/rtss_he
+    integration_platforms:
+      - alif_e8_dk/ae822fa0e5597xx0/rtss_he
+    harness: console
+    harness_config:
+      type: multi_line
+      regex:
+        - "SOFT_OFF has no retention"
