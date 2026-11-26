@@ -61,6 +61,19 @@ config TEST_HYPERRAM_FULL_CHIP
 	  XIP cases are not registered. Leave disabled for functional CI;
 	  enable only on bring-up.
 
+config TEST_XIP_PERFORMANCE
+	bool "XIP bandwidth and latency tests"
+	help
+	  Build src/performance/test_xip_performance.c. Leave disabled for
+	  the functional suite. The window stays non-cacheable.
+
+config TEST_XIP_STRESS
+	bool "XIP stress tests"
+	help
+	  Build src/STRESS/test_xip_stress.c. Leave disabled for the
+	  functional suite. With CONFIG_TEST_PSRAM=y this is the seven
+	  stress cases plus the two APS checks.
+
 config TEST_PSRAM_FLASH_COPY
 	bool "OSPI flash to PSRAM XiP copy tests"
 	help
