@@ -28,6 +28,10 @@ Edit ``ui/screen_main.xml`` and rebuild to change the UI.
 RTSS-HE
 -------
 
+.. note::
+
+   LVGL is supported only on the Alif E8 DevKit and the Alif E8 AppKit. It is not supported on other boards.
+
 .. code-block:: console
 
    west build -p always \

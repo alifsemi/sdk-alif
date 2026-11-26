@@ -212,7 +212,7 @@ Follow these steps to build the PDM and LPPDM application using the Alif Zephyr 
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`PDM build commands <build-commands-pdm>`.
 
 2. Build command for application on the M55 HE core:
 
@@ -486,7 +486,7 @@ For instructions on fetching the Alif Zephyr SDK and navigating to the Zephyr re
 
 .. note::
    The build commands shown here are specifically for the Alif E7 DevKit.
-   To build the application for other boards, modify the board name in the build command accordingly. For more information, refer to the `ZAS User Guide`_, under the section ``Setting Up and Building Zephyr Applications``.
+   For the build commands for every supported target, refer to :ref:`PDM build commands <build-commands-pdm>`.
 
 HE Core — TCM Boot S2RAM (E7)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

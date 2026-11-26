@@ -58,6 +58,10 @@ Follow these steps to build the I2S application using the Alif Zephyr SDK:
 
 2. Build Command for the e7_dk I2S Echo Sample Application on HE
 
+.. note::
+
+   For the build commands for every supported target, refer to :ref:`I2S build commands <build-commands-i2s>`.
+
 .. code-block:: console
 
    west build -p always \
