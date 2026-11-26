@@ -19,6 +19,10 @@
 	status = "okay";
 };
 
+&cmp0 {
+	status = "disabled";
+};
+
 &cmp1 {
 	status = "okay";
 };

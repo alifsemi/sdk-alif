@@ -13,6 +13,10 @@ LOG_MODULE_DECLARE(ALIF_CMP);
 
 ZTEST(cmp_Output, test_Comp_get_output_ready)
 {
+	if (CMP_IS_LPCMP || !CMP_HAS_CMP_GPIOS) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret;
 
@@ -26,6 +30,10 @@ ZTEST(cmp_Output, test_Comp_get_output_ready)
 
 ZTEST(cmp_Output, test_Comp_get_output_after_trigger)
 {
+	if (CMP_IS_LPCMP || !CMP_HAS_CMP_GPIOS) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret;
 
@@ -45,6 +53,10 @@ ZTEST(cmp_Output, test_Comp_get_output_after_trigger)
 
 ZTEST(cmp_Output, test_Comp_trigger_is_pending_clear)
 {
+	if (CMP_IS_LPCMP) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret;
 
@@ -58,6 +70,10 @@ ZTEST(cmp_Output, test_Comp_trigger_is_pending_clear)
 
 ZTEST(cmp_Output, test_Comp_get_output_stability)
 {
+	if (CMP_IS_LPCMP || !CMP_HAS_CMP_GPIOS) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int r1, r2, r3;
 
@@ -74,6 +90,10 @@ ZTEST(cmp_Output, test_Comp_get_output_stability)
 
 ZTEST(cmp_Output, test_Comp_trigger_pending_after_none)
 {
+	if (CMP_IS_LPCMP) {
+		ztest_test_skip();
+	}
+
 	const struct device *const dev = DEVICE_DT_GET(NODE_LABEL);
 	int ret;
 
