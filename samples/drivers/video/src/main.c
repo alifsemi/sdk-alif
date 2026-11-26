@@ -394,8 +394,13 @@ int main(void)
 		 * capture images.
 		 */
 		fmt.pixelformat = OUTPUT_FORMAT;
-		fmt.width = 480;
-		fmt.height = 480;
+		if (IS_ENABLED(CONFIG_DT_HAS_OVTI_OV5647_ENABLED)) {
+			fmt.width = 320;
+			fmt.height = 320;
+		} else {
+			fmt.width = 480;
+			fmt.height = 480;
+		}
 		fmt.pitch = fourcc_to_pitch(fmt.pixelformat, fmt.width);
 
 		ret = video_set_format(video, VIDEO_EP_OUT, &fmt);
