@@ -32,13 +32,10 @@
 #include "gapm_api.h"
 #include "ble_gpio.h"
 
-#define LED0_NODE DT_ALIAS(led0)
-#define LED2_NODE DT_ALIAS(led2)
-
 static uint8_t adv_type; /* Advertising type, set by address_verification() */
 
-static const struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET(LED0_NODE, gpios);
-static const struct gpio_dt_spec led2 = GPIO_DT_SPEC_GET(LED2_NODE, gpios);
+static const struct gpio_dt_spec led0 = BLE_GPIO_LED_SPEC(led0);
+static const struct gpio_dt_spec led2 = BLE_GPIO_LED_SPEC(led2);
 
 /* Service Definitions */
 #define ATT_128_PRIMARY_SERVICE  ATT_16_TO_128_ARRAY(GATT_DECL_PRIMARY_SERVICE)
@@ -143,6 +140,8 @@ struct service_env {
 	bool ntf_ongoing;
 	uint16_t ntf_cfg;
 };
+
+static uint32_t sw0_idx;
 
 /* Macros */
 LOG_MODULE_REGISTER(main, LOG_LEVEL_DBG);
@@ -410,8 +409,8 @@ static uint16_t service_notification_send(uint32_t conidx_mask)
 
 void button_update_handler(uint32_t button_state, uint32_t has_changed)
 {
-	if (has_changed & 1) {
-		env.char0_val = !(button_state & 1);
+	if (has_changed & sw0_idx) {
+		env.char0_val = !(button_state & sw0_idx);
 		if ((conn_status == BT_CONN_STATE_CONNECTED) &&
 		    (env.ntf_cfg == PRF_CLI_START_NTF)) {
 			k_sem_give(&ntf_sem);
@@ -485,6 +484,7 @@ int main(void)
 		LOG_ERR("Button Init fail %u", err);
 		return -1;
 	}
+	sw0_idx = BLE_GPIO_BUTTON_MASK(sw0);
 
 	err = ble_gpio_led_init();
 
