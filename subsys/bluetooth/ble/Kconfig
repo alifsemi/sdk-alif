@@ -1,0 +1,47 @@
+# Copyright Alif Semiconductor
+
+# Bluetooth related configurations
+
+if ALIF_BLE_HOST
+
+menu "Alif BLE host stack"
+
+config ALIF_BLE_HOST_THREAD_PRIORITY
+	int "Priority for thread running the BLE host stack"
+	default 5
+
+config ALIF_BLE_HOST_THREAD_STACKSIZE
+	int "Stack size for thread running the BLE host stack"
+	default 4096
+
+config ALIF_BLE_HOST_ADDL_PRF_HEAPSIZE
+	int "Additional heap size required for supported profiles"
+	default 0
+	help
+	  Depending on the profiles enabled in the stack the profile
+	  heap size allocated needs to be adjusted.
+
+config ALIF_BLE_HOST_ADDL_ENV_HEAPSIZE
+	int "Additional heap size required for supported environments"
+	default 0
+	help
+	  Depending on the environments enabled in the stack the environment
+	  heap size allocated needs to be adjusted.
+
+config ALIF_BLE_ALLOW_SLEEP_RUNTIME
+	bool "Allow sleep during BLE operations"
+	default n
+	help
+	  Allow the system to enter sleep mode during BLE operations.
+	  This can save power but may increase latency.
+
+config ALIF_BLE_ENABLE_AUDIO_SYNC_TIMER
+	bool "Enable sync timer to be used with BLE audio"
+	default n
+	help
+	  Sync timer is only needed for BLE audio use cases and thus should
+	  be disabled for non-audio applications
+
+endmenu
+
+endif

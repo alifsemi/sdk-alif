@@ -1,0 +1,75 @@
+zephyr_include_directories(
+	include
+	include/common
+	include/ip
+	include/ip/ahi
+	include/ipc
+	include/ip/gaf
+	include/ip/gaf/acc
+	include/ip/gaf/acc/mc
+	include/ip/gaf/acc/ot
+	include/ip/gaf/acc/tb
+	include/ip/gaf/arc
+	include/ip/gaf/arc/aic
+	include/ip/gaf/arc/mic
+	include/ip/gaf/arc/vc
+	include/ip/gaf/arc/voc
+	include/ip/gaf/atc
+	include/ip/gaf/atc/csi
+	include/ip/gaf/bap
+	include/ip/gaf/bap/bc
+	include/ip/gaf/bap/capa
+	include/ip/gaf/bap/uc
+	include/ip/gaf/cap
+	include/ip/gaf/gmap
+	include/ip/gaf/hap
+	include/ip/gaf/tb
+	include/ip/gaf/tmap
+	include/ip/hl
+	include/ip/hl/gap
+	include/ip/hl/gap/gapi
+	include/ip/hl/gap/gapi/data_path
+	include/ip/hl/gap/gapi/data_path/isooshm
+	include/ip/mesh
+	include/ip/mesh/al
+	include/ip/mesh/core
+	include/ip/mesh/core/prf
+	include/ip/profiles
+	include/ip/profiles/anp
+	include/ip/profiles/bas
+	include/ip/profiles/bcs
+	include/ip/profiles/blp
+	include/ip/profiles/bms
+	include/ip/profiles/cgms
+	include/ip/profiles/cpp
+	include/ip/profiles/cscp
+	include/ip/profiles/csip
+	include/ip/profiles/dis
+	include/ip/profiles/glp
+	include/ip/profiles/hrp
+	include/ip/profiles/htp
+	include/ip/profiles/ias
+	include/ip/profiles/lan
+	include/ip/profiles/lls
+	include/ip/profiles/otp
+	include/ip/profiles/pasp
+	include/ip/profiles/plxp
+	include/ip/profiles/rscp
+	include/ip/profiles/scpp
+	include/ip/profiles/tip
+	include/ip/profiles/tps
+	include/ip/profiles/uds
+	include/ip/profiles/wscp
+	include/isooshm
+	include/ke
+	include/plf
+	include/plf/ble
+	include/rwip
+	plf
+)
+
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/rom_ble_stack.patch.elf)
+	zephyr_link_libraries(${CMAKE_CURRENT_SOURCE_DIR}/rom_ble_stack.patch.elf)
+	zephyr_linker_sources(SECTIONS ../ble_patch_info.ld)
+	zephyr_linker_sources(RAM_SECTIONS ../ble_patch_ramable.ld)
+endif()

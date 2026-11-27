@@ -6,7 +6,7 @@
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
 
-set(SDK_ALIF_DIR ${CMAKE_CURRENT_LIST_DIR})
+set(SDK_ALIF_DIR ${CMAKE_CURRENT_SOURCE_DIR} CACHE PATH "Path to sdk-alif root")
 
 add_subdirectory(drivers)
 add_subdirectory(subsys)

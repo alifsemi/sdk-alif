@@ -1,10 +1,111 @@
-# Copyright (C) 2023 Alif Semiconductor - All Rights Reserved.
+# Copyright (C) Alif Semiconductor - All Rights Reserved.
 # Use, distribution and modification of this code is permitted under the
 # terms stated in the Alif Semiconductor Software License Agreement
 #
 # You should have received a copy of the Alif Semiconductor Software
 # License Agreement with this file. If not, please write to:
 # contact@alifsemi.com, or visit: https://alifsemi.com/license
+
+# BLE host stack related configurations
+
+if BT
+
+choice BT_STACK_SELECTION
+	prompt "Bluetooth Stack Selection"
+	default BT_HCI
+
+	help
+	  Select the Bluetooth stack to compile.
+
+	config BT_HCI
+		bool "HCI-based"
+		help
+		  HCI-based stack with optional host & controller parts and an
+		  HCI driver in between.
+
+	config BT_CUSTOM
+		bool "Alif's BLE Host stack"
+		select ALIF_BLE_HOST
+		help
+		  Alif Semiconductor BLE boards have host stack on ROM and by selecting
+		  this option it becomes available as a build option.
+endchoice
+
+config ALIF_BLE_HOST
+	bool
+	depends on HAS_ALIF_BLE_ROM_IMAGE
+	select FPU
+	select HAVE_CUSTOM_LINKER_SCRIPT
+	select USE_ALIF_HAL_UTIMER
+	select RING_BUFFER
+	help
+	  This option enables Alif Semiconductor's BLE Host Stack.
+
+endif # BT
+
+if HAVE_CUSTOM_LINKER_SCRIPT
+
+config CUSTOM_LINKER_SCRIPT
+	depends on HAS_ALIF_BLE_ROM_IMAGE
+	string
+	default "${SDK_ALIF_BLE_DIR}/linker_add_rom_symbols.ld"
+
+endif # HAVE_CUSTOM_LINKER_SCRIPT
+
+# BLE/LC3 ROM API source selection.
+#
+# Alif BLE and LC3 run from code resident in the SoC ROM. This HAL does not ship
+# that ROM; it ships the means to call into it: the public API headers, the ROM
+# symbol-address linker scripts and the host-stack patch overlay. By default the
+# set bundled in this HAL is used, selected from the device tree ble-rom-version
+# property. An out-of-tree module can instead supply these files by selecting
+# ALIF_BLE_ROM_API_EXTERNAL and pointing the options below at them, so a module
+# can carry its own API headers and symbol addresses while reusing this HAL's
+# build and link machinery.
+config ALIF_BLE_ROM_API_EXTERNAL
+	bool "Take the BLE/LC3 ROM API and symbol addresses from an out-of-tree module"
+	depends on HAS_ALIF_BLE_ROM_IMAGE
+	help
+	  Use the BLE/LC3 ROM API headers, ROM symbol-address linker scripts and
+	  host-stack patch supplied by another module instead of the set bundled in
+	  this HAL. The on-chip ROM itself is unchanged; only the interface used to
+	  call into it is provided. When enabled, set ALIF_BLE_ROM_API_DIR,
+	  ALIF_LC3_ROM_API_DIR, ALIF_BLE_ROM_SYMBOLS_LDS and ALIF_LC3_ROM_SYMBOLS_LDS
+	  to the providing module's files. Typically selected from a board's
+	  Kconfig.defconfig.
+
+if ALIF_BLE_ROM_API_EXTERNAL
+
+config ALIF_BLE_ROM_API_DIR
+	string "External BLE ROM API directory"
+	help
+	  Directory added with add_subdirectory(). Must contain a CMakeLists.txt
+	  that exposes the BLE public API headers, links the host-stack patch
+	  (rom_ble_stack.patch.elf) and wires the patch sections (see this HAL's
+	  ble/v1_2 for the layout).
+
+config ALIF_LC3_ROM_API_DIR
+	string "External LC3 ROM API directory"
+	help
+	  Directory added with add_subdirectory(). Must contain a CMakeLists.txt
+	  that exposes the LC3 public API headers.
+
+config ALIF_BLE_ROM_SYMBOLS_LDS
+	string "External BLE ROM symbol-address linker script"
+	help
+	  Absolute path to the BLE ROM symbol-address linker script
+	  (rom_symbols_ble.lds), #included by linker_add_rom_symbols.ld.
+
+config ALIF_LC3_ROM_SYMBOLS_LDS
+	string "External LC3 ROM symbol-address linker script"
+	help
+	  Absolute path to the LC3 ROM symbol-address linker script
+	  (rom_symbols_lc3.lds), #included by linker_add_rom_symbols.ld.
+
+endif # ALIF_BLE_ROM_API_EXTERNAL
+
+rsource "lc3/Kconfig"
+rsource "ble/Kconfig"
 
 rsource "le_audio/Kconfig"
 rsource "host/Kconfig"

@@ -1,0 +1,6 @@
+if(CONFIG_ALIF_BLE_ROM_API_EXTERNAL)
+  string(CONFIGURE "${CONFIG_ALIF_LC3_ROM_API_DIR}" ALIF_LC3_ROM_API_DIR)
+  add_subdirectory(${ALIF_LC3_ROM_API_DIR} lc3_rom_api_ext)
+else()
+  add_subdirectory_ifdef(CONFIG_ALIF_BLE_ROM_IMAGE_V1_2 v1_2)
+endif()

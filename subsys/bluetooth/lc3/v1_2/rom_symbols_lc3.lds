@@ -1,0 +1,10 @@
+lc3_api_configure = 0x9f169;
+lc3_api_decode_frame = 0x9f261;
+lc3_api_decoder_scratch_size = 0x9f255;
+lc3_api_decoder_status_size = 0x9f21d;
+lc3_api_encode_frame = 0x9f1d9;
+lc3_api_encoder_scratch_size = 0x9f1cd;
+lc3_api_get_byte_count = 0x9f1c1;
+lc3_api_initialise_decoder = 0x9f229;
+lc3_api_initialise_encoder = 0x9f19d;
+lc3_api_rom_init = 0x9f095;

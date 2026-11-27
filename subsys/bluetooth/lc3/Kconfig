@@ -1,0 +1,9 @@
+# LC3 codec related configurations
+
+menuconfig ALIF_ROM_LC3_CODEC
+	bool "Enable usage of the LC3 codec in ROM"
+	depends on HAS_ALIF_BLE_ROM_IMAGE
+	select FPU
+	select HAVE_CUSTOM_LINKER_SCRIPT
+	help
+	  Allow the LC3 codec in ROM to be used.
