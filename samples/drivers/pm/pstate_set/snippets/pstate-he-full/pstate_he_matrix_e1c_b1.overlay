@@ -1,0 +1,4 @@
+/*
+ * HE full matrix for E1C/B1: PLL 160/80/120/60 and oscillator combinations.
+ */
+#include "pstate_matrix_he_e1c_b1.dtsi"

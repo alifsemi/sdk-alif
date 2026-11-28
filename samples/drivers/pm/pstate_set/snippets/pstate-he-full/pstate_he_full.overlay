@@ -1,0 +1,2 @@
+/* RTC for all pstate-he-full builds; matrix overlay is board-specific. */
+#include "../pstate_rtc0.overlay"

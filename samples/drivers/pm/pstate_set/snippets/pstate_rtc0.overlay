@@ -1,0 +1,7 @@
+/*
+ * Reference wall clock for pstate_set (HE, HP, E1C, B1). Independent of SysTick.
+ */
+&rtc0 {
+	prescaler = <1>;
+	status = "okay";
+};

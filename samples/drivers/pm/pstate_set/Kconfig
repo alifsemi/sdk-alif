@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright Analog Devices, Inc.
+# SPDX-License-Identifier: Apache-2.0
+
+mainmenu "Alif RTSS P-state set"
+
+module = PSTATE_SET
+module-str = pstate_set
+source "subsys/logging/Kconfig.template.log_config"
+
+source "Kconfig.zephyr"

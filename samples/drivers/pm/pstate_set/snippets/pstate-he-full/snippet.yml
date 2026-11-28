@@ -1,0 +1,10 @@
+name: pstate-he-full
+append:
+  EXTRA_DTC_OVERLAY_FILE: pstate_he_full.overlay
+boards:
+  /alif_(e3|e4|e7|e8)_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pstate_he_matrix_e7e8.overlay
+  /alif_(e1c|b1)_dk/.*/rtss_he/:
+    append:
+      EXTRA_DTC_OVERLAY_FILE: pstate_he_matrix_e1c_b1.overlay
