@@ -18,8 +18,4 @@
 	status = "okay";
 };
 
-/* Fixed-rate wall clock; independent of SysTick / EXTSYS. */
-&rtc0 {
-	prescaler = <1>;
-	status = "okay";
-};
+#include "../pstate_rtc0.overlay"

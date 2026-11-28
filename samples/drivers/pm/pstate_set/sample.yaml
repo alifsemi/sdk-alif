@@ -3,7 +3,7 @@ sample:
   description: >
     Walks okay /performance-states via cpu_freq_pstate_set(). Snippet
     enables demo PLL plus HFRC 76.8 RC scaled 76.8 / 38.4 / 19.2 MHz.
-    Prints SE EXTSYS/AXI/AHB/APB Hz and checks SysTick against EXTSYS.
+    Checks SysTick against EXTSYS and RTC, then prints grouped PASS/FAIL.
 common:
   tags:
     - power
@@ -14,8 +14,8 @@ common:
   harness_config:
     type: multi_line
     regex:
-      - "pstate_set: Demo for"
-      - "pstate_set: Demo PASSED"
+      - "pstate_set: walked"
+      - "pstate_set: PASSED"
 tests:
   sample.pm.pstate_set.he:
     platform_allow:

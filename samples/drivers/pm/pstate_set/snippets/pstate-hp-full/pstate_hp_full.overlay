@@ -1,0 +1,6 @@
+/*
+ * HP full matrix for E7/E8: PLL 400/200/100 × scaled, PLL × HFRC/HFXO
+ * cpu-clk-freq, HFRC and HFXO combinations.
+ */
+#include "pstate_matrix_hp.dtsi"
+#include "../pstate_rtc0.overlay"

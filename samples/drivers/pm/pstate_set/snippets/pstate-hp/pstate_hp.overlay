@@ -18,8 +18,4 @@
 	status = "okay";
 };
 
-/* RTC is the only up-counter; same wall-clock as HE. */
-&rtc0 {
-	prescaler = <1>;
-	status = "okay";
-};
+#include "../pstate_rtc0.overlay"
